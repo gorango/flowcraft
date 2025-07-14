@@ -1,0 +1,29 @@
+{
+	"name": "workflow",
+	"type": "module",
+	"version": "1.0.0",
+	"description": "A flexible workflow framework",
+	"exports": {
+		".": {
+			"types": "./dist/workflow.d.ts",
+			"import": "./dist/workflow.js"
+		}
+	},
+	"scripts": {
+		"dev": "tsup --watch --config config/tsup.config.ts",
+		"build": "tsup --config config/tsup.config.ts",
+		"test": "vitest run --config config/vitest.config.ts",
+		"test:watch": "vitest --config config/vitest.config.ts",
+		"coverage": "vitest run --coverage --config config/vitest.config.ts",
+		"lint": "eslint src --ext .ts --config config/eslint.config.js"
+	},
+	"devDependencies": {
+		"@antfu/eslint-config": "^4.16.2",
+		"@types/node": "^24.0.13",
+		"@vitest/coverage-v8": "3.2.4",
+		"eslint": "^9.31.0",
+		"tsup": "^8.5.0",
+		"typescript": "^5.8.3",
+		"vitest": "^3.2.4"
+	}
+}
