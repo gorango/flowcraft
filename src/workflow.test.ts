@@ -7,6 +7,8 @@ import {
 	Flow,
 	Node,
 	ParallelBatchFlow,
+	TypedContext,
+	WorkflowError,
 } from './workflow.js'
 
 // Helper function for abortable sleep
@@ -49,18 +51,21 @@ class NumberNode extends Node {
 class AddNode extends Node {
 	constructor(private number: number) { super() }
 	async prep({ ctx }: NodeArgs) {
-		ctx.set('current', ctx.get('current') + this.number)
+		const current = ctx.get<number>('current') ?? 0
+		ctx.set('current', current + this.number)
 	}
 }
 class MultiplyNode extends Node {
 	constructor(private number: number) { super() }
 	async prep({ ctx }: NodeArgs) {
-		ctx.set('current', ctx.get('current') * this.number)
+		const current = ctx.get<number>('current') ?? 1
+		ctx.set('current', current * this.number)
 	}
 }
 class CheckPositiveNode extends Node<void, void, string> {
 	async post({ ctx }: NodeArgs): Promise<string> {
-		return ctx.get('current') >= 0 ? 'positive' : 'negative'
+		const current = ctx.get<number>('current')!
+		return current >= 0 ? 'positive' : 'negative'
 	}
 }
 class SignalNode extends Node<void, void, string> {
@@ -78,18 +83,31 @@ class PathNode extends Node {
 
 describe('testFlowBasic', () => {
 	it('should handle a simple linear pipeline', async () => {
-		const ctx = new Map()
+		const ctx = new TypedContext()
 		const n1 = new NumberNode(5)
 		const n2 = new AddNode(3)
 		const n3 = new MultiplyNode(2)
 		const flow = new Flow()
 		flow.start(n1).next(n2).next(n3)
 		const lastAction = await flow.run(ctx, runOptions)
-		expect(ctx.get('current')).toBe(16)
+		expect(ctx.get<number>('current')).toBe(16)
 		expect(lastAction).toBe(DEFAULT_ACTION)
 	})
+
+	it('should create a linear pipeline with Flow.sequence', async () => {
+		const ctx = new TypedContext()
+		const flow = Flow.sequence(
+			new NumberNode(5),
+			new AddNode(3),
+			new MultiplyNode(2),
+		)
+		const lastAction = await flow.run(ctx, runOptions)
+		expect(ctx.get<number>('current')).toBe(16)
+		expect(lastAction).toBe(DEFAULT_ACTION)
+	})
+
 	it('should handle positive branching', async () => {
-		const ctx = new Map()
+		const ctx = new TypedContext()
 		const startNode = new NumberNode(5)
 		const checkNode = new CheckPositiveNode()
 		const addIfPositive = new AddNode(10)
@@ -99,10 +117,10 @@ describe('testFlowBasic', () => {
 		checkNode.next(addIfPositive, 'positive')
 		checkNode.next(addIfNegative, 'negative')
 		await flow.run(ctx, runOptions)
-		expect(ctx.get('current')).toBe(15)
+		expect(ctx.get<number>('current')).toBe(15)
 	})
 	it('should handle negative branching', async () => {
-		const ctx = new Map()
+		const ctx = new TypedContext()
 		const startNode = new NumberNode(-5)
 		const checkNode = new CheckPositiveNode()
 		const addIfPositive = new AddNode(10)
@@ -112,10 +130,10 @@ describe('testFlowBasic', () => {
 		checkNode.next(addIfPositive, 'positive')
 		checkNode.next(addIfNegative, 'negative')
 		await flow.run(ctx, runOptions)
-		expect(ctx.get('current')).toBe(-25)
+		expect(ctx.get<number>('current')).toBe(-25)
 	})
 	it('should return the final action from the last node in a cycle', async () => {
-		const ctx = new Map()
+		const ctx = new TypedContext()
 		const startNode = new NumberNode(10)
 		const checkNode = new CheckPositiveNode()
 		const subtractNode = new AddNode(-3)
@@ -126,22 +144,22 @@ describe('testFlowBasic', () => {
 		checkNode.next(endNode, 'negative')
 		subtractNode.next(checkNode)
 		const lastAction = await flow.run(ctx, runOptions)
-		expect(ctx.get('current')).toBe(-2)
+		expect(ctx.get<number>('current')).toBe(-2)
 		expect(lastAction).toBe('cycle_done')
 	})
 })
 
 describe('testFlowComposition', () => {
 	it('should treat a flow as a node in another flow', async () => {
-		const ctx = new Map()
+		const ctx = new TypedContext()
 		const innerFlow = new Flow(new NumberNode(5))
 		innerFlow.startNode!.next(new AddNode(10)).next(new MultiplyNode(2))
 		const outerFlow = new Flow(innerFlow)
 		await outerFlow.run(ctx, runOptions)
-		expect(ctx.get('current')).toBe(30)
+		expect(ctx.get<number>('current')).toBe(30)
 	})
 	it('should propagate actions from inner flows for branching', async () => {
-		const ctx = new Map()
+		const ctx = new TypedContext()
 		const innerStart = new NumberNode(100)
 		const innerEnd = new SignalNode('inner_done')
 		innerStart.next(innerEnd)
@@ -152,8 +170,8 @@ describe('testFlowComposition', () => {
 		innerFlow.next(pathA, 'other_action')
 		innerFlow.next(pathB, 'inner_done')
 		await outerFlow.run(ctx, runOptions)
-		expect(ctx.get('current')).toBe(100)
-		expect(ctx.get('path_taken')).toBe('B')
+		expect(ctx.get<number>('current')).toBe(100)
+		expect(ctx.get<string>('path_taken')).toBe('B')
 	})
 })
 
@@ -175,24 +193,25 @@ describe('testExecFallback', () => {
 		}
 	}
 	it('should call execFallback after all retries are exhausted', async () => {
-		const ctx = new Map()
+		const ctx = new TypedContext()
 		const node = new FallbackNode(true, 3)
 		await node.run(ctx, runOptions)
-		expect(ctx.get('attempts')).toBe(3)
-		expect(ctx.get('result')).toBe('fallback')
+		// 3 attempts total: 1 initial + 2 retries. The attemptCount logic is inside exec, so it will be 3.
+		expect(ctx.get<number>('attempts')).toBe(3)
+		expect(ctx.get<string>('result')).toBe('fallback')
 	})
 })
 
 describe('testBatchProcessing', () => {
 	it('should process items sequentially using BatchFlow', async () => {
-		const ctx = new Map([['input_data', { a: 1, b: 2, c: 3 }]])
+		const ctx = new TypedContext([['input_data', { a: 1, b: 2, c: 3 }]])
 		class DataProcessNode extends Node {
 			async prep({ ctx, params }: NodeArgs) {
 				const key = params.key
-				const data = ctx.get('input_data')[key]
+				const data = ctx.get<Record<string, number>>('input_data')![key]
 				if (!ctx.has('results'))
 					ctx.set('results', {})
-				ctx.get('results')[key] = data * 2
+				ctx.get<Record<string, number>>('results')![key] = data * 2
 			}
 		}
 		class SimpleBatchFlow extends BatchFlow {
@@ -204,7 +223,7 @@ describe('testBatchProcessing', () => {
 	})
 
 	it('should run a BatchFlow sequentially and respect async delays', async () => {
-		const ctx = new Map([['results', []]])
+		const ctx = new TypedContext([['results', []]])
 		class DelayedNode extends Node {
 			async exec({ params }: NodeArgs) {
 				await new Promise(res => setTimeout(res, 15))
@@ -212,7 +231,7 @@ describe('testBatchProcessing', () => {
 			}
 
 			async post({ ctx, execRes }: NodeArgs) {
-				ctx.get('results').push(execRes)
+				ctx.get<number[]>('results')!.push(execRes)
 			}
 		}
 		class TestBatchFlow extends BatchFlow {
@@ -230,21 +249,21 @@ describe('testBatchProcessing', () => {
 
 describe('testParallelProcessing', () => {
 	it('should run a ParallelBatchFlow in parallel', async () => {
-		const ctx = new Map([
+		const ctx = new TypedContext([
 			['input_data', { a: 1, b: 2, c: 3 }],
 			['results', {}],
 		])
 		class DataProcessNode extends Node<void, number> {
 			async exec({ ctx, params }: NodeArgs<void, void>): Promise<number> {
 				await new Promise(res => setTimeout(res, 15))
-				const data = ctx.get('input_data')[params.key]
+				const data = ctx.get<Record<string, number>>('input_data')![params.key]
 				return data * params.multiplier
 			}
 
 			async post({ ctx, execRes, params }: NodeArgs<void, number>) {
 				if (!ctx.has('results'))
 					ctx.set('results', {})
-				ctx.get('results')[params.key] = execRes
+				ctx.get<Record<string, number>>('results')![params.key] = execRes
 			}
 		}
 		class TestParallelBatchFlow extends ParallelBatchFlow {
@@ -268,7 +287,7 @@ describe('testParallelProcessing', () => {
 	it('should process items in parallel within a single Node.exec', async () => {
 		class Processor extends Node<number[], number[]> {
 			async prep({ ctx }: NodeArgs): Promise<number[]> {
-				return ctx.get('input')
+				return ctx.get<number[]>('input')!
 			}
 
 			async exec({ prepRes: items }: NodeArgs<number[]>): Promise<number[]> {
@@ -286,7 +305,7 @@ describe('testParallelProcessing', () => {
 			}
 		}
 
-		const ctx = new Map([['input', [1, 2, 3, 4]]])
+		const ctx = new TypedContext([['input', [1, 2, 3, 4]]])
 		const node = new Processor()
 		const startTime = Date.now()
 		await node.run(ctx, runOptions)
@@ -301,10 +320,10 @@ describe('testAbortController', () => {
 	class LongRunningNode extends Node<void, string> {
 		constructor(private id: number, private delayMs: number) { super() }
 		async exec({ ctx, signal }: NodeArgs): Promise<string> {
-			const started = ctx.get('started') || []
+			const started = ctx.get<number[]>('started') ?? []
 			ctx.set('started', started.concat(this.id))
 			await sleep(this.delayMs, signal)
-			const finished = ctx.get('finished') || []
+			const finished = ctx.get<number[]>('finished') ?? []
 			ctx.set('finished', finished.concat(this.id))
 			return `ok_${this.id}`
 		}
@@ -314,17 +333,17 @@ describe('testAbortController', () => {
 		constructor(private delayMs: number) { super() }
 		async exec({ ctx, params, signal }: NodeArgs): Promise<string> {
 			const id = params.id
-			const started = ctx.get('started') || []
+			const started = ctx.get<number[]>('started') ?? []
 			ctx.set('started', started.concat(id))
 			await sleep(this.delayMs, signal)
-			const finished = ctx.get('finished') || []
+			const finished = ctx.get<number[]>('finished') ?? []
 			ctx.set('finished', finished.concat(id))
 			return `ok_${id}`
 		}
 	}
 
 	it('should abort a linear flow and throw an AbortError', async () => {
-		const ctx = new Map()
+		const ctx = new TypedContext()
 		const n1 = new LongRunningNode(1, 15)
 		const n2 = new LongRunningNode(2, 50)
 		const n3 = new LongRunningNode(3, 15)
@@ -342,7 +361,7 @@ describe('testAbortController', () => {
 	})
 
 	it('should abort a sequential BatchFlow', async () => {
-		const ctx = new Map()
+		const ctx = new TypedContext()
 		class TestBatchFlow extends BatchFlow {
 			async prep() { return [{ id: 1 }, { id: 2 }, { id: 3 }] }
 		}
@@ -356,7 +375,7 @@ describe('testAbortController', () => {
 	})
 
 	it('should abort a ParallelBatchFlow', async () => {
-		const ctx = new Map()
+		const ctx = new TypedContext()
 		class TestParallelFlow extends ParallelBatchFlow {
 			async prep() { return [{ id: 1 }, { id: 2 }, { id: 3 }] }
 		}
@@ -367,25 +386,28 @@ describe('testAbortController', () => {
 		await expect(runPromise).rejects.toThrow(AbortError)
 		// All should have started in parallel
 		expect(ctx.get('started')).toBeDefined()
-		expect(ctx.get('started').length).toBe(3)
+		expect(ctx.get<number[]>('started')!.length).toBe(3)
 		// None should have finished
 		expect(ctx.get('finished')).toBeUndefined()
 	})
 })
 
-describe('testLogging', () => {
+describe('testLoggingAndErrors', () => {
 	it('should use a default ConsoleLogger if none is provided', async () => {
 		const consoleInfoSpy = vi.spyOn(console, 'info').mockImplementation(() => { })
 		const flow = new Flow(new NumberNode(1))
-		await flow.run(new Map())
-		expect(consoleInfoSpy).toHaveBeenCalledWith(expect.stringContaining('[INFO] Running node: Flow'), expect.anything())
+		await flow.run(new TypedContext())
+		expect(consoleInfoSpy).toHaveBeenCalledWith(
+			expect.stringContaining('[INFO] Running node: Flow'),
+			expect.any(Object), // Expect a second argument for the context object
+		)
 		consoleInfoSpy.mockRestore()
 	})
 
 	it('should use the provided custom logger', async () => {
 		const flow = new Flow(new NumberNode(1))
-		await flow.run(new Map(), runOptions)
-		expect(mockLogger.info).toHaveBeenCalledWith('Running node: Flow')
+		await flow.run(new TypedContext(), runOptions)
+		expect(mockLogger.info).toHaveBeenCalledWith(expect.stringContaining('Running node: Flow'), expect.any(Object))
 	})
 
 	it('should log branching decisions', async () => {
@@ -394,9 +416,10 @@ describe('testLogging', () => {
 		const flow = new Flow(checkNode)
 		checkNode.next(pathNode, 'positive')
 
-		await flow.run(new Map([['current', 10]]), runOptions)
+		await flow.run(new TypedContext([['current', 10]]), runOptions)
 		expect(mockLogger.debug).toHaveBeenCalledWith(
 			`Action 'positive' from CheckPositiveNode leads to PathNode`,
+			expect.any(Object),
 		)
 	})
 
@@ -408,7 +431,7 @@ describe('testLogging', () => {
 		}
 
 		const flow = new Flow(new FailingNode())
-		await flow.run(new Map(), runOptions)
+		await flow.run(new TypedContext(), runOptions)
 
 		expect(mockLogger.warn).toHaveBeenCalledWith(
 			'Attempt 1/2 failed for FailingNode. Retrying...',
@@ -418,5 +441,21 @@ describe('testLogging', () => {
 			'All retries failed for FailingNode. Executing fallback.',
 			expect.any(Object),
 		)
+	})
+
+	it('should wrap errors in WorkflowError with correct phase context', async () => {
+		class FailingPrepNode extends Node {
+			async prep() { throw new Error('Prep failed') }
+		}
+		const flow = new Flow(new FailingPrepNode())
+		const runPromise = flow.run(new TypedContext(), runOptions)
+
+		await expect(runPromise).rejects.toThrow(WorkflowError)
+		await expect(runPromise).rejects.toMatchObject({
+			name: 'WorkflowError',
+			nodeName: 'FailingPrepNode',
+			phase: 'prep',
+			originalError: expect.any(Error),
+		})
 	})
 })
