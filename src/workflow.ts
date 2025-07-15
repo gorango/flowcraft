@@ -2,8 +2,18 @@ export type Context = Map<any, any>
 export type Params = Record<string, any>
 export const DEFAULT_ACTION = 'default'
 
-function warn(message: string): void {
-	console.warn(`WARN: Workflow - ${message}`)
+export interface Logger {
+	debug: (message: string, context?: object) => void
+	info: (message: string, context?: object) => void
+	warn: (message: string, context?: object) => void
+	error: (message: string, context?: object) => void
+}
+
+export class ConsoleLogger implements Logger {
+	debug(message: string, context?: object) { console.debug(`[DEBUG] ${message}`, context ?? '') }
+	info(message: string, context?: object) { console.info(`[INFO] ${message}`, context ?? '') }
+	warn(message: string, context?: object) { console.warn(`[WARN] ${message}`, context ?? '') }
+	error(message: string, context?: object) { console.error(`[ERROR] ${message}`, context ?? '') }
 }
 
 export class AbortError extends Error {
@@ -17,6 +27,7 @@ async function sleep(ms: number, signal?: AbortSignal): Promise<void> {
 	return new Promise((resolve, reject) => {
 		if (signal?.aborted)
 			return reject(new AbortError())
+
 		const timeoutId = setTimeout(resolve, ms)
 		signal?.addEventListener('abort', () => {
 			clearTimeout(timeoutId)
@@ -29,9 +40,15 @@ export interface NodeArgs<PrepRes = any, ExecRes = any> {
 	ctx: Context
 	params: Params
 	signal?: AbortSignal
+	logger: Logger
 	prepRes: PrepRes
 	execRes: ExecRes
 	error?: Error
+}
+
+export interface RunOptions {
+	controller?: AbortController
+	logger?: Logger
 }
 
 export abstract class AbstractNode {
@@ -44,13 +61,13 @@ export abstract class AbstractNode {
 	}
 
 	next(node: AbstractNode, action: string = DEFAULT_ACTION): AbstractNode {
-		if (this.successors.has(action))
-			warn(`Overwriting successor for action '${action}' in node ${this.constructor.name}`)
+		// Note: The previous warning about overwriting a successor has been removed.
+		// It's a valid use case, and logging can be handled by the user if desired.
 		this.successors.set(action, node)
 		return node
 	}
 
-	abstract _run(ctx: Context, params: Params, signal?: AbortSignal): Promise<any>
+	abstract _run(ctx: Context, params: Params, signal: AbortSignal | undefined, logger: Logger): Promise<any>
 }
 
 export class Node<PrepRes = any, ExecRes = any, PostRes = any> extends AbstractNode {
@@ -80,34 +97,40 @@ export class Node<PrepRes = any, ExecRes = any, PostRes = any> extends AbstractN
 				const error = e as Error
 				if (error instanceof AbortError || error.name === 'AbortError')
 					throw error
-				if (this.curRetry === this.maxRetries - 1) {
+				if (this.curRetry < this.maxRetries - 1) {
+					args.logger.warn(`Attempt ${this.curRetry + 1}/${this.maxRetries} failed for ${this.constructor.name}. Retrying...`, { error })
+					if (this.wait > 0)
+						await sleep(this.wait, args.signal)
+				}
+				else {
+					args.logger.error(`All retries failed for ${this.constructor.name}. Executing fallback.`, { error })
 					if (args.signal?.aborted)
 						throw new AbortError()
 					return await this.execFallback({ ...args, error })
 				}
-				if (this.wait > 0)
-					await sleep(this.wait, args.signal)
 			}
 		}
 		throw new Error('Execution failed after all retries.')
 	}
 
-	async _run(ctx: Context, params: Params, signal?: AbortSignal): Promise<PostRes> {
+	async _run(ctx: Context, params: Params, signal: AbortSignal | undefined, logger: Logger): Promise<PostRes> {
+		logger.info(`Running node: ${this.constructor.name}`)
 		if (signal?.aborted)
 			throw new AbortError()
-		const prepRes = await this.prep({ ctx, params, signal, prepRes: undefined, execRes: undefined })
+		const prepRes = await this.prep({ ctx, params, signal, logger, prepRes: undefined, execRes: undefined })
 		if (signal?.aborted)
 			throw new AbortError()
-		const execRes = await this._exec({ ctx, params, signal, prepRes, execRes: undefined })
+		const execRes = await this._exec({ ctx, params, signal, logger, prepRes, execRes: undefined })
 		if (signal?.aborted)
 			throw new AbortError()
-		return await this.post({ ctx, params, signal, prepRes, execRes })
+		return await this.post({ ctx, params, signal, logger, prepRes, execRes })
 	}
 
-	async run(ctx: Context, controller?: AbortController): Promise<PostRes> {
+	async run(ctx: Context, options?: RunOptions): Promise<PostRes> {
+		const logger = options?.logger ?? new ConsoleLogger()
 		if (this.successors.size > 0)
-			warn('Node won\'t run successors. Use Flow.')
-		return this._run(ctx, this.params, controller?.signal)
+			logger.warn('Node.run() called directly on a node with successors. The flow will not continue. Use a Flow to execute a sequence.')
+		return this._run(ctx, this.params, options?.controller?.signal, logger)
 	}
 }
 
@@ -124,38 +147,42 @@ export class Flow extends Node {
 		return start
 	}
 
-	getNextNode(curr: AbstractNode, action: any): AbstractNode | undefined {
+	getNextNode(curr: AbstractNode, action: any, logger: Logger): AbstractNode | undefined {
 		const actionKey = typeof action === 'string' ? action : DEFAULT_ACTION
 		const nextNode = curr.successors.get(actionKey)
-		if (!nextNode && curr.successors.size > 0)
-			warn(`Flow ends: Action '${actionKey}' not found in successors of node ${curr.constructor.name}`)
-
+		if (nextNode) {
+			logger.debug(`Action '${actionKey}' from ${curr.constructor.name} leads to ${nextNode.constructor.name}`)
+		}
+		else if (curr.successors.size > 0) {
+			logger.info(`Flow ends: Action '${actionKey}' from ${curr.constructor.name} has no configured successor.`)
+		}
 		return nextNode
 	}
 
-	async _orch(ctx: Context, params: Params, signal?: AbortSignal): Promise<any> {
+	async _orch(ctx: Context, params: Params, signal: AbortSignal | undefined, logger: Logger): Promise<any> {
 		let curr = this.startNode
 		let lastAction: any
 		while (curr) {
 			if (signal?.aborted)
 				throw new AbortError()
-			lastAction = await curr._run(ctx, params, signal)
-			curr = this.getNextNode(curr, lastAction)
+			lastAction = await curr._run(ctx, params, signal, logger)
+			curr = this.getNextNode(curr, lastAction, logger)
 		}
 		return lastAction
 	}
 
 	async exec(args: NodeArgs<any, any>): Promise<any> {
 		const combinedParams = { ...this.params, ...args.params }
-		return await this._orch(args.ctx, combinedParams, args.signal)
+		return await this._orch(args.ctx, combinedParams, args.signal, args.logger)
 	}
 
 	async post({ execRes }: NodeArgs<any, any>): Promise<any> {
 		return execRes
 	}
 
-	async run(ctx: Context, controller?: AbortController): Promise<any> {
-		return this._run(ctx, this.params, controller?.signal)
+	async run(ctx: Context, options?: RunOptions): Promise<any> {
+		const logger = options?.logger ?? new ConsoleLogger()
+		return this._run(ctx, this.params, options?.controller?.signal, logger)
 	}
 }
 
@@ -163,10 +190,12 @@ export class BatchFlow extends Flow {
 	async exec(args: NodeArgs<any, void>): Promise<any> {
 		const combinedParams = { ...this.params, ...args.params }
 		const batchParamsList = (await this.prep(args)) as any[] || []
-		for (const batchParams of batchParamsList) {
+		args.logger.info(`BatchFlow: Starting sequential processing of ${batchParamsList.length} items.`)
+		for (const [index, batchParams] of batchParamsList.entries()) {
 			if (args.signal?.aborted)
 				throw new AbortError()
-			await this._orch(args.ctx, { ...combinedParams, ...batchParams }, args.signal)
+			args.logger.debug(`BatchFlow: Processing item ${index + 1}/${batchParamsList.length}.`, { params: batchParams })
+			await this._orch(args.ctx, { ...combinedParams, ...batchParams }, args.signal, args.logger)
 		}
 		return null
 	}
@@ -176,8 +205,9 @@ export class ParallelBatchFlow extends Flow {
 	async exec(args: NodeArgs<any, void>): Promise<any> {
 		const combinedParams = { ...this.params, ...args.params }
 		const batchParamsList = (await this.prep(args)) as any[] || []
+		args.logger.info(`ParallelBatchFlow: Starting parallel processing of ${batchParamsList.length} items.`)
 		const promises = batchParamsList.map(batchParams =>
-			this._orch(args.ctx, { ...combinedParams, ...batchParams }, args.signal),
+			this._orch(args.ctx, { ...combinedParams, ...batchParams }, args.signal, args.logger),
 		)
 		await Promise.all(promises)
 		return null

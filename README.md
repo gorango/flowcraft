@@ -7,9 +7,10 @@ A flexible and lightweight workflow framework for Node.js and TypeScript. Build 
 - **Declarative & Composable**: Define workflows by chaining nodes. Entire flows can be nested and used as single nodes in other flows.
 - **State Management**: A shared `Context` map is passed through the workflow, allowing nodes to share data and state.
 - **Conditional Branching**: Direct the flow's execution path based on the results of a node.
-- **Async-First by Default**: Built on an asynchronous foundation to seamlessly handle both I/O-bound (e.g., API calls, file I/O) and CPU-bound tasks. Synchronous-style nodes work out-of-the-box without boilerplate.
-- **Retry Logic & Fallbacks**: Automatically retry failed operations with configurable delays and define fallback logic if all retries are exhausted.
+- **Async by Default**: Built on an asynchronous foundation to seamlessly handle both I/O-bound (e.g., API calls, file I/O) and CPU-bound tasks. Synchronous-style nodes work out-of-the-box without boilerplate.
+- - **Pluggable Logging**: Observe and debug workflows with a standard `Logger` interface. A default console logger is provided, or you can use your own (e.g., Pino, Winston).
 - - **Cancellation Support**: Gracefully abort running workflows using standard `AbortController`s.
+- **Retry Logic & Fallbacks**: Automatically retry failed operations with configurable delays and define fallback logic if all retries are exhausted.
 - **Batch Processing**: Built-in support for processing collections of items sequentially (`BatchFlow`) or in parallel (`ParallelBatchFlow`).
 - **Type-Safe**: Written in TypeScript to provide strong typing for your workflow definitions.
 
@@ -43,37 +44,13 @@ The `Context` is a `Map` instance that is passed through every node in a flow. I
 
 A node's `post()` method can return a string, called an **action**. When a flow runs a node, it uses this action to look up the next node to execute. By default, the action is `'default'`, but you can return custom strings to implement conditional branching.
 
-```typescript
-// After this node runs, the flow will look for a successor linked to the 'positive' action.
-checkNode.next(addIfPositive, 'positive')
-
-// If the number is negative, this path is taken.
-checkNode.next(addIfNegative, 'negative')
-```
-
 ### Aborting Workflows
 
 All run methods accept an optional AbortController instance. Calling controller.abort() will cause the workflow to halt at the next available step and reject the run promise with an AbortError. This is essential for managing timeouts or handling user cancellation.
 
-```typescript
-import { AbortError, Flow, Node } from 'workflow'
+### Logging
 
-const flow = new Flow(new SomeLongRunningNode())
-const controller = new AbortController()
-const context = new Map()
-
-// Abort the flow after 2 seconds
-setTimeout(() => controller.abort(), 2000)
-
-try {
- await flow.run(context, controller)
-}
-catch (e) {
- if (e instanceof AbortError) {
-  console.log('Workflow was aborted as expected.')
- }
-}
-```
+You can supply your own logger to the run method to gain insight into the workflow's execution. The logger must conform to a simple Logger interface. The injected logger is also available inside every node via args.logger.
 
 ## Examples & Recipes
 
