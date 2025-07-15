@@ -1,15 +1,15 @@
 # Workflow
 
-A flexible and lightweight workflow framework for Node.js and TypeScript. Build complex, multi-step processes with support for branching, composition, retries, and both synchronous and asynchronous execution.
+A flexible and lightweight workflow framework for Node.js and TypeScript. Build complex, multi-step processes with support for branching, composition, retries, and seamless asynchronous execution.
 
 ## Features
 
 - **Declarative & Composable**: Define workflows by chaining nodes. Entire flows can be nested and used as single nodes in other flows.
 - **State Management**: A shared `Context` map is passed through the workflow, allowing nodes to share data and state.
 - **Conditional Branching**: Direct the flow's execution path based on the results of a node.
-- **Sync & Async Support**: First-class support for both synchronous and asynchronous operations with `Node`/`Flow` and `AsyncNode`/`AsyncFlow` classes.
+- **Async-First by Default**: Built on an asynchronous foundation to seamlessly handle both I/O-bound (e.g., API calls, file I/O) and CPU-bound tasks. Synchronous-style nodes work out-of-the-box without boilerplate.
 - **Retry Logic & Fallbacks**: Automatically retry failed operations with configurable delays and define fallback logic if all retries are exhausted.
-- **Batch Processing**: Built-in support for processing collections of items sequentially (`BatchFlow`) or in parallel (`AsyncParallelBatchFlow`).
+- **Batch Processing**: Built-in support for processing collections of items sequentially (`BatchFlow`) or in parallel (`ParallelBatchFlow`).
 - **Type-Safe**: Written in TypeScript to provide strong typing for your workflow definitions.
 
 ## Installation
@@ -22,11 +22,13 @@ npm install workflow
 
 ### Node
 
-The `Node` is the fundamental building block of a workflow. It represents a single unit of work. Each node has a three-phase lifecycle:
+The `Node` is the fundamental building block of a workflow. It represents a single, potentially asynchronous unit of work. Each node has a three-phase lifecycle, and all methods are `async` by default.
 
-1. `prep()`: Prepare data for execution. This is where you might fetch data from the `Context`.
-2. `exec()`: Perform the core logic of the node. This phase is isolated from the context.
-3. `post()`: Process the results of `exec()` and update the `Context`. This method returns an "action" string that determines the next step in the flow.
+1. `prep(args)`: Prepare data for execution. This is where you might fetch data from the `Context`.
+2. `exec(args)`: Perform the core logic of the node. This phase is isolated from the context.
+3. `post(args)`: Process the results of `exec()` and update the `Context`. This method returns an "action" string that determines the next step in the flow.
+
+All lifecycle methods receive a single argument object, allowing you to destructure only what you need (e.g., `{ ctx, params, prepRes, execRes }`).
 
 ### Flow
 
@@ -50,17 +52,17 @@ checkNode.next(addIfNegative, 'negative')
 
 ## Usage Examples
 
-### 1. Basic Synchronous Flow
+### 1. Basic Sequential Flow
 
-Here's how to create a simple sequential pipeline that performs a calculation.
+Here's how to create a simple sequential pipeline that performs a calculation. Even though the framework is async, purely synchronous logic works intuitively.
 
 ```typescript
-import { Node, Flow, Context } from 'workflow'
+import { Context, Flow, Node, NodeArgs } from 'workflow'
 
 // A node to set the initial number
 class NumberNode extends Node {
   constructor(private number: number) { super() }
-  prep(ctx: Context) {
+  async prep({ ctx }: NodeArgs) {
     ctx.set('current', this.number)
   }
 }
@@ -68,7 +70,7 @@ class NumberNode extends Node {
 // A node to add to the current number
 class AddNode extends Node {
   constructor(private number: number) { super() }
-  prep(ctx: Context) {
+  async prep({ ctx }: NodeArgs) {
     ctx.set('current', ctx.get('current') + this.number)
   }
 }
@@ -80,7 +82,7 @@ flow
   .next(new AddNode(3))
 
 const context = new Map()
-flow.run(context)
+await flow.run(context)
 
 console.log(context.get('current')) // Output: 18
 ```
@@ -90,18 +92,18 @@ console.log(context.get('current')) // Output: 18
 Workflows can take different paths based on a node's result.
 
 ```typescript
-import { Node, Flow, Context, Params, DEFAULT_ACTION } from 'workflow'
+import { Context, DEFAULT_ACTION, Flow, Node, NodeArgs } from 'workflow'
 
 // This node checks a number and returns a custom action
 class CheckPositiveNode extends Node<void, void, string> {
-  post(ctx: Context): string {
+  async post({ ctx }: NodeArgs): Promise<string> {
     return ctx.get('current') >= 0 ? 'positive' : 'negative'
   }
 }
 
 class PathNode extends Node {
   constructor(private pathId: string) { super() }
-  prep(ctx: Context) {
+  async prep({ ctx }: NodeArgs) {
     ctx.set('path_taken', this.pathId)
   }
 }
@@ -117,50 +119,51 @@ checkNode.next(positivePathNode, 'positive') // Branch for 'positive' action
 checkNode.next(negativePathNode, 'negative') // Branch for 'negative' action
 
 const context = new Map()
-flow.run(context)
+await flow.run(context)
 
 console.log(context.get('path_taken')) // Output: 'B'
 ```
 
-### 3. Asynchronous Flow with Retries
+### 3. Asynchronous Operations with Retries
 
-Use `AsyncNode` and `AsyncFlow` for I/O-bound or other asynchronous tasks. This example also shows the built-in retry mechanism.
+Use `Node` and `Flow` for all tasks, including I/O-bound operations. This example shows an async operation with the built-in retry mechanism.
 
 ```typescript
-import { AsyncNode, AsyncFlow, Context } from 'workflow'
+import { Context, Flow, Node, NodeArgs } from 'workflow'
 
 let apiShouldFail = true
 
 // A node that simulates a flaky API call
-class ApiCallNode extends AsyncNode<void, string> {
+class ApiCallNode extends Node<void, string> {
   constructor() {
     // Retry up to 3 times, waiting 50ms between retries
     super(3, 50)
   }
 
-  async execAsync(): Promise<string> {
+  async exec(): Promise<string> {
     console.log(`Attempt #${this.curRetry + 1}...`)
     if (apiShouldFail) {
       apiShouldFail = false // Let it succeed on the second attempt
       throw new Error('API unavailable')
     }
+    await new Promise(res => setTimeout(res, 20)) // Simulate network latency
     return 'Success'
   }
 
   // This runs if all retries fail
-  async execFallbackAsync(): Promise<string> {
+  async execFallback(): Promise<string> {
     return 'Fallback'
   }
 
-  async postAsync(ctx: Context, _, execRes: string) {
+  async post({ ctx, execRes }: NodeArgs<void, string>) {
     ctx.set('result', execRes)
   }
 }
 
-const flow = new AsyncFlow(new ApiCallNode())
+const flow = new Flow(new ApiCallNode())
 const context = new Map()
 
-await flow.runAsync(context)
+await flow.run(context)
 // Output:
 // Attempt #1...
 // Attempt #2...
@@ -170,14 +173,14 @@ console.log(context.get('result')) // Output: 'Success'
 
 ### 4. Parallel Batch Processing
 
-The `AsyncParallelBatchFlow` is perfect for "map-reduce" style operations where you want to process a list of items concurrently.
+The `ParallelBatchFlow` is perfect for "map-reduce" style operations where you want to process a list of items concurrently.
 
 ```typescript
-import { AsyncParallelBatchFlow, AsyncNode, Context, Params } from 'workflow'
+import { Context, Node, NodeArgs, ParallelBatchFlow } from 'workflow'
 
 // Define the node that will process each item
-class DataProcessNode extends AsyncNode {
-  async prepAsync(ctx: Context, params: Params) {
+class DataProcessNode extends Node {
+  async prep({ ctx, params }: NodeArgs) {
     // Simulate some async work for each item
     await new Promise(res => setTimeout(res, 10))
     const data = ctx.get('input_data')[params.key]
@@ -186,8 +189,8 @@ class DataProcessNode extends AsyncNode {
 }
 
 // Define a flow that prepares the batch of items
-class ProcessItemsFlow extends AsyncParallelBatchFlow {
-  async prepAsync() {
+class ProcessItemsFlow extends ParallelBatchFlow {
+  async prep() {
     // This array of params will be processed in parallel
     return [
       { key: 'a', multiplier: 2 },
@@ -203,7 +206,7 @@ const context = new Map([
 ])
 
 const flow = new ProcessItemsFlow(new DataProcessNode())
-await flow.runAsync(context)
+await flow.run(context)
 
 console.log(context.get('results')) // Output: { a: 2, b: 6, c: 12 }
 ```
@@ -212,13 +215,10 @@ console.log(context.get('results')) // Output: { a: 2, b: 6, c: 12 }
 
 ### Core Classes
 
-- `Node`: The base class for a synchronous unit of work with retry logic.
-- `AsyncNode`: The base class for an asynchronous unit of work with retry logic.
-- `Flow`: Orchestrates a sequence of synchronous nodes.
-- `AsyncFlow`: Orchestrates a sequence of synchronous and/or asynchronous nodes.
+- `Node`: The base class for a potentially asynchronous unit of work with built-in retry logic.
+- `Flow`: Orchestrates a sequence of nodes, handling both synchronous and asynchronous operations seamlessly.
 
 ### Batch Flows
 
-- `BatchFlow`: A synchronous flow that executes its entire workflow for each item in a list sequentially.
-- `AsyncBatchFlow`: An asynchronous flow that executes its entire workflow for each item in a list sequentially.
-- `AsyncParallelBatchFlow`: An asynchronous flow that executes its entire workflow for each item in a list in parallel.
+- `BatchFlow`: A flow that executes its entire workflow sequentially for each item in a list. The operations within can still be async.
+- `ParallelBatchFlow`: A flow that executes its entire workflow in parallel for each item in a list.
