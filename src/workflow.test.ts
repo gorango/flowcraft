@@ -1,6 +1,7 @@
 import type { NodeArgs } from './workflow.js'
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 import {
+	AbortError,
 	BatchFlow,
 	DEFAULT_ACTION,
 	Flow,
@@ -16,6 +17,18 @@ beforeAll(() => {
 afterAll(() => {
 	warnSpy.mockRestore()
 })
+
+async function sleep(ms: number, signal?: AbortSignal): Promise<void> {
+	return new Promise((resolve, reject) => {
+		if (signal?.aborted)
+			return reject(new AbortError())
+		const timeoutId = setTimeout(resolve, ms)
+		signal?.addEventListener('abort', () => {
+			clearTimeout(timeoutId)
+			reject(new AbortError())
+		})
+	})
+}
 
 class NumberNode extends Node {
 	constructor(private number: number) { super() }
@@ -271,5 +284,82 @@ describe('testParallelProcessing', () => {
 		expect(ctx.get('output')).toEqual([2, 4, 6, 8])
 		// 4 tasks of 10ms in parallel should take ~10ms, not 40ms.
 		expect(duration).toBeLessThan(35)
+	})
+})
+
+describe('testAbortController', () => {
+	class LongRunningNode extends Node<void, string> {
+		constructor(private id: number, private delayMs: number) { super() }
+		async exec({ ctx, signal }: NodeArgs): Promise<string> {
+			const started = ctx.get('started') || []
+			ctx.set('started', started.concat(this.id))
+			await sleep(this.delayMs, signal)
+			const finished = ctx.get('finished') || []
+			ctx.set('finished', finished.concat(this.id))
+			return `ok_${this.id}`
+		}
+	}
+
+	class LongRunningNodeWithParams extends Node<void, string> {
+		constructor(private delayMs: number) { super() }
+		async exec({ ctx, params, signal }: NodeArgs): Promise<string> {
+			const id = params.id
+			const started = ctx.get('started') || []
+			ctx.set('started', started.concat(id))
+			await sleep(this.delayMs, signal)
+			const finished = ctx.get('finished') || []
+			ctx.set('finished', finished.concat(id))
+			return `ok_${id}`
+		}
+	}
+
+	it('should abort a linear flow and throw an AbortError', async () => {
+		const ctx = new Map()
+		const n1 = new LongRunningNode(1, 15)
+		const n2 = new LongRunningNode(2, 50)
+		const n3 = new LongRunningNode(3, 15)
+
+		// Corrected test setup
+		const flow = new Flow()
+		flow.start(n1).next(n2).next(n3)
+
+		const controller = new AbortController()
+		const runPromise = flow.run(ctx, controller)
+		setTimeout(() => controller.abort(), 30) // Abort during n2's execution
+
+		await expect(runPromise).rejects.toThrow(AbortError)
+		expect(ctx.get('started')).toEqual([1, 2])
+		expect(ctx.get('finished')).toEqual([1])
+	})
+
+	it('should abort a sequential BatchFlow', async () => {
+		const ctx = new Map()
+		class TestBatchFlow extends BatchFlow {
+			async prep() { return [{ id: 1 }, { id: 2 }, { id: 3 }] }
+		}
+		const batchFlow = new TestBatchFlow(new LongRunningNodeWithParams(20))
+		const controller = new AbortController()
+		const runPromise = batchFlow.run(ctx, controller)
+		setTimeout(() => controller.abort(), 30) // Abort during the 2nd item's execution
+		await expect(runPromise).rejects.toThrow(AbortError)
+		expect(ctx.get('started')).toEqual([1, 2])
+		expect(ctx.get('finished')).toEqual([1])
+	})
+
+	it('should abort a ParallelBatchFlow', async () => {
+		const ctx = new Map()
+		class TestParallelFlow extends ParallelBatchFlow {
+			async prep() { return [{ id: 1 }, { id: 2 }, { id: 3 }] }
+		}
+		const parallelFlow = new TestParallelFlow(new LongRunningNodeWithParams(50))
+		const controller = new AbortController()
+		const runPromise = parallelFlow.run(ctx, controller)
+		setTimeout(() => controller.abort(), 20) // Abort while all are running
+		await expect(runPromise).rejects.toThrow(AbortError)
+		// All should have started in parallel
+		expect(ctx.get('started')).toBeDefined()
+		expect(ctx.get('started').length).toBe(3)
+		// None should have finished
+		expect(ctx.get('finished')).toBeUndefined()
 	})
 })

@@ -9,13 +9,14 @@ A flexible and lightweight workflow framework for Node.js and TypeScript. Build 
 - **Conditional Branching**: Direct the flow's execution path based on the results of a node.
 - **Async-First by Default**: Built on an asynchronous foundation to seamlessly handle both I/O-bound (e.g., API calls, file I/O) and CPU-bound tasks. Synchronous-style nodes work out-of-the-box without boilerplate.
 - **Retry Logic & Fallbacks**: Automatically retry failed operations with configurable delays and define fallback logic if all retries are exhausted.
+- - **Cancellation Support**: Gracefully abort running workflows using standard `AbortController`s.
 - **Batch Processing**: Built-in support for processing collections of items sequentially (`BatchFlow`) or in parallel (`ParallelBatchFlow`).
 - **Type-Safe**: Written in TypeScript to provide strong typing for your workflow definitions.
 
 ## Installation
 
 ```bash
-npm install workflow
+npm install https://github.com/gorango/workflow
 ```
 
 ## Core Concepts
@@ -50,166 +51,44 @@ checkNode.next(addIfPositive, 'positive')
 checkNode.next(addIfNegative, 'negative')
 ```
 
-## Usage Examples
+### Aborting Workflows
 
-### 1. Basic Sequential Flow
-
-Here's how to create a simple sequential pipeline that performs a calculation. Even though the framework is async, purely synchronous logic works intuitively.
+All run methods accept an optional AbortController instance. Calling controller.abort() will cause the workflow to halt at the next available step and reject the run promise with an AbortError. This is essential for managing timeouts or handling user cancellation.
 
 ```typescript
-import { Context, Flow, Node, NodeArgs } from 'workflow'
+import { AbortError, Flow, Node } from 'workflow'
 
-// A node to set the initial number
-class NumberNode extends Node {
-  constructor(private number: number) { super() }
-  async prep({ ctx }: NodeArgs) {
-    ctx.set('current', this.number)
-  }
-}
-
-// A node to add to the current number
-class AddNode extends Node {
-  constructor(private number: number) { super() }
-  async prep({ ctx }: NodeArgs) {
-    ctx.set('current', ctx.get('current') + this.number)
-  }
-}
-
-const flow = new Flow()
-flow
-  .start(new NumberNode(5))
-  .next(new AddNode(10))
-  .next(new AddNode(3))
-
-const context = new Map()
-await flow.run(context)
-
-console.log(context.get('current')) // Output: 18
-```
-
-### 2. Conditional Branching
-
-Workflows can take different paths based on a node's result.
-
-```typescript
-import { Context, DEFAULT_ACTION, Flow, Node, NodeArgs } from 'workflow'
-
-// This node checks a number and returns a custom action
-class CheckPositiveNode extends Node<void, void, string> {
-  async post({ ctx }: NodeArgs): Promise<string> {
-    return ctx.get('current') >= 0 ? 'positive' : 'negative'
-  }
-}
-
-class PathNode extends Node {
-  constructor(private pathId: string) { super() }
-  async prep({ ctx }: NodeArgs) {
-    ctx.set('path_taken', this.pathId)
-  }
-}
-
-const startNode = new NumberNode(-5) // Using NumberNode from previous example
-const checkNode = new CheckPositiveNode()
-const positivePathNode = new PathNode('A')
-const negativePathNode = new PathNode('B')
-
-const flow = new Flow(startNode)
-startNode.next(checkNode)
-checkNode.next(positivePathNode, 'positive') // Branch for 'positive' action
-checkNode.next(negativePathNode, 'negative') // Branch for 'negative' action
-
-const context = new Map()
-await flow.run(context)
-
-console.log(context.get('path_taken')) // Output: 'B'
-```
-
-### 3. Asynchronous Operations with Retries
-
-Use `Node` and `Flow` for all tasks, including I/O-bound operations. This example shows an async operation with the built-in retry mechanism.
-
-```typescript
-import { Context, Flow, Node, NodeArgs } from 'workflow'
-
-let apiShouldFail = true
-
-// A node that simulates a flaky API call
-class ApiCallNode extends Node<void, string> {
-  constructor() {
-    // Retry up to 3 times, waiting 50ms between retries
-    super(3, 50)
-  }
-
-  async exec(): Promise<string> {
-    console.log(`Attempt #${this.curRetry + 1}...`)
-    if (apiShouldFail) {
-      apiShouldFail = false // Let it succeed on the second attempt
-      throw new Error('API unavailable')
-    }
-    await new Promise(res => setTimeout(res, 20)) // Simulate network latency
-    return 'Success'
-  }
-
-  // This runs if all retries fail
-  async execFallback(): Promise<string> {
-    return 'Fallback'
-  }
-
-  async post({ ctx, execRes }: NodeArgs<void, string>) {
-    ctx.set('result', execRes)
-  }
-}
-
-const flow = new Flow(new ApiCallNode())
+const flow = new Flow(new SomeLongRunningNode())
+const controller = new AbortController()
 const context = new Map()
 
-await flow.run(context)
-// Output:
-// Attempt #1...
-// Attempt #2...
+// Abort the flow after 2 seconds
+setTimeout(() => controller.abort(), 2000)
 
-console.log(context.get('result')) // Output: 'Success'
+try {
+ await flow.run(context, controller)
+}
+catch (e) {
+ if (e instanceof AbortError) {
+  console.log('Workflow was aborted as expected.')
+ }
+}
 ```
 
-### 4. Parallel Batch Processing
+## Examples & Recipes
 
-The `ParallelBatchFlow` is perfect for "map-reduce" style operations where you want to process a list of items concurrently.
+The best way to understand workflow is to see it in action. Instead of simple snippets, this repository includes comprehensive examples and a full test suite that demonstrate various features.
 
-```typescript
-import { Context, Node, NodeArgs, ParallelBatchFlow } from 'workflow'
+### Unit Tests ([`src/workflow.test.ts`](/recipes/))
 
-// Define the node that will process each item
-class DataProcessNode extends Node {
-  async prep({ ctx, params }: NodeArgs) {
-    // Simulate some async work for each item
-    await new Promise(res => setTimeout(res, 10))
-    const data = ctx.get('input_data')[params.key]
-    ctx.get('results')[params.key] = data * params.multiplier
-  }
-}
+For clear, focused examples of specific features, check out the unit tests. You will find test cases covering:
 
-// Define a flow that prepares the batch of items
-class ProcessItemsFlow extends ParallelBatchFlow {
-  async prep() {
-    // This array of params will be processed in parallel
-    return [
-      { key: 'a', multiplier: 2 },
-      { key: 'b', multiplier: 3 },
-      { key: 'c', multiplier: 4 },
-    ]
-  }
-}
-
-const context = new Map([
-  ['input_data', { a: 1, b: 2, c: 3 }],
-  ['results', {}],
-])
-
-const flow = new ProcessItemsFlow(new DataProcessNode())
-await flow.run(context)
-
-console.log(context.get('results')) // Output: { a: 2, b: 6, c: 12 }
-```
+- Basic sequential flows
+- Conditional branching
+- Nested flows (composition)
+- Retry logic and fallbacks
+- Sequential and parallel batch processing
+- Cancellation
 
 ## API Reference
 
