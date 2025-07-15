@@ -114,6 +114,11 @@ export interface NodeArgs<PrepRes = any, ExecRes = any> {
 	error?: Error
 }
 
+export interface NodeOptions {
+	maxRetries?: number
+	wait?: number
+}
+
 export interface RunOptions {
 	controller?: AbortController
 	logger?: Logger
@@ -158,13 +163,12 @@ export class Node<PrepRes = any, ExecRes = any, PostRes = any> extends AbstractN
 	public wait: number
 
 	/**
-	 * @param maxRetries The total number of times to attempt the `exec` method. Defaults to 1.
-	 * @param wait The time in milliseconds to wait between retry attempts. Defaults to 0.
+	 * @param options Configuration options for the node's behavior.
 	 */
-	constructor(maxRetries = 1, wait = 0) {
+	constructor(options: NodeOptions = {}) {
 		super()
-		this.maxRetries = maxRetries
-		this.wait = wait
+		this.maxRetries = options.maxRetries ?? 1
+		this.wait = options.wait ?? 0
 	}
 
 	/** (Lifecycle) Prepares data for execution. Runs before `exec`. */

@@ -1,4 +1,4 @@
-import type { Logger, NodeArgs, RunOptions } from './workflow.js'
+import type { Logger, NodeArgs, NodeOptions, RunOptions } from './workflow.js'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
 	AbortError,
@@ -178,7 +178,13 @@ describe('testFlowComposition', () => {
 describe('testExecFallback', () => {
 	class FallbackNode extends Node<void, string> {
 		public attemptCount = 0
-		constructor(private shouldFail: boolean, maxRetries: number) { super(maxRetries) }
+		private shouldFail: boolean
+
+		constructor(shouldFail: boolean, options?: NodeOptions) {
+			super(options) // Pass options to the parent
+			this.shouldFail = shouldFail
+		}
+
 		async exec(): Promise<string> {
 			this.attemptCount++
 			if (this.shouldFail)
@@ -194,7 +200,7 @@ describe('testExecFallback', () => {
 	}
 	it('should call execFallback after all retries are exhausted', async () => {
 		const ctx = new TypedContext()
-		const node = new FallbackNode(true, 3)
+		const node = new FallbackNode(true, { maxRetries: 3 })
 		await node.run(ctx, runOptions)
 		// 3 attempts total: 1 initial + 2 retries. The attemptCount logic is inside exec, so it will be 3.
 		expect(ctx.get<number>('attempts')).toBe(3)
@@ -425,7 +431,10 @@ describe('testLoggingAndErrors', () => {
 
 	it('should log retry attempts and fallback execution', async () => {
 		class FailingNode extends Node {
-			constructor() { super(2, 0) } // 2 attempts total
+			constructor() {
+				super({ maxRetries: 2, wait: 0 })
+			}
+
 			async exec() { throw new Error('fail') }
 			async execFallback() { return 'fallback' }
 		}
