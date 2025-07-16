@@ -89,4 +89,4 @@ For clear, focused examples of specific, individual features (like retries, canc
 
 - `Node`: The base class for a unit of work with built-in retry logic.
 - `Flow`: Orchestrates a sequence of nodes. Provides a `Flow.sequence(...)` helper for creating linear flows.
-- `TypedContext`: The standard `Map`-based implementation for the `WorkflowContext` interface.
+- `TypedContext`: The standard `Map`-based implementation for the `Context` interface.

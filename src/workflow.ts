@@ -1,60 +1,14 @@
-export type Params = Record<string, any>
-export const DEFAULT_ACTION = 'default'
+import type { Context } from './context'
+import type { Logger } from './logger'
+import type { NodeArgs, NodeOptions, Params, RunOptions } from './types'
+import { AbortError, WorkflowError } from './errors'
+import { ConsoleLogger } from './logger'
+import { DEFAULT_ACTION } from './types'
 
-/**
- * Defines the interface for a logger that can be used by the workflow engine.
- */
-export interface Logger {
-	debug: (message: string, context?: object) => void
-	info: (message: string, context?: object) => void
-	warn: (message: string, context?: object) => void
-	error: (message: string, context?: object) => void
-}
-
-/**
- * A default logger implementation that writes to the console.
- */
-export class ConsoleLogger implements Logger {
-	private log(level: 'debug' | 'info' | 'warn' | 'error', message: string, context?: object) {
-		const fullMessage = `[${level.toUpperCase()}] ${message}`
-		if (context && Object.keys(context).length > 0)
-			console[level](fullMessage, context)
-		else
-			console[level](fullMessage)
-	}
-
-	debug(message: string, context?: object) { this.log('debug', message, context) }
-	info(message: string, context?: object) { this.log('info', message, context) }
-	warn(message: string, context?: object) { this.log('warn', message, context) }
-	error(message: string, context?: object) { this.log('error', message, context) }
-}
-
-/**
- * Error thrown when a workflow is aborted via an AbortSignal.
- */
-export class AbortError extends Error {
-	constructor(message = 'Workflow aborted') {
-		super(message)
-		this.name = 'AbortError'
-	}
-}
-
-/**
- * Custom error class for failures within the workflow, providing additional context.
- */
-export class WorkflowError extends Error {
-	constructor(
-		message: string,
-		public readonly nodeName: string,
-		public readonly phase: 'prep' | 'exec' | 'post',
-		public readonly originalError?: Error,
-	) {
-		super(message)
-		this.name = 'WorkflowError'
-		if (originalError?.stack)
-			this.stack = `${this.stack}\nCaused by: ${originalError.stack}`
-	}
-}
+export * from './context'
+export * from './errors'
+export * from './logger'
+export * from './types'
 
 async function sleep(ms: number, signal?: AbortSignal): Promise<void> {
 	return new Promise((resolve, reject) => {
@@ -67,61 +21,6 @@ async function sleep(ms: number, signal?: AbortSignal): Promise<void> {
 			reject(new AbortError())
 		})
 	})
-}
-
-/**
- * Defines the interface for the shared context object passed through the workflow.
- */
-export interface WorkflowContext {
-	get: <T>(key: any) => T | undefined
-	set: <T>(key: any, value: T) => this
-	has: (key: any) => boolean
-}
-
-/**
- * A type-safe, Map-based implementation of the WorkflowContext.
- */
-export class TypedContext implements WorkflowContext {
-	private data: Map<any, any>
-
-	constructor(initialData?: Iterable<readonly [any, any]> | null) {
-		this.data = new Map<any, any>(initialData)
-	}
-
-	get<T>(key: any): T | undefined {
-		return this.data.get(key)
-	}
-
-	set<T>(key: any, value: T): this {
-		this.data.set(key, value)
-		return this
-	}
-
-	has(key: any): boolean {
-		return this.data.has(key)
-	}
-}
-
-export type Context = WorkflowContext
-
-export interface NodeArgs<PrepRes = any, ExecRes = any> {
-	ctx: Context
-	params: Params
-	signal?: AbortSignal
-	logger: Logger
-	prepRes: PrepRes
-	execRes: ExecRes
-	error?: Error
-}
-
-export interface NodeOptions {
-	maxRetries?: number
-	wait?: number
-}
-
-export interface RunOptions {
-	controller?: AbortController
-	logger?: Logger
 }
 
 export abstract class AbstractNode {
