@@ -107,3 +107,6 @@ For clear, focused examples of specific, individual features (like retries, canc
 - `BatchFlow`: A `Flow` that processes a collection of items sequentially.
 - `ParallelBatchFlow`: A `Flow` that processes a collection of items in parallel.
 - `GraphBuilder`: Constructs a `Flow` from a declarative graph definition.
+
+---
+Licensed under the [MIT License](./LICENSE).
