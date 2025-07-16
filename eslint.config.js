@@ -11,6 +11,5 @@ export default antfu({
 		'no-console': 'off',
 		'unused-imports/no-unused-vars': 'off',
 		'unused-imports/no-unused-imports': 'off',
-		'regexp/no-unused-capturing-group': 'off',
 	},
 })
