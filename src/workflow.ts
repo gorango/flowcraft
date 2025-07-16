@@ -159,21 +159,6 @@ export class Flow extends Node<any, any, any> {
 	}
 
 	/**
-	 * A convenience static method to create a linear flow from a sequence of nodes.
-	 * @param nodes The nodes to execute in order.
-	 * @returns A new Flow instance.
-	 */
-	static sequence(...nodes: AbstractNode[]): Flow {
-		if (nodes.length === 0)
-			return new Flow()
-		const flow = new Flow(nodes[0])
-		let current = nodes[0]
-		for (let i = 1; i < nodes.length; i++)
-			current = current.next(nodes[i])
-		return flow
-	}
-
-	/**
 	 * Sets the starting node of the flow.
 	 * @param start The node to start with.
 	 * @returns The start node instance for chaining.

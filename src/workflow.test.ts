@@ -1,6 +1,6 @@
 import type { Logger, NodeArgs, NodeOptions, RunOptions } from './workflow'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { BatchFlow, ParallelBatchFlow } from './builder/batch'
+import { BatchFlow, ParallelBatchFlow } from './builder/collection'
 import { sleep } from './utils'
 import {
 	AbortError,
@@ -88,19 +88,6 @@ describe('testFlowBasic', () => {
 		expect(ctx.get(CURRENT)).toBe(16)
 		expect(lastAction).toBe(DEFAULT_ACTION)
 	})
-
-	it('should create a linear pipeline with Flow.sequence', async () => {
-		const ctx = new TypedContext()
-		const flow = Flow.sequence(
-			new NumberNode(5),
-			new AddNode(3),
-			new MultiplyNode(2),
-		)
-		const lastAction = await flow.run(ctx, runOptions)
-		expect(ctx.get(CURRENT)).toBe(16)
-		expect(lastAction).toBe(DEFAULT_ACTION)
-	})
-
 	it('should handle positive branching', async () => {
 		const ctx = new TypedContext()
 		const startNode = new NumberNode(5)

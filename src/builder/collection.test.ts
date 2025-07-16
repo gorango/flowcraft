@@ -1,7 +1,7 @@
 import type { Logger, NodeArgs, RunOptions } from '../workflow'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { contextKey, Node, TypedContext } from '../workflow'
-import { BatchFlow, ParallelBatchFlow } from './batch'
+import { BatchFlow, ParallelBatchFlow, SequenceFlow } from './collection'
 
 function createMockLogger(): Logger {
 	return {
@@ -22,6 +22,7 @@ afterEach(() => {
 
 const PROCESSED_IDS = contextKey<number[]>('processed_ids')
 const BATCH_RESULTS = contextKey<string[]>('batch_results')
+const VALUE = contextKey<number>('value')
 
 class ProcessItemNode extends Node {
 	async exec({ ctx, params }: NodeArgs) {
@@ -37,7 +38,27 @@ class ProcessItemNode extends Node {
 	}
 }
 
-describe('testBatchFlow (Sequential)', () => {
+class AddNode extends Node {
+	constructor(private number: number) { super() }
+	async prep({ ctx }: NodeArgs) {
+		const current = ctx.get(VALUE) ?? 0
+		ctx.set(VALUE, current + this.number)
+	}
+}
+
+describe('sequenceFlow', () => {
+	it('should create and run a linear sequence of nodes', async () => {
+		const ctx = new TypedContext([[VALUE, 1]])
+		const flow = new SequenceFlow(
+			new AddNode(5), // 1 + 5 = 6
+			new AddNode(10), // 6 + 10 = 16
+		)
+		await flow.run(ctx, runOptions)
+		expect(ctx.get(VALUE)).toBe(16)
+	})
+})
+
+describe('batchFlow (Sequential)', () => {
 	class TestSequentialBatchFlow extends BatchFlow {
 		constructor(private items: any[]) {
 			super(new ProcessItemNode())
@@ -87,7 +108,7 @@ describe('testBatchFlow (Sequential)', () => {
 	})
 })
 
-describe('testParallelBatchFlow', () => {
+describe('parallelBatchFlow', () => {
 	class TestParallelBatchFlow extends ParallelBatchFlow {
 		constructor(private items: any[]) {
 			super(new ProcessItemNode())

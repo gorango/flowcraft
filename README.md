@@ -90,7 +90,7 @@ A node's `post()` method returns a string called an **action**. The flow uses th
 For clear, focused examples of specific, individual features (like retries, cancellation, and composition), the unit tests are an excellent resource.
 
 - Core workflow tests: [`src/workflow.test.ts`](src/workflow.test.ts)
-- Batch flow tests: [`src/builder/batch.test.ts`](src/builder/batch.test.ts)
+- Collection flows tests: [`src/builder/collection.test.ts`](src/builder/collection.test.ts)
 - Graph builder tests: [`src/builder/graph.test.ts`](src/builder/graph.test.ts)
 
 ## API Reference
@@ -103,6 +103,7 @@ For clear, focused examples of specific, individual features (like retries, canc
 
 ### Builder Classes (`workflow/builder`)
 
+- `SequenceFlow`: A `Flow` that creates a linear flow from a sequence of nodes.
 - `BatchFlow`: A `Flow` that processes a collection of items sequentially.
 - `ParallelBatchFlow`: A `Flow` that processes a collection of items in parallel.
 - `GraphBuilder`: Constructs a `Flow` from a declarative graph definition.

@@ -1,5 +1,22 @@
-import type { NodeArgs } from '../workflow'
+import type { AbstractNode, NodeArgs } from '../workflow'
 import { Flow } from '../workflow'
+
+/**
+ * A builder that creates a linear flow from a sequence of nodes.
+ * It is the underlying implementation for `Flow.sequence()`.
+ */
+export class SequenceFlow extends Flow {
+	constructor(...nodes: AbstractNode[]) {
+		if (nodes.length === 0) {
+			super()
+			return
+		}
+		super(nodes[0])
+		let current = nodes[0]
+		for (let i = 1; i < nodes.length; i++)
+			current = current.next(nodes[i])
+	}
+}
 
 /**
  * A flow that executes its workflow sequentially for each item in a collection.
