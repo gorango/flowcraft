@@ -1,0 +1,16 @@
+{
+	"name": "basic-workflow",
+	"type": "module",
+	"scripts": {
+		"start": "npx tsx src/main.ts"
+	},
+	"dependencies": {
+		"dotenv": "^16.4.5",
+		"openai": "^4.52.7",
+		"workflow": "workspace:*",
+		"yaml": "^2.5.0"
+	},
+	"devDependencies": {
+		"typescript": "^5.5.4"
+	}
+}

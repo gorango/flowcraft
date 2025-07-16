@@ -1,0 +1,47 @@
+{
+	"nodes": [
+		{
+			"id": "api_call_ban_user",
+			"type": "llm-process",
+			"data": {
+				"promptTemplate": "Simulate a database update to ban a user. Respond with a simulated SQL command.\n\nUPDATE users SET status='banned' WHERE id={{userId}};",
+				"inputs": {
+					"userId": "userId"
+				}
+			}
+		},
+		{
+			"id": "log_ban_event",
+			"type": "llm-process",
+			"data": {
+				"promptTemplate": "Simulate writing to a security log. Respond with a simulated log entry.\n\nEVENT: UserBanned\nUSER_ID: {{userId}}\nREASON: {{reason}}\nSEVERITY: critical",
+				"inputs": {
+					"userId": "userId",
+					"reason": "reason"
+				}
+			}
+		},
+		{
+			"id": "output_ban_summary",
+			"type": "output",
+			"data": {
+				"outputKey": "ban_summary",
+				"promptTemplate": "User Banned Successfully.\n--- DB Action ---\n{{db_update}}\n\n--- Log Entry ---\n{{log_entry}}",
+				"inputs": {
+					"db_update": "api_call_ban_user",
+					"log_entry": "log_ban_event"
+				}
+			}
+		}
+	],
+	"edges": [
+		{
+			"source": "api_call_ban_user",
+			"target": "output_ban_summary"
+		},
+		{
+			"source": "log_ban_event",
+			"target": "output_ban_summary"
+		}
+	]
+}

@@ -3,6 +3,9 @@
 	"type": "module",
 	"version": "1.0.0",
 	"description": "A flexible workflow framework",
+	"workspaces": [
+		"sandbox/*"
+	],
 	"exports": {
 		".": {
 			"types": "./dist/workflow.d.ts",
