@@ -10,7 +10,6 @@ A flexible, lightweight, and zero-dependency workflow framework for Node.js and 
 - **Async by Default**: Built on an asynchronous foundation to seamlessly handle I/O-bound and CPU-bound tasks.
 - **Conditional Branching**: Direct the flow's execution path based on the results of any node.
 - **Retry Logic & Fallbacks**: Automatically retry failed operations with configurable delays and define fallback logic.
-- **Batch Processing**: Built-in support for processing collections of items sequentially (`BatchFlow`) or in parallel (`ParallelBatchFlow`).
 - **Cancellation Support**: Gracefully abort running workflows using standard `AbortController`s.
 - **Pluggable Logging**: Observe and debug workflows with a standard `Logger` interface. Use the built-in console logger or bring your own (e.g., Pino, Winston).
 
@@ -91,8 +90,3 @@ For clear, focused examples of specific, individual features (like retries, canc
 - `Node`: The base class for a unit of work with built-in retry logic.
 - `Flow`: Orchestrates a sequence of nodes. Provides a `Flow.sequence(...)` helper for creating linear flows.
 - `TypedContext`: The standard `Map`-based implementation for the `WorkflowContext` interface.
-
-### Batch Flows
-
-- `BatchFlow`: Executes its entire workflow sequentially for each item in a list.
-- `ParallelBatchFlow`: Executes its entire workflow in parallel for each item in a list.

@@ -3,10 +3,25 @@ import * as fs from 'node:fs/promises'
 import * as path from 'node:path'
 import process from 'node:process'
 import dotenv from 'dotenv'
-import { DEFAULT_ACTION, Node, ParallelBatchFlow } from 'workflow'
+import { DEFAULT_ACTION, Flow, Node } from 'workflow'
 import { callLLM } from './utils'
 
 dotenv.config()
+
+export class ParallelBatchFlow extends Flow {
+	async prep(args: NodeArgs): Promise<Iterable<any>> { return [] }
+	async exec(args: NodeArgs<any, void>): Promise<any> {
+		const combinedParams = { ...this.params, ...args.params }
+		const batchParamsIterable = (await this.prep(args)) || []
+		const batchParamsList = Array.from(batchParamsIterable)
+		args.logger.info(`ParallelBatchFlow: Starting parallel processing of ${batchParamsList.length} items.`)
+		const promises = batchParamsList.map(batchParams =>
+			this._orch(args.ctx, { ...combinedParams, ...batchParams }, args.signal, args.logger),
+		)
+		await Promise.all(promises)
+		return null
+	}
+}
 
 class TranslateNode extends Node<void, { language: string, translation: string }> {
 	async exec({ params }: NodeArgs) {

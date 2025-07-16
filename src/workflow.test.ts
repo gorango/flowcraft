@@ -2,11 +2,9 @@ import type { Logger, NodeArgs, NodeOptions, RunOptions } from './workflow.js'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
 	AbortError,
-	BatchFlow,
 	DEFAULT_ACTION,
 	Flow,
 	Node,
-	ParallelBatchFlow,
 	TypedContext,
 	WorkflowError,
 } from './workflow.js'
@@ -208,120 +206,6 @@ describe('testExecFallback', () => {
 	})
 })
 
-describe('testBatchProcessing', () => {
-	it('should process items sequentially using BatchFlow', async () => {
-		const ctx = new TypedContext([['input_data', { a: 1, b: 2, c: 3 }]])
-		class DataProcessNode extends Node {
-			async prep({ ctx, params }: NodeArgs) {
-				const key = params.key
-				const data = ctx.get<Record<string, number>>('input_data')![key]
-				if (!ctx.has('results'))
-					ctx.set('results', {})
-				ctx.get<Record<string, number>>('results')![key] = data * 2
-			}
-		}
-		class SimpleBatchFlow extends BatchFlow {
-			async prep() { return [{ key: 'a' }, { key: 'b' }, { key: 'c' }] }
-		}
-		const flow = new SimpleBatchFlow(new DataProcessNode())
-		await flow.run(ctx, runOptions)
-		expect(ctx.get('results')).toEqual({ a: 2, b: 4, c: 6 })
-	})
-
-	it('should run a BatchFlow sequentially and respect async delays', async () => {
-		const ctx = new TypedContext([['results', []]])
-		class DelayedNode extends Node {
-			async exec({ params }: NodeArgs) {
-				await new Promise(res => setTimeout(res, 15))
-				return params.val
-			}
-
-			async post({ ctx, execRes }: NodeArgs) {
-				ctx.get<number[]>('results')!.push(execRes)
-			}
-		}
-		class TestBatchFlow extends BatchFlow {
-			async prep() { return [{ val: 1 }, { val: 2 }, { val: 3 }] }
-		}
-		const flow = new TestBatchFlow(new DelayedNode())
-		const startTime = Date.now()
-		await flow.run(ctx, runOptions)
-		const duration = Date.now() - startTime
-		expect(ctx.get('results')).toEqual([1, 2, 3])
-		// 3 tasks of 15ms should take at least 45ms.
-		expect(duration).toBeGreaterThanOrEqual(45)
-	})
-})
-
-describe('testParallelProcessing', () => {
-	it('should run a ParallelBatchFlow in parallel', async () => {
-		const ctx = new TypedContext([
-			['input_data', { a: 1, b: 2, c: 3 }],
-			['results', {}],
-		])
-		class DataProcessNode extends Node<void, number> {
-			async exec({ ctx, params }: NodeArgs<void, void>): Promise<number> {
-				await new Promise(res => setTimeout(res, 15))
-				const data = ctx.get<Record<string, number>>('input_data')![params.key]
-				return data * params.multiplier
-			}
-
-			async post({ ctx, execRes, params }: NodeArgs<void, number>) {
-				if (!ctx.has('results'))
-					ctx.set('results', {})
-				ctx.get<Record<string, number>>('results')![params.key] = execRes
-			}
-		}
-		class TestParallelBatchFlow extends ParallelBatchFlow {
-			async prep() {
-				return [
-					{ key: 'a', multiplier: 2 },
-					{ key: 'b', multiplier: 3 },
-					{ key: 'c', multiplier: 4 },
-				]
-			}
-		}
-		const flow = new TestParallelBatchFlow(new DataProcessNode())
-		const startTime = Date.now()
-		await flow.run(ctx, runOptions)
-		const duration = Date.now() - startTime
-		expect(ctx.get('results')).toEqual({ a: 2, b: 6, c: 12 })
-		// 3 tasks of 15ms in parallel should take roughly 15ms, not 45ms.
-		expect(duration).toBeLessThan(40)
-	})
-
-	it('should process items in parallel within a single Node.exec', async () => {
-		class Processor extends Node<number[], number[]> {
-			async prep({ ctx }: NodeArgs): Promise<number[]> {
-				return ctx.get<number[]>('input')!
-			}
-
-			async exec({ prepRes: items }: NodeArgs<number[]>): Promise<number[]> {
-				const promises = items.map(item => this.processOne(item))
-				return Promise.all(promises)
-			}
-
-			async processOne(item: number): Promise<number> {
-				await new Promise(res => setTimeout(res, 10))
-				return item * 2
-			}
-
-			async post({ ctx, execRes }: NodeArgs<number[], number[]>) {
-				ctx.set('output', execRes)
-			}
-		}
-
-		const ctx = new TypedContext([['input', [1, 2, 3, 4]]])
-		const node = new Processor()
-		const startTime = Date.now()
-		await node.run(ctx, runOptions)
-		const duration = Date.now() - startTime
-		expect(ctx.get('output')).toEqual([2, 4, 6, 8])
-		// 4 tasks of 10ms in parallel should take ~10ms, not 40ms.
-		expect(duration).toBeLessThan(35)
-	})
-})
-
 describe('testAbortController', () => {
 	class LongRunningNode extends Node<void, string> {
 		constructor(private id: number, private delayMs: number) { super() }
@@ -367,6 +251,20 @@ describe('testAbortController', () => {
 	})
 
 	it('should abort a sequential BatchFlow', async () => {
+		class BatchFlow extends Flow {
+			async prep(args: NodeArgs): Promise<Iterable<any>> { return [] }
+			async exec(args: NodeArgs): Promise<null> {
+				const combinedParams = { ...this.params, ...args.params }
+				const batchParamsIterable = (await this.prep(args)) || []
+				const batchParamsList = Array.from(batchParamsIterable)
+				args.logger.info(`BatchFlow: Starting sequential processing of ${batchParamsList.length} items.`)
+				for (const [index, batchParams] of batchParamsList.entries()) {
+					args.logger.debug(`BatchFlow: Processing item ${index + 1}/${batchParamsList.length}.`, { params: batchParams })
+					await this._orch(args.ctx, { ...combinedParams, ...batchParams }, args.signal, args.logger)
+				}
+				return null
+			}
+		}
 		const ctx = new TypedContext()
 		class TestBatchFlow extends BatchFlow {
 			async prep() { return [{ id: 1 }, { id: 2 }, { id: 3 }] }
@@ -381,6 +279,20 @@ describe('testAbortController', () => {
 	})
 
 	it('should abort a ParallelBatchFlow', async () => {
+		class ParallelBatchFlow extends Flow {
+			async prep(args: NodeArgs): Promise<Iterable<any>> { return [] }
+			async exec(args: NodeArgs<any, void>): Promise<any> {
+				const combinedParams = { ...this.params, ...args.params }
+				const batchParamsIterable = (await this.prep(args)) || []
+				const batchParamsList = Array.from(batchParamsIterable)
+				args.logger.info(`ParallelBatchFlow: Starting parallel processing of ${batchParamsList.length} items.`)
+				const promises = batchParamsList.map(batchParams =>
+					this._orch(args.ctx, { ...combinedParams, ...batchParams }, args.signal, args.logger),
+				)
+				await Promise.all(promises)
+				return null
+			}
+		}
 		const ctx = new TypedContext()
 		class TestParallelFlow extends ParallelBatchFlow {
 			async prep() { return [{ id: 1 }, { id: 2 }, { id: 3 }] }
