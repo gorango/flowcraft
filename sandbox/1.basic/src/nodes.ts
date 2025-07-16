@@ -1,7 +1,13 @@
 import type { NodeArgs } from 'workflow'
-import { DEFAULT_ACTION, Flow, Node } from 'workflow'
+import { contextKey, DEFAULT_ACTION, Flow, Node } from 'workflow'
 import yaml from 'yaml'
 import { callLLM } from './utils'
+
+export const TOPIC = contextKey<string>('topic')
+export const SECTIONS = contextKey<string[]>('sections')
+export const DRAFT = contextKey<string>('draft')
+export const FINAL_ARTICLE = contextKey<string>('final_article')
+export const SECTION_CONTENTS = contextKey<Record<string, string>>('section_contents')
 
 /**
  * A custom Flow that processes a batch of items sequentially.
@@ -24,9 +30,9 @@ export class BatchFlow extends Flow {
 /**
  * Generates an article outline from a topic in the context.
  */
-export class GenerateOutlineNode extends Node<string, { sections: string[] }, string> {
+export class GenerateOutlineNode extends Node<string, { sections: string[] }> {
 	async prep({ ctx }: NodeArgs): Promise<string> {
-		return ctx.get<string>('topic')!
+		return ctx.get(TOPIC)!
 	}
 
 	async exec({ prepRes: topic }: NodeArgs<string>): Promise<{ sections: string[] }> {
@@ -39,11 +45,11 @@ Output the sections in YAML format as a list under the key "sections".`
 		return structuredResult
 	}
 
-	async post({ ctx, execRes }: NodeArgs<string, { sections: string[] }>): Promise<string> {
+	async post({ ctx, execRes }: NodeArgs<string, { sections: string[] }>) {
 		console.log('\n===== PARSED OUTLINE =====')
 		execRes.sections.forEach((s, i) => console.log(`${i + 1}. ${s}`))
 		console.log('==========================\n')
-		ctx.set('sections', execRes.sections)
+		ctx.set(SECTIONS, execRes.sections)
 		return DEFAULT_ACTION
 	}
 }
@@ -52,17 +58,17 @@ Output the sections in YAML format as a list under the key "sections".`
  * A BatchFlow that orchestrates writing content for each section of the outline.
  */
 export class WriteContentNode extends BatchFlow {
-	async prep({ ctx }: NodeArgs): Promise<Iterable<{ section: string }>> {
-		const sections = ctx.get<string[]>('sections') || []
+	async prep({ ctx }: NodeArgs) {
+		const sections = ctx.get(SECTIONS) || []
 		return sections.map(section => ({ section }))
 	}
 
-	async post({ ctx }: NodeArgs): Promise<string> {
-		const sectionContents = ctx.get<Record<string, string>>('section_contents') || {}
-		const draft = (ctx.get<string[]>('sections') || []).map(section =>
+	async post({ ctx }: NodeArgs) {
+		const sectionContents = ctx.get(SECTION_CONTENTS) || {}
+		const draft = (ctx.get(SECTIONS) || []).map(section =>
 			`## ${section}\n\n${sectionContents[section]}\n`,
 		).join('\n')
-		ctx.set('draft', draft)
+		ctx.set(DRAFT, draft)
 
 		console.log('\n===== SECTION CONTENTS =====\n')
 		for (const section in sectionContents)
@@ -76,7 +82,7 @@ export class WriteContentNode extends BatchFlow {
 /**
  * Writes content for a single section, intended to be run by the WriteContentNode batch flow.
  */
-export class WriteSingleSectionNode extends Node<string, string, string> {
+export class WriteSingleSectionNode extends Node<string, string> {
 	async prep({ params }: NodeArgs): Promise<string> {
 		return params.section
 	}
@@ -91,10 +97,10 @@ Include one brief example or analogy.`
 		return content
 	}
 
-	async post({ ctx, prepRes: section, execRes: content }: NodeArgs<string, string>): Promise<string> {
-		const contents = ctx.get<Record<string, string>>('section_contents') || {}
+	async post({ ctx, prepRes: section, execRes: content }: NodeArgs<string, string>) {
+		const contents = ctx.get(SECTION_CONTENTS) || {}
 		contents[section] = content
-		ctx.set('section_contents', contents)
+		ctx.set(SECTION_CONTENTS, contents)
 		return DEFAULT_ACTION
 	}
 }
@@ -102,9 +108,9 @@ Include one brief example or analogy.`
 /**
  * Applies a final style pass to the complete draft article.
  */
-export class ApplyStyleNode extends Node<string, string, string> {
+export class ApplyStyleNode extends Node<string, string> {
 	async prep({ ctx }: NodeArgs): Promise<string> {
-		return ctx.get('draft') || ''
+		return ctx.get(DRAFT) || ''
 	}
 
 	async exec({ prepRes: draft }: NodeArgs<string>): Promise<string> {
@@ -116,8 +122,8 @@ ${draft}`
 		return callLLM(prompt)
 	}
 
-	async post({ ctx, execRes: finalArticle }: NodeArgs<string, string>): Promise<string> {
-		ctx.set('final_article', finalArticle)
+	async post({ ctx, execRes: finalArticle }: NodeArgs<string, string>) {
+		ctx.set(FINAL_ARTICLE, finalArticle)
 		console.log('\n===== FINAL ARTICLE =====\n')
 		console.log(finalArticle)
 		console.log('\n=========================\n')
