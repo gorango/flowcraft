@@ -1,6 +1,6 @@
-import type { NodeArgs } from 'workflow'
-import { contextKey, DEFAULT_ACTION, Node } from 'workflow'
-import { BatchFlow } from 'workflow/builder'
+import type { NodeArgs } from 'cascade'
+import { contextKey, DEFAULT_ACTION, Node } from 'cascade'
+import { BatchFlow } from 'cascade/builder'
 import yaml from 'yaml'
 import { callLLM } from './utils'
 

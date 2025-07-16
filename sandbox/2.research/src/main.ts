@@ -1,7 +1,7 @@
-import type { Context } from 'workflow'
+import type { Context } from 'cascade'
 import process from 'node:process'
+import { TypedContext } from 'cascade'
 import dotenv from 'dotenv'
-import { TypedContext } from 'workflow'
 import { createAgentFlow } from './flow.js'
 
 dotenv.config()

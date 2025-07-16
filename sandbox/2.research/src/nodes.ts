@@ -1,5 +1,5 @@
-import type { NodeArgs } from 'workflow'
-import { DEFAULT_ACTION, Node } from 'workflow'
+import type { NodeArgs } from 'cascade'
+import { DEFAULT_ACTION, Node } from 'cascade'
 import yaml from 'yaml'
 import { callLLM, searchWeb } from './utils.js'
 

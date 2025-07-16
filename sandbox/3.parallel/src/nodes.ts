@@ -1,8 +1,8 @@
-import type { NodeArgs } from 'workflow'
+import type { NodeArgs } from 'cascade'
 import * as fs from 'node:fs/promises'
 import * as path from 'node:path'
-import { DEFAULT_ACTION, Node } from 'workflow'
-import { ParallelBatchFlow } from 'workflow/builder'
+import { DEFAULT_ACTION, Node } from 'cascade'
+import { ParallelBatchFlow } from 'cascade/builder'
 import { callLLM } from './utils'
 
 export class TranslateNode extends Node<void, { language: string, translation: string }> {

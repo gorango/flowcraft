@@ -1,9 +1,9 @@
-import type { Context } from 'workflow'
+import type { Context } from 'cascade'
 import * as fs from 'node:fs/promises'
 import * as path from 'node:path'
 import process from 'node:process'
+import { TypedContext } from 'cascade'
 import dotenv from 'dotenv'
-import { TypedContext } from 'workflow'
 import { TranslateFlow, TranslateNode } from './nodes'
 
 dotenv.config()

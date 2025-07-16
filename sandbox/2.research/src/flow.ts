@@ -1,4 +1,4 @@
-import { Flow } from 'workflow'
+import { Flow } from 'cascade'
 import { AnswerQuestionNode, DecideActionNode, SearchWebNode } from './nodes.js'
 
 export function createAgentFlow(): Flow {

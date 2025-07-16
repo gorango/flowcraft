@@ -5,9 +5,9 @@
 		"start": "npx tsx src/main.ts"
 	},
 	"dependencies": {
+		"cascade": "workspace:*",
 		"dotenv": "^16.4.5",
 		"openai": "^4.52.7",
-		"workflow": "workspace:*",
 		"yaml": "^2.5.0"
 	},
 	"devDependencies": {

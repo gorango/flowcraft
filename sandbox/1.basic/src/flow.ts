@@ -1,4 +1,4 @@
-import { Flow } from 'workflow'
+import { Flow } from 'cascade'
 import {
 	ApplyStyleNode,
 	GenerateOutlineNode,

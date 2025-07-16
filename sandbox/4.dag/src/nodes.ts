@@ -1,6 +1,6 @@
-import type { NodeArgs, NodeOptions } from 'workflow'
+import type { NodeArgs, NodeOptions } from 'cascade'
 import type { WorkflowRegistry } from './registry'
-import { DEFAULT_ACTION, Node } from 'workflow'
+import { DEFAULT_ACTION, Node } from 'cascade'
 import { callLLM, resolveTemplate } from './utils'
 
 interface AiNodeOptions extends NodeOptions {

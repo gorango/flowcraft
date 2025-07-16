@@ -1,6 +1,6 @@
-# Workflow
+# Cascade
 
-A flexible, lightweight, and zero-dependency workflow framework for any Javascript envirnoment. Build complex, multi-step processes, from simple sequences to dynamic, graph-driven AI agents.
+A flexible, lightweight, and **zero-dependency** workflow framework for any Javascript envirnoment. Build complex, multi-step processes, from simple sequences to dynamic, graph-driven AI agents.
 
 ## Features
 
@@ -17,7 +17,7 @@ A flexible, lightweight, and zero-dependency workflow framework for any Javascri
 ## Installation
 
 ```bash
-npm install https://github.com/gorango/workflow
+npm install gorango/cascade
 ```
 
 ## Learn by Example
@@ -70,7 +70,7 @@ The `Node` is the fundamental building block of a workflow. It represents a sing
 
 A `Flow` is a special type of `Node` that orchestrates a sequence of other nodes. You define a starting node and chain subsequent nodes together, creating a graph of operations.
 
-### The Builder Pattern (`workflow/builder`)
+### The Builder Pattern (`cascade/builder`)
 
 To simplify the creation of common and complex patterns, the framework provides a `builder` module. These builders construct executable `Flow` objects for you.
 
@@ -89,19 +89,19 @@ A node's `post()` method returns a string called an **action**. The flow uses th
 
 For clear, focused examples of specific, individual features (like retries, cancellation, and composition), the unit tests are an excellent resource.
 
-- Core workflow tests: [`src/workflow.test.ts`](src/workflow.test.ts)
+- Core workflow tests: [`src/cascade.test.ts`](src/cascade.test.ts)
 - Collection flows tests: [`src/builder/collection.test.ts`](src/builder/collection.test.ts)
 - Graph builder tests: [`src/builder/graph.test.ts`](src/builder/graph.test.ts)
 
 ## API Reference
 
-### Core Classes (`workflow`)
+### Core Classes (`cascade`)
 
 - `Node`: The base class for a unit of work with built-in retry logic.
 - `Flow`: Orchestrates a sequence of nodes. Provides a `Flow.sequence(...)` helper for creating linear flows.
 - `TypedContext`: The standard `Map`-based implementation for the `Context` interface.
 
-### Builder Classes (`workflow/builder`)
+### Builder Classes (`cascade/builder`)
 
 - `SequenceFlow`: A `Flow` that creates a linear flow from a sequence of nodes.
 - `BatchFlow`: A `Flow` that processes a collection of items sequentially.

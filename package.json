@@ -1,5 +1,5 @@
 {
-	"name": "workflow",
+	"name": "cascade",
 	"type": "module",
 	"version": "1.0.0",
 	"description": "A flexible workflow framework",

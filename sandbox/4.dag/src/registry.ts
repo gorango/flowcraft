@@ -1,8 +1,8 @@
-import type { AbstractNode, Flow } from 'workflow'
-import type { WorkflowGraph } from 'workflow/builder'
+import type { AbstractNode, Flow } from 'cascade'
+import type { WorkflowGraph } from 'cascade/builder'
 import { promises as fs } from 'node:fs'
 import path from 'node:path'
-import { GraphBuilder } from 'workflow/builder'
+import { GraphBuilder } from 'cascade/builder'
 import {
 	LLMConditionNode,
 	LLMProcessNode,
