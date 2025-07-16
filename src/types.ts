@@ -1,6 +1,5 @@
 import type { Context } from './context'
 import type { Logger } from './logger'
-import type { AbstractNode } from './workflow'
 
 export type Params = Record<string, any>
 export const DEFAULT_ACTION = 'default'

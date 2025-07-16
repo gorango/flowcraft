@@ -4,28 +4,16 @@ import type { NodeArgs, NodeOptions, Params, RunOptions } from './types'
 import { AbortError, WorkflowError } from './errors'
 import { ConsoleLogger } from './logger'
 import { DEFAULT_ACTION } from './types'
+import { sleep } from './utils'
 
 export * from './context'
 export * from './errors'
 export * from './logger'
 export * from './types'
 
-async function sleep(ms: number, signal?: AbortSignal): Promise<void> {
-	return new Promise((resolve, reject) => {
-		if (signal?.aborted)
-			return reject(new AbortError())
-
-		const timeoutId = setTimeout(resolve, ms)
-		signal?.addEventListener('abort', () => {
-			clearTimeout(timeoutId)
-			reject(new AbortError())
-		})
-	})
-}
-
 export abstract class AbstractNode {
 	public params: Params = {}
-	public successors = new Map<string, AbstractNode>()
+	public successors = new Map<string | typeof DEFAULT_ACTION, AbstractNode>()
 
 	/**
 	 * Sets or merges parameters for the node.
@@ -43,7 +31,7 @@ export abstract class AbstractNode {
 	 * @param action The action string that triggers the transition to this successor. Defaults to 'default'.
 	 * @returns The successor node instance for chaining.
 	 */
-	next(node: AbstractNode, action: string = DEFAULT_ACTION): AbstractNode {
+	next(node: AbstractNode, action: string | typeof DEFAULT_ACTION = DEFAULT_ACTION): AbstractNode {
 		this.successors.set(action, node)
 		return node
 	}
@@ -75,7 +63,7 @@ export class Node<PrepRes = any, ExecRes = any, PostRes = any> extends AbstractN
 	/** (Lifecycle) Performs the core logic of the node. */
 	async exec(args: NodeArgs<PrepRes, void>): Promise<ExecRes> { return undefined as unknown as ExecRes }
 	/** (Lifecycle) Processes results and determines the next action. Runs after `exec`. */
-	async post(args: NodeArgs<PrepRes, ExecRes>): Promise<PostRes> { return DEFAULT_ACTION as unknown as PostRes }
+	async post(args: NodeArgs<PrepRes, ExecRes>): Promise<PostRes> { return DEFAULT_ACTION as any }
 	/** (Lifecycle) A fallback that runs if all `exec` retries fail. */
 	async execFallback(args: NodeArgs<PrepRes, void>): Promise<ExecRes> { throw args.error }
 
@@ -103,8 +91,7 @@ export class Node<PrepRes = any, ExecRes = any, PostRes = any> extends AbstractN
 				}
 			}
 		}
-		// This line should be theoretically unreachable due to the logic above.
-		throw new Error('Execution failed after all retries.')
+		throw new Error('Internal Error: _exec loop finished without returning or throwing.')
 	}
 
 	async _run(ctx: Context, params: Params, signal: AbortSignal | undefined, logger: Logger): Promise<PostRes> {
@@ -197,13 +184,14 @@ export class Flow extends Node<any, any, any> {
 	}
 
 	protected getNextNode(curr: AbstractNode, action: any, logger: Logger): AbstractNode | undefined {
-		const actionKey = typeof action === 'string' ? action : DEFAULT_ACTION
-		const nextNode = curr.successors.get(actionKey)
+		const nextNode = curr.successors.get(action)
+		const actionDisplay = typeof action === 'symbol' ? 'default' : action
+
 		if (nextNode) {
-			logger.debug(`Action '${actionKey}' from ${curr.constructor.name} leads to ${nextNode.constructor.name}`, { action: actionKey })
+			logger.debug(`Action '${actionDisplay}' from ${curr.constructor.name} leads to ${nextNode.constructor.name}`, { action })
 		}
-		else if (curr.successors.size > 0) {
-			logger.info(`Flow ends: Action '${actionKey}' from ${curr.constructor.name} has no configured successor.`)
+		else if (curr.successors.size > 0 && action !== undefined) {
+			logger.info(`Flow ends: Action '${actionDisplay}' from ${curr.constructor.name} has no configured successor.`)
 		}
 		return nextNode
 	}

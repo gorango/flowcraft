@@ -1,26 +1,22 @@
-import type { Logger, NodeArgs, NodeOptions, RunOptions } from './workflow.js'
+import type { Logger, NodeArgs, NodeOptions, RunOptions } from './workflow'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { sleep } from './utils'
 import {
 	AbortError,
+	contextKey,
 	DEFAULT_ACTION,
 	Flow,
 	Node,
 	TypedContext,
 	WorkflowError,
-} from './workflow.js'
+} from './workflow'
 
-// Helper function for abortable sleep
-async function sleep(ms: number, signal?: AbortSignal): Promise<void> {
-	return new Promise((resolve, reject) => {
-		if (signal?.aborted)
-			return reject(new AbortError())
-		const timeoutId = setTimeout(resolve, ms)
-		signal?.addEventListener('abort', () => {
-			clearTimeout(timeoutId)
-			reject(new AbortError())
-		})
-	})
-}
+const CURRENT = contextKey<number>('current')
+const PATH_TAKEN = contextKey<string>('path_taken')
+const STARTED = contextKey<number[]>('started')
+const FINISHED = contextKey<number[]>('finished')
+const RESULT = contextKey<string>('result')
+const ATTEMPTS = contextKey<number>('attempts')
 
 // Mock logger for testing
 function createMockLogger(): Logger {
@@ -43,39 +39,39 @@ afterEach(() => {
 class NumberNode extends Node {
 	constructor(private number: number) { super() }
 	async prep({ ctx }: NodeArgs) {
-		ctx.set('current', this.number)
+		ctx.set(CURRENT, this.number)
 	}
 }
 class AddNode extends Node {
 	constructor(private number: number) { super() }
 	async prep({ ctx }: NodeArgs) {
-		const current = ctx.get<number>('current') ?? 0
-		ctx.set('current', current + this.number)
+		const current = ctx.get(CURRENT) ?? 0
+		ctx.set(CURRENT, current + this.number)
 	}
 }
 class MultiplyNode extends Node {
 	constructor(private number: number) { super() }
 	async prep({ ctx }: NodeArgs) {
-		const current = ctx.get<number>('current') ?? 1
-		ctx.set('current', current * this.number)
+		const current = ctx.get(CURRENT) ?? 1
+		ctx.set(CURRENT, current * this.number)
 	}
 }
 class CheckPositiveNode extends Node<void, void, string> {
 	async post({ ctx }: NodeArgs): Promise<string> {
-		const current = ctx.get<number>('current')!
+		const current = ctx.get(CURRENT)!
 		return current >= 0 ? 'positive' : 'negative'
 	}
 }
-class SignalNode extends Node<void, void, string> {
-	constructor(private signal = 'finished') { super() }
-	async post(): Promise<string> {
+class SignalNode extends Node<void, void, string | typeof DEFAULT_ACTION> {
+	constructor(private signal: string | typeof DEFAULT_ACTION = DEFAULT_ACTION) { super() }
+	async post(): Promise<string | typeof DEFAULT_ACTION> {
 		return this.signal
 	}
 }
 class PathNode extends Node {
 	constructor(private pathId: string) { super() }
 	async prep({ ctx }: NodeArgs) {
-		ctx.set('path_taken', this.pathId)
+		ctx.set(PATH_TAKEN, this.pathId)
 	}
 }
 
@@ -88,7 +84,7 @@ describe('testFlowBasic', () => {
 		const flow = new Flow()
 		flow.start(n1).next(n2).next(n3)
 		const lastAction = await flow.run(ctx, runOptions)
-		expect(ctx.get<number>('current')).toBe(16)
+		expect(ctx.get(CURRENT)).toBe(16)
 		expect(lastAction).toBe(DEFAULT_ACTION)
 	})
 
@@ -100,7 +96,7 @@ describe('testFlowBasic', () => {
 			new MultiplyNode(2),
 		)
 		const lastAction = await flow.run(ctx, runOptions)
-		expect(ctx.get<number>('current')).toBe(16)
+		expect(ctx.get(CURRENT)).toBe(16)
 		expect(lastAction).toBe(DEFAULT_ACTION)
 	})
 
@@ -115,7 +111,7 @@ describe('testFlowBasic', () => {
 		checkNode.next(addIfPositive, 'positive')
 		checkNode.next(addIfNegative, 'negative')
 		await flow.run(ctx, runOptions)
-		expect(ctx.get<number>('current')).toBe(15)
+		expect(ctx.get(CURRENT)).toBe(15)
 	})
 	it('should handle negative branching', async () => {
 		const ctx = new TypedContext()
@@ -128,7 +124,7 @@ describe('testFlowBasic', () => {
 		checkNode.next(addIfPositive, 'positive')
 		checkNode.next(addIfNegative, 'negative')
 		await flow.run(ctx, runOptions)
-		expect(ctx.get<number>('current')).toBe(-25)
+		expect(ctx.get(CURRENT)).toBe(-25)
 	})
 	it('should return the final action from the last node in a cycle', async () => {
 		const ctx = new TypedContext()
@@ -142,7 +138,7 @@ describe('testFlowBasic', () => {
 		checkNode.next(endNode, 'negative')
 		subtractNode.next(checkNode)
 		const lastAction = await flow.run(ctx, runOptions)
-		expect(ctx.get<number>('current')).toBe(-2)
+		expect(ctx.get(CURRENT)).toBe(-2)
 		expect(lastAction).toBe('cycle_done')
 	})
 })
@@ -154,7 +150,7 @@ describe('testFlowComposition', () => {
 		innerFlow.startNode!.next(new AddNode(10)).next(new MultiplyNode(2))
 		const outerFlow = new Flow(innerFlow)
 		await outerFlow.run(ctx, runOptions)
-		expect(ctx.get<number>('current')).toBe(30)
+		expect(ctx.get(CURRENT)).toBe(30)
 	})
 	it('should propagate actions from inner flows for branching', async () => {
 		const ctx = new TypedContext()
@@ -168,8 +164,8 @@ describe('testFlowComposition', () => {
 		innerFlow.next(pathA, 'other_action')
 		innerFlow.next(pathB, 'inner_done')
 		await outerFlow.run(ctx, runOptions)
-		expect(ctx.get<number>('current')).toBe(100)
-		expect(ctx.get<string>('path_taken')).toBe('B')
+		expect(ctx.get(CURRENT)).toBe(100)
+		expect(ctx.get(PATH_TAKEN)).toBe('B')
 	})
 })
 
@@ -192,8 +188,8 @@ describe('testExecFallback', () => {
 
 		async execFallback(): Promise<string> { return 'fallback' }
 		async post({ ctx, execRes }: NodeArgs<void, string>) {
-			ctx.set('result', execRes)
-			ctx.set('attempts', this.attemptCount)
+			ctx.set(RESULT, execRes)
+			ctx.set(ATTEMPTS, this.attemptCount)
 		}
 	}
 	it('should call execFallback after all retries are exhausted', async () => {
@@ -201,8 +197,8 @@ describe('testExecFallback', () => {
 		const node = new FallbackNode(true, { maxRetries: 3 })
 		await node.run(ctx, runOptions)
 		// 3 attempts total: 1 initial + 2 retries. The attemptCount logic is inside exec, so it will be 3.
-		expect(ctx.get<number>('attempts')).toBe(3)
-		expect(ctx.get<string>('result')).toBe('fallback')
+		expect(ctx.get(ATTEMPTS)).toBe(3)
+		expect(ctx.get(RESULT)).toBe('fallback')
 	})
 })
 
@@ -210,11 +206,11 @@ describe('testAbortController', () => {
 	class LongRunningNode extends Node<void, string> {
 		constructor(private id: number, private delayMs: number) { super() }
 		async exec({ ctx, signal }: NodeArgs): Promise<string> {
-			const started = ctx.get<number[]>('started') ?? []
-			ctx.set('started', started.concat(this.id))
+			const started = ctx.get(STARTED) ?? []
+			ctx.set(STARTED, started.concat(this.id))
 			await sleep(this.delayMs, signal)
-			const finished = ctx.get<number[]>('finished') ?? []
-			ctx.set('finished', finished.concat(this.id))
+			const finished = ctx.get(FINISHED) ?? []
+			ctx.set(FINISHED, finished.concat(this.id))
 			return `ok_${this.id}`
 		}
 	}
@@ -223,11 +219,11 @@ describe('testAbortController', () => {
 		constructor(private delayMs: number) { super() }
 		async exec({ ctx, params, signal }: NodeArgs): Promise<string> {
 			const id = params.id
-			const started = ctx.get<number[]>('started') ?? []
-			ctx.set('started', started.concat(id))
+			const started = ctx.get(STARTED) ?? []
+			ctx.set(STARTED, started.concat(id))
 			await sleep(this.delayMs, signal)
-			const finished = ctx.get<number[]>('finished') ?? []
-			ctx.set('finished', finished.concat(id))
+			const finished = ctx.get(FINISHED) ?? []
+			ctx.set(FINISHED, finished.concat(id))
 			return `ok_${id}`
 		}
 	}
@@ -246,8 +242,8 @@ describe('testAbortController', () => {
 		setTimeout(() => controller.abort(), 30) // Abort during n2's execution
 
 		await expect(runPromise).rejects.toThrow(AbortError)
-		expect(ctx.get('started')).toEqual([1, 2])
-		expect(ctx.get('finished')).toEqual([1])
+		expect(ctx.get(STARTED)).toEqual([1, 2])
+		expect(ctx.get(FINISHED)).toEqual([1])
 	})
 
 	it('should abort a sequential BatchFlow', async () => {
@@ -274,8 +270,8 @@ describe('testAbortController', () => {
 		const runPromise = batchFlow.run(ctx, { controller, logger: mockLogger })
 		setTimeout(() => controller.abort(), 30) // Abort during the 2nd item's execution
 		await expect(runPromise).rejects.toThrow(AbortError)
-		expect(ctx.get('started')).toEqual([1, 2])
-		expect(ctx.get('finished')).toEqual([1])
+		expect(ctx.get(STARTED)).toEqual([1, 2])
+		expect(ctx.get(FINISHED)).toEqual([1])
 	})
 
 	it('should abort a ParallelBatchFlow', async () => {
@@ -303,10 +299,10 @@ describe('testAbortController', () => {
 		setTimeout(() => controller.abort(), 20) // Abort while all are running
 		await expect(runPromise).rejects.toThrow(AbortError)
 		// All should have started in parallel
-		expect(ctx.get('started')).toBeDefined()
-		expect(ctx.get<number[]>('started')!.length).toBe(3)
+		expect(ctx.get(STARTED)).toBeDefined()
+		expect(ctx.get(STARTED)!.length).toBe(3)
 		// None should have finished
-		expect(ctx.get('finished')).toBeUndefined()
+		expect(ctx.get(FINISHED)).toBeUndefined()
 	})
 })
 
@@ -334,7 +330,7 @@ describe('testLoggingAndErrors', () => {
 		const flow = new Flow(checkNode)
 		checkNode.next(pathNode, 'positive')
 
-		await flow.run(new TypedContext([['current', 10]]), runOptions)
+		await flow.run(new TypedContext([[CURRENT, 10]]), runOptions)
 		expect(mockLogger.debug).toHaveBeenCalledWith(
 			`Action 'positive' from CheckPositiveNode leads to PathNode`,
 			expect.any(Object),
