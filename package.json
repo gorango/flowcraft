@@ -18,7 +18,7 @@
 		"test": "vitest run --config config/vitest.config.ts",
 		"test:watch": "vitest --config config/vitest.config.ts",
 		"coverage": "vitest run --coverage --config config/vitest.config.ts",
-		"lint": "eslint src --ext .ts --config config/eslint.config.js"
+		"lint": "eslint --fix . --ext .ts --config eslint.config.js"
 	},
 	"devDependencies": {
 		"@antfu/eslint-config": "^4.16.2",
