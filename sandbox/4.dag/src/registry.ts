@@ -1,8 +1,8 @@
 import type { AbstractNode, Flow } from 'workflow'
-import type { WorkflowGraph } from './types'
+import type { WorkflowGraph } from 'workflow/builder'
 import { promises as fs } from 'node:fs'
 import path from 'node:path'
-import { FlowBuilder } from './builder'
+import { GraphBuilder } from 'workflow/builder'
 import {
 	LLMConditionNode,
 	LLMProcessNode,
@@ -22,11 +22,11 @@ export const nodeRegistry = new Map<string, new (...args: any[]) => AbstractNode
 export class WorkflowRegistry {
 	private flowCache = new Map<number, Flow>()
 	private graphDatabase = new Map<number, WorkflowGraph>()
-	private builder: FlowBuilder
+	private builder: GraphBuilder
 	private isInitialized = false
 
 	private constructor() {
-		this.builder = new FlowBuilder(this)
+		this.builder = new GraphBuilder(nodeRegistry, { registry: this })
 	}
 
 	/**

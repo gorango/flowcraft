@@ -1,4 +1,4 @@
-import type { AbstractNode, NodeArgs, NodeOptions } from 'workflow'
+import type { NodeArgs, NodeOptions } from 'workflow'
 import type { WorkflowRegistry } from './registry'
 import { DEFAULT_ACTION, Node } from 'workflow'
 import { callLLM, resolveTemplate } from './utils'
@@ -7,7 +7,7 @@ interface AiNodeOptions extends NodeOptions {
 	data: {
 		nodeId: string
 		promptTemplate?: string
-		inputs?: Record<string, string>
+		inputs?: Record<string, string | string[]>
 		[key: string]: any
 	}
 	registry?: WorkflowRegistry
@@ -59,6 +59,7 @@ export class LLMProcessNode extends Node<string, string> {
 	async post(args: NodeArgs<string, string>) {
 		args.ctx.set(this.data.nodeId, args.execRes)
 		args.logger.info(`[Node: ${this.data.nodeId}] ✓ Process complete.`)
+		return DEFAULT_ACTION
 	}
 }
 
@@ -129,8 +130,8 @@ export class SubWorkflowNode extends Node {
 		const subContext = new (args.ctx.constructor as any)()
 		const inputMappings = this.data.inputs || {}
 		for (const [subContextKey, parentContextKey] of Object.entries(inputMappings)) {
-			if (args.ctx.has(parentContextKey)) {
-				subContext.set(subContextKey, args.ctx.get(parentContextKey))
+			if (args.ctx.has(parentContextKey as string)) {
+				subContext.set(subContextKey, args.ctx.get(parentContextKey as string))
 			}
 			else {
 				args.logger.warn(`[SubWorkflow: ${this.data.nodeId}] Input mapping failed. Key '${parentContextKey}' not found in parent context.`)
@@ -152,8 +153,8 @@ export class SubWorkflowNode extends Node {
 		}
 		else {
 			for (const [parentKey, subKey] of Object.entries(outputMappings)) {
-				if (subContext.has(subKey)) {
-					args.ctx.set(parentKey, subContext.get(subKey))
+				if (subContext.has(subKey as string)) {
+					args.ctx.set(parentKey, subContext.get(subKey as string))
 				}
 				else {
 					args.logger.warn(`[SubWorkflow: ${this.data.nodeId}] Tried to map output, but key '${subKey}' was not found in sub-workflow '${this.data.workflowId}' context.`)
@@ -163,25 +164,6 @@ export class SubWorkflowNode extends Node {
 
 		args.logger.info(`[SubWorkflow] Exited: ${this.data.workflowId}`)
 		return DEFAULT_ACTION
-	}
-}
-
-/**
- * A special node that runs multiple other nodes in parallel.
- * This is not defined in the graph data, but created by the FlowBuilder.
- */
-export class ParallelNode extends Node {
-	constructor(private nodesToRun: AbstractNode[]) {
-		super()
-	}
-
-	async exec({ ctx, params, signal, logger }: NodeArgs) {
-		logger.info(`[Parallel] Executing ${this.nodesToRun.length} nodes in parallel...`)
-		const promises = this.nodesToRun.map(node =>
-			node._run(ctx, { ...params, ...node.params }, signal, logger),
-		)
-		await Promise.all(promises)
-		logger.info(`[Parallel] ✓ All parallel nodes finished.`)
 	}
 }
 
