@@ -1,5 +1,6 @@
 import type { Logger, NodeArgs, NodeOptions, RunOptions } from './workflow'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { BatchFlow, ParallelBatchFlow } from './builder/batch'
 import { sleep } from './utils'
 import {
 	AbortError,
@@ -29,11 +30,11 @@ function createMockLogger(): Logger {
 }
 
 let mockLogger = createMockLogger()
-const runOptions: RunOptions = { logger: mockLogger }
+let runOptions: RunOptions = { logger: mockLogger }
 
 afterEach(() => {
 	mockLogger = createMockLogger()
-	runOptions.logger = mockLogger
+	runOptions = { logger: mockLogger }
 })
 
 class NumberNode extends Node {
@@ -247,20 +248,6 @@ describe('testAbortController', () => {
 	})
 
 	it('should abort a sequential BatchFlow', async () => {
-		class BatchFlow extends Flow {
-			async prep(args: NodeArgs): Promise<Iterable<any>> { return [] }
-			async exec(args: NodeArgs): Promise<null> {
-				const combinedParams = { ...this.params, ...args.params }
-				const batchParamsIterable = (await this.prep(args)) || []
-				const batchParamsList = Array.from(batchParamsIterable)
-				args.logger.info(`BatchFlow: Starting sequential processing of ${batchParamsList.length} items.`)
-				for (const [index, batchParams] of batchParamsList.entries()) {
-					args.logger.debug(`BatchFlow: Processing item ${index + 1}/${batchParamsList.length}.`, { params: batchParams })
-					await this._orch(args.ctx, { ...combinedParams, ...batchParams }, args.signal, args.logger)
-				}
-				return null
-			}
-		}
 		const ctx = new TypedContext()
 		class TestBatchFlow extends BatchFlow {
 			async prep() { return [{ id: 1 }, { id: 2 }, { id: 3 }] }
@@ -275,20 +262,6 @@ describe('testAbortController', () => {
 	})
 
 	it('should abort a ParallelBatchFlow', async () => {
-		class ParallelBatchFlow extends Flow {
-			async prep(args: NodeArgs): Promise<Iterable<any>> { return [] }
-			async exec(args: NodeArgs<any, void>): Promise<any> {
-				const combinedParams = { ...this.params, ...args.params }
-				const batchParamsIterable = (await this.prep(args)) || []
-				const batchParamsList = Array.from(batchParamsIterable)
-				args.logger.info(`ParallelBatchFlow: Starting parallel processing of ${batchParamsList.length} items.`)
-				const promises = batchParamsList.map(batchParams =>
-					this._orch(args.ctx, { ...combinedParams, ...batchParams }, args.signal, args.logger),
-				)
-				await Promise.all(promises)
-				return null
-			}
-		}
 		const ctx = new TypedContext()
 		class TestParallelFlow extends ParallelBatchFlow {
 			async prep() { return [{ id: 1 }, { id: 2 }, { id: 3 }] }

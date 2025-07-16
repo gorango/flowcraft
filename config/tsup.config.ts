@@ -1,7 +1,10 @@
 import { defineConfig } from 'tsup'
 
 export default defineConfig({
-	entry: ['src/workflow.ts'],
+	entry: [
+		'src/workflow.ts',
+		'src/builder/index.ts',
+	],
 	format: ['esm'],
 	dts: true,
 	splitting: false,

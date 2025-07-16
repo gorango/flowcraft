@@ -1,5 +1,6 @@
 import type { NodeArgs } from 'workflow'
-import { contextKey, DEFAULT_ACTION, Flow, Node } from 'workflow'
+import { contextKey, DEFAULT_ACTION, Node } from 'workflow'
+import { BatchFlow } from 'workflow/builder'
 import yaml from 'yaml'
 import { callLLM } from './utils'
 
@@ -8,24 +9,6 @@ export const SECTIONS = contextKey<string[]>('sections')
 export const DRAFT = contextKey<string>('draft')
 export const FINAL_ARTICLE = contextKey<string>('final_article')
 export const SECTION_CONTENTS = contextKey<Record<string, string>>('section_contents')
-
-/**
- * A custom Flow that processes a batch of items sequentially.
- */
-export class BatchFlow extends Flow {
-	async prep(args: NodeArgs): Promise<Iterable<any>> { return [] }
-	async exec(args: NodeArgs): Promise<null> {
-		const combinedParams = { ...this.params, ...args.params }
-		const batchParamsIterable = (await this.prep(args)) || []
-		const batchParamsList = Array.from(batchParamsIterable)
-		args.logger.info(`BatchFlow: Starting sequential processing of ${batchParamsList.length} items.`)
-		for (const [index, batchParams] of batchParamsList.entries()) {
-			args.logger.debug(`BatchFlow: Processing item ${index + 1}/${batchParamsList.length}.`, { params: batchParams })
-			await this._orch(args.ctx, { ...combinedParams, ...batchParams }, args.signal, args.logger)
-		}
-		return null
-	}
-}
 
 /**
  * Generates an article outline from a topic in the context.

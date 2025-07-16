@@ -1,23 +1,9 @@
 import type { NodeArgs } from 'workflow'
 import * as fs from 'node:fs/promises'
 import * as path from 'node:path'
-import { DEFAULT_ACTION, Flow, Node } from 'workflow'
+import { DEFAULT_ACTION, Node } from 'workflow'
+import { ParallelBatchFlow } from 'workflow/builder'
 import { callLLM } from './utils'
-
-class ParallelBatchFlow extends Flow {
-	async prep(args: NodeArgs): Promise<Iterable<any>> { return [] }
-	async exec(args: NodeArgs<any, void>): Promise<any> {
-		const combinedParams = { ...this.params, ...args.params }
-		const batchParamsIterable = (await this.prep(args)) || []
-		const batchParamsList = Array.from(batchParamsIterable)
-		args.logger.info(`ParallelBatchFlow: Starting parallel processing of ${batchParamsList.length} items.`)
-		const promises = batchParamsList.map(batchParams =>
-			this._orch(args.ctx, { ...combinedParams, ...batchParams }, args.signal, args.logger),
-		)
-		await Promise.all(promises)
-		return null
-	}
-}
 
 export class TranslateNode extends Node<void, { language: string, translation: string }> {
 	async exec({ params }: NodeArgs) {
@@ -37,7 +23,7 @@ ${text}`
 
 	async post({ ctx, execRes }: NodeArgs<void, { language: string, translation: string }>) {
 		const { language, translation } = execRes
-		const outputDir = ctx.get<string>('output_dir')!
+		const outputDir = ctx.get('output_dir')!
 		const filename = path.join(outputDir, `README_${language.toUpperCase()}.md`)
 		await fs.writeFile(filename, translation, 'utf-8')
 		console.log(`Saved translation to ${filename}`)
@@ -47,7 +33,7 @@ ${text}`
 
 export class TranslateFlow extends ParallelBatchFlow {
 	async prep({ ctx }: NodeArgs): Promise<any[]> {
-		const languages = ctx.get<string>('languages')!
+		const languages = ctx.get('languages')!
 		const text = ctx.get('text')
 		return languages.map((language: string) => ({
 			language,

@@ -10,6 +10,10 @@
 		".": {
 			"types": "./dist/workflow.d.ts",
 			"import": "./dist/workflow.js"
+		},
+		"./builder": {
+			"types": "./dist/builder/index.d.ts",
+			"import": "./dist/builder/index.js"
 		}
 	},
 	"scripts": {
