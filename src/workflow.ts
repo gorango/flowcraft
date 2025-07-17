@@ -1,6 +1,6 @@
 import type { Context, ContextKey, ContextLens } from './context'
 import type { Logger } from './logger'
-import type { NodeArgs, NodeOptions, Params, RunOptions } from './types'
+import type { Middleware, MiddlewareNext, NodeArgs, NodeOptions, Params, RunOptions } from './types'
 import { AbortError, WorkflowError } from './errors'
 import { NullLogger } from './logger'
 import { DEFAULT_ACTION, FILTER_FAILED } from './types'
@@ -103,7 +103,7 @@ export class Node<PrepRes = any, ExecRes = any, PostRes = any> extends AbstractN
 			prepRes = await this.prep({ ctx, params, signal, logger, prepRes: undefined, execRes: undefined })
 		}
 		catch (e) {
-			if (e instanceof AbortError || e instanceof WorkflowError)
+			if (e instanceof AbortError || e instanceof WorkflowError || this instanceof Flow)
 				throw e
 			throw new WorkflowError(`Failed in prep phase for node ${this.constructor.name}`, this.constructor.name, 'prep', e as Error)
 		}
@@ -114,7 +114,7 @@ export class Node<PrepRes = any, ExecRes = any, PostRes = any> extends AbstractN
 			execRes = await this._exec({ ctx, params, signal, logger, prepRes, execRes: undefined })
 		}
 		catch (e) {
-			if (e instanceof AbortError || e instanceof WorkflowError)
+			if (e instanceof AbortError || e instanceof WorkflowError || this instanceof Flow)
 				throw e
 			throw new WorkflowError(`Failed in exec phase for node ${this.constructor.name}`, this.constructor.name, 'exec', e as Error)
 		}
@@ -124,7 +124,7 @@ export class Node<PrepRes = any, ExecRes = any, PostRes = any> extends AbstractN
 			return await this.post({ ctx, params, signal, logger, prepRes, execRes })
 		}
 		catch (e) {
-			if (e instanceof AbortError || e instanceof WorkflowError)
+			if (e instanceof AbortError || e instanceof WorkflowError || this instanceof Flow)
 				throw e
 			throw new WorkflowError(`Failed in post phase for node ${this.constructor.name}`, this.constructor.name, 'post', e as Error)
 		}
@@ -303,6 +303,7 @@ export class Node<PrepRes = any, ExecRes = any, PostRes = any> extends AbstractN
  */
 export class Flow extends Node<any, any, any> {
 	public startNode?: AbstractNode
+	private middleware: Middleware[] = []
 
 	/**
 	 * @param start An optional node to start the flow with.
@@ -310,6 +311,11 @@ export class Flow extends Node<any, any, any> {
 	constructor(start?: AbstractNode) {
 		super()
 		this.startNode = start
+	}
+
+	public use(fn: Middleware): this {
+		this.middleware.push(fn)
+		return this
 	}
 
 	/**
@@ -325,7 +331,6 @@ export class Flow extends Node<any, any, any> {
 	protected getNextNode(curr: AbstractNode, action: any, logger: Logger): AbstractNode | undefined {
 		const nextNode = curr.successors.get(action)
 		const actionDisplay = typeof action === 'symbol' ? 'default' : action
-
 		if (nextNode) {
 			logger.debug(`Action '${actionDisplay}' from ${curr.constructor.name} leads to ${nextNode.constructor.name}`, { action })
 		}
@@ -341,8 +346,18 @@ export class Flow extends Node<any, any, any> {
 		while (curr) {
 			if (signal?.aborted)
 				throw new AbortError()
-			lastAction = await curr._run(ctx, { ...params, ...curr.params }, signal, logger)
-			curr = this.getNextNode(curr, lastAction, logger)
+			const nodeToRun = curr
+			const runNode: MiddlewareNext = (args: NodeArgs) => {
+				return nodeToRun._run(args.ctx, { ...args.params, ...nodeToRun.params }, args.signal, args.logger)
+			}
+			const chain = this.middleware.reduceRight<MiddlewareNext>(
+				(next: MiddlewareNext, mw: Middleware): MiddlewareNext => {
+					return (args: NodeArgs) => mw(args, next)
+				},
+				runNode,
+			)
+			lastAction = await chain({ ctx, params, signal, logger, prepRes: undefined, execRes: undefined, name: curr.constructor.name })
+			curr = this.getNextNode(nodeToRun, lastAction, logger)
 		}
 		return lastAction
 	}

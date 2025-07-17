@@ -25,6 +25,7 @@ const NAME = contextKey<string>('name')
 const COUNTER = contextKey<number>('counter')
 const FINAL_RESULT = contextKey<string>('final_result')
 const LENS_VALUE = contextKey<number>('lens_value')
+const MIDDLEWARE_PATH = contextKey<string[]>('middleware_path')
 
 // Mock logger for testing
 function createMockLogger(): Logger {
@@ -450,5 +451,93 @@ describe('testFunctionalMethods', () => {
 			.filter(val => val! < 90)
 		const failingAction = await failingNode.run(new TypedContext(), runOptions)
 		expect(failingAction).toBe(FILTER_FAILED)
+	})
+})
+
+describe('testFlowMiddleware', () => {
+	it('should run a single middleware and complete the flow', async () => {
+		const ctx = new TypedContext()
+		const flow = new Flow(new AddNode(10)).withParams({ start: 5 })
+		flow.use(async (args, next) => {
+			const path = args.ctx.get(MIDDLEWARE_PATH) ?? []
+			args.ctx.set(MIDDLEWARE_PATH, [...path, 'mw-enter'])
+			const result = await next(args)
+			args.ctx.set(MIDDLEWARE_PATH, [...args.ctx.get(MIDDLEWARE_PATH)!, 'mw-exit'])
+			return result
+		})
+		await flow.run(ctx, runOptions)
+		expect(ctx.get(CURRENT)).toBe(10) // Node logic ran
+		expect(ctx.get(MIDDLEWARE_PATH)).toEqual(['mw-enter', 'mw-exit'])
+	})
+	it('should run multiple middlewares in the correct LIFO order', async () => {
+		const ctx = new TypedContext()
+		const flow = new Flow(new NumberNode(100))
+		const createTracer = (id: string) => async (args: NodeArgs, next: any) => {
+			const path = args.ctx.get(MIDDLEWARE_PATH) ?? []
+			args.ctx.set(MIDDLEWARE_PATH, [...path, `enter-${id}`])
+			const result = await next(args)
+			const final_path = args.ctx.get(MIDDLEWARE_PATH) ?? []
+			args.ctx.set(MIDDLEWARE_PATH, [...final_path, `exit-${id}`])
+			return result
+		}
+		flow.use(createTracer('mw1'))
+		flow.use(createTracer('mw2'))
+		await flow.run(ctx, runOptions)
+		expect(ctx.get(MIDDLEWARE_PATH)).toEqual([
+			'enter-mw1',
+			'enter-mw2',
+			'exit-mw2',
+			'exit-mw1',
+		])
+	})
+	it('should allow middleware to modify context before the node runs', async () => {
+		const ctx = new TypedContext([[CURRENT, 0]])
+		const node = new class extends Node<void, number> {
+			async exec({ ctx }: NodeArgs): Promise<number> {
+				return ctx.get(CURRENT) ?? -1
+			}
+		}().toContext(CURRENT)
+		const flow = new Flow(node)
+		flow.use(async (args, next) => {
+			args.ctx.set(CURRENT, 50)
+			return next(args)
+		})
+		await flow.run(ctx, runOptions)
+		expect(ctx.get(CURRENT)).toBe(50)
+	})
+	it('should propagate errors from middleware and halt execution', async () => {
+		const ctx = new TypedContext()
+		const flow = new Flow(new NumberNode(1))
+		const goodMiddleware = async (args: NodeArgs, next: any) => {
+			const path = args.ctx.get(MIDDLEWARE_PATH) ?? []
+			args.ctx.set(MIDDLEWARE_PATH, [...path, 'enter-good'])
+			const res = await next(args)
+			// This line should never be reached
+			args.ctx.set(MIDDLEWARE_PATH, [...(args.ctx.get(MIDDLEWARE_PATH) ?? []), 'exit-good'])
+			return res
+		}
+		const badMiddleware = async (args, next) => {
+			throw new Error('Middleware failure')
+		}
+		flow.use(goodMiddleware)
+		flow.use(badMiddleware)
+		await expect(flow.run(ctx, runOptions)).rejects.toThrow('Middleware failure')
+		expect(ctx.get(MIDDLEWARE_PATH)).toEqual(['enter-good'])
+		expect(ctx.get(CURRENT)).toBeUndefined()
+	})
+	it('should allow middleware to short-circuit the flow', async () => {
+		const ctx = new TypedContext([[CURRENT, 0]])
+		const flow = new Flow(new AddNode(100))
+		// This middleware decides not to proceed
+		flow.use(async (args, next) => {
+			const shouldProceed = false
+			if (shouldProceed) {
+				return next(args)
+			}
+			return 'short-circuited'
+		})
+		const lastAction = await flow.run(ctx, runOptions)
+		expect(ctx.get(CURRENT)).toBe(0)
+		expect(lastAction).toBe('short-circuited')
 	})
 })

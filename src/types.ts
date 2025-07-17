@@ -13,6 +13,7 @@ export interface NodeArgs<PrepRes = any, ExecRes = any> {
 	prepRes: PrepRes
 	execRes: ExecRes
 	error?: Error
+	name?: string
 }
 
 export interface NodeOptions {
@@ -24,3 +25,6 @@ export interface RunOptions {
 	controller?: AbortController
 	logger?: Logger
 }
+
+export type MiddlewareNext = (args: NodeArgs) => Promise<any>
+export type Middleware = (args: NodeArgs, next: MiddlewareNext) => Promise<any>

@@ -8,6 +8,7 @@ JavaScript workflow framework. Build complex, multi-step processes, from simple 
 - **Composable & Reusable**: Define workflows by chaining nodes. Entire flows can be nested and used as single nodes in other flows, promoting modularity.
 - **Type-Safe**: Written in TypeScript to provide strong typing for your workflow definitions and context.
 - **Async by Default**: Built on an asynchronous foundation to seamlessly handle I/O-bound and CPU-bound tasks.
+- **Middleware**: Intercept the execution of every node in a flow to handle cross-cutting concerns like logging, metrics, authentication, or transactions in a centralized, decoupled way.
 - **Conditional Branching**: Direct the flow's execution path based on the results of any node.
 - **Retry Logic & Fallbacks**: Automatically retry failed operations with configurable delays and define fallback logic.
 - **Cancellation Support**: Gracefully abort running workflows using standard `AbortController`s.
@@ -75,6 +76,10 @@ The `Node` is the fundamental building block of a workflow. It represents a sing
 
 A `Flow` is a special type of `Node` that orchestrates a sequence of other nodes. You define a starting node and chain subsequent nodes together, creating a graph of operations.
 
+### Middleware
+
+A `Flow` can be configured with middleware functions that wrap the execution of every node within it. This is the ideal pattern for handling **cross-cutting concerns** like performance monitoring, centralized logging, authentication, or transaction management without cluttering your business logic. Middleware is executed in a predictable FIFO (First-In, First-Out) order.
+
 ### Context
 
 The `Context` is a shared, type-safe `Map`-like object passed through every node in a flow. It acts as a shared memory space, allowing nodes to pass data and share state.
@@ -93,7 +98,7 @@ To simplify the creation of common and complex patterns, the framework provides 
 
 ## Unit Tests
 
-For clear, focused examples of specific, individual features (like retries, cancellation, and composition), the unit tests are an excellent resource.
+For clear, focused examples of specific, individual features (like retries, middleware, cancellation, and composition), the unit tests are an excellent resource.
 
 - Core workflow tests: [`src/workflow.test.ts`](src/workflow.test.ts)
 - Collections tests: [`src/builder/collection.test.ts`](src/builder/collection.test.ts)
