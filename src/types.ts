@@ -2,7 +2,8 @@ import type { Context } from './context'
 import type { Logger } from './logger'
 
 export type Params = Record<string, any>
-export const DEFAULT_ACTION = 'default'
+export const DEFAULT_ACTION = Symbol('default')
+export const FILTER_FAILED = Symbol('filter_failed')
 
 export interface NodeArgs<PrepRes = any, ExecRes = any> {
 	ctx: Context

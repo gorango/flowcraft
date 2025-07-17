@@ -1,6 +1,6 @@
 # Cascade
 
-A flexible, lightweight, and **zero-dependency** workflow framework for any Javascript envirnoment. Build complex, multi-step processes, from simple sequences to dynamic, graph-driven AI agents.
+JavaScript workflow framework. Build complex, multi-step processes, from simple sequences to dynamic, graph-driven AI agents.
 
 ## Features
 
@@ -13,6 +13,11 @@ A flexible, lightweight, and **zero-dependency** workflow framework for any Java
 - **Cancellation Support**: Gracefully abort running workflows using standard `AbortController`s.
 - **Pluggable Logging**: Observe and debug workflows with a standard `Logger` interface. Use the built-in console logger or bring your own (e.g., Pino, Winston).
 - **Dynamic Graph Engine**: Define complex, graph-based workflows as simple JSON files. The engine dynamically builds and executes them, supporting parallel fan-in/fan-out, conditional branching, and sub-workflows.
+- **Fluent & Functional API**: chainable API on the `Node` class, allows composition and transformation of data with elegant, readable code:
+  - `.map(fn)`: Transform the output of a node.
+  - `.filter(predicate)`: Conditionally proceed based on a node's output.
+  - `.tap(fn)`: Perform a side-effect without changing the output.
+  - `.toContext(key)`: Store a node's result in the context.
 
 ## Installation
 
@@ -70,27 +75,28 @@ The `Node` is the fundamental building block of a workflow. It represents a sing
 
 A `Flow` is a special type of `Node` that orchestrates a sequence of other nodes. You define a starting node and chain subsequent nodes together, creating a graph of operations.
 
-### The Builder Pattern (`cascade/builder`)
-
-To simplify the creation of common and complex patterns, the framework provides a `builder` module. These builders construct executable `Flow` objects for you.
-
-- **`BatchFlow` / `ParallelBatchFlow`**: Process a collection of items sequentially or concurrently.
-- **`GraphBuilder`**: Translates a declarative graph definition (e.g., from a JSON file) into a fully executable `Flow`, intelligently handling parallelism.
-
 ### Context
 
 The `Context` is a shared, type-safe `Map`-like object passed through every node in a flow. It acts as a shared memory space, allowing nodes to pass data and share state.
 
 ### Actions & Branching
 
-A node's `post()` method returns a string called an **action**. The flow uses this action to look up the next node to execute. The default action is `'default'`, but returning custom strings allows for powerful conditional branching.
+A node's `post()` method returns a string called an **action**. The flow uses this action to look up the next node to execute. The default action is `'default'`, but returning custom strings allows for conditional branching.
+
+### Builder
+
+To simplify the creation of common and complex patterns, the framework provides a `builder` module. These builders abstract the construction of executable `Flow`s.
+
+- `SequenceFlow`: A `Flow` that creates a linear flow from a sequence of nodes.
+- **`BatchFlow` / `ParallelBatchFlow`**: Process a collection of items sequentially or concurrently.
+- **`GraphBuilder`**: Translates a declarative graph definition into a fully executable `Flow`.
 
 ## Unit Tests
 
 For clear, focused examples of specific, individual features (like retries, cancellation, and composition), the unit tests are an excellent resource.
 
-- Core workflow tests: [`src/cascade.test.ts`](src/cascade.test.ts)
-- Collection flows tests: [`src/builder/collection.test.ts`](src/builder/collection.test.ts)
+- Core workflow tests: [`src/workflow.test.ts`](src/workflow.test.ts)
+- Collections tests: [`src/builder/collection.test.ts`](src/builder/collection.test.ts)
 - Graph builder tests: [`src/builder/graph.test.ts`](src/builder/graph.test.ts)
 
 ## API Reference

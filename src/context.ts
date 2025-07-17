@@ -48,3 +48,24 @@ export class TypedContext implements Context {
 		return this.data.entries()
 	}
 }
+
+export type ContextTransform = (ctx: Context) => Context
+
+export interface ContextLens<T> {
+	get: (ctx: Context) => T | undefined
+	set: (value: T) => ContextTransform
+	update: (fn: (current: T | undefined) => T) => ContextTransform
+}
+
+export function lens<T>(key: ContextKey<T>): ContextLens<T> {
+	return {
+		get: (ctx: Context) => ctx.get(key),
+		set: (value: T) => (ctx: Context) => ctx.set(key, value),
+		update: (fn: (current: T | undefined) => T) => (ctx: Context) =>
+			ctx.set(key, fn(ctx.get(key))),
+	}
+}
+
+export function composeContext(...transforms: ContextTransform[]): ContextTransform {
+	return (ctx: Context) => transforms.reduce((acc, transform) => transform(acc), ctx)
+}

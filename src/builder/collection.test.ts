@@ -1,7 +1,14 @@
 import type { Logger, NodeArgs, RunOptions } from '../workflow'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { contextKey, Node, TypedContext } from '../workflow'
-import { BatchFlow, ParallelBatchFlow, SequenceFlow } from './collection'
+import {
+	BatchFlow,
+	filterCollection,
+	mapCollection,
+	ParallelBatchFlow,
+	reduceCollection,
+	SequenceFlow,
+} from './collection'
 
 function createMockLogger(): Logger {
 	return {
@@ -126,14 +133,12 @@ describe('parallelBatchFlow', () => {
 			{ id: 3, value: 'C' },
 		])
 		await flow.run(ctx, runOptions)
-
 		// In parallel, order is not guaranteed, so we check for presence and size.
 		const processedIds = ctx.get(PROCESSED_IDS)
 		expect(processedIds).toHaveLength(3)
 		expect(processedIds).toContain(1)
 		expect(processedIds).toContain(2)
 		expect(processedIds).toContain(3)
-
 		const results = ctx.get(BATCH_RESULTS)
 		expect(results).toHaveLength(3)
 		expect(results).toContain('Item 1: Processed A')
@@ -149,5 +154,88 @@ describe('parallelBatchFlow', () => {
 		expect(mockLogger.info).toHaveBeenCalledWith(
 			'ParallelBatchFlow: Starting parallel processing of 0 items.',
 		)
+	})
+})
+
+describe('functionalHelpers', () => {
+	describe('mapCollection', () => {
+		it('should map items using a synchronous function', async () => {
+			const items = [1, 2, 3]
+			const double = (n: number) => n * 2
+			const flow = mapCollection(items, double)
+			const result = await flow.run(new TypedContext(), runOptions)
+			expect(result).toEqual([2, 4, 6])
+		})
+		it('should map items using an asynchronous function', async () => {
+			const items = ['a', 'b', 'c']
+			const toUpper = async (s: string) => {
+				await new Promise(resolve => setTimeout(resolve, 1))
+				return s.toUpperCase()
+			}
+			const flow = mapCollection(items, toUpper)
+			const result = await flow.run(new TypedContext(), runOptions)
+			expect(result).toEqual(['A', 'B', 'C'])
+		})
+		it('should handle an empty collection', async () => {
+			const items: number[] = []
+			const double = (n: number) => n * 2
+			const flow = mapCollection(items, double)
+			const result = await flow.run(new TypedContext(), runOptions)
+			expect(result).toEqual([])
+		})
+	})
+
+	describe('filterCollection', () => {
+		it('should filter items using a synchronous predicate', async () => {
+			const items = [1, 2, 3, 4, 5]
+			const isEven = (n: number) => n % 2 === 0
+			const flow = filterCollection(items, isEven)
+			const result = await flow.run(new TypedContext(), runOptions)
+			expect(result).toEqual([2, 4])
+		})
+		it('should filter items using an asynchronous predicate', async () => {
+			const items = ['short', 'long-word', 'tiny', 'another-long-word']
+			const isLong = async (s: string) => {
+				await new Promise(resolve => setTimeout(resolve, 1))
+				return s.length > 5
+			}
+			const flow = filterCollection(items, isLong)
+			const result = await flow.run(new TypedContext(), runOptions)
+			expect(result).toEqual(['long-word', 'another-long-word'])
+		})
+		it('should handle an empty collection', async () => {
+			const items: string[] = []
+			const isLong = (s: string) => s.length > 5
+			const flow = filterCollection(items, isLong)
+			const result = await flow.run(new TypedContext(), runOptions)
+			expect(result).toEqual([])
+		})
+	})
+
+	describe('reduceCollection', () => {
+		it('should reduce a collection using a synchronous reducer', async () => {
+			const items = [1, 2, 3, 4]
+			const sum = (acc: number, val: number) => acc + val
+			const flow = reduceCollection(items, sum, 0)
+			const result = await flow.run(new TypedContext(), runOptions)
+			expect(result).toBe(10)
+		})
+		it('should reduce a collection using an asynchronous reducer', async () => {
+			const items = ['a', 'b', 'c']
+			const concatUpper = async (acc: string, val: string) => {
+				await new Promise(resolve => setTimeout(resolve, 1))
+				return acc + val.toUpperCase()
+			}
+			const flow = reduceCollection(items, concatUpper, 'start:')
+			const result = await flow.run(new TypedContext(), runOptions)
+			expect(result).toBe('start:ABC')
+		})
+		it('should return the initial value for an empty collection', async () => {
+			const items: number[] = []
+			const sum = (acc: number, val: number) => acc + val
+			const flow = reduceCollection(items, sum, 100)
+			const result = await flow.run(new TypedContext(), runOptions)
+			expect(result).toBe(100)
+		})
 	})
 })

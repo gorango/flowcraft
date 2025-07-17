@@ -11,6 +11,10 @@
 			"types": "./dist/workflow.d.ts",
 			"import": "./dist/workflow.js"
 		},
+		"./fn": {
+			"types": "./dist/fn.d.ts",
+			"import": "./dist/fn.js"
+		},
 		"./builder": {
 			"types": "./dist/builder/index.d.ts",
 			"import": "./dist/builder/index.js"
