@@ -1,6 +1,6 @@
-# Workflow
+# Cascade: A Workflow Framework
 
-A flexible and lightweight workflow framework for Node.js and TypeScript. Build complex, multi-step processes with support for branching, composition, retries, and seamless asynchronous execution.
+Build complex, multi-step processes with support for branching, composition, and retries.
 
 ## Features
 
@@ -9,7 +9,6 @@ A flexible and lightweight workflow framework for Node.js and TypeScript. Build 
 - **Conditional Branching**: Direct the flow's execution path based on the results of a node.
 - **Async-First by Default**: Built on an asynchronous foundation to seamlessly handle both I/O-bound (e.g., API calls, file I/O) and CPU-bound tasks. Synchronous-style nodes work out-of-the-box without boilerplate.
 - **Retry Logic & Fallbacks**: Automatically retry failed operations with configurable delays and define fallback logic if all retries are exhausted.
-- **Batch Processing**: Built-in support for processing collections of items sequentially (`BatchFlow`) or in parallel (`ParallelBatchFlow`).
 - **Type-Safe**: Written in TypeScript to provide strong typing for your workflow definitions.
 
 ## Installation
@@ -171,54 +170,9 @@ await flow.run(context)
 console.log(context.get('result')) // Output: 'Success'
 ```
 
-### 4. Parallel Batch Processing
-
-The `ParallelBatchFlow` is perfect for "map-reduce" style operations where you want to process a list of items concurrently.
-
-```typescript
-import { Context, Node, NodeArgs, ParallelBatchFlow } from 'workflow'
-
-// Define the node that will process each item
-class DataProcessNode extends Node {
-  async prep({ ctx, params }: NodeArgs) {
-    // Simulate some async work for each item
-    await new Promise(res => setTimeout(res, 10))
-    const data = ctx.get('input_data')[params.key]
-    ctx.get('results')[params.key] = data * params.multiplier
-  }
-}
-
-// Define a flow that prepares the batch of items
-class ProcessItemsFlow extends ParallelBatchFlow {
-  async prep() {
-    // This array of params will be processed in parallel
-    return [
-      { key: 'a', multiplier: 2 },
-      { key: 'b', multiplier: 3 },
-      { key: 'c', multiplier: 4 },
-    ]
-  }
-}
-
-const context = new Map([
-  ['input_data', { a: 1, b: 2, c: 3 }],
-  ['results', {}],
-])
-
-const flow = new ProcessItemsFlow(new DataProcessNode())
-await flow.run(context)
-
-console.log(context.get('results')) // Output: { a: 2, b: 6, c: 12 }
-```
-
 ## API Reference
 
 ### Core Classes
 
 - `Node`: The base class for a potentially asynchronous unit of work with built-in retry logic.
 - `Flow`: Orchestrates a sequence of nodes, handling both synchronous and asynchronous operations seamlessly.
-
-### Batch Flows
-
-- `BatchFlow`: A flow that executes its entire workflow sequentially for each item in a list. The operations within can still be async.
-- `ParallelBatchFlow`: A flow that executes its entire workflow in parallel for each item in a list.

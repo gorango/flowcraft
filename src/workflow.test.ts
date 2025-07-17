@@ -1,11 +1,9 @@
 import type { NodeArgs } from './workflow.js'
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 import {
-	BatchFlow,
 	DEFAULT_ACTION,
 	Flow,
 	Node,
-	ParallelBatchFlow,
 } from './workflow.js'
 
 // Silence console.warn during tests
@@ -157,119 +155,5 @@ describe('testExecFallback', () => {
 		await node.run(ctx)
 		expect(ctx.get('attempts')).toBe(3)
 		expect(ctx.get('result')).toBe('fallback')
-	})
-})
-
-describe('testBatchProcessing', () => {
-	it('should process items sequentially using BatchFlow', async () => {
-		const ctx = new Map([['input_data', { a: 1, b: 2, c: 3 }]])
-		class DataProcessNode extends Node {
-			async prep({ ctx, params }: NodeArgs) {
-				const key = params.key
-				const data = ctx.get('input_data')[key]
-				if (!ctx.has('results'))
-					ctx.set('results', {})
-				ctx.get('results')[key] = data * 2
-			}
-		}
-		class SimpleBatchFlow extends BatchFlow {
-			async prep() { return [{ key: 'a' }, { key: 'b' }, { key: 'c' }] }
-		}
-		const flow = new SimpleBatchFlow(new DataProcessNode())
-		await flow.run(ctx)
-		expect(ctx.get('results')).toEqual({ a: 2, b: 4, c: 6 })
-	})
-
-	it('should run a BatchFlow sequentially and respect async delays', async () => {
-		const ctx = new Map([['results', []]])
-		class DelayedNode extends Node {
-			async exec({ params }: NodeArgs) {
-				await new Promise(res => setTimeout(res, 15))
-				return params.val
-			}
-
-			async post({ ctx, execRes }: NodeArgs) {
-				ctx.get('results').push(execRes)
-			}
-		}
-		class TestBatchFlow extends BatchFlow {
-			async prep() { return [{ val: 1 }, { val: 2 }, { val: 3 }] }
-		}
-		const flow = new TestBatchFlow(new DelayedNode())
-		const startTime = Date.now()
-		await flow.run(ctx)
-		const duration = Date.now() - startTime
-		expect(ctx.get('results')).toEqual([1, 2, 3])
-		// 3 tasks of 15ms should take at least 45ms.
-		expect(duration).toBeGreaterThanOrEqual(45)
-	})
-})
-
-describe('testParallelProcessing', () => {
-	it('should run a ParallelBatchFlow in parallel', async () => {
-		const ctx = new Map([
-			['input_data', { a: 1, b: 2, c: 3 }],
-			['results', {}],
-		])
-		class DataProcessNode extends Node<void, number> {
-			async exec({ ctx, params }: NodeArgs<void, void>): Promise<number> {
-				await new Promise(res => setTimeout(res, 15))
-				const data = ctx.get('input_data')[params.key]
-				return data * params.multiplier
-			}
-
-			async post({ ctx, execRes, params }: NodeArgs<void, number>) {
-				if (!ctx.has('results'))
-					ctx.set('results', {})
-				ctx.get('results')[params.key] = execRes
-			}
-		}
-		class TestParallelBatchFlow extends ParallelBatchFlow {
-			async prep() {
-				return [
-					{ key: 'a', multiplier: 2 },
-					{ key: 'b', multiplier: 3 },
-					{ key: 'c', multiplier: 4 },
-				]
-			}
-		}
-		const flow = new TestParallelBatchFlow(new DataProcessNode())
-		const startTime = Date.now()
-		await flow.run(ctx)
-		const duration = Date.now() - startTime
-		expect(ctx.get('results')).toEqual({ a: 2, b: 6, c: 12 })
-		// 3 tasks of 15ms in parallel should take roughly 15ms, not 45ms.
-		expect(duration).toBeLessThan(40)
-	})
-
-	it('should process items in parallel within a single Node.exec', async () => {
-		class Processor extends Node<number[], number[]> {
-			async prep({ ctx }: NodeArgs): Promise<number[]> {
-				return ctx.get('input')
-			}
-
-			async exec({ prepRes: items }: NodeArgs<number[]>): Promise<number[]> {
-				const promises = items.map(item => this.processOne(item))
-				return Promise.all(promises)
-			}
-
-			async processOne(item: number): Promise<number> {
-				await new Promise(res => setTimeout(res, 10))
-				return item * 2
-			}
-
-			async post({ ctx, execRes }: NodeArgs<number[], number[]>) {
-				ctx.set('output', execRes)
-			}
-		}
-
-		const ctx = new Map([['input', [1, 2, 3, 4]]])
-		const node = new Processor()
-		const startTime = Date.now()
-		await node.run(ctx)
-		const duration = Date.now() - startTime
-		expect(ctx.get('output')).toEqual([2, 4, 6, 8])
-		// 4 tasks of 10ms in parallel should take ~10ms, not 40ms.
-		expect(duration).toBeLessThan(35)
 	})
 })

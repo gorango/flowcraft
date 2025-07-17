@@ -124,30 +124,3 @@ export class Flow extends Node {
 		return execRes
 	}
 }
-
-export class BatchFlow extends Flow {
-	async exec(args: NodeArgs<any, void>): Promise<any> {
-		const combinedParams = { ...this.params, ...args.params }
-		const batchParamsList = (await this.prep(args)) as any[] || []
-
-		for (const batchParams of batchParamsList)
-			await this._orch(args.ctx, { ...combinedParams, ...batchParams })
-
-		// The return from `exec` is passed to `post` as `execRes`.
-		// The work is done via side-effects on the context.
-		return null
-	}
-}
-
-export class ParallelBatchFlow extends Flow {
-	async exec(args: NodeArgs<any, void>): Promise<any> {
-		const combinedParams = { ...this.params, ...args.params }
-		const batchParamsList = (await this.prep(args)) as any[] || []
-
-		const promises = batchParamsList.map(batchParams =>
-			this._orch(args.ctx, { ...combinedParams, ...batchParams }),
-		)
-		await Promise.all(promises)
-		return null
-	}
-}
