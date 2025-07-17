@@ -31,6 +31,21 @@ Translate a source `README.md` file into multiple languages (Chinese, Spanish, e
 
 The implementation uses an `AsyncParallelBatchFlow` to process translation requests for all languages at the same time.
 
+```mermaid
+graph TD
+    A[Load README.md] --> B["ParallelBatchFlow"];
+    subgraph "Concurrent Translation"
+        B -- "Chinese" --> T1[TranslateNode]
+        B -- "Spanish" --> T2[TranslateNode]
+        B -- "Japanese" --> T3[TranslateNode]
+        B -- "German" --> T4[TranslateNode]
+    end
+    T1 --> S1[Save Chinese.md];
+    T2 --> S2[Save Spanish.md];
+    T3 --> S3[Save Japanese.md];
+    T4 --> S4[Save German.md];
+```
+
 1. **`TranslateFlow` (extends `AsyncParallelBatchFlow`)**: The `prepAsync` method prepares a list of parameters, one for each language.
 
     ```typescript
