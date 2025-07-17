@@ -9,6 +9,18 @@ export interface Logger {
 }
 
 /**
+ * A logger implementation that performs no action.
+ * This is the default logger used by the framework if none is provided,
+ * making the framework silent by default.
+ */
+export class NullLogger implements Logger {
+	debug() { /* no-op */ }
+	info() { /* no-op */ }
+	warn() { /* no-op */ }
+	error() { /* no-op */ }
+}
+
+/**
  * A default logger implementation that writes to the console.
  */
 export class ConsoleLogger implements Logger {

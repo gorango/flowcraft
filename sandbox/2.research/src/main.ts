@@ -1,6 +1,6 @@
 import type { Context } from 'cascade'
 import process from 'node:process'
-import { TypedContext } from 'cascade'
+import { ConsoleLogger, TypedContext } from 'cascade'
 import dotenv from 'dotenv'
 import { createAgentFlow } from './flow.js'
 
@@ -21,7 +21,7 @@ async function runAgent(question: string) {
 	console.log(`🤔 Processing question: ${question}`)
 	console.log(`(Agent will stop after ${MAX_SEARCHES} searches)`)
 	const agentFlow = createAgentFlow()
-	await agentFlow.run(context)
+	await agentFlow.run(context, { logger: new ConsoleLogger() })
 	console.log('\n🎯 Final Answer:')
 
 	console.log(context.get<string>('answer') || 'No answer found.')

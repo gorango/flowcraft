@@ -2,7 +2,7 @@ import type { Context, ContextKey, ContextLens } from './context'
 import type { Logger } from './logger'
 import type { NodeArgs, NodeOptions, Params, RunOptions } from './types'
 import { AbortError, WorkflowError } from './errors'
-import { ConsoleLogger } from './logger'
+import { NullLogger } from './logger'
 import { DEFAULT_ACTION, FILTER_FAILED } from './types'
 import { sleep } from './utils'
 
@@ -137,7 +137,7 @@ export class Node<PrepRes = any, ExecRes = any, PostRes = any> extends AbstractN
 	 * @returns The result of the node's `post` method.
 	 */
 	async run(ctx: Context, options?: RunOptions): Promise<PostRes> {
-		const logger = options?.logger ?? new ConsoleLogger()
+		const logger = options?.logger ?? new NullLogger()
 		if (this.successors.size > 0)
 			logger.warn('Node.run() called directly on a node with successors. The flow will not continue. Use a Flow to execute a sequence.')
 		return this._run(ctx, this.params, options?.controller?.signal, logger)
@@ -363,7 +363,7 @@ export class Flow extends Node<any, any, any> {
 	 * @returns The action returned by the last node in the flow.
 	 */
 	async run(ctx: Context, options?: RunOptions): Promise<any> {
-		const logger = options?.logger ?? new ConsoleLogger()
+		const logger = options?.logger ?? new NullLogger()
 		return this._run(ctx, this.params, options?.controller?.signal, logger)
 	}
 }

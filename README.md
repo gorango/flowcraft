@@ -11,7 +11,7 @@ JavaScript workflow framework. Build complex, multi-step processes, from simple 
 - **Conditional Branching**: Direct the flow's execution path based on the results of any node.
 - **Retry Logic & Fallbacks**: Automatically retry failed operations with configurable delays and define fallback logic.
 - **Cancellation Support**: Gracefully abort running workflows using standard `AbortController`s.
-- **Pluggable Logging**: Observe and debug workflows with a standard `Logger` interface. Use the built-in console logger or bring your own (e.g., Pino, Winston).
+- **Pluggable Logging**: The framework is **silent by default**. To enable logging, provide an object matching the `Logger` interface. Use the built-in `ConsoleLogger` or bring your own (e.g., Pino, Winston).
 - **Dynamic Graph Engine**: Define complex, graph-based workflows as simple JSON files. The engine dynamically builds and executes them, supporting parallel fan-in/fan-out, conditional branching, and sub-workflows.
 - **Fluent & Functional API**: chainable API on the `Node` class, allows composition and transformation of data with elegant, readable code:
   - `.map(fn)`: Transform the output of a node.

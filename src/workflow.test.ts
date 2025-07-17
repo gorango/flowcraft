@@ -279,20 +279,20 @@ describe('testAbortController', () => {
 })
 
 describe('testLoggingAndErrors', () => {
-	it('should use a default ConsoleLogger if none is provided', async () => {
+	it('should be silent by default if no logger is provided', async () => {
 		const consoleInfoSpy = vi.spyOn(console, 'info').mockImplementation(() => { })
 		const flow = new Flow(new NumberNode(1))
 		await flow.run(new TypedContext())
-		expect(consoleInfoSpy).toHaveBeenCalledWith(
-			expect.stringContaining('[INFO] Running node: Flow'),
-			expect.any(Object), // Expect a second argument for the context object
-		)
+		expect(consoleInfoSpy).not.toHaveBeenCalled()
 		consoleInfoSpy.mockRestore()
 	})
 	it('should use the provided custom logger', async () => {
 		const flow = new Flow(new NumberNode(1))
 		await flow.run(new TypedContext(), runOptions)
-		expect(mockLogger.info).toHaveBeenCalledWith(expect.stringContaining('Running node: Flow'), expect.any(Object))
+		expect(mockLogger.info).toHaveBeenCalledWith(
+			expect.stringContaining('Running node: Flow'),
+			expect.any(Object),
+		)
 	})
 	it('should log branching decisions', async () => {
 		const checkNode = new CheckPositiveNode()
