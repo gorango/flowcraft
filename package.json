@@ -18,7 +18,10 @@
 		"test": "vitest run --config config/vitest.config.ts",
 		"test:watch": "vitest --config config/vitest.config.ts",
 		"coverage": "vitest run --coverage --config config/vitest.config.ts",
-		"lint": "eslint --fix . --ext .ts --config eslint.config.js"
+		"lint": "eslint --fix . --ext .ts --config eslint.config.js",
+		"docs:dev": "vitepress dev docs",
+		"docs:build": "vitepress build docs",
+		"docs:preview": "vitepress preview docs"
 	},
 	"devDependencies": {
 		"@antfu/eslint-config": "^4.16.2",
@@ -27,6 +30,7 @@
 		"eslint": "^9.31.0",
 		"tsup": "^8.5.0",
 		"typescript": "^5.8.3",
+		"vitepress": "^1.6.3",
 		"vitest": "^3.2.4"
 	}
 }

@@ -1,0 +1,117 @@
+# API Reference: Core Workflow
+
+This document covers the core classes and types exported from the main `cascade` entry point. These are the fundamental building blocks of any workflow.
+
+```typescript
+import {
+  Node,
+  Flow,
+  InMemoryExecutor,
+  TypedContext,
+  Context,
+  ContextKey,
+  contextKey,
+  // ...and more
+} from 'cascade'
+```
+
+## `Node<PrepRes, ExecRes, PostRes>`
+
+The base class for a single unit of work.
+
+### Constructor
+
+`new Node(options?: NodeOptions)`
+
+- `options`: An optional object to configure the node's behavior.
+  - `maxRetries?: number`: Total number of `exec` attempts. Defaults to `1`.
+  - `wait?: number`: Milliseconds to wait between failed `exec` attempts. Defaults to `0`.
+
+### Lifecycle Methods
+
+These methods are designed to be overridden in your custom `Node` subclasses.
+
+- `async prep(args: NodeArgs): Promise<PrepRes>`: Prepares data for execution. Runs before `exec`. Ideal for reading from the context.
+- `async exec(args: NodeArgs<PrepRes>): Promise<ExecRes>`: Performs the core, isolated logic. Its result is passed to `post`. This is the only phase that is retried on failure.
+- `async post(args: NodeArgs<PrepRes, ExecRes>): Promise<PostRes>`: Processes results and determines the next step. Runs after `exec`. Ideal for writing to the context. Should return an action string. The default return is `DEFAULT_ACTION`.
+- `async execFallback(args: NodeArgs<PrepRes>): Promise<ExecRes>`: Runs if all `exec` retries fail. If not implemented, the error will be re-thrown.
+
+### Fluent API Methods
+
+These methods return a *new* `Node` instance for creating data processing pipelines.
+
+- `.map<NewRes>(fn)`: Transforms the `exec` result into a new type.
+- `.toContext(key)`: Stores the `exec` result in the `Context` using the provided `ContextKey`.
+- `.filter(predicate)`: Conditionally proceeds. Returns `DEFAULT_ACTION` if the predicate is true, `FILTER_FAILED` otherwise.
+- `.tap(fn)`: Performs a side-effect with the `exec` result without modifying it.
+- `.withLens(lens, value)`: Applies a context mutation using a `ContextLens` before this node's `prep` phase.
+
+### Other Methods
+
+- `.next(node, action?)`: Connects this node to a successor. Returns the successor node for chaining.
+- `.withParams(params)`: Sets or merges parameters for the node.
+- `.run(ctx, options?)`: Runs the node as a standalone unit using an `IExecutor`.
+
+## `Flow`
+
+A special `Node` that orchestrates a sequence of other nodes.
+
+`extends Node`
+
+### Constructor
+
+`new Flow(startNode?: AbstractNode)`
+
+- `startNode`: The node where the flow should begin execution.
+
+### Methods
+
+- `.use(fn: Middleware)`: Adds a middleware function to the flow's execution chain.
+- `.start(node)`: Sets the starting node of the flow. Returns the start node.
+- `.run(ctx, options?)`: Runs the entire flow using an `IExecutor`, starting from the `startNode`. Returns the action from the last node executed.
+
+## `IExecutor` and `InMemoryExecutor`
+
+- `IExecutor`: The interface that defines the contract for a workflow executor.
+- `InMemoryExecutor`: The standard `IExecutor` implementation for running flows in-memory. This is the default executor if none is provided.
+
+### `InMemoryExecutor` Constructor
+
+`new InMemoryExecutor()`
+
+## `Context` and `TypedContext`
+
+The shared memory of a workflow.
+
+- `Context`: The interface that defines the contract for a context object.
+- `TypedContext`: The standard `Map`-based implementation of the `Context` interface.
+
+### `TypedContext` Constructor
+
+`new TypedContext(initialData?)`
+
+- `initialData`: An optional iterable (like an array of `[key, value]` pairs) to initialize the context with.
+
+### Methods
+
+- `.get<T>(key)`: Retrieves a value from the context. Can be called with a `ContextKey<T>` (returns `T | undefined`) or a `string` (returns `any`).
+- `.set<T>(key, value)`: Stores a value in the context.
+- `.has(key)`: Checks if a key exists in the context.
+
+## `ContextKey` and `contextKey()`
+
+The mechanism for type-safe access to the `Context`.
+
+- `ContextKey<T>`: An opaque type representing a key for a value of type `T`.
+- `contextKey<T>(description?: string)`: A factory function that creates a new, unique `ContextKey<T>`. The `description` is used for debugging and is not functionally significant.
+
+## Logger Interfaces
+
+- `Logger`: The interface that any logger passed to a flow must implement (`debug`, `info`, `warn`, `error`).
+- `ConsoleLogger`: A default implementation that logs messages to the `console`.
+- `NullLogger`: A default implementation that performs no action. This is the framework's default if no logger is provided, ensuring it is silent by default.
+
+## Error Types
+
+- `WorkflowError`: A custom error wrapper that provides context about a failure (`nodeName`, `phase`, `originalError`).
+- `AbortError`: The error thrown when a workflow is cancelled via an `AbortSignal`.
