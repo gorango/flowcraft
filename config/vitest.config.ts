@@ -4,5 +4,8 @@ export default defineConfig({
 	test: {
 		environment: 'node',
 		globals: true,
+		coverage: {
+			include: ['src/**/*.ts'],
+		},
 	},
 })
