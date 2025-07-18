@@ -6,7 +6,7 @@
 			"data": {
 				"promptTemplate": "Write a polite and professional email to {{applicantName}} informing them that you will not be moving forward with their application at this time. Thank them for their interest.",
 				"inputs": {
-					"applicantName": "params.applicantName"
+					"applicantName": "applicantName"
 				}
 			}
 		},

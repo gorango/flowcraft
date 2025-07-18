@@ -1,6 +1,5 @@
 import type { NodeArgs } from 'cascade'
-import { contextKey, DEFAULT_ACTION, Node } from 'cascade'
-import { BatchFlow } from 'cascade/builder'
+import { BatchFlow, contextKey, DEFAULT_ACTION, Node } from 'cascade'
 import yaml from 'yaml'
 import { callLLM } from './utils'
 

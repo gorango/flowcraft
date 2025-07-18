@@ -1,4 +1,4 @@
-import type { NodeFunction } from '../fn'
+import type { NodeFunction } from '../functions'
 import type { AbstractNode, NodeArgs } from '../workflow'
 import { Flow } from '../workflow'
 

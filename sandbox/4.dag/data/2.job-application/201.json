@@ -6,7 +6,7 @@
 			"data": {
 				"promptTemplate": "Write a polite and professional email inviting {{applicantName}} to an interview. Mention you were impressed with their resume.",
 				"inputs": {
-					"applicantName": "params.applicantName"
+					"applicantName": "applicantName"
 				}
 			}
 		},

@@ -177,14 +177,14 @@ For clear, focused examples of specific, individual features (like retries, midd
 
 ## API Reference
 
-### Core Classes (`cascade/workflow`)
+### Core Classes
 
 - `Node`: The base class for a unit of work with built-in retry logic and a fluent API (`.map`, `.filter`, etc.).
 - `Flow`: Orchestrates a sequence of nodes and supports middleware via `.use()`.
 - `TypedContext`: The standard `Map`-based implementation for the `Context` interface.
 - `ConsoleLogger`, `NullLogger`: Pre-built logger implementations.
 
-### Functional Helpers (`cascade/fn`)
+### Functional Helpers
 
 A collection of functions for creating nodes and pipelines in a more functional style.
 
@@ -192,7 +192,7 @@ A collection of functions for creating nodes and pipelines in a more functional 
 - `contextNode`: Creates a `Node` from a function that requires access to the `Context`.
 - `pipeline`: A functional alias for creating a linear sequence of nodes.
 
-### Builder Classes (`cascade/builder`)
+### Builder Classes
 
 - `SequenceFlow`: A `Flow` that creates a linear flow from a sequence of nodes.
 - `BatchFlow`: A `Flow` that processes a collection of items sequentially.
