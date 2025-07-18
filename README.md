@@ -101,6 +101,8 @@ graph TD
 
 The most advanced example: a powerful runtime that executes complex, graph-based AI workflows defined in simple JSON files. This shows how to build highly dynamic and modular AI agent systems.
 
+The `GraphBuilder` is fully **type-safe**. By defining a simple map of your node types to their data payloads, TypeScript can validate your entire graph at compile time, ensuring that the data provided to each node matches what its class expects. This eliminates a whole category of runtime configuration errors.
+
 ```mermaid
 graph TD
     A(User Post) --> B[check_for_pii];
@@ -120,7 +122,7 @@ graph TD
 ```
 
 - **Demonstrates**:
-  - Dynamic flow creation from file-based definitions using `GraphBuilder`.
+  - **Type-safe graph construction** from file-based definitions using `GraphBuilder`.
   - Parallel fan-in and fan-out (mid-flow branching).
   - Reusable, data-driven nodes (e.g., an LLM-powered router).
   - Complex sub-workflow composition.

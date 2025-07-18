@@ -1,12 +1,12 @@
 import type { Logger, NodeArgs, RunOptions } from '../workflow'
-import type { NodeRegistry, WorkflowGraph } from './graph'
+import type { NodeConstructorOptions, TypedWorkflowGraph } from './graph'
 import { describe, expect, it, vi } from 'vitest'
 import {
 	contextKey,
 	Node,
 	TypedContext,
 } from '../workflow'
-import { GraphBuilder } from './graph'
+import { createNodeRegistry, GraphBuilder } from './graph'
 
 function createMockLogger(): Logger {
 	return {
@@ -23,10 +23,16 @@ const runOptions: RunOptions = { logger: mockLogger }
 describe('graphBuilder', () => {
 	const VALUE = contextKey<number>('value')
 
+	interface TestNodeTypeMap {
+		set: { value: number }
+		add: { value: number }
+		branch: { threshold: number }
+	}
+
 	// A test node that accepts options from the builder
 	class SetValueNode extends Node {
 		private value: number
-		constructor(options: { data: { value: number } }) {
+		constructor(options: NodeConstructorOptions<TestNodeTypeMap['set']>) {
 			super()
 			this.value = options.data.value
 		}
@@ -38,7 +44,7 @@ describe('graphBuilder', () => {
 
 	class AddValueNode extends Node {
 		private valueToAdd: number
-		constructor(options: { data: { value: number } }) {
+		constructor(options: NodeConstructorOptions<TestNodeTypeMap['add']>) {
 			super()
 			this.valueToAdd = options.data.value
 		}
@@ -51,7 +57,7 @@ describe('graphBuilder', () => {
 
 	class ConditionalBranchNode extends Node<void, void, string> {
 		private threshold: number
-		constructor(options: { data: { threshold: number } }) {
+		constructor(options: NodeConstructorOptions<TestNodeTypeMap['branch']>) {
 			super()
 			this.threshold = options.data.threshold
 		}
@@ -62,14 +68,14 @@ describe('graphBuilder', () => {
 		}
 	}
 
-	const testRegistry: NodeRegistry = new Map<string, new (...args: any[]) => Node>([
-		['set', SetValueNode],
-		['add', AddValueNode],
-		['branch', ConditionalBranchNode],
-	])
+	const testRegistry = createNodeRegistry({
+		set: SetValueNode,
+		add: AddValueNode,
+		branch: ConditionalBranchNode,
+	})
 
 	it('should build and run a complex graph with parallel fan-out', async () => {
-		const graph: WorkflowGraph = {
+		const graph: TypedWorkflowGraph<TestNodeTypeMap> = {
 			nodes: [
 				{ id: 'start', type: 'set', data: { value: 10 } },
 				{ id: 'brancher', type: 'branch', data: { threshold: 15 } },
@@ -78,6 +84,9 @@ describe('graphBuilder', () => {
 				{ id: 'add-1', type: 'add', data: { value: 1 } }, // Path C, runs in parallel with D
 				{ id: 'add-2', type: 'add', data: { value: 2 } }, // Path D, runs in parallel with C
 				{ id: 'final', type: 'add', data: { value: 1000 } },
+				// TRY THIS: Uncomment the lines below. TypeScript will throw an error!
+				// { id: 'error-test', type: 'add', data: { threshold: 99 } },
+				// { id: 'error-test', type: 'add', data: { WRONG_PROP: 99 } },
 			],
 			edges: [
 				{ source: 'start', target: 'brancher' },
@@ -99,15 +108,6 @@ describe('graphBuilder', () => {
 
 		await flow.run(ctx, runOptions)
 
-		// Calculation:
-		// 1. start: sets value to 10
-		// 2. brancher: 10 is not > 15, so action is 'under'
-		// 3. add-10: value becomes 10 + 10 = 20
-		// 4. Parallel fan-out: add-1 and add-2 run. Because their async `prep` methods
-		//    contain no `await` calls, the event loop runs them sequentially.
-		//    One will read 20 and write 21. The other will then read 21 and write 23.
-		//    The final value after the parallel block is therefore 23.
-		// 5. final: value becomes 23 + 1000 = 1023
 		expect(ctx.get(VALUE)).toBe(1023)
 	})
 })
