@@ -67,6 +67,15 @@ export function createNodeRegistry<T extends { [K in keyof T]: Record<string, an
 }
 
 /**
+ * The result of a successful graph build, containing the executable flow
+ * and the map of all constructed node instances.
+ */
+export interface BuildResult {
+	flow: Flow
+	nodeMap: Map<string, AbstractNode>
+}
+
+/**
  * Represents a node within the workflow graph.
  * This is a simpler (UNTYPED) version of the `TypedGraphNode` type
  */
@@ -190,11 +199,12 @@ export class GraphBuilder<T extends { [K in keyof T]: Record<string, any> }> {
 	 * @returns An executable `Flow` instance.
 	 */
 	// type-safe overload
-	build(graph: TypedWorkflowGraph<T>): Flow
+	// type-safe overload
+	build(graph: TypedWorkflowGraph<T>): BuildResult
 	// untyped overload
-	build(graph: WorkflowGraph): Flow
+	build(graph: WorkflowGraph): BuildResult
 	// single implementation that handles both cases
-	build(graph: TypedWorkflowGraph<T> | WorkflowGraph): Flow {
+	build(graph: TypedWorkflowGraph<T> | WorkflowGraph): BuildResult {
 		const nodeMap = new Map<string, AbstractNode>()
 
 		for (const graphNode of graph.nodes) {
@@ -206,7 +216,7 @@ export class GraphBuilder<T extends { [K in keyof T]: Record<string, any> }> {
 				...this.nodeOptionsContext,
 				data: { ...graphNode.data, nodeId: graphNode.id },
 			}
-			const executableNode = new NodeClass(nodeOptions)
+			const executableNode = new NodeClass(nodeOptions).withId(graphNode.id)
 			nodeMap.set(graphNode.id, executableNode)
 		}
 
@@ -248,13 +258,13 @@ export class GraphBuilder<T extends { [K in keyof T]: Record<string, any> }> {
 
 		if (startNodeIds.length === 1) {
 			const startNode = nodeMap.get(startNodeIds[0])!
-			return new Flow(startNode)
+			return { flow: new Flow(startNode), nodeMap }
 		}
 
 		const startNodes = startNodeIds.map(id => nodeMap.get(id)!)
 		const parallelStartNode = new ParallelNode(startNodes)
 		this.wireSuccessors(parallelStartNode, startNodeIds, edgeGroups, nodeMap)
 
-		return new Flow(parallelStartNode)
+		return { flow: new Flow(parallelStartNode), nodeMap }
 	}
 }

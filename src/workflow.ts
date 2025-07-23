@@ -15,8 +15,20 @@ export * from './logger'
 export * from './types'
 
 export abstract class AbstractNode {
+	public id?: string
 	public params: Params = {}
 	public successors = new Map<string | typeof DEFAULT_ACTION | typeof FILTER_FAILED, AbstractNode>()
+
+	/**
+	 * Sets a unique identifier for this node instance.
+	 * Primarily used by the GraphBuilder.
+	 * @param id The unique ID for the node.
+	 * @returns The node instance for chaining.
+	 */
+	withId(id: string): this {
+		this.id = id
+		return this
+	}
 
 	/**
 	 * Sets or merges parameters for the node.

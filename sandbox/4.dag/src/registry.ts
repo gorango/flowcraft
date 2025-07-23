@@ -73,8 +73,8 @@ export class WorkflowRegistry {
 		if (!graphData)
 			throw new Error(`Workflow with id ${workflowId} not found in the database.`)
 
-		const executableFlow = this.builder.build(graphData)
-		this.flowCache.set(workflowId, executableFlow)
-		return executableFlow
+		const { flow } = this.builder.build(graphData)
+		this.flowCache.set(workflowId, flow)
+		return flow
 	}
 }

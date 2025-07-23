@@ -98,7 +98,7 @@ describe('graphBuilder', () => {
 		}
 
 		const builder = new GraphBuilder(testRegistry)
-		const flow = builder.build(graph)
+		const { flow } = builder.build(graph)
 		const ctx = new TypedContext()
 		await flow.run(ctx, runOptions)
 		// Calculation:
@@ -180,7 +180,7 @@ describe('graphBuilder (Legacy API)', () => {
 			],
 		}
 		const builder = new GraphBuilder(testRegistry)
-		const flow = builder.build(graph)
+		const { flow } = builder.build(graph)
 		const ctx = new TypedContext()
 		await flow.run(ctx)
 		expect(ctx.get(VALUE)).toBe(1023)
