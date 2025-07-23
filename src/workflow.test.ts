@@ -108,6 +108,7 @@ describe('testFlowBasic', () => {
 		expect(ctx.get(CURRENT)).toBe(16)
 		expect(lastAction).toBe(DEFAULT_ACTION)
 	})
+
 	it('should handle positive branching', async () => {
 		const ctx = new TypedContext()
 		const startNode = new NumberNode(5)
@@ -121,6 +122,7 @@ describe('testFlowBasic', () => {
 		await flow.run(ctx, runOptions)
 		expect(ctx.get(CURRENT)).toBe(15)
 	})
+
 	it('should handle negative branching', async () => {
 		const ctx = new TypedContext()
 		const startNode = new NumberNode(-5)
@@ -134,6 +136,7 @@ describe('testFlowBasic', () => {
 		await flow.run(ctx, runOptions)
 		expect(ctx.get(CURRENT)).toBe(-25)
 	})
+
 	it('should return the final action from the last node in a cycle', async () => {
 		const ctx = new TypedContext()
 		const startNode = new NumberNode(10)
@@ -160,6 +163,7 @@ describe('testFlowComposition', () => {
 		await outerFlow.run(ctx, runOptions)
 		expect(ctx.get(CURRENT)).toBe(30)
 	})
+
 	it('should propagate actions from inner flows for branching', async () => {
 		const ctx = new TypedContext()
 		const innerStart = new NumberNode(100)
@@ -200,6 +204,7 @@ describe('testExecFallback', () => {
 			ctx.set(ATTEMPTS, this.attemptCount)
 		}
 	}
+
 	it('should call execFallback after all retries are exhausted', async () => {
 		const ctx = new TypedContext()
 		const node = new FallbackNode(true, { maxRetries: 3 })
@@ -222,6 +227,7 @@ describe('testAbortController', () => {
 			return `ok_${this.id}`
 		}
 	}
+
 	class LongRunningNodeWithParams extends Node<void, string> {
 		constructor(private delayMs: number) { super() }
 		async exec({ ctx, params, signal }: NodeArgs): Promise<string> {
@@ -234,6 +240,7 @@ describe('testAbortController', () => {
 			return `ok_${id}`
 		}
 	}
+
 	it('should abort a linear flow and throw an AbortError', async () => {
 		const ctx = new TypedContext()
 		const n1 = new LongRunningNode(1, 15)
@@ -248,6 +255,7 @@ describe('testAbortController', () => {
 		expect(ctx.get(STARTED)).toEqual([1, 2])
 		expect(ctx.get(FINISHED)).toEqual([1])
 	})
+
 	it('should abort a sequential BatchFlow', async () => {
 		const ctx = new TypedContext()
 		class TestBatchFlow extends BatchFlow {
@@ -261,6 +269,7 @@ describe('testAbortController', () => {
 		expect(ctx.get(STARTED)).toEqual([1, 2])
 		expect(ctx.get(FINISHED)).toEqual([1])
 	})
+
 	it('should abort a ParallelBatchFlow', async () => {
 		const ctx = new TypedContext()
 		class TestParallelFlow extends ParallelBatchFlow {
@@ -287,14 +296,20 @@ describe('testLoggingAndErrors', () => {
 		expect(consoleInfoSpy).not.toHaveBeenCalled()
 		consoleInfoSpy.mockRestore()
 	})
+
 	it('should use the provided custom logger', async () => {
 		const flow = new Flow(new NumberNode(1))
 		await flow.run(new TypedContext(), runOptions)
 		expect(mockLogger.info).toHaveBeenCalledWith(
-			expect.stringContaining('Running node: Flow'),
+			expect.stringContaining('Running flow: Flow'),
+			expect.any(Object),
+		)
+		expect(mockLogger.info).toHaveBeenCalledWith(
+			expect.stringContaining('Running node: NumberNode'),
 			expect.any(Object),
 		)
 	})
+
 	it('should log branching decisions', async () => {
 		const checkNode = new CheckPositiveNode()
 		const pathNode = new PathNode('A')
@@ -306,6 +321,7 @@ describe('testLoggingAndErrors', () => {
 			expect.any(Object),
 		)
 	})
+
 	it('should log retry attempts and fallback execution', async () => {
 		class FailingNode extends Node {
 			constructor() { super({ maxRetries: 2, wait: 0 }) }
@@ -323,6 +339,7 @@ describe('testLoggingAndErrors', () => {
 			expect.any(Object),
 		)
 	})
+
 	it('should wrap errors in WorkflowError with correct phase context', async () => {
 		class FailingPrepNode extends Node {
 			async prep() { throw new Error('Prep failed') }
@@ -348,6 +365,7 @@ describe('testContextUtilities', () => {
 		expect(nameLens.get(ctx)).toBe('Alice')
 		expect(ctx.get(NAME)).toBe('Alice')
 	})
+
 	it('lens should update values based on the current value', () => {
 		const counterLens = lens(COUNTER)
 		const ctx = new TypedContext([[COUNTER, 5]])
@@ -359,6 +377,7 @@ describe('testContextUtilities', () => {
 		incrementTransform(newCtx)
 		expect(counterLens.get(newCtx)).toBe(1)
 	})
+
 	it('composeContext should apply multiple transformations in order', () => {
 		const nameLens = lens(NAME)
 		const counterLens = lens(COUNTER)
@@ -381,6 +400,7 @@ describe('testFunctionalMethods', () => {
 		await resultNode.run(ctx, runOptions)
 		expect(ctx.get(FINAL_RESULT)).toBe('Value is 10')
 	})
+
 	it('map() should handle async transformations', async () => {
 		const node = new ValueNode('hello').map(async (res) => {
 			await sleep(1)
@@ -391,12 +411,14 @@ describe('testFunctionalMethods', () => {
 		await resultNode.run(ctx, runOptions)
 		expect(ctx.get(FINAL_RESULT)).toBe('HELLO')
 	})
+
 	it('toContext() should set the execution result in the context', async () => {
 		const node = new ValueNode('success').toContext(FINAL_RESULT)
 		const ctx = new TypedContext()
 		await node.run(ctx, runOptions)
 		expect(ctx.get(FINAL_RESULT)).toBe('success')
 	})
+
 	it('tap() should perform a side effect without altering the result', async () => {
 		const sideEffect = vi.fn()
 		const node = new ValueNode(42)
@@ -408,16 +430,19 @@ describe('testFunctionalMethods', () => {
 		expect(sideEffect).toHaveBeenCalledWith(42)
 		expect(ctx.get(COUNTER)).toBe(43)
 	})
+
 	it('filter() should route to DEFAULT_ACTION when predicate is true', async () => {
 		const node = new ValueNode(100).filter(res => res > 50)
 		const action = await node.run(new TypedContext(), runOptions)
 		expect(action).toBe(DEFAULT_ACTION)
 	})
+
 	it('filter() should route to FILTER_FAILED when predicate is false', async () => {
 		const node = new ValueNode(10).filter(res => res > 50)
 		const action = await node.run(new TypedContext(), runOptions)
 		expect(action).toBe(FILTER_FAILED)
 	})
+
 	it('withLens() should modify context before execution', async () => {
 		const valueLens = lens(LENS_VALUE)
 		// This node reads the value that withLens should have set
@@ -429,6 +454,7 @@ describe('testFunctionalMethods', () => {
 		await node.run(ctx, runOptions)
 		expect(ctx.get(COUNTER)).toBe(100)
 	})
+
 	it('should allow chaining of multiple functional methods', async () => {
 		const sideEffect = vi.fn()
 		const valueLens = lens(LENS_VALUE)
@@ -469,6 +495,7 @@ describe('testFlowMiddleware', () => {
 		expect(ctx.get(CURRENT)).toBe(10) // Node logic ran
 		expect(ctx.get(MIDDLEWARE_PATH)).toEqual(['mw-enter', 'mw-exit'])
 	})
+
 	it('should run multiple middlewares in the correct LIFO order', async () => {
 		const ctx = new TypedContext()
 		const flow = new Flow(new NumberNode(100))
@@ -490,6 +517,7 @@ describe('testFlowMiddleware', () => {
 			'exit-mw1',
 		])
 	})
+
 	it('should allow middleware to modify context before the node runs', async () => {
 		const ctx = new TypedContext([[CURRENT, 0]])
 		const node = new class extends Node<void, number> {
@@ -505,6 +533,7 @@ describe('testFlowMiddleware', () => {
 		await flow.run(ctx, runOptions)
 		expect(ctx.get(CURRENT)).toBe(50)
 	})
+
 	it('should propagate errors from middleware and halt execution', async () => {
 		const ctx = new TypedContext()
 		const flow = new Flow(new NumberNode(1))
@@ -525,6 +554,7 @@ describe('testFlowMiddleware', () => {
 		expect(ctx.get(MIDDLEWARE_PATH)).toEqual(['enter-good'])
 		expect(ctx.get(CURRENT)).toBeUndefined()
 	})
+
 	it('should allow middleware to short-circuit the flow', async () => {
 		const ctx = new TypedContext([[CURRENT, 0]])
 		const flow = new Flow(new AddNode(100))

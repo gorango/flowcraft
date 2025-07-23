@@ -1,6 +1,6 @@
 import type { NodeFunction } from '../functions'
 import type { AbstractNode, NodeArgs } from '../workflow'
-import { Flow } from '../workflow'
+import { AbortError, Flow } from '../workflow'
 
 /**
  * A builder that creates a linear flow from a sequence of nodes.
@@ -27,18 +27,34 @@ export class BatchFlow extends Flow {
 	 * Prepares the list of items to be processed.
 	 * @returns An array or iterable of parameter objects, one for each item.
 	 */
-	async prep(args: NodeArgs): Promise<Iterable<any>> {
+	async prep(_args: NodeArgs): Promise<Iterable<any>> {
 		return []
 	}
 
 	async exec(args: NodeArgs): Promise<null> {
+		if (!this.startNode || !args.executor)
+			return null
+
 		const combinedParams = { ...this.params, ...args.params }
 		const batchParamsIterable = (await this.prep(args)) || []
 		const batchParamsList = Array.from(batchParamsIterable)
 		args.logger.info(`BatchFlow: Starting sequential processing of ${batchParamsList.length} items.`)
+
+		// "blueprint" flow representing the sub-graph to run for each item.
+		const subFlow = new Flow(this.startNode)
+
 		for (const [index, batchParams] of batchParamsList.entries()) {
+			if (args.signal?.aborted)
+				throw new AbortError()
+
 			args.logger.debug(`BatchFlow: Processing item ${index + 1}/${batchParamsList.length}.`, { params: batchParams })
-			await this._orch(args.ctx, { ...combinedParams, ...batchParams }, args.signal, args.logger)
+			// executor runs the sub-flow with per-item parameters.
+			await args.executor.run(subFlow, args.ctx, {
+				logger: args.logger,
+				controller: { signal: args.signal } as AbortController,
+				executor: args.executor,
+				params: { ...combinedParams, ...batchParams },
+			})
 		}
 		return null
 	}
@@ -52,19 +68,31 @@ export class ParallelBatchFlow extends Flow {
 	 * Prepares the list of items to be processed.
 	 * @returns An array or iterable of parameter objects, one for each item.
 	 */
-	async prep(args: NodeArgs): Promise<Iterable<any>> {
+	async prep(_args: NodeArgs): Promise<Iterable<any>> {
 		return []
 	}
 
 	async exec(args: NodeArgs<any, void>): Promise<any> {
+		if (!this.startNode || !args.executor)
+			return null
+
 		const combinedParams = { ...this.params, ...args.params }
 		const batchParamsIterable = (await this.prep(args)) || []
 		const batchParamsList = Array.from(batchParamsIterable)
 		args.logger.info(`ParallelBatchFlow: Starting parallel processing of ${batchParamsList.length} items.`)
+
+		const subFlow = new Flow(this.startNode)
+
 		const promises = batchParamsList.map(batchParams =>
-			this._orch(args.ctx, { ...combinedParams, ...batchParams }, args.signal, args.logger),
+			args.executor!.run(subFlow, args.ctx, {
+				logger: args.logger,
+				controller: { signal: args.signal } as AbortController,
+				executor: args.executor,
+				params: { ...combinedParams, ...batchParams },
+			}),
 		)
-		await Promise.allSettled(promises)
+		// use Promise.allSettled to silently ignore errors
+		await Promise.all(promises)
 		return null
 	}
 }
@@ -137,9 +165,12 @@ export function reduceCollection<T, U>(
 	initialValue: U,
 ): Flow {
 	return new class extends Flow {
-		async exec(): Promise<U> {
+		async exec(_args: NodeArgs): Promise<U> {
 			let accumulator = initialValue
 			for (const item of items) {
+				if (_args.signal?.aborted) {
+					throw new AbortError()
+				}
 				accumulator = await reducer(accumulator, item)
 			}
 			return accumulator

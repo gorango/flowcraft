@@ -8,11 +8,13 @@ Build complex, multi-step processes, from simple sequences to dynamic, graph-dri
 
 - **Composable & Reusable**: Define workflows by chaining nodes or embedding other flows as nodes.
 
+- **Extensible Execution Engine**: A pluggable `Executor` pattern enables in-memory or distributed flows.
+
 - **Type-Safe**: Written in TypeScript to provide strong typing for your workflow definitions and context.
 
 - **Async by Default**: Built on an asynchronous foundation to handle I/O-bound and CPU-bound tasks.
 
-- **Middleware**: Intercept execution of nodes to handle cross-cutting concerns in a centralized way.
+- **Middleware**: Intercept execution of nodes to handle cross-cutting concerns like logging or auth.
 
 - **Conditional Branching**: Direct the flow's execution path based on the results of any node.
 
@@ -24,7 +26,7 @@ Build complex, multi-step processes, from simple sequences to dynamic, graph-dri
 
 - **Dynamic Graph Engine**: Define complex, graph-based workflows as simple JSON files.
 
-- **Fluent & Functional API**: A chainable API on the `Node` class and a collection of functional helpers
+- **Fluent & Functional API**: A chainable API on the `Node` class and a collection of functional helpers.
 
 ## Installation
 
@@ -39,11 +41,15 @@ Create and run a simple workflow in a few lines of code.
 ```typescript
 import { Node, Flow } from 'cascade'
 
-const greetNode = new Node('greet')
+const greetNode = new Node()
+  // The exec method contains the core logic of the node.
   .exec(() => 'Hello, World!')
+  // Functional helpers make common tasks easy.
+  .tap(console.log)
 
-const flow = new Flow().start(greetNode)
-flow.run()
+const flow = new Flow(greetNode)
+// Run using the default InMemoryExecutor.
+await flow.run()
 ```
 
 ## Learn by Example
@@ -99,7 +105,7 @@ graph TD
 
 ### 4. Dynamic Graph Engine: AI Agent Runtime
 
-The most advanced example: a powerful runtime that executes complex, graph-based AI workflows defined in simple JSON files. This shows how to build highly dynamic and modular AI agent systems.
+The most advanced example: a powerful runtime that executes complex, graph-based AI workflows defined in simple JSON-like objects. This shows how to build highly dynamic and modular AI agent systems.
 
 The `GraphBuilder` is fully **type-safe**. By defining a simple map of your node types to their data payloads, TypeScript can validate your entire graph at compile time, ensuring that the data provided to each node matches what its class expects. This eliminates a whole category of runtime configuration errors.
 
@@ -122,7 +128,7 @@ graph TD
 ```
 
 - **Demonstrates**:
-  - **Type-safe graph construction** from file-based definitions using `GraphBuilder`.
+  - **Type-safe graph construction** from declarative definitions using `GraphBuilder`.
   - Parallel fan-in and fan-out (mid-flow branching).
   - Reusable, data-driven nodes (e.g., an LLM-powered router).
   - Complex sub-workflow composition.
@@ -147,11 +153,15 @@ A chainable API on the `Node` class has a set of functional helpers:
 
 ### Flow
 
-A `Flow` is a special type of `Node` that orchestrates a sequence of other nodes. You define a starting node and chain subsequent nodes together, creating a graph of operations.
+A `Flow` is a special type of `Node` that orchestrates a sequence of other nodes. It contains the logic for traversing its own graph of operations, making it a powerful, self-contained unit of work.
+
+### Executor
+
+An `Executor` is responsible for **running** a `Flow`. It provides the top-level execution environment, handling setup and teardown. The framework is decoupled from the execution strategy, allowing you to use the default `InMemoryExecutor` or plug in custom executors for different environments (e.g., distributed queues).
 
 ### Middleware
 
-A `Flow` can be configured with middleware functions that wrap the execution of every node within it. This is the ideal pattern for handling **cross-cutting concerns** like performance monitoring, centralized logging, authentication, or transaction management without cluttering your business logic. Middleware is executed in a predictable FIFO (First-In, First-Out) order.
+A `Flow` can be configured with middleware functions that wrap the execution of every node within it. This is the ideal pattern for handling **cross-cutting concerns** like performance monitoring, centralized logging, or transaction management without cluttering your business logic.
 
 ### Context
 
@@ -159,7 +169,7 @@ The `Context` is a shared, type-safe `Map`-like object passed through every node
 
 ### Actions & Branching
 
-A node's `post()` method returns a string called an **action**. The flow uses this action to look up the next node to execute. The default action is `'default'`, but returning custom strings allows for conditional branching. The fluent `.filter()` method provides another powerful way to branch based on a `FILTER_FAILED` action.
+A node's `post()` method returns a string called an **action**. The flow uses this action to look up the next node to execute. The default action is a `symbol`, but returning custom strings allows for conditional branching. The fluent `.filter()` method provides another powerful way to branch based on a `FILTER_FAILED` action.
 
 ### Builders
 
@@ -183,6 +193,7 @@ For clear, focused examples of specific, individual features (like retries, midd
 
 - `Node`: The base class for a unit of work with built-in retry logic and a fluent API (`.map`, `.filter`, etc.).
 - `Flow`: Orchestrates a sequence of nodes and supports middleware via `.use()`.
+- `InMemoryExecutor`: The default `IExecutor` implementation for running flows in-memory.
 - `TypedContext`: The standard `Map`-based implementation for the `Context` interface.
 - `ConsoleLogger`, `NullLogger`: Pre-built logger implementations.
 

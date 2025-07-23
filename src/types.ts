@@ -1,4 +1,5 @@
 import type { Context } from './context'
+import type { IExecutor } from './executor'
 import type { Logger } from './logger'
 
 export type Params = Record<string, any>
@@ -14,6 +15,7 @@ export interface NodeArgs<PrepRes = any, ExecRes = any> {
 	execRes: ExecRes
 	error?: Error
 	name?: string
+	executor?: IExecutor
 }
 
 export interface NodeOptions {
@@ -24,6 +26,8 @@ export interface NodeOptions {
 export interface RunOptions {
 	controller?: AbortController
 	logger?: Logger
+	params?: Params
+	executor?: IExecutor
 }
 
 export type MiddlewareNext = (args: NodeArgs) => Promise<any>

@@ -1,13 +1,16 @@
 import type { Context, ContextKey, ContextLens } from './context'
+import type { IExecutor } from './executor'
 import type { Logger } from './logger'
-import type { Middleware, MiddlewareNext, NodeArgs, NodeOptions, Params, RunOptions } from './types'
+import type { Middleware, NodeArgs, NodeOptions, Params, RunOptions } from './types'
 import { AbortError, WorkflowError } from './errors'
+import { InMemoryExecutor } from './executors/in-memory'
 import { NullLogger } from './logger'
 import { DEFAULT_ACTION, FILTER_FAILED } from './types'
 import { sleep } from './utils/index'
 
 export * from './context'
 export * from './errors'
+export * from './executor'
 export * from './logger'
 export * from './types'
 
@@ -36,7 +39,7 @@ export abstract class AbstractNode {
 		return node
 	}
 
-	abstract _run(ctx: Context, params: Params, signal: AbortSignal | undefined, logger: Logger): Promise<any>
+	abstract _run(ctx: Context, params: Params, signal: AbortSignal | undefined, logger: Logger, executor?: IExecutor): Promise<any>
 }
 
 /**
@@ -58,16 +61,29 @@ export class Node<PrepRes = any, ExecRes = any, PostRes = any> extends AbstractN
 		this.wait = options.wait ?? 0
 	}
 
+	protected _wrapError(e: any, phase: 'prep' | 'exec' | 'post'): Error {
+		if (e instanceof AbortError || e instanceof WorkflowError) {
+			return e
+		}
+		return new WorkflowError(`Failed in ${phase} phase for node ${this.constructor.name}`, this.constructor.name, phase, e as Error)
+	}
+
 	/** (Lifecycle) Prepares data for execution. Runs before `exec`. */
-	async prep(args: NodeArgs<void, void>): Promise<PrepRes> { return undefined as unknown as PrepRes }
+	async prep(_args: NodeArgs<void, void>): Promise<PrepRes> { return undefined as unknown as PrepRes }
 	/** (Lifecycle) Performs the core logic of the node. */
-	async exec(args: NodeArgs<PrepRes, void>): Promise<ExecRes> { return undefined as unknown as ExecRes }
+	async exec(_args: NodeArgs<PrepRes, void>): Promise<ExecRes> { return undefined as unknown as ExecRes }
 	/** (Lifecycle) Processes results and determines the next action. Runs after `exec`. */
-	async post(args: NodeArgs<PrepRes, ExecRes>): Promise<PostRes> { return DEFAULT_ACTION as any }
+	async post(_args: NodeArgs<PrepRes, ExecRes>): Promise<PostRes> { return DEFAULT_ACTION as any }
 	/** (Lifecycle) A fallback that runs if all `exec` retries fail. */
-	async execFallback(args: NodeArgs<PrepRes, void>): Promise<ExecRes> { throw args.error }
+	async execFallback(args: NodeArgs<PrepRes, void>): Promise<ExecRes> {
+		if (args.error) {
+			throw args.error
+		}
+		throw new Error(`Node ${this.constructor.name} failed and has no fallback implementation.`)
+	}
 
 	async _exec(args: NodeArgs<PrepRes, void>): Promise<ExecRes> {
+		let lastError: Error | undefined
 		for (let curRetry = 0; curRetry < this.maxRetries; curRetry++) {
 			if (args.signal?.aborted)
 				throw new AbortError()
@@ -76,57 +92,56 @@ export class Node<PrepRes = any, ExecRes = any, PostRes = any> extends AbstractN
 			}
 			catch (e) {
 				const error = e as Error
+				lastError = error
 				if (error instanceof AbortError || error.name === 'AbortError')
 					throw error
+
 				if (curRetry < this.maxRetries - 1) {
 					args.logger.warn(`Attempt ${curRetry + 1}/${this.maxRetries} failed for ${this.constructor.name}. Retrying...`, { error })
 					if (this.wait > 0)
 						await sleep(this.wait, args.signal)
 				}
-				else {
-					args.logger.error(`All retries failed for ${this.constructor.name}. Executing fallback.`, { error })
-					if (args.signal?.aborted)
-						throw new AbortError()
-					return await this.execFallback({ ...args, error })
-				}
 			}
 		}
-		throw new Error('Internal Error: _exec loop finished without returning or throwing.')
+		args.logger.error(`All retries failed for ${this.constructor.name}. Executing fallback.`, { error: lastError })
+		if (args.signal?.aborted)
+			throw new AbortError()
+		return await this.execFallback({ ...args, error: lastError })
 	}
 
-	async _run(ctx: Context, params: Params, signal: AbortSignal | undefined, logger: Logger): Promise<PostRes> {
-		logger.info(`Running node: ${this.constructor.name}`, { params })
+	async _run(ctx: Context, params: Params, signal: AbortSignal | undefined, logger: Logger, executor?: IExecutor): Promise<PostRes> {
+		if (this instanceof Flow) {
+			logger.info(`Running flow: ${this.constructor.name}`, { params })
+		}
+		else {
+			logger.info(`Running node: ${this.constructor.name}`, { params })
+		}
+
 		if (signal?.aborted)
 			throw new AbortError()
 		let prepRes: PrepRes
 		try {
-			prepRes = await this.prep({ ctx, params, signal, logger, prepRes: undefined, execRes: undefined })
+			prepRes = await this.prep({ ctx, params, signal, logger, prepRes: undefined, execRes: undefined, executor })
 		}
 		catch (e) {
-			if (e instanceof AbortError || e instanceof WorkflowError || this instanceof Flow)
-				throw e
-			throw new WorkflowError(`Failed in prep phase for node ${this.constructor.name}`, this.constructor.name, 'prep', e as Error)
+			throw this._wrapError(e, 'prep')
 		}
 		if (signal?.aborted)
 			throw new AbortError()
 		let execRes: ExecRes
 		try {
-			execRes = await this._exec({ ctx, params, signal, logger, prepRes, execRes: undefined })
+			execRes = await this._exec({ ctx, params, signal, logger, prepRes, execRes: undefined, executor })
 		}
 		catch (e) {
-			if (e instanceof AbortError || e instanceof WorkflowError || this instanceof Flow)
-				throw e
-			throw new WorkflowError(`Failed in exec phase for node ${this.constructor.name}`, this.constructor.name, 'exec', e as Error)
+			throw this._wrapError(e, 'exec')
 		}
 		if (signal?.aborted)
 			throw new AbortError()
 		try {
-			return await this.post({ ctx, params, signal, logger, prepRes, execRes })
+			return await this.post({ ctx, params, signal, logger, prepRes, execRes, executor })
 		}
 		catch (e) {
-			if (e instanceof AbortError || e instanceof WorkflowError || this instanceof Flow)
-				throw e
-			throw new WorkflowError(`Failed in post phase for node ${this.constructor.name}`, this.constructor.name, 'post', e as Error)
+			throw this._wrapError(e, 'post')
 		}
 	}
 
@@ -138,9 +153,11 @@ export class Node<PrepRes = any, ExecRes = any, PostRes = any> extends AbstractN
 	 */
 	async run(ctx: Context, options?: RunOptions): Promise<PostRes> {
 		const logger = options?.logger ?? new NullLogger()
-		if (this.successors.size > 0)
+		if (this.successors.size > 0 && !(this instanceof Flow))
 			logger.warn('Node.run() called directly on a node with successors. The flow will not continue. Use a Flow to execute a sequence.')
-		return this._run(ctx, this.params, options?.controller?.signal, logger)
+		const executor = options?.executor ?? new InMemoryExecutor()
+		// Wrap the node in a Flow and pass its params via the options.
+		return executor.run(new Flow(this), ctx, { ...options, params: this.params })
 	}
 
 	/**
@@ -168,7 +185,7 @@ export class Node<PrepRes = any, ExecRes = any, PostRes = any> extends AbstractN
 				return fn(originalResult)
 			}
 
-			async post(args: NodeArgs<PrepRes, NewRes>): Promise<any> {
+			async post(_args: NodeArgs<PrepRes, NewRes>): Promise<any> {
 				return DEFAULT_ACTION
 			}
 		}()
@@ -228,13 +245,13 @@ export class Node<PrepRes = any, ExecRes = any, PostRes = any> extends AbstractN
 			async exec(args: NodeArgs<PrepRes>): Promise<ExecRes> {
 				const result = await originalNode.exec(args)
 				this.didPass = await predicate(result)
-				if (!this.didPass) {
+				if (!this.didPass)
 					args.logger.info(`[Filter] Predicate failed for node ${this.constructor.name}.`)
-				}
+
 				return result
 			}
 
-			async post(args: NodeArgs<PrepRes, ExecRes>): Promise<any> {
+			async post(_args: NodeArgs<PrepRes, ExecRes>): Promise<any> {
 				return this.didPass ? DEFAULT_ACTION : FILTER_FAILED
 			}
 		}()
@@ -313,6 +330,16 @@ export class Flow extends Node<any, any, any> {
 		this.startNode = start
 	}
 
+	protected _wrapError(e: any, phase: 'prep' | 'exec' | 'post'): Error {
+		// An error during a Flow's `exec` phase is from a sub-node or middleware.
+		// Do not wrap it, so the original error is preserved.
+		if (phase === 'exec') {
+			return e
+		}
+		// For other phases, use the default behavior.
+		return super._wrapError(e, phase)
+	}
+
 	public use(fn: Middleware): this {
 		this.middleware.push(fn)
 		return this
@@ -328,43 +355,65 @@ export class Flow extends Node<any, any, any> {
 		return start
 	}
 
-	protected getNextNode(curr: AbstractNode, action: any, logger: Logger): AbstractNode | undefined {
-		const nextNode = curr.successors.get(action)
-		const actionDisplay = typeof action === 'symbol' ? 'default' : action
-		if (nextNode) {
-			logger.debug(`Action '${actionDisplay}' from ${curr.constructor.name} leads to ${nextNode.constructor.name}`, { action })
-		}
-		else if (curr.successors.size > 0 && action !== undefined) {
-			logger.info(`Flow ends: Action '${actionDisplay}' from ${curr.constructor.name} has no configured successor.`)
-		}
-		return nextNode
-	}
+	/**
+	 * Runs the entire flow using an executor.
+	 * This is called when a Flow is a node inside another flow. It contains the
+	 * core orchestration logic for a graph-based flow.
+	 * @param args The arguments for the node.
+	 * @returns The action returned by the last node in the flow.
+	 */
+	async exec(args: NodeArgs<any, any>): Promise<any> {
+		const { ctx, params: parentParams, signal, logger, executor } = args
 
-	protected async _orch(ctx: Context, params: Params, signal: AbortSignal | undefined, logger: Logger): Promise<any> {
-		let curr = this.startNode
+		if (!(executor instanceof InMemoryExecutor)) {
+			// This base implementation is tightly coupled to the InMemoryExecutor's methods.
+			// Other executors would need a different Flow subclass or a different strategy.
+			throw new TypeError('Base Flow orchestration is only supported by the InMemoryExecutor.')
+		}
+
+		if (!this.startNode) {
+			logger.warn(`Executing a Flow with no startNode: ${this.constructor.name}. Nothing to do.`)
+			return
+		}
+
+		const combinedParams = { ...parentParams, ...this.params }
+
+		let curr: AbstractNode | undefined = this.startNode
 		let lastAction: any
+
 		while (curr) {
-			if (signal?.aborted)
+			if (signal?.aborted) {
 				throw new AbortError()
-			const nodeToRun = curr
-			const runNode: MiddlewareNext = (args: NodeArgs) => {
-				return nodeToRun._run(args.ctx, { ...args.params, ...nodeToRun.params }, args.signal, args.logger)
 			}
-			const chain = this.middleware.reduceRight<MiddlewareNext>(
-				(next: MiddlewareNext, mw: Middleware): MiddlewareNext => {
-					return (args: NodeArgs) => mw(args, next)
-				},
-				runNode,
-			)
-			lastAction = await chain({ ctx, params, signal, logger, prepRes: undefined, execRes: undefined, name: curr.constructor.name })
-			curr = this.getNextNode(nodeToRun, lastAction, logger)
+
+			// A sub-flow's middleware applies to its children nodes.
+			const chain = executor.applyMiddleware(this.middleware, curr)
+			const nodeArgs: NodeArgs = {
+				ctx,
+				params: combinedParams,
+				signal,
+				logger,
+				prepRes: undefined,
+				execRes: undefined,
+				name: curr.constructor.name,
+				executor,
+			}
+
+			try {
+				lastAction = await chain(nodeArgs)
+			}
+			catch (e) {
+				// If the error is already a WorkflowError, or if it came from
+				// middleware, re-throw it directly without re-wrapping.
+				if (e instanceof AbortError || e instanceof WorkflowError) {
+					throw e
+				}
+				// Assume other errors are from middleware logic.
+				throw e
+			}
+			curr = executor.getNextNode(curr, lastAction, logger)
 		}
 		return lastAction
-	}
-
-	async exec(args: NodeArgs<any, any>): Promise<any> {
-		const combinedParams = { ...this.params, ...args.params }
-		return await this._orch(args.ctx, combinedParams, args.signal, args.logger)
 	}
 
 	async post({ execRes }: NodeArgs<any, any>): Promise<any> {
@@ -372,13 +421,14 @@ export class Flow extends Node<any, any, any> {
 	}
 
 	/**
-	 * Runs the entire flow.
+	 * Runs the entire flow using an executor.
+	 * This is called when a Flow is the top-level object being run.
 	 * @param ctx The shared workflow context.
-	 * @param options Runtime options like a logger or abort controller.
+	 * @param options Runtime options like a logger, abort controller, or a custom executor.
 	 * @returns The action returned by the last node in the flow.
 	 */
 	async run(ctx: Context, options?: RunOptions): Promise<any> {
-		const logger = options?.logger ?? new NullLogger()
-		return this._run(ctx, this.params, options?.controller?.signal, logger)
+		const executor = options?.executor ?? new InMemoryExecutor()
+		return executor.run(this, ctx, options)
 	}
 }
