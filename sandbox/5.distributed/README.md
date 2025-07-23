@@ -77,9 +77,9 @@ It showcases a client-worker architecture where a client can initiate a workflow
 2. **Worker (`worker.ts`)**:
     - Connects to the same BullMQ queue.
     - The worker's processor function receives a job containing `{ runId, workflowId, nodeId, context }`.
-    - **Cancellation Check**: Before doing any work, it checks if a cancellation key (e.g., `workflow:cancel:<runId>`) exists in Redis. If so, it aborts the job.
+    - **Mid-flight Cancellation**: For each job, the worker starts polling a cancellation key in Redis (e.g., `workflow:cancel:<runId>`). If this key appears, it triggers a standard `AbortController`, which immediately interrupts any cancellable logic within the currently running node (e.g., a long `sleep` or API call).
     - It uses the `WorkflowRegistry` to find the executable `Node` instance corresponding to the `nodeId`.
-    - It deserializes the `context` and executes the node's logic (`node._run()`).
+    - It deserializes the `context` and executes the node's logic (`node._run()`), passing the `AbortSignal` to it.
     - After execution, it determines the successor node(s) based on the action returned by the node.
     - For each successor, it enqueues a **new job**, passing along the now-updated `context` and the original `runId`.
     - This process repeats until a branch of the workflow completes or is cancelled.
