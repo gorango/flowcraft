@@ -95,7 +95,13 @@ export class ParallelBatchFlow extends Flow {
 			}),
 		)
 
-		await Promise.all(promises)
+		const results = await Promise.allSettled(promises)
+
+		for (const result of results) {
+			if (result.status === 'rejected') {
+				args.logger.error('A parallel batch item failed.', { error: result.reason })
+			}
+		}
 		return null
 	}
 }
