@@ -92,7 +92,13 @@ export class InMemoryExecutor implements IExecutor {
 	public applyMiddleware(middleware: Middleware[], nodeToRun: AbstractNode): MiddlewareNext {
 		// The final function in the chain is the actual execution of the node.
 		const runNode: MiddlewareNext = (args: NodeArgs) => {
-			return nodeToRun._run(args.ctx, { ...args.params, ...nodeToRun.params }, args.signal, args.logger, args.executor)
+			return nodeToRun._run({
+				ctx: args.ctx,
+				params: { ...args.params, ...nodeToRun.params },
+				signal: args.signal,
+				logger: args.logger,
+				executor: args.executor,
+			})
 		}
 
 		if (!middleware || middleware.length === 0)

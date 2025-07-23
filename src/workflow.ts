@@ -1,7 +1,5 @@
 import type { Context, ContextKey, ContextLens } from './context'
-import type { IExecutor } from './executor'
-import type { Logger } from './logger'
-import type { Middleware, NodeArgs, NodeOptions, Params, RunOptions } from './types'
+import type { Middleware, NodeArgs, NodeOptions, NodeRunContext, Params, RunOptions } from './types'
 import { AbortError, WorkflowError } from './errors'
 import { InMemoryExecutor } from './executors/in-memory'
 import { NullLogger } from './logger'
@@ -51,7 +49,7 @@ export abstract class AbstractNode {
 		return node
 	}
 
-	abstract _run(ctx: Context, params: Params, signal: AbortSignal | undefined, logger: Logger, executor?: IExecutor): Promise<any>
+	abstract _run(ctx: NodeRunContext): Promise<any>
 }
 
 /**
@@ -121,7 +119,7 @@ export class Node<PrepRes = any, ExecRes = any, PostRes = any> extends AbstractN
 		return await this.execFallback({ ...args, error: lastError })
 	}
 
-	async _run(ctx: Context, params: Params, signal: AbortSignal | undefined, logger: Logger, executor?: IExecutor): Promise<PostRes> {
+	async _run({ ctx, params, signal, logger, executor }: NodeRunContext): Promise<PostRes> {
 		if (this instanceof Flow) {
 			logger.info(`Running flow: ${this.constructor.name}`, { params })
 		}

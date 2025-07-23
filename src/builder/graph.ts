@@ -112,7 +112,12 @@ class ParallelNode extends Flow {
 	async exec({ ctx, params, signal, logger }: any) {
 		logger.info(`[ParallelNode] Executing ${this.nodesToRun.length} branches in parallel...`)
 		const promises = this.nodesToRun.map(node =>
-			node._run(ctx, { ...params, ...node.params }, signal, logger),
+			node._run({
+				ctx,
+				params: { ...params, ...node.params },
+				signal,
+				logger,
+			}),
 		)
 		await Promise.allSettled(promises)
 		logger.info(`[ParallelNode] ✓ All parallel branches finished.`)

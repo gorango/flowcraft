@@ -18,6 +18,14 @@ export interface NodeArgs<PrepRes = any, ExecRes = any> {
 	executor?: IExecutor
 }
 
+export interface NodeRunContext {
+	ctx: Context
+	params: Params
+	signal?: AbortSignal
+	logger: Logger
+	executor?: IExecutor
+}
+
 export interface NodeOptions {
 	maxRetries?: number
 	wait?: number

@@ -120,7 +120,12 @@ async function main() {
 			context.set(RUN_ID, runId)
 
 			// 3. Execute the node, PASSING THE SIGNAL.
-			const action = await node._run(context, params, controller.signal, logger)
+			const action = await node._run({
+				ctx: context,
+				params,
+				signal: controller.signal,
+				logger,
+			})
 
 			// 4. If we successfully completed, check for cancellation one last time before enqueuing the next job.
 			if (controller.signal.aborted) {
