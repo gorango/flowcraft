@@ -1,0 +1,137 @@
+{
+	"nodes": [
+		{
+			"id": "summarize",
+			"type": "llm-process",
+			"data": {
+				"promptTemplate": "Summarize this review in one sentence: {{review}}",
+				"inputs": {
+					"review": "initial_review"
+				}
+			}
+		},
+		{
+			"id": "categorize",
+			"type": "llm-process",
+			"data": {
+				"promptTemplate": "Categorize this review into ONLY ONE of: 'Bug Report', 'Feature Request', 'General Feedback'. Review: {{review}}",
+				"inputs": {
+					"review": "initial_review"
+				}
+			}
+		},
+		{
+			"id": "check_sentiment",
+			"type": "llm-condition",
+			"data": {
+				"promptTemplate": "Is the sentiment of this summary positive? '{{summary}}'. Respond only 'true' or 'false'.",
+				"inputs": {
+					"summary": "summarize"
+				}
+			}
+		},
+		{
+			"id": "positive_branch",
+			"type": "sub-workflow",
+			"data": {
+				"workflowId": 301,
+				"inputs": {
+					"summary": "summarize"
+				}
+			}
+		},
+		{
+			"id": "negative_branch",
+			"type": "sub-workflow",
+			"data": {
+				"workflowId": 302,
+				"inputs": {
+					"summary": "summarize",
+					"category": "categorize"
+				},
+				"outputs": {
+					"generated_ticket": "ticket_payload",
+					"generated_reply": "customer_message"
+				}
+			}
+		},
+		{
+			"id": "send_to_ticketing_system",
+			"type": "llm-process",
+			"data": {
+				"promptTemplate": "--- SIMULATING API CALL ---\nPOST /api/tickets\nPayload: {{ticket_data}}",
+				"inputs": {
+					"ticket_data": "generated_ticket"
+				}
+			}
+		},
+		{
+			"id": "send_email_to_customer",
+			"type": "llm-process",
+			"data": {
+				"promptTemplate": "--- SIMULATING EMAIL SENT ---\nTo: customer@example.com\nBody: {{email_body}}",
+				"inputs": {
+					"email_body": "generated_reply"
+				}
+			}
+		},
+		{
+			"id": "final_step",
+			"type": "output",
+			"data": {
+				"promptTemplate": "--- Final Actions Taken ---\nTicket System: {{ticket_action}}\n\nCustomer Email: {{email_action}}\n\nPositive Flow: {{positive_result}}",
+				"inputs": {
+					"ticket_action": [
+						"send_to_ticketing_system"
+					],
+					"email_action": [
+						"send_email_to_customer"
+					],
+					"positive_result": [
+						"positive_branch"
+					]
+				}
+			}
+		}
+	],
+	"edges": [
+		{
+			"source": "summarize",
+			"target": "check_sentiment"
+		},
+		{
+			"source": "categorize",
+			"target": "check_sentiment"
+		},
+		{
+			"source": "check_sentiment",
+			"target": "positive_branch",
+			"action": "true"
+		},
+		{
+			"source": "check_sentiment",
+			"target": "negative_branch",
+			"action": "false"
+		},
+		{
+			"source": "negative_branch",
+			"target": "send_to_ticketing_system"
+		},
+		{
+			"source": "negative_branch",
+			"target": "send_email_to_customer"
+		},
+		{
+			"source": "positive_branch",
+			"target": "final_step"
+		},
+		{
+			"source": "send_to_ticketing_system",
+			"target": "final_step"
+		},
+		{
+			"source": "send_email_to_customer",
+			"target": "final_step"
+		}
+	]
+}

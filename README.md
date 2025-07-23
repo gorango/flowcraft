@@ -134,6 +134,17 @@ graph TD
   - Complex sub-workflow composition.
 - **[Explore the Dynamic AI Agent example &raquo;](./sandbox/4.dag/)**
 
+### 5. Distributed Execution: AI Agent with BullMQ
+
+This example takes the same type-safe graph definition from the previous example and runs it in a distributed environment using a custom `BullMQExecutor`. It demonstrates a client-worker architecture for building scalable and resilient background job processors.
+
+- **Demonstrates**:
+  - A pluggable `IExecutor` for distributed workflows.
+  - Client-worker architecture with state serialization.
+  - Mid-flight, distributed cancellation of long-running jobs.
+  - How business logic (the graph) remains unchanged when the execution environment changes.
+- **[Explore the Distributed AI Agent example &raquo;](./sandbox/5.distributed/)**
+
 ## Core Concepts
 
 ### Node
