@@ -1,15 +1,9 @@
 import type { Context, IExecutor, RunOptions } from 'cascade'
 import type IORedis from 'ioredis'
 import type { WorkflowRegistry } from './registry'
+import type { NodeJobPayload } from './types'
 import { Queue } from 'bullmq'
 import { Flow } from 'cascade'
-
-export interface NodeJobPayload {
-	workflowId: number
-	nodeId: string
-	context: Record<string, any>
-	params: Record<string, any>
-}
 
 export class BullMQExecutor implements IExecutor {
 	public readonly queue: Queue<NodeJobPayload>
@@ -24,17 +18,14 @@ export class BullMQExecutor implements IExecutor {
 		this.queue = new Queue(queueName, { connection })
 	}
 
-	/**
-	 * Starts a workflow by enqueuing its first node(s).
-	 * This is a "fire-and-forget" operation from the client's perspective.
-	 */
 	async run(flow: Flow, context: Context, options?: RunOptions): Promise<any> {
 		const logger = options?.logger
+		const runId = options?.params?.runId as string
 		const workflowId = options?.params?.workflowId as number
-		if (!workflowId) {
-			throw new Error('BullMQExecutor requires a workflowId to be passed in `options.params`.')
-		}
 
+		if (!runId || !workflowId) {
+			throw new Error('BullMQExecutor requires a `runId` and `workflowId` to be passed in `options.params`.')
+		}
 		if (!flow.startNode) {
 			logger?.warn(`Executing a flow with no startNode: ${flow.constructor.name}. Nothing to do.`)
 			return
@@ -55,21 +46,17 @@ export class BullMQExecutor implements IExecutor {
 			return
 		}
 
-		logger?.info(`[Executor] Enqueuing ${nodesToEnqueue.length} start node(s) for workflow ${workflowId}.`)
+		logger?.info(`[Executor] Enqueuing ${nodesToEnqueue.length} start node(s) for workflow ${workflowId} (Run ID: ${runId}).`)
 
 		for (const node of nodesToEnqueue) {
 			const nodeId = node.id!
-			if (!nodeId) {
-				logger?.error('Start node is missing an ID. Cannot enqueue.', { node })
-				continue
-			}
 			const jobPayload: NodeJobPayload = {
+				runId,
 				workflowId,
 				nodeId,
 				context: serializedContext,
 				params: combinedParams,
 			}
-			// Use the node's ID as the job name for better monitoring.
 			await this.queue.add(nodeId, jobPayload)
 		}
 	}

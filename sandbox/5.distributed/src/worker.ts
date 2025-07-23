@@ -1,14 +1,61 @@
 import type { AbstractNode, NodeArgs } from 'cascade'
-import type { NodeJobPayload } from './executor'
+import type { NodeJobPayload } from './types'
 import path from 'node:path'
 import process from 'node:process'
+import readline from 'node:readline'
 import { Queue, Worker } from 'bullmq'
 import { ConsoleLogger, Flow, TypedContext } from 'cascade'
 import IORedis from 'ioredis'
 import { WorkflowRegistry } from './registry'
+import { RUN_ID } from './types'
 import 'dotenv/config'
 
 const QUEUE_NAME = 'distributed-cascade-queue'
+const CANCELLATION_KEY_PREFIX = 'workflow:cancel:'
+
+function getCancellationKey(runId: string) {
+	return `${CANCELLATION_KEY_PREFIX}${runId}`
+}
+
+async function setupCancellationListener(redis: IORedis, logger: ConsoleLogger) {
+	readline.emitKeypressEvents(process.stdin)
+	if (process.stdin.isTTY)
+		process.stdin.setRawMode(true)
+
+	const rl = readline.createInterface({
+		input: process.stdin,
+		output: process.stdout,
+	})
+
+	logger.info('... Press \'c\' to cancel a running workflow ...')
+
+	process.stdin.on('keypress', (str, key) => {
+		if (key.ctrl && key.name === 'c') {
+			process.exit()
+		}
+
+		// Handle the cancellation prompt.
+		if (key.name === 'c') {
+			// Create a new readline interface *only when needed*.
+			const rl = readline.createInterface({
+				input: process.stdin,
+				output: process.stdout,
+			})
+
+			// Clear the "c" that was just typed.
+			readline.clearLine(process.stdout, 0)
+			readline.cursorTo(process.stdout, 0)
+
+			rl.question('Enter Run ID to cancel: ', async (runId) => {
+				if (runId) {
+					logger.warn(`Signaling cancellation for Run ID: ${runId}`)
+					await redis.set(getCancellationKey(runId), 'true', 'EX', 3600)
+				}
+				rl.close()
+			})
+		}
+	})
+}
 
 async function main() {
 	const logger = new ConsoleLogger()
@@ -29,8 +76,6 @@ async function main() {
 	const registries = await Promise.all(
 		useCaseDirectories.map(dir => WorkflowRegistry.create(path.join(process.cwd(), 'data', dir))),
 	)
-	// A real app would have a more sophisticated way to route to the correct registry.
-	// For this example, we'll just search all of them.
 	async function getNodeFromRegistries(workflowId: number, nodeId: string): Promise<AbstractNode | undefined> {
 		for (const registry of registries) {
 			try {
@@ -38,59 +83,57 @@ async function main() {
 				if (node)
 					return node
 			}
-			catch (e) { /* Node not in this registry, ignore */ }
+			catch (e) { /* Node not in this registry */ }
 		}
 		return undefined
 	}
 
+	// Setup the keyboard listener
+	setupCancellationListener(redisConnection, logger)
+
 	logger.info(`Worker listening on queue: "${QUEUE_NAME}"`)
 
 	const worker = new Worker<NodeJobPayload>(QUEUE_NAME, async (job) => {
-		const { workflowId, nodeId, context: serializedContext, params } = job.data
-		logger.info(`[Worker] Processing job: ${job.name} (Workflow: ${workflowId}, Node: ${nodeId})`)
+		const { runId, workflowId, nodeId, context: serializedContext, params } = job.data
+		logger.info(`[Worker] Processing job: ${job.name} (Workflow: ${workflowId}, Run: ${runId})`)
 
-		// 1. Find the executable node instance from the registry.
-		const node = await getNodeFromRegistries(workflowId, nodeId)
-		if (!node) {
-			logger.error(`Node not found: Could not find node '${nodeId}' in workflow '${workflowId}'. Terminating job.`)
-			throw new Error('Node not found')
-		}
-
-		// 2. Rehydrate the context.
-		const context = new TypedContext(Object.entries(serializedContext))
-
-		// 3. Execute the node's logic.
-		const nodeArgs: NodeArgs = {
-			ctx: context,
-			params,
-			signal: undefined, // Cancellation is not supported in this simple worker.
-			logger,
-			prepRes: undefined,
-			execRes: undefined,
-			name: node.constructor.name,
-		}
-		const action = await node._run(context, params, undefined, logger)
-
-		// 4. Determine the next node(s) to enqueue.
-		const successor = node.successors.get(action)
-		if (!successor) {
-			logger.info(`[Worker] Branch complete for workflow ${workflowId}. Node '${nodeId}' returned action '${String(action)}' with no successor.`)
+		// 1. Check for cancellation signal BEFORE doing any work.
+		const isCancelled = await redisConnection.get(getCancellationKey(runId))
+		if (isCancelled === 'true') {
+			logger.warn(`[Worker] Job for Run ID ${runId} was cancelled. Aborting execution.`)
 			return
 		}
 
-		// 5. Enqueue the successor(s).
+		// 2. Find the executable node instance.
+		const node = await getNodeFromRegistries(workflowId, nodeId)
+		if (!node) {
+			throw new Error(`Node '${nodeId}' in workflow '${workflowId}' not found.`)
+		}
+
+		// 3. Rehydrate context.
+		const context = new TypedContext(Object.entries(serializedContext))
+		context.set(RUN_ID, runId)
+
+		// 4. Execute the node.
+		const action = await node._run(context, params, undefined, logger)
+
+		// 5. Determine and enqueue the next node(s).
+		const successor = node.successors.get(action)
+		if (!successor) {
+			logger.info(`[Worker] Branch complete for run ${runId}. Node '${nodeId}' returned action '${String(action)}' with no successor.`)
+			return
+		}
+
 		const updatedContext = Object.fromEntries(context.entries())
-
 		const isParallel = successor instanceof Flow
-		const nodesToEnqueue = isParallel
-			? (successor as any).nodesToRun
-			: [successor]
+		const nodesToEnqueue = isParallel ? (successor as any).nodesToRun : [successor]
 
-		logger.info(`[Worker] Enqueuing ${nodesToEnqueue.length} successor(s) for action '${String(action)}'.`)
+		logger.info(`[Worker] Enqueuing ${nodesToEnqueue.length} successor(s) for run ${runId} after action '${String(action)}'.`)
 
 		for (const nextNode of nodesToEnqueue) {
 			const nextNodeId = nextNode.id!
 			await queue.add(nextNodeId, {
+				runId,
 				workflowId,
 				nodeId: nextNodeId,
 				context: updatedContext,

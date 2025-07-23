@@ -4,18 +4,17 @@ import { ConsoleLogger, TypedContext } from 'cascade'
 import IORedis from 'ioredis'
 import { BullMQExecutor } from './executor'
 import { WorkflowRegistry } from './registry'
+import { RUN_ID } from './types'
 
 const config = {
 	'1.blog-post': {
 		mainWorkflowId: 100,
-		allWorkflowIds: [100],
 		getInitialContext: () => new TypedContext([
 			['topic', 'The rise of AI-powered workflow automation in modern software development.'],
 		]),
 	},
 	'2.job-application': {
 		mainWorkflowId: 200,
-		allWorkflowIds: [200, 201, 202],
 		getInitialContext: () => new TypedContext([
 			['applicantName', 'Jane Doe'],
 			['resume', 'Experienced developer with a background in TypeScript, Node.js, and building complex DAG workflow systems. Also proficient in React and SQL.'],
@@ -24,14 +23,12 @@ const config = {
 	},
 	'3.customer-review': {
 		mainWorkflowId: 300,
-		allWorkflowIds: [300, 301, 302],
 		getInitialContext: () => new TypedContext([
 			['initial_review', 'The new dashboard is a huge improvement, but I noticed that the export-to-PDF feature is really slow and sometimes crashes the app on large datasets. It would be great if you could look into this.'],
 		]),
 	},
 	'4.content-moderation': {
 		mainWorkflowId: 400,
-		allWorkflowIds: [400, 401, 402, 403],
 		getInitialContext: () => new TypedContext([
 			['userId', 'user-456'],
 			// Try different posts to test different paths
@@ -50,37 +47,41 @@ const config = {
 } as const
 
 type UseCase = keyof typeof config
-type WorkflowId<U extends UseCase> = (typeof config)[U]['allWorkflowIds'][number]
 
 // --- CONFIGURATION ---
 const QUEUE_NAME = 'distributed-cascade-queue'
 const ACTIVE_USE_CASE: UseCase = '2.job-application'
-const WORKFLOW_ID: WorkflowId<typeof ACTIVE_USE_CASE> = config[ACTIVE_USE_CASE].mainWorkflowId
+const WORKFLOW_ID = config[ACTIVE_USE_CASE].mainWorkflowId
 
 async function main() {
 	const logger = new ConsoleLogger()
 	logger.info('--- Distributed Workflow Client ---')
 
-	// Set up connection and registry
+	const runId = Math.random().toString(36).substring(2, 4)
 	const redisConnection = new IORedis({ maxRetriesPerRequest: null })
 	const useCaseDirectory = path.join(process.cwd(), 'data', ACTIVE_USE_CASE)
 	const registry = await WorkflowRegistry.create(useCaseDirectory)
 
 	const flow = await registry.getFlow(WORKFLOW_ID)
 	const context = config[ACTIVE_USE_CASE].getInitialContext()
+	context.set(RUN_ID, runId) // Add runId to the context
 
 	const executor = new BullMQExecutor(QUEUE_NAME, redisConnection, registry)
 
-	logger.info(`Client initiating workflow ${WORKFLOW_ID} for use-case: "${ACTIVE_USE_CASE}"`)
+	console.log()
+	logger.info(`Use-case: "${ACTIVE_USE_CASE}"`)
+	console.log('\n=============================================================')
+	logger.info(`🚀 Starting Workflow Run ID: ${runId}`)
+	console.log('=============================================================\n')
 
-	// The `workflowId` is passed via params so the executor knows which workflow to start.
 	await flow.run(context, {
 		logger,
 		executor,
-		params: { workflowId: WORKFLOW_ID },
+		params: { runId, workflowId: WORKFLOW_ID },
 	})
 
 	logger.info('Client finished. The workflow is now running on the worker(s).')
+	logger.info('Switch to the worker terminal to see progress or cancel.')
 	await redisConnection.quit()
 }
 
