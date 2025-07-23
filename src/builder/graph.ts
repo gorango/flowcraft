@@ -11,14 +11,6 @@ export interface NodeConstructorOptions<T> {
 }
 
 /**
- * A type-safe registry that maps a node type string to a constructor.
- * TypeScript ensures that the constructor's options match the definition in the NodeTypeMap.
- */
-export type TypedNodeRegistry<T extends { [K in keyof T]: Record<string, any> }> = {
-	[K in keyof T]: new (options: NodeConstructorOptions<T[K]>) => AbstractNode
-}
-
-/**
  * Represents a single, type-safe node within a declarative workflow graph.
  * This is a discriminated union based on the `type` property, ensuring that
  * the `data` payload matches the node's type.
@@ -55,6 +47,14 @@ export interface TypedWorkflowGraph<T extends { [K in keyof T]: Record<string, a
 }
 
 /**
+ * A type-safe registry that maps a node type string to a constructor.
+ * TypeScript ensures that the constructor's options match the definition in the NodeTypeMap.
+ */
+export type TypedNodeRegistry<T extends { [K in keyof T]: Record<string, any> }> = {
+	[K in keyof T]: new (options: NodeConstructorOptions<T[K]>) => AbstractNode
+}
+
+/**
  * A type-safe helper function for creating a node registry.
  * This function works around a TypeScript limitation with assigning heterogeneous
  * constructor maps directly, while preserving full type safety for the caller.
@@ -65,6 +65,31 @@ export interface TypedWorkflowGraph<T extends { [K in keyof T]: Record<string, a
 export function createNodeRegistry<T extends { [K in keyof T]: Record<string, any> }>(registry: TypedNodeRegistry<T>): TypedNodeRegistry<T> {
 	return registry
 }
+
+/**
+ * Represents a node within the workflow graph.
+ * This is a simpler (UNTYPED) version of the `TypedGraphNode` type
+ */
+export interface GraphNode {
+	id: string
+	type: string
+	data?: Record<string, any>
+}
+
+/**
+ * Defines the structure of a workflow graph.
+ * This is a simpler (UNTYPED) version of the `TypedWorkflowGraph` type
+ */
+export interface WorkflowGraph {
+	nodes: GraphNode[]
+	edges: GraphEdge[]
+}
+
+/**
+ * A permissive (UNTYPED) registry that maps a node type string to a constructor.
+ * This is a simpler (UNTYPED) version of the `TypedNodeRegistry` type
+ */
+export type NodeRegistry = Map<string, new (...args: any[]) => AbstractNode>
 
 /**
  * A special node created by the GraphBuilder to execute multiple nodes in parallel.
@@ -94,17 +119,30 @@ class ParallelNode extends Flow {
  * This allows you to define complex, type-safe workflows in code and then
  * build them into runnable objects.
  */
-export class GraphBuilder<T extends Record<string, Record<string, any>>> {
+export class GraphBuilder<T extends { [K in keyof T]: Record<string, any> }> {
 	/**
 	 * @param nodeRegistry A type-safe object where keys are node `type` strings and
 	 * values are the corresponding `Node` class constructors.
 	 * @param nodeOptionsContext An optional object that is passed to every node's
 	 * constructor, useful for dependency injection.
 	 */
+	private registry: Map<string, new (...args: any[]) => AbstractNode>
+	// type-safe overload
+	constructor(registry: TypedNodeRegistry<T>, nodeOptionsContext?: Record<string, any>)
+	// untyped overload
+	constructor(registry: NodeRegistry, nodeOptionsContext?: Record<string, any>)
+	// handle both cases
 	constructor(
-		private nodeRegistry: TypedNodeRegistry<T>,
+		registry: TypedNodeRegistry<T> | NodeRegistry,
 		private nodeOptionsContext: Record<string, any> = {},
-	) { }
+	) {
+		if (registry instanceof Map) {
+			this.registry = registry
+		}
+		else {
+			this.registry = new Map(Object.entries(registry))
+		}
+	}
 
 	private wireSuccessors(
 		sourceNode: AbstractNode,
@@ -151,15 +189,20 @@ export class GraphBuilder<T extends Record<string, Record<string, any>>> {
 	 * @param graph The `TypedWorkflowGraph` object describing the flow.
 	 * @returns An executable `Flow` instance.
 	 */
-	build(graph: TypedWorkflowGraph<T>): Flow {
+	// type-safe overload
+	build(graph: TypedWorkflowGraph<T>): Flow
+	// untyped overload
+	build(graph: WorkflowGraph): Flow
+	// single implementation that handles both cases
+	build(graph: TypedWorkflowGraph<T> | WorkflowGraph): Flow {
 		const nodeMap = new Map<string, AbstractNode>()
 
 		for (const graphNode of graph.nodes) {
-			const NodeClass = this.nodeRegistry[graphNode.type]
+			const NodeClass = this.registry.get(graphNode.type.toString())
 			if (!NodeClass)
-				throw new Error(`GraphBuilder: Node type '${graphNode.type as string}' not found in the registry.`)
+				throw new Error(`GraphBuilder: Node type '${graphNode.type.toString()}' not found in the registry.`)
 
-			const nodeOptions: NodeConstructorOptions<any> = {
+			const nodeOptions = {
 				...this.nodeOptionsContext,
 				data: { ...graphNode.data, nodeId: graphNode.id },
 			}
@@ -167,6 +210,7 @@ export class GraphBuilder<T extends Record<string, Record<string, any>>> {
 			nodeMap.set(graphNode.id, executableNode)
 		}
 
+		const allNodeIds = Array.from(nodeMap.keys())
 		const edgeGroups = new Map<string, Map<string | typeof DEFAULT_ACTION, string[]>>()
 		for (const edge of graph.edges) {
 			if (!edgeGroups.has(edge.source))
@@ -174,7 +218,6 @@ export class GraphBuilder<T extends Record<string, Record<string, any>>> {
 
 			const sourceActions = edgeGroups.get(edge.source)!
 			const action = edge.action || DEFAULT_ACTION
-
 			if (!sourceActions.has(action))
 				sourceActions.set(action, [])
 
@@ -198,11 +241,9 @@ export class GraphBuilder<T extends Record<string, Record<string, any>>> {
 		}
 
 		const allTargetIds = new Set(graph.edges.map(e => e.target))
-		const startNodeIds = graph.nodes
-			.map(n => n.id)
-			.filter(id => !allTargetIds.has(id))
+		const startNodeIds = allNodeIds.filter(id => !allTargetIds.has(id))
 
-		if (startNodeIds.length === 0 && graph.nodes.length > 0)
+		if (startNodeIds.length === 0 && allNodeIds.length > 0)
 			throw new Error('GraphBuilder: This graph has a cycle and no clear start node.')
 
 		if (startNodeIds.length === 1) {
