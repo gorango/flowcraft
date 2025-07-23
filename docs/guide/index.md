@@ -34,6 +34,7 @@ High-level guides to help you understand Cascade's architecture and features.
 Practical advice for building robust, maintainable, and testable workflows.
 
 - **[State Management](./best-practices/state-management.md)**: Learn the best ways to use the `Context`.
+- **[Data Flow in Sub-Workflows](./best-practices/sub-workflow-data.md)**: Manage context boundaries when composing flows.
 - **[Testing Workflows](./best-practices/testing.md)**: Strategies for unit and integration testing.
 - **[Debugging Workflows](./best-practices/debugging.md)**: Techniques for finding and fixing issues in your flows.
 

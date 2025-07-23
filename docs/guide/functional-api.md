@@ -5,7 +5,14 @@ While Cascade's core is built on composable classes like `Node` and `Flow`, it a
 All helpers are imported from the main `cascade` package.
 
 ```typescript
-import { mapNode, contextNode, pipeline, transformNode } from 'cascade'
+import {
+  mapNode,
+  contextNode,
+  transformNode,
+  pipeline,
+  lens,
+  composeContext
+} from 'cascade'
 ```
 
 ## Creating Nodes from Functions
@@ -63,32 +70,6 @@ const context = new TypedContext([[LANGUAGE, 'es']])
 const flow = new Flow(greetingNode.withParams({ name: 'Mundo' }))
 ```
 
-### `transformNode`
-
-`transformNode` creates a `Node` that is used purely for its side effect of modifying the `Context`. It takes one or more `ContextTransform` functions (often created with a `lens`) and applies them. This node has no `exec` output.
-
-#### When to Use
-
-Use `transformNode` for declaratively setting up or updating state in the `Context` as a distinct step in your workflow.
-
-#### Example
-
-```typescript
-import { transformNode, lens, contextKey } from 'cascade'
-
-const USER_ID = contextKey<string>('user_id')
-const STATUS = contextKey<'active' | 'inactive'>('status')
-
-const userIdLens = lens(USER_ID)
-const statusLens = lens(STATUS)
-
-// A node that sets multiple context values at once
-const setupUserContextNode = transformNode(
-  userIdLens.set('user-123'),
-  statusLens.set('active')
-)
-```
-
 ## Creating Flows
 
 ### `pipeline`
@@ -115,4 +96,38 @@ const dataPipeline = pipeline(
 )
 
 await dataPipeline.run(context)
+```
+
+## Declarative Context Management
+
+These helpers provide a functional way to manage state in the `Context`.
+
+### `lens` and `transformNode`
+
+A `lens` provides a way to "focus" on a single key in the `Context`, allowing you to create reusable functions that `get`, `set`, or `update` its value.
+
+`transformNode` is a special `Node` that takes these functions and applies them to the context. It's the ideal way to set up initial state for a workflow.
+
+#### When to Use
+
+Use this combination for declaratively setting up or mutating state in the `Context` as a distinct step in your workflow.
+
+#### Example
+
+```typescript
+import { transformNode, lens, contextKey } from 'cascade'
+
+const USER_ID = contextKey<string>('user_id')
+const ATTEMPTS = contextKey<number>('attempts')
+
+// Create lenses to focus on our specific context keys
+const userIdLens = lens(USER_ID)
+const attemptsLens = lens(ATTEMPTS)
+
+// A node that sets an initial user and resets the attempt counter.
+// The `set` and `update` methods from the lens return `ContextTransform` functions.
+const setupContextNode = transformNode(
+  userIdLens.set('user-123'),
+  attemptsLens.update(current => (current || 0) + 1) // Safely increments
+)
 ```

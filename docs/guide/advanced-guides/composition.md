@@ -110,3 +110,5 @@ The `Context` is shared between the parent and the sub-flow.
 - The sub-flow can write data to the `Context`, and that data will be available to subsequent nodes in the parent flow.
 
 This shared-memory model makes passing data between composed flows trivial. However, be mindful of potential key collisions if sub-flows are developed independently. Using descriptive and unique `ContextKey`s is a good practice to avoid conflicts.
+
+For a more advanced and robust pattern for managing data flow, especially when using the declarative `GraphBuilder`, see the guide on **[Best Practices: Data Flow in Sub-Workflows](../best-practices/sub-workflow-data.md)**.

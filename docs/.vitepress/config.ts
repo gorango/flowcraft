@@ -43,6 +43,7 @@ export default defineConfig({
 					text: 'Best Practices',
 					items: [
 						{ text: 'State Management', link: '/guide/best-practices/state-management' },
+						{ text: 'Sub-Workflow Data', link: '/guide/best-practices/sub-workflow-data' },
 						{ text: 'Testing Workflows', link: '/guide/best-practices/testing' },
 						{ text: 'Debugging Workflows', link: '/guide/best-practices/debugging' },
 					],

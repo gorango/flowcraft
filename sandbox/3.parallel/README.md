@@ -1,6 +1,6 @@
 # Parallel Batch Translation
 
-This project demonstrates using `workflow`'s `AsyncParallelBatchFlow` to translate a document into multiple languages concurrently, showcasing significant performance improvements for I/O-bound tasks.
+This project demonstrates using `cascade`'s `ParallelBatchFlow` to translate a document into multiple languages concurrently, showcasing significant performance improvements for I/O-bound tasks.
 
 ## Goal
 
@@ -29,7 +29,7 @@ Translate a source `README.md` file into multiple languages (Chinese, Spanish, e
 
 ## How It Works
 
-The implementation uses an `AsyncParallelBatchFlow` to process translation requests for all languages at the same time.
+The implementation uses an `ParallelBatchFlow` to process translation requests for all languages at the same time.
 
 ```mermaid
 graph TD
@@ -46,13 +46,13 @@ graph TD
     T4 --> S4[Save German.md];
 ```
 
-1. **`TranslateFlow` (extends `AsyncParallelBatchFlow`)**: The `prepAsync` method prepares a list of parameters, one for each language.
+1. **`TranslateFlow` (extends `ParallelBatchFlow`)**: The `prep` method prepares a list of parameters, one for each language.
 
     ```typescript
-    // prepAsync returns: [{ language: 'Chinese' }, { language: 'Spanish' }, ...]
+    // prep returns: [{ language: 'Chinese' }, { language: 'Spanish' }, ...]
     ```
 
-2. **`TranslateNode` (extends `AsyncNode`)**: This node is executed in parallel for each set of parameters. Its `execAsync` method calls the LLM for a single translation.
+2. **`TranslateNode` (extends `Node`)**: This node is executed in parallel for each set of parameters. Its `exec` method calls the LLM for a single translation.
 3. **File I/O**: The results are written to disk asynchronously.
 
 ## Performance Comparison

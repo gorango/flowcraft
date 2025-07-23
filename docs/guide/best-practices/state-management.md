@@ -96,30 +96,4 @@ When you use composition (a `Flow` within a `Flow`), the sub-flow shares the sam
 
 **Best Practice**: A sub-flow should only write its final, essential outputs to the `Context`. If possible, use a dedicated output node within the sub-flow to aggregate results and clean up any temporary keys.
 
-The `SubWorkflowNode` in the `sandbox/4.dag` example demonstrates an advanced pattern for this, where it explicitly maps named outputs from the sub-flow's context to the parent context, preventing any leakage of temporary state.
-
-```typescript
-import { Node, contextKey } from 'cascade'
-
-const FINAL_ANALYSIS = contextKey<any>('final_analysis')
-const RESIZED_IMAGE_URL = contextKey<string>('resized_image_url')
-const IMAGE_PROCESSING_RESULT = contextKey<any>('image_processing_result')
-
-// In a sub-flow for image processing...
-class FinalizeImageNode extends Node {
-  async post({ ctx }) {
-    // BAD: Leaves temporary data in the shared context
-    // ctx.set(RESIZED_IMAGE, ...)
-    // ctx.set(DOMINANT_COLORS, ...)
-    // ctx.set(FINAL_ANALYSIS, ...)
-
-    // GOOD: Aggregate and clean up
-    const finalResult = {
-      analysis: ctx.get(FINAL_ANALYSIS),
-      thumbnail: ctx.get(RESIZED_IMAGE_URL),
-    }
-    ctx.set(IMAGE_PROCESSING_RESULT, finalResult)
-    // Optional: ctx.delete(RESIZED_IMAGE), ctx.delete(DOMINANT_COLORS)...
-  }
-}
-```
+The `SubWorkflowNode` in the `sandbox/4.dag` example demonstrates an advanced pattern for this. By defining explicit `input` and `output` maps, it creates a clean data boundary, preventing any leakage of temporary state. For a detailed explanation of this powerful pattern, see the guide on **[Data Flow in Sub-Workflows](./sub-workflow-data.md)**.

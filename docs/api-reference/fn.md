@@ -8,6 +8,8 @@ import {
   contextNode,
   transformNode,
   pipeline,
+  lens,
+  composeContext,
 } from 'cascade'
 ```
 
@@ -60,11 +62,11 @@ const greetingNode = contextNode((ctx) => `Hello, ${ctx.get(USER_NAME)}!`)
 
 ## `transformNode(...transforms)`
 
-Creates a `Node` that is used purely for its side effect of modifying the `Context`. It does not produce an `exec` result. Its logic runs in the `prep` phase.
+Creates a `Node` that is used purely for its side effect of modifying the `Context`. It does not produce an `exec` result. Its logic runs in the `prep` phase. It is often used with `ContextTransform` functions created by a `lens`.
 
 ### Parameters
 
-- `...transforms: ContextTransform[]`: A sequence of `ContextTransform` functions. A `ContextTransform` is a function of the shape `(ctx: Context) => Context`. These are often created using a `ContextLens`.
+- `...transforms: ContextTransform[]`: A sequence of `ContextTransform` functions. A `ContextTransform` is a function of the shape `(ctx: Context) => Context`.
 
 ### Returns
 
@@ -99,15 +101,42 @@ A functional-style alias for the `SequenceFlow` builder. It constructs a linear 
 
 - `Flow`: A `Flow` instance representing the linear sequence.
 
+## `lens<T>(key)`
+
+Creates a `ContextLens` object, which provides a type-safe way to generate functions that interact with a specific key in the `Context`.
+
+### Parameters
+
+- `key: ContextKey<T>`: The `ContextKey` to focus on.
+
+### Returns
+
+- `ContextLens<T>`: An object with the following methods:
+  - `.get(ctx: Context): T | undefined`: Retrieves the value for the key from the context.
+  - `.set(value: T): ContextTransform`: Returns a function that, when called with a `Context`, will set the key to the provided `value`.
+  - `.update(fn: (current: T | undefined) => T): ContextTransform`: Returns a function that updates the key's value based on its current value.
+
 ### Example
 
 ```typescript
-import { pipeline, Node } from 'cascade'
+const NAME = contextKey<string>('name');
+const nameLens = lens(NAME);
 
-const nodeA = new Node()
-const nodeB = new Node()
-const nodeC = new Node()
+// Create a transform function that sets the name to 'Alice'
+const setNameTransform = nameLens.set('Alice');
 
-const myPipeline = pipeline(nodeA, nodeB, nodeC)
-// This is equivalent to: new SequenceFlow(nodeA, nodeB, nodeC)
+// Create a node that applies this transform
+const setNode = transformNode(setNameTransform);
 ```
+
+## `composeContext(...transforms)`
+
+Composes multiple `ContextTransform` functions into a single `ContextTransform` function. The transformations are applied in the order they are provided.
+
+### Parameters
+
+- `...transforms: ContextTransform[]`: A sequence of `ContextTransform` functions.
+
+### Returns
+
+- `ContextTransform`: A single function that applies all transformations.
