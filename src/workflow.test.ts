@@ -1,7 +1,7 @@
 import type { ContextKey, Logger, NodeArgs, NodeOptions, RunOptions } from './workflow'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { BatchFlow, ParallelBatchFlow } from './builder/collection'
-import { sleep } from './utils'
+import { sleep } from './utils/index'
 import {
 	AbortError,
 	composeContext,

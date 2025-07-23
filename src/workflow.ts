@@ -4,7 +4,7 @@ import type { Middleware, MiddlewareNext, NodeArgs, NodeOptions, Params, RunOpti
 import { AbortError, WorkflowError } from './errors'
 import { NullLogger } from './logger'
 import { DEFAULT_ACTION, FILTER_FAILED } from './types'
-import { sleep } from './utils'
+import { sleep } from './utils/index'
 
 export * from './context'
 export * from './errors'
@@ -13,7 +13,7 @@ export * from './types'
 
 export abstract class AbstractNode {
 	public params: Params = {}
-	public successors = new Map<string | typeof DEFAULT_ACTION, AbstractNode>()
+	public successors = new Map<string | typeof DEFAULT_ACTION | typeof FILTER_FAILED, AbstractNode>()
 
 	/**
 	 * Sets or merges parameters for the node.
@@ -31,7 +31,7 @@ export abstract class AbstractNode {
 	 * @param action The action string that triggers the transition to this successor. Defaults to 'default'.
 	 * @returns The successor node instance for chaining.
 	 */
-	next(node: AbstractNode, action: string | typeof DEFAULT_ACTION = DEFAULT_ACTION): AbstractNode {
+	next(node: AbstractNode, action: string | typeof DEFAULT_ACTION | typeof FILTER_FAILED = DEFAULT_ACTION): AbstractNode {
 		this.successors.set(action, node)
 		return node
 	}

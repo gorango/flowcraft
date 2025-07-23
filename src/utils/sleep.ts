@@ -1,4 +1,4 @@
-import { AbortError } from './errors'
+import { AbortError } from '../errors'
 
 export async function sleep(ms: number, signal?: AbortSignal): Promise<void> {
 	return new Promise((resolve, reject) => {
