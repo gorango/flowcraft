@@ -217,7 +217,7 @@ describe('testExecFallback', () => {
 
 describe('testAbortController', () => {
 	class LongRunningNode extends Node<void, string> {
-		constructor(private id: number, private delayMs: number) { super() }
+		constructor(public id: number, private delayMs: number) { super() }
 		async exec({ ctx, signal }: NodeArgs): Promise<string> {
 			const started = ctx.get(STARTED) ?? []
 			ctx.set(STARTED, started.concat(this.id))
@@ -301,11 +301,10 @@ describe('testLoggingAndErrors', () => {
 		const flow = new Flow(new NumberNode(1))
 		await flow.run(new TypedContext(), runOptions)
 		expect(mockLogger.info).toHaveBeenCalledWith(
-			expect.stringContaining('Running flow: Flow'),
-			expect.any(Object),
+			'Executor is running flow graph: Flow',
 		)
 		expect(mockLogger.info).toHaveBeenCalledWith(
-			expect.stringContaining('Running node: NumberNode'),
+			'Running node: NumberNode',
 			expect.any(Object),
 		)
 	})

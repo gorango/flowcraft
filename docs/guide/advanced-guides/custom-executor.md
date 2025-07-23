@@ -20,16 +20,16 @@ The `run` method is the main entry point. When you call `flow.run(ctx, { executo
 
 An executor is responsible for the entire orchestration of a `Flow`. This involves several key tasks:
 
-1.  **The `run` Entry Point**: This public method kicks off the workflow. It's responsible for setting up the initial state and starting the execution loop.
-2.  **The Execution Loop**: It must traverse the workflow graph, executing one node at a time. This typically involves a `while` loop that continues as long as there is a `currentNode` to process.
-3.  **Applying Middleware**: Before executing a node, it must apply any middleware that has been attached to the `Flow`.
-4.  **Passing Arguments**: It is responsible for constructing the `NodeArgs` object and passing the correct `ctx`, `params`, `signal`, `logger`, and a reference to *itself* down to the `node._run()` method.
-5.  **Handling Actions & Branching**: After a node runs, the executor must take the returned `action`, look up the correct successor node in `currentNode.successors`, and determine the next node to execute.
-6.  **State Management (for distributed systems)**: If the executor runs across different processes, it is responsible for serializing the `Context` before passing it to the next job and deserializing it upon receipt.
+1. **The `run` Entry Point**: This public method kicks off the workflow. It's responsible for setting up the initial state and starting the execution loop.
+2. **The Execution Loop**: It must traverse the workflow graph, executing one node at a time. This typically involves a `while` loop that continues as long as there is a `currentNode` to process.
+3. **Applying Middleware**: Before executing a node, it must apply any middleware that has been attached to the `Flow`.
+4. **Passing Arguments**: It is responsible for constructing the `NodeArgs` object and passing the correct `ctx`, `params`, `signal`, `logger`, and a reference to *itself* down to the `node._run()` method (or a middleware chain).
+5. **Handling Actions & Branching**: After a node runs, the executor must take the returned `action`, look up the correct successor node in `currentNode.successors`, and determine the next node to execute.
+6. **State Management (for distributed systems)**: If the executor runs across different processes, it is responsible for serializing the `Context` before passing it to the next job and deserializing it upon receipt.
 
 ## Step-by-Step Example: Building a `DryRunExecutor`
 
-To understand these responsibilities in practice, let's build a `DryRunExecutor`. This executor will traverse an entire workflow graph and log the path it would take, but it will **not** execute the core `exec()` logic of any node. This is a great tool for debugging the structure of a complex flow.
+To understand these responsibilities in practice, let's build a `DryRunExecutor`. This executor will traverse an entire workflow graph and log the path it would take, but it will **not** execute the core `exec()` logic of any node. This is a great tool for debugging the structure and conditional logic of a complex flow.
 
 ### 1. The Class Structure
 
@@ -37,7 +37,16 @@ First, create the class and implement the `IExecutor` interface.
 
 ```typescript
 // src/executors/dry-run-executor.ts
-import { IExecutor, Flow, Context, RunOptions, AbstractNode, Logger, NullLogger } from 'cascade';
+import {
+  IExecutor,
+  Flow,
+  Context,
+  RunOptions,
+  AbstractNode,
+  Logger,
+  NullLogger,
+  DEFAULT_ACTION
+} from 'cascade';
 
 export class DryRunExecutor implements IExecutor {
   public async run(flow: Flow, context: Context, options?: RunOptions): Promise<any> {
@@ -48,7 +57,7 @@ export class DryRunExecutor implements IExecutor {
 
 ### 2. The `run` Method and Orchestration Loop
 
-The `run` method will prepare the logger and initial parameters, then hand off to a private orchestration method that contains the main loop.
+The `run` method will prepare the logger and initial parameters and then enter the main orchestration loop. This is where the core logic of the executor lives.
 
 ```typescript
 // Inside DryRunExecutor class...
@@ -66,20 +75,35 @@ public async run(flow: Flow, context: Context, options?: RunOptions): Promise<an
     let currentNode: AbstractNode | undefined = flow.startNode;
     let lastAction: any;
 
+    // The executor's main orchestration loop.
     while (currentNode) {
         logger.info(`[DryRunExecutor] --> Visiting node: ${currentNode.constructor.name}`);
 
-        // In a real executor, you would apply middleware here.
-        // For a dry run, we'll call the node's lifecycle methods directly.
+        // For a dry run, we simulate execution to get the next action.
+        // We run `prep` and `post` to see data flow and branching, but SKIP `exec`.
+        // This is a powerful debugging pattern.
+        const node = currentNode;
+        let action;
 
-        const node = currentNode; // for clarity
+        if (node instanceof Flow) {
+            // If the node is a sub-flow, we must run it to get its final action.
+            // A real executor would call node._run(), but for a dry run, we can
+            // create a new instance of ourself to recursively dry-run the sub-flow.
+            action = await new DryRunExecutor().run(node, context, { ...options, params });
+        } else {
+             // For a regular node, run prep and post, but not exec.
+            await node.prep({ ctx: context, params, logger } as any);
+            // We call post with a null `execRes` as exec was skipped.
+            action = await node.post({ ctx: context, params, logger, execRes: null } as any);
+        }
 
-        // We only run `prep` and `post` to simulate data flow and get the next action.
-        // We SKIP `exec`.
-        const prepRes = await node.prep({ ctx: context, params, logger } as any);
-        lastAction = await node.post({ ctx: context, params, logger, prepRes } as any);
+        lastAction = action;
 
-        const actionDisplay = typeof lastAction === 'symbol' ? 'default' : lastAction;
+        // Display the action for logging.
+        const actionDisplay = (typeof lastAction === 'symbol' && lastAction === DEFAULT_ACTION)
+            ? 'default'
+            : String(lastAction);
+
         logger.info(`[DryRunExecutor] <-- Node returned action: '${actionDisplay}'`);
 
         // Find the next node based on the action.
@@ -93,24 +117,31 @@ public async run(flow: Flow, context: Context, options?: RunOptions): Promise<an
 
 ### 3. Using the Custom Executor
 
-Now you can use this executor with any flow.
+Now you can use this executor with any flow. Note that the node's `exec` logic (the `console.log`) will not run.
 
 ```typescript
 // main.ts
-import { Flow, Node, TypedContext, ConsoleLogger } from 'cascade';
+import { Flow, Node, TypedContext, ConsoleLogger, contextKey } from 'cascade';
 import { DryRunExecutor } from './executors/dry-run-executor';
 
-// Define a simple conditional workflow
+const VALUE = contextKey<number>('value');
+
+// A node to set up initial state
+const startNode = new Node().prep(async ({ ctx }) => ctx.set(VALUE, 15));
+
+// A conditional node
 class CheckValueNode extends Node<void, void, 'over' | 'under'> {
     async post({ ctx }) {
-        return ctx.get('value') > 10 ? 'over' : 'under';
+        return ctx.get(VALUE)! > 10 ? 'over' : 'under';
     }
 }
-const startNode = new Node().exec(ctx => ctx.set('value', 15));
 const checkNode = new CheckValueNode();
+
+// Nodes for different branches
 const overNode = new Node().exec(() => console.log('This should NOT be logged!'));
 const underNode = new Node().exec(() => console.log('This should NOT be logged either!'));
 
+// Wire the graph
 startNode.next(checkNode);
 checkNode.next(overNode, 'over');
 checkNode.next(underNode, 'under');
@@ -126,7 +157,7 @@ await flow.run(context, { logger, executor: dryRunExecutor });
 
 ### Expected Output
 
-When you run this code, you'll see the executor's logs tracing the path, but the `console.log` messages inside the `overNode` and `underNode` will **not** appear, because their `exec` methods were never called.
+When you run this code, you'll see the executor's logs tracing the path. The `context` is modified by `prep` and `post`, so the conditional logic works, but the `console.log` messages inside the `overNode`'s `exec` method will **not** appear.
 
 ```
 --- Starting Dry Run ---
@@ -144,5 +175,5 @@ When you run this code, you'll see the executor's logs tracing the path, but the
 
 This `DryRunExecutor` is a simplified example. For a complete understanding, it's highly recommended to study the source code of the official executors:
 
--   **`InMemoryExecutor`**: The simplest "real" executor. It shows the full implementation, including how to correctly apply middleware. ([`src/executors/in-memory.ts`](../../src/executors/in-memory.ts))
--   **`BullMQExecutor`**: A full-featured distributed executor. It demonstrates how to handle state serialization and manage a job queue instead of an in-memory loop. ([`sandbox/5.distributed/src/executor.ts`](../../sandbox/5.distributed/src/executor.ts))
+- **`InMemoryExecutor`**: The canonical implementation of a real executor. It shows the full orchestration logic, including how to correctly apply middleware. ([`src/executors/in-memory.ts`](../../src/executors/in-memory.ts))
+- **`BullMQExecutor`**: A full-featured distributed executor. It demonstrates a completely different execution strategy, managing a job queue instead of an in-memory loop. ([`sandbox/5.distributed/src/executor.ts`](../../sandbox/5.distributed/src/executor.ts))

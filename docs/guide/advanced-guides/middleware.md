@@ -4,7 +4,7 @@ Middleware provides a powerful mechanism to hook into the execution of nodes wit
 
 ## What is Middleware?
 
-A middleware is a function that sits between the `Flow` orchestrator and the `Node` it is about to execute. It receives the node's arguments and a `next` function. The middleware can perform actions before calling `next()` to proceed with the node's execution, and after `next()` returns to process the result.
+A middleware is a function that sits between the `Executor` and the `Node` it is about to execute. It receives the node's arguments and a `next` function. The middleware can perform actions before calling `next()` to proceed with the node's execution, and after `next()` returns to process the result.
 
 This is conceptually similar to middleware in web frameworks like Express or Koa.
 
@@ -19,6 +19,8 @@ This is conceptually similar to middleware in web frameworks like Express or Koa
 ## How to Use Middleware
 
 You can add middleware to any `Flow` instance using the `.use()` method. You can add multiple middleware functions; they will be executed in the order they are added.
+
+When an `Executor` runs a `Flow`, it is responsible for applying the flow's middleware to each node it executes.
 
 ### The Middleware Function Signature
 
@@ -38,7 +40,7 @@ Let's create a middleware that logs the name of each node being executed and the
 
 ```typescript
 // main.ts
-import { Flow, Node, TypedContext, contextKey } from 'cascade'
+import { Flow, Node, TypedContext } from 'cascade'
 
 // A simple node that pauses for a moment
 class SlowNode extends Node {
@@ -78,17 +80,15 @@ await flow.run(new TypedContext())
 When you run this, the output will be:
 
 ```
-[Middleware] ===> Entering node: Flow
 [Middleware] ===> Entering node: SlowNode
 ... SlowNode is doing work...
 [Middleware] <=== Exiting node: SlowNode (took 53ms)
 [Middleware] ===> Entering node: SlowNode
 ... SlowNode is doing work...
 [Middleware] <=== Exiting node: SlowNode (took 51ms)
-[Middleware] <=== Exiting node: Flow (took 110ms)
 ```
 
-Notice how the middleware wraps not only the individual `SlowNode` instances but also the `Flow` itself, since a `Flow` is also a `Node`.
+Notice that the middleware wraps the individual `SlowNode` instances. If you have composed flows, the middleware from a parent flow will also wrap the sub-flow `Node` itself, providing a way to trace entry and exit into complex, nested logic.
 
 ## Execution Order
 
@@ -121,6 +121,8 @@ The execution order will be:
 A middleware can prevent a node (and subsequent middleware) from running by simply not calling the `next()` function. This is useful for authorization checks or conditional execution.
 
 ```typescript
+const IS_ADMIN_KEY = contextKey<boolean>('isAdmin');
+
 const authMiddleware = async (args, next) => {
   const userIsAdmin = args.ctx.get(IS_ADMIN_KEY)
 

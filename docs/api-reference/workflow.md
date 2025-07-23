@@ -54,7 +54,7 @@ These methods return a *new* `Node` instance for creating data processing pipeli
 
 ## `Flow`
 
-A special `Node` that orchestrates a sequence of other nodes.
+A special `Node` that acts as a container for a graph of other nodes and their shared middleware.
 
 `extends Node`
 
@@ -62,17 +62,18 @@ A special `Node` that orchestrates a sequence of other nodes.
 
 `new Flow(startNode?: AbstractNode)`
 
-- `startNode`: The node where the flow should begin execution.
+- `startNode`: The node where the flow's execution should begin.
 
 ### Methods
 
-- `.use(fn: Middleware)`: Adds a middleware function to the flow's execution chain.
+- `.use(fn: Middleware)`: Adds a middleware function that the `Executor` will apply to every node within this flow.
 - `.start(node)`: Sets the starting node of the flow. Returns the start node.
-- `.run(ctx, options?)`: Runs the entire flow using an `IExecutor`, starting from the `startNode`. Returns the action from the last node executed.
+- `.run(ctx, options?)`: Runs the entire flow using an `IExecutor`. This is the main entry point for executing a workflow. The method returns the action from the last node executed.
+- `.exec(args)`: This lifecycle method is called when a `Flow` is used as a sub-flow (a node within another flow). It contains the logic to orchestrate the sub-flow's internal graph from start to finish.
 
 ## `IExecutor` and `InMemoryExecutor`
 
-- `IExecutor`: The interface that defines the contract for a workflow executor.
+- `IExecutor`: The interface that defines the contract for a workflow execution engine.
 - `InMemoryExecutor`: The standard `IExecutor` implementation for running flows in-memory. This is the default executor if none is provided.
 
 ### `InMemoryExecutor` Constructor

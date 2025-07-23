@@ -49,7 +49,7 @@ await sequence.run(context)
 
 Cascade provides two powerful builders for processing collections of items: `BatchFlow` for sequential processing and `ParallelBatchFlow` for concurrent processing.
 
-To use them, you extend the base class and implement the `prep` method. This method's job is to return an array of parameter objects, where each object represents one item to be processed. The builder then runs its internal `Node` once for each of these parameter objects.
+To use them, you extend the base class and implement the `prep` method. This method's job is to return an array of parameter objects, where each object represents one item to be processed. The builder then runs the `Node` you provided in its constructor once for each of these parameter objects.
 
 ### BatchFlow (Sequential)
 
@@ -75,7 +75,7 @@ To use them, you extend the base class and implement the `prep` method. This met
 Let's imagine we need to translate a document into several languages.
 
 ```typescript
-import { ParallelBatchFlow, Node, contextKey } from 'cascade'
+import { ParallelBatchFlow, Node, TypedContext, contextKey } from 'cascade'
 
 const LANGUAGES = contextKey<string[]>('languages')
 const DOCUMENT_TEXT = contextKey<string>('document_text')
@@ -86,7 +86,9 @@ class TranslateNode extends Node {
   async exec({ params }) {
     console.log(`Translating to ${params.language}...`)
     // Fake API call
-    return await translateApiCall(params.text, params.language)
+    const translation = await translateApiCall(params.text, params.language)
+    console.log(`✓ Finished ${params.language}`)
+    return translation
   }
 }
 
@@ -103,6 +105,7 @@ class TranslateFlow extends ParallelBatchFlow {
     const text = ctx.get(DOCUMENT_TEXT)
 
     // Return an array of parameter objects.
+    // Each object will be merged into the TranslateNode's params.
     return languages.map(language => ({
       language,
       text

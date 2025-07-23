@@ -4,7 +4,7 @@ One of the most powerful features of Cascade is its composability. Because a `Fl
 
 ## Why Use Composition?
 
-- **Modularity**: Break down a large, monolithic workflow into smaller, self-contained sub-flows. Each sub-flow can manage its own internal logic.
+- **Modularity**: Break down a large, monolithic workflow into smaller, self-contained sub-flows. Each sub-flow can manage its own internal logic and middleware.
 - **Reusability**: Define a common workflow (e.g., "send a formatted email") once and reuse it in multiple different parent flows (e.g., "user registration flow", "password reset flow").
 - **Clarity**: The parent flow becomes simpler and easier to read. Instead of a dozen small nodes, you might have three high-level sub-flows, making the overall business logic clearer.
 - **Independent Testing**: Each sub-flow can be tested in isolation before being integrated into a larger system.
@@ -13,7 +13,9 @@ One of the most powerful features of Cascade is its composability. Because a `Fl
 
 Composing flows is as simple as treating a `Flow` instance as if it were a `Node` instance and using it with methods like `.next()` or in builders like `SequenceFlow`.
 
-When a parent flow executes a sub-flow node, it essentially "delegates" control. The sub-flow runs from its own start node to its end. The **final action** returned by the sub-flow's last node is then passed back to the parent flow. The parent flow uses this action to decide which of the sub-flow's successors to execute next, enabling conditional branching based on the outcome of an entire workflow.
+When an executor's main orchestration loop is running a parent flow and encounters a `Flow` node (a sub-flow), it calls that node's `exec` method. The `Flow.exec` method then takes over and runs its *own* internal orchestration loop, executing its entire graph from start to finish.
+
+The **final action** returned by the sub-flow's last node is then returned as the result of the `exec` method. The parent flow's executor uses this action to decide which of the sub-flow's successors to execute next, enabling conditional branching based on the outcome of an entire encapsulated workflow.
 
 ### Example: A Reusable "Math" Sub-Flow
 
@@ -25,21 +27,27 @@ This sub-flow will take a number, add 10, multiply by 2, and then return a speci
 
 ```typescript
 // sub-flow.ts
-import { Flow, Node, contextKey } from 'cascade'
+import { Flow, Node, contextKey, TypedContext } from 'cascade'
 
 export const MATH_VALUE = contextKey<number>('math_value')
 
 // A node that returns a different action based on the result
 class CheckResultNode extends Node<void, void, 'over_50' | 'under_50'> {
   async post({ ctx }) {
-    const value = ctx.get(MATH_VALUE)
+    const value = ctx.get(MATH_VALUE)!
     return value > 50 ? 'over_50' : 'under_50'
   }
 }
 
 export function createMathFlow(): Flow {
-  const addNode = new Node().exec(async ({ params }) => params.input + 10).toContext(MATH_VALUE)
-  const multiplyNode = new Node().exec(async ({ ctx }) => ctx.get(MATH_VALUE) * 2).toContext(MATH_VALUE)
+  const addNode = new Node()
+    .exec(async ({ params }) => params.input + 10)
+    .toContext(MATH_VALUE)
+
+  const multiplyNode = new Node()
+    .exec(async ({ ctx }) => ctx.get(MATH_VALUE)! * 2)
+    .toContext(MATH_VALUE)
+
   const checkNode = new CheckResultNode()
 
   addNode.next(multiplyNode).next(checkNode)
@@ -92,7 +100,7 @@ Result was over 50.
 Result was 50 or under.
 ```
 
-As you can see, the parent flow correctly branched based on the final action returned by the `mathSubFlow`, demonstrating seamless composition.
+As you can see, the parent flow's executor correctly branched based on the final action returned by the `mathSubFlow`, demonstrating seamless composition.
 
 ## Data Flow and Context
 

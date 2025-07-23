@@ -9,7 +9,7 @@ It showcases a client-worker architecture where a client can initiate a workflow
 - **Pluggable `BullMQExecutor`**: A custom executor that, instead of running nodes in-memory, enqueues them as jobs in a Redis-backed BullMQ queue.
 - **Client-Worker Separation**:
   - The **Client** (`src/client.ts`) is a lightweight process that builds the initial context and starts a workflow. This is a non-blocking, "fire-and-forget" operation.
-  - The **Worker** (`src/worker.ts`) is a separate, long-running process that listens for jobs, executes the logic for a single node, and enqueues the next node(s) in the graph.
+  - The **Worker** (`src/worker.ts`) is a separate, long-running process that listens for jobs, executes the logic for a single node, and enqueues the next node(s) in the graph. The worker effectively acts as the *true*, step-by-step executor in the distributed system.
 - **State Serialization**: The `Context` is serialized to a plain object and passed between jobs, allowing state to flow through the distributed graph.
 - **Distributed Cancellation**: A `runId` is generated for each workflow. You can gracefully abort a running workflow by pressing 'c' in the worker terminal and providing the corresponding `runId`, demonstrating how to manage distributed processes.
 - **Resilience & Scalability**: By using a message queue, workflows can survive process restarts. You can run multiple worker processes to handle a high volume of concurrent workflows.
@@ -68,18 +68,20 @@ It showcases a client-worker architecture where a client can initiate a workflow
 
 ## How It Works
 
-1. **Client (`client.ts`)**:
-    - Generates a unique `runId` for the new workflow execution.
-    - Initializes the `WorkflowRegistry` and gets the desired `Flow` definition.
-    - Creates an instance of `BullMQExecutor`, pointing to the job queue.
-    - Calls `flow.run()` with the custom executor and the `runId`. The executor identifies the starting node(s) of the graph, serializes the initial context, and adds the first job(s) to the BullMQ queue. It then exits.
+This example highlights a different implementation of the `IExecutor` pattern.
 
-2. **Worker (`worker.ts`)**:
-    - Connects to the same BullMQ queue.
-    - The worker's processor function receives a job containing `{ runId, workflowId, nodeId, context }`.
-    - **Mid-flight Cancellation**: For each job, the worker starts polling a cancellation key in Redis (e.g., `workflow:cancel:<runId>`). If this key appears, it triggers a standard `AbortController`, which immediately interrupts any cancellable logic within the currently running node (e.g., a long `sleep` or API call).
-    - It uses the `WorkflowRegistry` to find the executable `Node` instance corresponding to the `nodeId`.
-    - It deserializes the `context` and executes the node's logic (`node._run()`), passing the `AbortSignal` to it.
-    - After execution, it determines the successor node(s) based on the action returned by the node.
+1. **Client & `BullMQExecutor` (`client.ts`)**:
+    - The client's role is to **initiate** the workflow.
+    - It generates a unique `runId`.
+    - It creates an instance of `BullMQExecutor`. Unlike the `InMemoryExecutor`, this executor does not have an orchestration loop. Its `run` method simply identifies the starting node(s) of the graph, serializes the initial context, and adds the first job(s) to the BullMQ queue.
+    - After enqueuing the first job, the client's work is done and it exits.
+
+2. **Worker Process (`worker.ts`)**:
+    - The worker is the **long-running orchestrator** of the distributed system.
+    - Its processor function receives a job containing `{ runId, workflowId, nodeId, context }`.
+    - For each job, it finds the corresponding executable `Node` instance using the `WorkflowRegistry`.
+    - It deserializes the `context` and executes the single node's logic (`node._run()`).
+    - **Cancellation**: The worker polls a cancellation key in Redis for the current `runId`. If the key is found, it triggers a standard `AbortController` to gracefully halt the running node.
+    - After the node runs successfully, the worker determines the successor node(s) based on the returned action.
     - For each successor, it enqueues a **new job**, passing along the now-updated `context` and the original `runId`.
-    - This process repeats until a branch of the workflow completes or is cancelled.
+    - This process repeats job by job until a branch of the workflow completes or is cancelled.

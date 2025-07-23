@@ -9,8 +9,8 @@ The `Node` is the most fundamental building block. It represents a single, atomi
 ### The Node Lifecycle
 
 1. **`prep(args)`**: **Prepare Data**. This phase is for gathering all necessary data for execution. It's the ideal place to read from the `Context` or transform input `params`. The return value of `prep` is passed directly to the `exec` phase.
-2. **`exec(args)`**: **Execute Core Logic**. This is where the main work happens. The `exec` phase is designed to be isolated it receives its input from `prep` and should not directly access the `Context`. This separation makes the core logic easier to test and reason about. This phase can be retried automatically on failure.
-3. **`post(args)`**: **Process Results**. After `exec` completes, this phase runs. It's the ideal place to update the `Context` with the results of the execution. Its most important job is to return an **action string**, which the `Flow` uses to decide which node to run next.
+2. **`exec(args)`**: **Execute Core Logic**. This is where the main work happens. The `exec` phase is designed to be isolated—it receives its input from `prep` and should not directly access the `Context`. This separation makes the core logic easier to test and reason about. This phase can be retried automatically on failure.
+3. **`post(args)`**: **Process Results**. After `exec` completes, this phase runs. It's the ideal place to update the `Context` with the results of the execution. Its most important job is to return an **action string**, which the `Flow`'s orchestrator (the `Executor`) uses to decide which node to run next.
 
 ### Fluent API
 
@@ -22,7 +22,7 @@ For many common tasks, you don't need to create a new class that extends `Node`.
 - **`.tap(fn)`**: Performs a side-effect (like logging) with the `exec` result without changing it.
 
 ```typescript
-import { contextKey } from 'cascade'
+import { contextKey, Node } from 'cascade'
 
 const USER_DATA = contextKey<{ name: string, email: string }>('user_data')
 
@@ -35,12 +35,12 @@ const processUserData = new FetchUserNode(123) // Assume this node fetches a use
 
 ## 2. Flow
 
-A `Flow` is a special type of `Node` that acts as an orchestrator. It doesn't have its own business logic; instead, its purpose is to manage the execution of a graph of other nodes.
+A `Flow` is a special type of `Node` that acts as a **container for a graph of other nodes**. It holds the starting point of a workflow and any middleware that should apply to the nodes within it. Its primary purpose is to define a complete, runnable process.
 
-You create a `Flow` by giving it a starting node. The `Flow` then executes that node, looks at the **action** it returns, and finds the next node to run based on how you've connected them with `.next()`. This process repeats until a node returns an action that has no corresponding successor, at which point the flow ends.
+An **Executor** is responsible for running a `Flow`. When you call `flow.run()`, the executor starts with the flow's `startNode`, executes it, looks at the **action** it returns, and finds the next node to run based on how you've connected them with `.next()`. This process repeats until a node returns an action that has no corresponding successor, at which point the flow ends.
 
 ```typescript
-import { Node, Flow } from 'cascade'
+import { Node, Flow, TypedContext } from 'cascade'
 
 // Create the nodes
 const startNode = new Node()
@@ -49,9 +49,11 @@ const nextNode = new Node()
 // Define the sequence
 startNode.next(nextNode)
 
-// Create and run the flow
+// Create a flow, defining the starting point of the graph
 const myFlow = new Flow(startNode)
-await myFlow.run(context)
+
+// The executor will run this flow, starting at startNode
+await myFlow.run(new TypedContext())
 ```
 
 ## 3. Context
@@ -79,7 +81,7 @@ const id = context.get(USER_ID) // id is of type `number | undefined`
 
 ## 4. Actions & Branching
 
-An **action** is a string returned by a node's `post()` method. The `Flow` uses this string to determine which path to take next in the workflow graph.
+An **action** is a string returned by a node's `post()` method. The `Executor` uses this string to determine which path to take next in the workflow graph.
 
 - **`DEFAULT_ACTION`**: If you don't return a specific string, a special `symbol` is used as the default action. This is for simple, linear sequences. `nodeA.next(nodeB)` is shorthand for `nodeA.next(nodeB, DEFAULT_ACTION)`.
 
@@ -109,4 +111,4 @@ checkNode.next(errorNode, 'error')
 const flow = new Flow(checkNode)
 ```
 
-When `flow` runs, it will execute `checkNode`. If `post()` returns `'ok'`, `successNode` will run next. If it returns `'error'`, `errorNode` will run.
+When `flow` runs, its executor will execute `checkNode`. If `post()` returns `'ok'`, `successNode` will run next. If it returns `'error'`, `errorNode` will run.

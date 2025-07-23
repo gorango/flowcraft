@@ -15,7 +15,7 @@ export * from './logger'
 export * from './types'
 
 export abstract class AbstractNode {
-	public id?: string
+	public id?: number | string
 	public params: Params = {}
 	public successors = new Map<string | typeof DEFAULT_ACTION | typeof FILTER_FAILED, AbstractNode>()
 
@@ -25,7 +25,7 @@ export abstract class AbstractNode {
 	 * @param id The unique ID for the node.
 	 * @returns The node instance for chaining.
 	 */
-	withId(id: string): this {
+	withId(id: number | string): this {
 		this.id = id
 		return this
 	}
@@ -332,7 +332,7 @@ export class Node<PrepRes = any, ExecRes = any, PostRes = any> extends AbstractN
  */
 export class Flow extends Node<any, any, any> {
 	public startNode?: AbstractNode
-	private middleware: Middleware[] = []
+	public middleware: Middleware[] = []
 
 	/**
 	 * @param start An optional node to start the flow with.
@@ -368,37 +368,36 @@ export class Flow extends Node<any, any, any> {
 	}
 
 	/**
-	 * Runs the entire flow using an executor.
-	 * This is called when a Flow is a node inside another flow. It contains the
-	 * core orchestration logic for a graph-based flow.
+	 * Executes the flow's internal graph when it is used as a node
+	 * within a larger flow (composition).
 	 * @param args The arguments for the node.
 	 * @returns The action returned by the last node in the flow.
 	 */
 	async exec(args: NodeArgs<any, any>): Promise<any> {
 		const { ctx, params: parentParams, signal, logger, executor } = args
 
-		if (!(executor instanceof InMemoryExecutor)) {
-			// This base implementation is tightly coupled to the InMemoryExecutor's methods.
-			// Other executors would need a different Flow subclass or a different strategy.
-			throw new TypeError('Base Flow orchestration is only supported by the InMemoryExecutor.')
-		}
-
+		// A Flow with no startNode is a logic-bearing flow (e.g., BatchFlow).
+		// Its logic is already defined in its own `exec` method.
 		if (!this.startNode) {
-			logger.warn(`Executing a Flow with no startNode: ${this.constructor.name}. Nothing to do.`)
-			return
+			return super.exec(args)
 		}
 
-		const combinedParams = { ...parentParams, ...this.params }
+		if (!(executor instanceof InMemoryExecutor)) {
+			throw new TypeError('Sub-flow orchestration is only supported by the InMemoryExecutor.')
+		}
 
+		logger.info(`-- Entering sub-flow: ${this.constructor.name} --`)
+		const combinedParams = { ...parentParams, ...this.params }
 		let curr: AbstractNode | undefined = this.startNode
 		let lastAction: any
 
+		// This is a self-contained orchestration loop for the sub-flow's graph.
+		// It does NOT call executor.run().
 		while (curr) {
-			if (signal?.aborted) {
+			if (signal?.aborted)
 				throw new AbortError()
-			}
 
-			// A sub-flow's middleware applies to its children nodes.
+			// The sub-flow applies its own middleware to its children.
 			const chain = executor.applyMiddleware(this.middleware, curr)
 			const nodeArgs: NodeArgs = {
 				ctx,
@@ -411,20 +410,10 @@ export class Flow extends Node<any, any, any> {
 				executor,
 			}
 
-			try {
-				lastAction = await chain(nodeArgs)
-			}
-			catch (e) {
-				// If the error is already a WorkflowError, or if it came from
-				// middleware, re-throw it directly without re-wrapping.
-				if (e instanceof AbortError || e instanceof WorkflowError) {
-					throw e
-				}
-				// Assume other errors are from middleware logic.
-				throw e
-			}
+			lastAction = await chain(nodeArgs)
 			curr = executor.getNextNode(curr, lastAction, logger)
 		}
+		logger.info(`-- Exiting sub-flow: ${this.constructor.name} --`)
 		return lastAction
 	}
 
@@ -433,8 +422,7 @@ export class Flow extends Node<any, any, any> {
 	}
 
 	/**
-	 * Runs the entire flow using an executor.
-	 * This is called when a Flow is the top-level object being run.
+	 * Runs the entire flow as a top-level entry point.
 	 * @param ctx The shared workflow context.
 	 * @param options Runtime options like a logger, abort controller, or a custom executor.
 	 * @returns The action returned by the last node in the flow.
