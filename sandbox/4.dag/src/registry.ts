@@ -1,7 +1,8 @@
-import type { AbstractNode, Flow, WorkflowGraph } from 'cascade'
+import type { Flow, TypedWorkflowGraph } from 'cascade'
+import type { AgentNodeTypeMap } from './types'
 import { promises as fs } from 'node:fs'
 import path from 'node:path'
-import { GraphBuilder } from 'cascade'
+import { createNodeRegistry, GraphBuilder } from 'cascade'
 import {
 	LLMConditionNode,
 	LLMProcessNode,
@@ -10,27 +11,24 @@ import {
 	SubWorkflowNode,
 } from './nodes'
 
-export const nodeRegistry = new Map<string, new (...args: any[]) => AbstractNode>([
-	['llm-process', LLMProcessNode],
-	['llm-condition', LLMConditionNode],
-	['llm-router', LLMRouterNode],
-	['sub-workflow', SubWorkflowNode],
-	['output', OutputNode],
-])
+export const nodeRegistry = createNodeRegistry({
+	'llm-process': LLMProcessNode,
+	'llm-condition': LLMConditionNode,
+	'llm-router': LLMRouterNode,
+	'sub-workflow': SubWorkflowNode,
+	'output': OutputNode,
+})
 
 export class WorkflowRegistry {
 	private flowCache = new Map<number, Flow>()
-	private graphDatabase = new Map<number, WorkflowGraph>()
-	private builder: GraphBuilder
+	private graphDatabase = new Map<number, TypedWorkflowGraph<AgentNodeTypeMap>>()
+	private builder: GraphBuilder<AgentNodeTypeMap>
 	private isInitialized = false
 
 	private constructor() {
 		this.builder = new GraphBuilder(nodeRegistry, { registry: this })
 	}
 
-	/**
-	 * Asynchronously creates and initializes a registry for a given use-case directory.
-	 */
 	public static async create(useCaseDirectory: string): Promise<WorkflowRegistry> {
 		const registry = new WorkflowRegistry()
 		await registry.initialize(useCaseDirectory)
@@ -49,7 +47,7 @@ export class WorkflowRegistry {
 					if (!Number.isNaN(workflowId)) {
 						const filePath = path.join(useCaseDirectory, file)
 						const fileContent = await fs.readFile(filePath, 'utf-8')
-						const graphData: WorkflowGraph = JSON.parse(fileContent)
+						const graphData: TypedWorkflowGraph<AgentNodeTypeMap> = JSON.parse(fileContent)
 						this.graphDatabase.set(workflowId, graphData)
 						console.log(`[Registry] Loaded workflow ${workflowId} from ${file}`)
 					}
