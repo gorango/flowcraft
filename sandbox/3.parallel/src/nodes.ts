@@ -1,7 +1,7 @@
 import type { NodeArgs } from 'cascade'
 import * as fs from 'node:fs/promises'
 import * as path from 'node:path'
-import { DEFAULT_ACTION, Node, ParallelBatchFlow } from 'cascade'
+import { Node, ParallelBatchFlow } from 'cascade'
 import { callLLM } from './utils'
 
 export class TranslateNode extends Node<void, { language: string, translation: string }> {
@@ -26,7 +26,6 @@ ${text}`
 		const filename = path.join(outputDir, `README_${language.toUpperCase()}.md`)
 		await fs.writeFile(filename, translation, 'utf-8')
 		console.log(`Saved translation to ${filename}`)
-		return DEFAULT_ACTION
 	}
 }
 

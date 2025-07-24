@@ -148,7 +148,8 @@ export class Node<PrepRes = any, ExecRes = any, PostRes = any> extends AbstractN
 		if (signal?.aborted)
 			throw new AbortError()
 		try {
-			return await this.post({ ctx, params, signal, logger, prepRes, execRes, executor })
+			const action = await this.post({ ctx, params, signal, logger, prepRes, execRes, executor })
+			return action === undefined ? DEFAULT_ACTION as any : action
 		}
 		catch (e) {
 			throw this._wrapError(e, 'post')

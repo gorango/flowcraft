@@ -122,10 +122,6 @@ class ParallelNode extends Flow {
 		await Promise.allSettled(promises)
 		logger.info(`[ParallelNode] ✓ All parallel branches finished.`)
 	}
-
-	async post() {
-		return DEFAULT_ACTION
-	}
 }
 
 /**

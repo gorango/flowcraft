@@ -1,5 +1,5 @@
 import type { NodeArgs } from 'cascade'
-import { BatchFlow, contextKey, DEFAULT_ACTION, Node } from 'cascade'
+import { BatchFlow, contextKey, Node } from 'cascade'
 import yaml from 'yaml'
 import { callLLM } from './utils'
 
@@ -32,7 +32,6 @@ Output the sections in YAML format as a list under the key "sections".`
 		execRes.sections.forEach((s, i) => console.log(`${i + 1}. ${s}`))
 		console.log('==========================\n')
 		ctx.set(SECTIONS, execRes.sections)
-		return DEFAULT_ACTION
 	}
 }
 
@@ -57,7 +56,6 @@ export class WriteContentNode extends BatchFlow {
 			console.log(`--- ${section} ---\n${sectionContents[section]}\n`)
 
 		console.log('============================\n')
-		return DEFAULT_ACTION
 	}
 }
 
@@ -83,7 +81,6 @@ Include one brief example or analogy.`
 		const contents = ctx.get(SECTION_CONTENTS) || {}
 		contents[section] = content
 		ctx.set(SECTION_CONTENTS, contents)
-		return DEFAULT_ACTION
 	}
 }
 
@@ -109,6 +106,5 @@ ${draft}`
 		console.log('\n===== FINAL ARTICLE =====\n')
 		console.log(finalArticle)
 		console.log('\n=========================\n')
-		return DEFAULT_ACTION
 	}
 }

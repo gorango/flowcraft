@@ -142,7 +142,7 @@ describe('pipeline', () => {
 		const emptyFlow = pipeline()
 		const action = await emptyFlow.run(ctx, runOptions)
 		expect(Array.from(ctx.entries())).toHaveLength(0)
-		expect(action).toBe(undefined)
+		expect(action).toBe(DEFAULT_ACTION)
 	})
 })
 

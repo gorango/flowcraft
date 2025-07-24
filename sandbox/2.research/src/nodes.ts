@@ -104,6 +104,5 @@ Question: "${question}"`
 	async post({ ctx, execRes: answer }: NodeArgs<any, string>) {
 		ctx.set('answer', answer)
 		console.log('✅ Answer generated successfully.')
-		return DEFAULT_ACTION
 	}
 }

@@ -1,7 +1,7 @@
-import type { NodeArgs, NodeOptions } from 'cascade'
+import type { DEFAULT_ACTION, NodeArgs, NodeOptions } from 'cascade'
 import type { WorkflowRegistry } from './registry'
 import type { AgentNodeTypeMap } from './types'
-import { DEFAULT_ACTION, Node } from 'cascade'
+import { Node } from 'cascade'
 import { FINAL_ACTION } from './types'
 import { callLLM, resolveTemplate } from './utils'
 
@@ -55,7 +55,6 @@ export class LLMProcessNode extends Node<string, string> {
 	async post(args: NodeArgs<string, string>) {
 		args.ctx.set(this.data.nodeId, args.execRes)
 		args.logger.info(`[Node: ${this.data.nodeId}] ✓ Process complete.`)
-		return DEFAULT_ACTION
 	}
 }
 
@@ -161,7 +160,6 @@ export class SubWorkflowNode extends Node {
 		}
 
 		args.logger.info(`[SubWorkflow] Exited: ${this.data.workflowId}`)
-		return DEFAULT_ACTION
 	}
 }
 
