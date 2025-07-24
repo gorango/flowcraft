@@ -71,6 +71,10 @@ A special `Node` that acts as a container for a graph of other nodes and their s
 - `.start(node)`: Sets the starting node of the flow. Returns the start node.
 - `.run(ctx, options?)`: Runs the entire flow using an `IExecutor`. This is the main entry point for executing a workflow. The method returns the action from the last node executed.
 - `.exec(args)`: This lifecycle method is called when a `Flow` is used as a sub-flow (a node within another flow). It contains the logic to orchestrate the sub-flow's internal graph from start to finish.
+- `.getNodeById(id: string | number): AbstractNode | undefined`: Finds a node within the flow's graph by its unique ID. This method performs a breadth-first search from the `startNode` and is useful for debugging or dynamic modifications of programmatically-built flows.
+
+> [!WARNING]
+> `.getNodeById()` traverses the graph on each call (O(V+E) complexity). For flows built with `GraphBuilder`, it is much more efficient to use the `nodeMap` returned by the `.build()` method for O(1) lookups.
 
 ## `IExecutor` and `InMemoryExecutor`
 

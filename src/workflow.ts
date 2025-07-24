@@ -500,4 +500,45 @@ export class Flow extends Node<any, any, any> {
 		const executor = options?.executor ?? new InMemoryExecutor()
 		return executor.run(this, ctx, options)
 	}
+
+	/**
+	 * Finds a node within the flow's graph by its unique ID.
+	 *
+	 * This method performs a breadth-first search starting from the `startNode`.
+	 * It is a convenient way to get a reference to a specific node instance
+	 * for debugging or dynamic modifications.
+	 *
+	 * @remarks
+	 * This performs a graph traversal on each call, which has a time complexity
+	 * proportional to the number of nodes and edges in the graph (O(V+E)). For
+	 * performance-critical applications or flows built with `GraphBuilder`,
+	 * it is more efficient to use the `nodeMap` returned by `GraphBuilder.build()`.
+	 *
+	 * @param id The unique ID of the node to find (set via `.withId()` or by the `GraphBuilder`).
+	 * @returns The `AbstractNode` instance if found, otherwise `undefined`.
+	 */
+	public getNodeById(id: string | number): AbstractNode | undefined {
+		if (!this.startNode) {
+			return undefined
+		}
+
+		const queue: AbstractNode[] = [this.startNode]
+		const visited = new Set<AbstractNode>([this.startNode])
+		while (queue.length > 0) {
+			const currentNode = queue.shift()!
+
+			if (currentNode.id === id) {
+				return currentNode
+			}
+
+			for (const successor of currentNode.successors.values()) {
+				if (!visited.has(successor)) {
+					visited.add(successor)
+					queue.push(successor)
+				}
+			}
+		}
+
+		return undefined
+	}
 }

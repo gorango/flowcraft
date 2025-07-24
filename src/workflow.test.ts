@@ -181,6 +181,54 @@ describe('testFlowComposition', () => {
 	})
 })
 
+describe('testFlowGetNodeById', () => {
+	it('should find a node by its ID in a linear flow', () => {
+		const nodeA = new Node().withId('A')
+		const nodeB = new Node().withId('B')
+		const nodeC = new Node().withId('C')
+		nodeA.next(nodeB).next(nodeC)
+		const flow = new Flow(nodeA)
+
+		const foundNode = flow.getNodeById('B')
+		expect(foundNode).toBe(nodeB)
+		expect(foundNode?.id).toBe('B')
+	})
+
+	it('should return undefined if a node ID does not exist', () => {
+		const nodeA = new Node().withId('A')
+		const flow = new Flow(nodeA)
+		expect(flow.getNodeById('non-existent')).toBeUndefined()
+	})
+
+	it('should return undefined for an empty flow', () => {
+		const flow = new Flow()
+		expect(flow.getNodeById('any-id')).toBeUndefined()
+	})
+
+	it('should find a node in a complex graph with branches and cycles', () => {
+		const start = new Node().withId('start')
+		const decision = new Node().withId('decision')
+		const pathA = new Node().withId('pathA')
+		const pathB = new Node().withId('pathB')
+		const converge = new Node().withId('converge')
+		const final = new Node().withId('final')
+
+		start.next(decision)
+		decision.next(pathA, 'a')
+		decision.next(pathB, 'b')
+		pathA.next(converge)
+		pathB.next(converge)
+		converge.next(decision) // Cycle back
+		converge.next(final, 'exit')
+
+		const flow = new Flow(start)
+
+		expect(flow.getNodeById('start')).toBe(start)
+		expect(flow.getNodeById('pathB')).toBe(pathB)
+		expect(flow.getNodeById('final')).toBe(final)
+	})
+})
+
 describe('testExecFallback', () => {
 	class FallbackNode extends Node<void, string> {
 		public attemptCount = 0
@@ -546,7 +594,7 @@ describe('testFlowMiddleware', () => {
 			args.ctx.set(MIDDLEWARE_PATH, [...(args.ctx.get(MIDDLEWARE_PATH) ?? []), 'exit-good'])
 			return res
 		}
-		const badMiddleware = async (args, next) => {
+		const badMiddleware = async () => {
 			throw new Error('Middleware failure')
 		}
 		flow.use(goodMiddleware)

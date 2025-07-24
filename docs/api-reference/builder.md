@@ -113,7 +113,22 @@ A powerful builder that constructs an executable `Flow` from a declarative `Work
 
 ### Methods
 
-- `.build(graph: WorkflowGraph): BuildResult`: The main method that takes a graph definition and returns a `BuildResult` object containing the fully wired, executable `flow` and a `nodeMap` of all created node instances keyed by their ID.
+- `.build(graph: WorkflowGraph): BuildResult`: The main method that takes a graph definition and returns a `BuildResult` object.
+
+#### The `BuildResult` Object
+
+The `.build()` method returns an object containing:
+
+- `flow: Flow`: The fully wired, executable `Flow` instance.
+- `nodeMap: Map<string, AbstractNode>`: A map of all created node instances, keyed by their `id` from the graph definition.
+
+> [!TIP]
+> The `nodeMap` is the most efficient way to get a reference to a specific node instance within a built flow. It provides an instant, O(1) lookup, which is ideal for debugging, monitoring, or dynamic inspection.
+>
+> ```typescript
+> const { flow, nodeMap } = builder.build(myGraph);
+> const specificNode = nodeMap.get('my-node-id');
+> ```
 
 ### `WorkflowGraph` Interface
 

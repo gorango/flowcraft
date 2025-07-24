@@ -101,35 +101,37 @@ graph TD
 
 This is the fastest way to verify that your graph is connected as you intend.
 
-## 4. Isolate Nodes with `.run()`
+## 4. Isolate and Inspect Nodes
 
-If a single node is behaving incorrectly within a large flow, you can debug it in isolation by calling its own `.run()` method. This lets you test its lifecycle (`prep`, `exec`, `post`) without the complexity of the entire workflow.
+If a single node is behaving incorrectly, you can debug it in isolation.
 
-1. Create a `TypedContext` and manually set any values the node's `prep` phase needs.
+### Isolate with `.run()`
+
+You can test a node's full lifecycle (`prep`, `exec`, `post`) by calling its own `.run()` method without the complexity of the entire workflow.
+
+1. Create a `TypedContext` and manually set any values the node needs.
 2. Call `node.run(context)`.
-3. Assert that the `Context` contains the expected values after the run, verifying your `post` logic.
+3. Assert that the `Context` contains the expected values after the run.
 
-This pattern is also the foundation for unit testing your nodes.
+### Inspect with `getNodeById()`
+
+For flows built programmatically (with `.next()`), you can get a direct reference to any node instance using `flow.getNodeById()`. This is useful for inspecting its configuration before the flow runs.
+
+> [!TIP]
+> For flows built with `GraphBuilder`, always use the `nodeMap` returned by the `.build()` method for the most efficient lookup.
 
 ```typescript
-// Assume this node is failing in your main flow
-class AddTenNode extends Node {
-  async prep({ ctx }) { return ctx.get(INPUT) || 0 }
-  async exec({ prepRes: value }) { return value + 10 }
-  async post({ ctx, execRes: result }) { ctx.set(OUTPUT, result) }
-}
+const startNode = new Node().withId('start');
+const decisionNode = new Node().withId('decision');
+startNode.next(decisionNode);
 
-// --- Debugging it in isolation ---
-const nodeToDebug = new AddTenNode()
-const debugContext = new TypedContext([
-  [INPUT, 5] // Manually set up the required context
-])
+const myFlow = new Flow(startNode);
 
-console.log('--- Running node in isolation ---')
-await nodeToDebug.run(debugContext, { logger: new ConsoleLogger() })
+// Get a reference to the node
+const nodeToInspect = myFlow.getNodeById('decision');
 
-// Check the result
-console.log(`Final value in context: ${debugContext.get(OUTPUT)}`) // Should be 15
+// You can now inspect its properties, e.g., its successors
+console.log(nodeToInspect?.successors);
 ```
 
 ## Common Pitfalls
