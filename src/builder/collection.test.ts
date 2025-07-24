@@ -71,8 +71,10 @@ describe('sequenceFlow', () => {
 
 describe('batchFlow (Sequential)', () => {
 	class TestSequentialBatchFlow extends BatchFlow {
-		constructor(private items: any[], nodeToRun: AbstractNode) {
-			super(nodeToRun) // Pass node to the new constructor
+		protected nodeToRun: AbstractNode = new ProcessItemNode()
+
+		constructor(private items: any[]) {
+			super()
 		}
 
 		async prep() {
@@ -85,7 +87,7 @@ describe('batchFlow (Sequential)', () => {
 			{ id: 1, value: 'A' },
 			{ id: 2, value: 'B' },
 			{ id: 3, value: 'C' },
-		], new ProcessItemNode())
+		])
 		await flow.run(ctx, runOptions)
 		expect(ctx.get(PROCESSED_IDS)).toEqual([1, 2, 3])
 		expect(ctx.get(BATCH_RESULTS)).toEqual([
@@ -96,7 +98,7 @@ describe('batchFlow (Sequential)', () => {
 	})
 	it('should complete successfully with an empty batch', async () => {
 		const ctx = new TypedContext()
-		const flow = new TestSequentialBatchFlow([], new ProcessItemNode())
+		const flow = new TestSequentialBatchFlow([])
 		await flow.run(ctx, runOptions)
 		expect(ctx.get(PROCESSED_IDS)).toBeUndefined()
 		expect(ctx.get(BATCH_RESULTS)).toBeUndefined()
@@ -109,7 +111,7 @@ describe('batchFlow (Sequential)', () => {
 		const flow = new TestSequentialBatchFlow([
 			{ id: 1 },
 			{ id: 2 },
-		], new ProcessItemNode())
+		])
 		flow.withParams({ value: 'shared' })
 		await flow.run(ctx, runOptions)
 		expect(ctx.get(BATCH_RESULTS)).toEqual([
@@ -121,8 +123,10 @@ describe('batchFlow (Sequential)', () => {
 
 describe('parallelBatchFlow', () => {
 	class TestParallelBatchFlow extends ParallelBatchFlow {
-		constructor(private items: any[], nodeToRun: AbstractNode) {
-			super(nodeToRun) // Pass node to the new constructor
+		protected nodeToRun: AbstractNode = new ProcessItemNode()
+
+		constructor(private items: any[]) {
+			super()
 		}
 
 		async prep() {
@@ -135,7 +139,7 @@ describe('parallelBatchFlow', () => {
 			{ id: 1, value: 'A' },
 			{ id: 2, value: 'B' },
 			{ id: 3, value: 'C' },
-		], new ProcessItemNode())
+		])
 		await flow.run(ctx, runOptions)
 		// In parallel, order is not guaranteed, so we check for presence and size.
 		const processedIds = ctx.get(PROCESSED_IDS)
@@ -151,7 +155,7 @@ describe('parallelBatchFlow', () => {
 	})
 	it('should complete successfully with an empty batch', async () => {
 		const ctx = new TypedContext()
-		const flow = new TestParallelBatchFlow([], new ProcessItemNode())
+		const flow = new TestParallelBatchFlow([])
 		await flow.run(ctx, runOptions)
 		expect(ctx.get(PROCESSED_IDS)).toBeUndefined()
 		expect(ctx.get(BATCH_RESULTS)).toBeUndefined()

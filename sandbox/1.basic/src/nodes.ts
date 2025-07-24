@@ -1,4 +1,4 @@
-import type { NodeArgs } from 'cascade'
+import type { AbstractNode, NodeArgs } from 'cascade'
 import { BatchFlow, contextKey, Node } from 'cascade'
 import yaml from 'yaml'
 import { callLLM } from './utils'
@@ -39,6 +39,8 @@ Output the sections in YAML format as a list under the key "sections".`
  * A BatchFlow that orchestrates writing content for each section of the outline.
  */
 export class WriteContentNode extends BatchFlow {
+	protected nodeToRun: AbstractNode = new WriteSingleSectionNode()
+
 	async prep({ ctx }: NodeArgs) {
 		const sections = ctx.get(SECTIONS) || []
 		return sections.map(section => ({ section }))

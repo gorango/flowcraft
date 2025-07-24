@@ -1,4 +1,4 @@
-import type { ContextKey, Logger, NodeArgs, NodeOptions, RunOptions } from './workflow'
+import type { AbstractNode, ContextKey, Logger, NodeArgs, NodeOptions, RunOptions } from './workflow'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { BatchFlow, ParallelBatchFlow } from './builder/collection'
 import { sleep } from './utils/index'
@@ -259,9 +259,10 @@ describe('testAbortController', () => {
 	it('should abort a sequential BatchFlow', async () => {
 		const ctx = new TypedContext()
 		class TestBatchFlow extends BatchFlow {
+			protected nodeToRun: AbstractNode = new LongRunningNodeWithParams(20)
 			async prep() { return [{ id: 1 }, { id: 2 }, { id: 3 }] }
 		}
-		const batchFlow = new TestBatchFlow(new LongRunningNodeWithParams(20))
+		const batchFlow = new TestBatchFlow()
 		const controller = new AbortController()
 		const runPromise = batchFlow.run(ctx, { controller, logger: mockLogger })
 		setTimeout(() => controller.abort(), 30) // Abort during the 2nd item's execution
@@ -273,9 +274,10 @@ describe('testAbortController', () => {
 	it('should abort a ParallelBatchFlow', async () => {
 		const ctx = new TypedContext()
 		class TestParallelFlow extends ParallelBatchFlow {
+			protected nodeToRun: AbstractNode = new LongRunningNodeWithParams(50)
 			async prep() { return [{ id: 1 }, { id: 2 }, { id: 3 }] }
 		}
-		const parallelFlow = new TestParallelFlow(new LongRunningNodeWithParams(50))
+		const parallelFlow = new TestParallelFlow()
 		const controller = new AbortController()
 		const runPromise = parallelFlow.run(ctx, { controller, logger: mockLogger })
 		setTimeout(() => controller.abort(), 20) // Abort while all are running

@@ -67,25 +67,31 @@ parallelStep.next(aggregateNode)
 
 ## `BatchFlow`
 
-A `Flow` that processes a collection of items sequentially, one by one. You must extend this class and implement the `prep` method.
+An **abstract** `Flow` that processes a collection of items sequentially, one by one.
 
 `extends Flow`
 
-### Methods to Implement
+### Abstract Members to Implement
 
-- `async prep(args: NodeArgs): Promise<Iterable<any>>`: This method must be implemented in your subclass. It should return an array or other iterable of parameter objects. The workflow defined in the `Flow` will be executed once for each of these objects, with the object's contents merged into the `params`.
+When you extend `BatchFlow`, you must implement the following:
+
+- `protected abstract nodeToRun: AbstractNode`: You must implement this property to provide the `Node` instance that will be executed for each item in the batch.
+- `async prep(args: NodeArgs): Promise<Iterable<any>>`: This method provides the list of parameter objects. The `nodeToRun` will be executed once for each of these objects, with the object's contents merged into the `params`.
 
 ---
 
 ## `ParallelBatchFlow`
 
-A `Flow` that processes a collection of items concurrently. This provides a significant performance boost for I/O-bound tasks. Like `BatchFlow`, you must extend this class and implement the `prep` method.
+An **abstract** `Flow` that processes a collection of items concurrently. This provides a significant performance boost for I/O-bound tasks.
 
 `extends Flow`
 
-### Methods to Implement
+### Abstract Members to Implement
 
-- `async prep(args: NodeArgs): Promise<Iterable<any>>`: Same as `BatchFlow`. It provides the list of parameter objects to be processed in parallel.
+When you extend `ParallelBatchFlow`, you must implement the following:
+
+- `protected abstract nodeToRun: AbstractNode`: You must implement this property to provide the `Node` instance that will be executed concurrently for each item in the batch.
+- `async prep(args: NodeArgs): Promise<Iterable<any>>`: This method provides the list of parameter objects to be processed in parallel.
 
 ---
 

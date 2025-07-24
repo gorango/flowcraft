@@ -4,7 +4,7 @@ import * as path from 'node:path'
 import process from 'node:process'
 import { ConsoleLogger, TypedContext } from 'cascade'
 import dotenv from 'dotenv'
-import { TranslateFlow, TranslateNode } from './nodes'
+import { TranslateFlow } from './nodes'
 
 dotenv.config()
 
@@ -31,7 +31,7 @@ async function main() {
 		['output_dir', outputDir],
 	])
 
-	const flow = new TranslateFlow(new TranslateNode())
+	const flow = new TranslateFlow()
 	console.log(`Starting parallel translation into ${languages.length} languages...`)
 	const startTime = Date.now()
 

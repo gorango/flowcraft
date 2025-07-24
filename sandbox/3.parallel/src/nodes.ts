@@ -1,4 +1,4 @@
-import type { NodeArgs } from 'cascade'
+import type { AbstractNode, NodeArgs } from 'cascade'
 import * as fs from 'node:fs/promises'
 import * as path from 'node:path'
 import { Node, ParallelBatchFlow } from 'cascade'
@@ -30,6 +30,8 @@ ${text}`
 }
 
 export class TranslateFlow extends ParallelBatchFlow {
+	protected nodeToRun: AbstractNode = new TranslateNode()
+
 	async prep({ ctx }: NodeArgs): Promise<any[]> {
 		const languages = ctx.get('languages')!
 		const text = ctx.get('text')

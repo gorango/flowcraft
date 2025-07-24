@@ -20,10 +20,49 @@ export class SequenceFlow extends Flow {
 }
 
 /**
+ * A builder that creates a flow from a set of nodes to be executed in parallel.
+ * This is the core of the fan-out/fan-in pattern. After all parallel branches
+ * have completed, the flow can proceed to a single, subsequent node.
+ */
+export class ParallelFlow extends Flow {
+	/**
+	 * @param nodesToRun The array of nodes to execute concurrently.
+	 */
+	constructor(protected nodesToRun: AbstractNode[]) {
+		super()
+	}
+
+	async exec({ ctx, params, signal, logger, executor }: NodeArgs): Promise<void> {
+		logger.info(`[ParallelFlow] Executing ${this.nodesToRun.length} branches in parallel...`)
+		const promises = this.nodesToRun.map(node =>
+			node._run({
+				ctx,
+				params: { ...params, ...node.params },
+				signal,
+				logger,
+				executor,
+			}),
+		)
+		// use allSettled to ensure all branches complete, even if one fails.
+		const results = await Promise.allSettled(promises)
+		logger.info(`[ParallelFlow] ✓ All parallel branches finished.`)
+
+		// Check for and log any failures. A more robust implementation might
+		// collect these errors and decide on a specific failure action.
+		results.forEach((result) => {
+			if (result.status === 'rejected')
+				logger.error('[ParallelFlow] A parallel branch failed.', { error: result.reason })
+		})
+	}
+}
+
+/**
  * A flow that executes a given node sequentially for each item in a collection.
  */
-export class BatchFlow extends Flow {
-	constructor(protected nodeToRun: AbstractNode) {
+export abstract class BatchFlow extends Flow {
+	protected abstract nodeToRun: AbstractNode
+
+	constructor() {
 		super()
 	}
 
@@ -63,8 +102,10 @@ export class BatchFlow extends Flow {
 /**
  * A flow that executes a given node in parallel for each item in a collection.
  */
-export class ParallelBatchFlow extends Flow {
-	constructor(protected nodeToRun: AbstractNode) {
+export abstract class ParallelBatchFlow extends Flow {
+	protected abstract nodeToRun: AbstractNode
+
+	constructor() {
 		super()
 	}
 
@@ -105,43 +146,6 @@ export class ParallelBatchFlow extends Flow {
 		}
 
 		return results
-	}
-}
-
-/**
- * A builder that creates a flow from a set of nodes to be executed in parallel.
- * This is the core of the fan-out/fan-in pattern. After all parallel branches
- * have completed, the flow can proceed to a single, subsequent node.
- */
-export class ParallelFlow extends Flow {
-	/**
-	 * @param nodesToRun The array of nodes to execute concurrently.
-	 */
-	constructor(protected nodesToRun: AbstractNode[]) {
-		super()
-	}
-
-	async exec({ ctx, params, signal, logger, executor }: NodeArgs): Promise<void> {
-		logger.info(`[ParallelFlow] Executing ${this.nodesToRun.length} branches in parallel...`)
-		const promises = this.nodesToRun.map(node =>
-			node._run({
-				ctx,
-				params: { ...params, ...node.params },
-				signal,
-				logger,
-				executor,
-			}),
-		)
-		// use allSettled to ensure all branches complete, even if one fails.
-		const results = await Promise.allSettled(promises)
-		logger.info(`[ParallelFlow] ✓ All parallel branches finished.`)
-
-		// Check for and log any failures. A more robust implementation might
-		// collect these errors and decide on a specific failure action.
-		results.forEach((result) => {
-			if (result.status === 'rejected')
-				logger.error('[ParallelFlow] A parallel branch failed.', { error: result.reason })
-		})
 	}
 }
 

@@ -3,12 +3,11 @@ import {
 	ApplyStyleNode,
 	GenerateOutlineNode,
 	WriteContentNode,
-	WriteSingleSectionNode,
 } from './nodes'
 
 export function createArticleFlow(): Flow {
 	const outlineNode = new GenerateOutlineNode()
-	const writeContentFlow = new WriteContentNode(new WriteSingleSectionNode())
+	const writeContentFlow = new WriteContentNode()
 	const styleNode = new ApplyStyleNode()
 
 	outlineNode.next(writeContentFlow)

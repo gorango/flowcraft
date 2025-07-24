@@ -1,4 +1,4 @@
-import type { NodeArgs } from 'cascade'
+import type { AbstractNode, NodeArgs } from 'cascade'
 import { Node, ParallelBatchFlow } from 'cascade'
 import { getEmbedding } from '../utils'
 import { CHUNKS, EMBEDDINGS } from './index'
@@ -17,10 +17,7 @@ class GetSingleEmbeddingNode extends Node<{ chunkId: string, text: string }, { c
 
 // This is the main orchestrator node for this step.
 export class GenerateEmbeddingsNode extends ParallelBatchFlow {
-	constructor() {
-		// The `ParallelBatchFlow` will run an instance of `GetSingleEmbeddingNode` for each item.
-		super(new GetSingleEmbeddingNode())
-	}
+	protected nodeToRun: AbstractNode = new GetSingleEmbeddingNode()
 
 	// The `prep` phase gathers the items to be processed in parallel.
 	async prep({ ctx }: NodeArgs) {

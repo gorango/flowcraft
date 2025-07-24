@@ -112,7 +112,7 @@ const dashboardFlow = new Flow(parallelStep)
 This example uses `ParallelBatchFlow` to translate a document into several languages at once.
 
 ```typescript
-import { ParallelBatchFlow, Node, TypedContext } from 'cascade'
+import { ParallelBatchFlow, Node, TypedContext, AbstractNode } from 'cascade'
 
 // The single unit of work: translates text to one language.
 class TranslateNode extends Node {
@@ -121,12 +121,10 @@ class TranslateNode extends Node {
 
 // The builder orchestrates the batch process.
 class TranslateFlow extends ParallelBatchFlow {
-  constructor() {
-    // Tell the builder which node to run for each item.
-    super(new TranslateNode())
-  }
+  // 1. Implement the abstract property to define which node to run for each item.
+  protected nodeToRun: AbstractNode = new TranslateNode()
 
-  // prep provides the list of items to process.
+  // 2. The `prep` method provides the list of items to process.
   async prep({ ctx }) {
     const languages = ctx.get(LANGUAGES) || []
     const text = ctx.get(DOCUMENT_TEXT)
