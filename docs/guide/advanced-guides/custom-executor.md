@@ -87,14 +87,15 @@ public async run(flow: Flow, context: Context, options?: RunOptions): Promise<an
 
         if (node instanceof Flow) {
             // If the node is a sub-flow, we must run it to get its final action.
-            // A real executor would call node._run(), but for a dry run, we can
-            // create a new instance of ourself to recursively dry-run the sub-flow.
-            action = await new DryRunExecutor().run(node, context, { ...options, params });
+            // A real executor (like InMemoryExecutor) delegates this to a helper
+            // method, e.g., `_orchestrateGraph(subFlow.startNode, ...)`.
+            // For our dry run, we can recursively call ourself.
+            action = await new DryRunExecutor().run(node, context, { ...options, params })
         } else {
-             // For a regular node, run prep and post, but not exec.
-            await node.prep({ ctx: context, params, logger } as any);
+            // For a regular node, run prep and post, but not exec.
+            await node.prep({ ctx: context, params, logger } as any)
             // We call post with a null `execRes` as exec was skipped.
-            action = await node.post({ ctx: context, params, logger, execRes: null } as any);
+            action = await node.post({ ctx: context, params, logger, execRes: null } as any)
         }
 
         lastAction = action;

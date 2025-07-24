@@ -1,4 +1,5 @@
 import type { Context, ContextKey, ContextLens } from './context'
+import type { InternalRunOptions } from './executor'
 import type { Middleware, NodeArgs, NodeOptions, NodeRunContext, Params, RunOptions } from './types'
 import { AbortError, WorkflowError } from './errors'
 import { InMemoryExecutor } from './executors/in-memory'
@@ -373,47 +374,39 @@ export class Flow extends Node<any, any, any> {
 	 * @returns The action returned by the last node in the flow.
 	 */
 	async exec(args: NodeArgs<any, any>): Promise<any> {
-		const { ctx, params: parentParams, signal, logger, executor } = args
+		// Guard clause for non-in-memory executors which don't support sub-flows.
+		if (!(args.executor instanceof InMemoryExecutor)) {
+			throw new TypeError('Sub-flow orchestration is only supported by the InMemoryExecutor.')
+		}
 
-		// A Flow with no startNode is a logic-bearing flow (e.g., BatchFlow).
-		// Its logic is already defined in its own `exec` method.
+		// Handle logic-bearing flows (like BatchFlow) by calling their own `exec`
 		if (!this.startNode) {
 			return super.exec(args)
 		}
 
-		if (!(executor instanceof InMemoryExecutor)) {
-			throw new TypeError('Sub-flow orchestration is only supported by the InMemoryExecutor.')
+		args.logger.info(`-- Entering sub-flow: ${this.constructor.name} --`)
+
+		// Combine the parent flow's params with this sub-flow's own params.
+		const combinedParams = { ...args.params, ...this.params }
+
+		const internalOptions: InternalRunOptions = {
+			logger: args.logger,
+			signal: args.signal,
+			params: combinedParams,
+			executor: args.executor,
 		}
 
-		logger.info(`-- Entering sub-flow: ${this.constructor.name} --`)
-		const combinedParams = { ...parentParams, ...this.params }
-		let curr: AbstractNode | undefined = this.startNode
-		let lastAction: any
+		// Delegate orchestration to the executor's stateless helper method.
+		// Pass *this* flow's startNode and *this* flow's middleware.
+		const finalAction = await args.executor._orch(
+			this.startNode,
+			this.middleware,
+			args.ctx,
+			internalOptions,
+		)
 
-		// This is a self-contained orchestration loop for the sub-flow's graph.
-		// It does NOT call executor.run().
-		while (curr) {
-			if (signal?.aborted)
-				throw new AbortError()
-
-			// The sub-flow applies its own middleware to its children.
-			const chain = executor.applyMiddleware(this.middleware, curr)
-			const nodeArgs: NodeArgs = {
-				ctx,
-				params: combinedParams,
-				signal,
-				logger,
-				prepRes: undefined,
-				execRes: undefined,
-				name: curr.constructor.name,
-				executor,
-			}
-
-			lastAction = await chain(nodeArgs)
-			curr = executor.getNextNode(curr, lastAction, logger)
-		}
-		logger.info(`-- Exiting sub-flow: ${this.constructor.name} --`)
-		return lastAction
+		args.logger.info(`-- Exiting sub-flow: ${this.constructor.name} --`)
+		return finalAction
 	}
 
 	async post({ execRes }: NodeArgs<any, any>): Promise<any> {

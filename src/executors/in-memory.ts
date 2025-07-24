@@ -1,5 +1,5 @@
-import type { IExecutor } from '../executor'
-import type { AbstractNode, Context, Flow, Logger, Middleware, MiddlewareNext, NodeArgs, RunOptions } from '../workflow'
+import type { IExecutor, InternalRunOptions } from '../executor'
+import type { AbstractNode, Context, Flow, Logger, Middleware, MiddlewareNext, NodeArgs, Params, RunOptions } from '../workflow'
 import { AbortError, NullLogger } from '../workflow'
 
 /**
@@ -7,6 +7,53 @@ import { AbortError, NullLogger } from '../workflow'
  * This class contains the core logic for traversing a workflow graph.
  */
 export class InMemoryExecutor implements IExecutor {
+	/**
+	 * A stateless, reusable method that orchestrates the traversal of a graph.
+	 * It is called by `run()` for top-level flows and by `Flow.exec()` for sub-flows.
+	 * @param startNode The node where the graph traversal begins.
+	 * @param flowMiddleware The middleware array from the containing flow.
+	 * @param context The shared workflow context.
+	 * @param options The internal, normalized run options.
+	 * @returns The final action from the last executed node in the graph.
+	 * @internal
+	 */
+	public async _orch(
+		startNode: AbstractNode,
+		flowMiddleware: Middleware[],
+		context: Context,
+		options: InternalRunOptions,
+	): Promise<any> {
+		let currentNode: AbstractNode | undefined = startNode
+		let lastAction: any
+
+		const { logger, signal, params, executor } = options
+
+		while (currentNode) {
+			if (signal?.aborted)
+				throw new AbortError()
+
+			const chain = this.applyMiddleware(flowMiddleware, currentNode)
+
+			const nodeArgs: NodeArgs = {
+				ctx: context,
+				params,
+				signal,
+				logger,
+				prepRes: undefined,
+				execRes: undefined,
+				name: currentNode.constructor.name,
+				executor,
+			}
+
+			lastAction = await chain(nodeArgs)
+
+			const previousNode = currentNode
+			currentNode = this.getNextNode(previousNode, lastAction, logger)
+		}
+
+		return lastAction
+	}
+
 	/**
 	 * Executes a given flow with a specific context and options.
 	 * This is the main entry point for the in-memory execution engine.
@@ -20,47 +67,31 @@ export class InMemoryExecutor implements IExecutor {
 		const controller = options?.controller
 		const combinedParams = { ...flow.params, ...options?.params }
 
-		// This handles "logic-bearing" flows like BatchFlow that don't have a graph.
+		const internalOptions: InternalRunOptions = {
+			logger,
+			signal: controller?.signal,
+			params: combinedParams,
+			executor: this,
+		}
+
+		// Handle "logic-bearing" flows (e.g., BatchFlow) that don't have a graph.
+		// Their logic is self-contained in their `exec` method.
 		if (!flow.startNode) {
 			logger.info(`Executor is running a logic-bearing flow: ${flow.constructor.name}`)
 			const chain = this.applyMiddleware(flow.middleware, flow)
-			const nodeArgs: NodeArgs = {
+			return await chain({
+				...internalOptions,
 				ctx: context,
-				params: combinedParams,
-				signal: controller?.signal,
-				logger,
 				prepRes: undefined,
 				execRes: undefined,
 				name: flow.constructor.name,
-				executor: this,
-			}
-			return await chain(nodeArgs)
+			})
 		}
 
 		logger.info(`Executor is running flow graph: ${flow.constructor.name}`)
-		let curr: AbstractNode | undefined = flow.startNode
-		let lastAction: any
-
-		while (curr) {
-			if (controller?.signal.aborted)
-				throw new AbortError()
-
-			const chain = this.applyMiddleware(flow.middleware, curr)
-			const nodeArgs: NodeArgs = {
-				ctx: context,
-				params: combinedParams,
-				signal: controller?.signal,
-				logger,
-				prepRes: undefined,
-				execRes: undefined,
-				name: curr.constructor.name,
-				executor: this,
-			}
-			lastAction = await chain(nodeArgs)
-			const previousNode = curr
-			curr = this.getNextNode(previousNode, lastAction, logger)
-		}
-		return lastAction
+		// Delegate the graph traversal to our new stateless helper.
+		// Pass the flow's own middleware to be applied to its nodes.
+		return this._orch(flow.startNode, flow.middleware, context, internalOptions)
 	}
 
 	/**
