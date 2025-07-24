@@ -40,3 +40,5 @@ export interface NodeJobPayload {
 	context: Record<string, any>
 	params: Record<string, any>
 }
+
+export const FINAL_ACTION = Symbol('final_action')

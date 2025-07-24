@@ -68,21 +68,79 @@ async function main() {
 
 	const executor = new BullMQExecutor(QUEUE_NAME, redisConnection, registry)
 
-	console.log()
-	logger.info(`Use-case: "${ACTIVE_USE_CASE}"`)
-	console.log('\n=============================================================')
-	logger.info(`🚀 Starting Workflow Run ID: ${runId}`)
-	console.log('=============================================================\n')
+	console.log('🚀 Starting Workflow and awaiting result...')
 
-	await flow.run(context, {
+	const initialJobsOrJob = await flow.run(context, {
 		logger,
 		executor,
 		params: { runId, workflowId: WORKFLOW_ID },
 	})
 
-	logger.info('Client finished. The workflow is now running on the worker(s).')
-	logger.info('Switch to the worker terminal to see progress or cancel.')
+	if (!initialJobsOrJob) {
+		logger.error('Workflow did not produce any initial jobs.')
+		return
+	}
+
+	// For simplicity, let's assume we wait on the first job in a parallel start.
+	// A more robust implementation might use Promise.all on an array of waiters.
+	const firstJob = Array.isArray(initialJobsOrJob)
+		? initialJobsOrJob[0]
+		: initialJobsOrJob
+
+	try {
+		const finalStatus = await waitForWorkflow(redisConnection, runId, 60000)
+
+		console.log('\n=============================================================')
+
+		switch (finalStatus.status) {
+			case 'completed':
+				logger.info(`✅ Workflow Run ID: ${runId} COMPLETED.`)
+				console.log('=============================================================\n')
+				console.log('Final Result from Worker:\n')
+				console.log(finalStatus.payload)
+				break
+			case 'cancelled':
+				logger.warn(`🛑 Workflow Run ID: ${runId} was successfully CANCELLED.`)
+				console.log(`   Reason: ${finalStatus.reason}`)
+				console.log('=============================================================')
+				break
+			case 'failed':
+				logger.error(`❌ Workflow Run ID: ${runId} FAILED or timed out.`)
+				console.log(`   Reason: ${finalStatus.reason}`)
+				console.log('=============================================================')
+				break
+		}
+	}
+	catch (error: any) {
+		logger.error(`Error waiting for job to complete for Run ID ${runId}`, error)
+		const jobState = await firstJob.getState()
+		logger.error(`Job state is: ${jobState}`)
+	}
+
 	await redisConnection.quit()
 }
 
 main().catch(console.error)
+
+interface WorkflowStatus {
+	status: 'completed' | 'failed' | 'cancelled'
+	payload?: any
+	reason?: string
+}
+
+async function waitForWorkflow(redis: IORedis, runId: string, timeoutMs: number): Promise<WorkflowStatus> {
+	const statusKey = `workflow:status:${runId}`
+	const startTime = Date.now()
+
+	while (Date.now() - startTime < timeoutMs) {
+		const statusJson = await redis.get(statusKey)
+		if (statusJson) {
+			await redis.del(statusKey) // Clean up the key
+			return JSON.parse(statusJson) as WorkflowStatus
+		}
+		await new Promise(resolve => setTimeout(resolve, 500))
+	}
+
+	// If the loop finishes, it's a timeout.
+	return { status: 'failed', reason: `Timeout: Workflow did not complete within ${timeoutMs}ms.` }
+}

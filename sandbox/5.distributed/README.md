@@ -2,16 +2,17 @@
 
 This example demonstrates the power of the `Executor` pattern by running the same complex, graph-based AI agent from the DAG example in a distributed environment using **BullMQ**.
 
-It showcases a client-worker architecture where a client can initiate a workflow, and the actual execution of each node happens as a job processed by one or more separate worker processes. This is a common pattern for building scalable, resilient, and long-running process automation systems.
+It showcases a client-worker architecture where a client can initiate a workflow and **asynchronously wait for its final result**. The actual execution of each node happens as a job processed by one or more separate worker processes, which is a common pattern for building scalable, resilient, and long-running process automation systems.
 
 ## Features
 
+- **Awaitable Workflows**: The client can start a workflow and wait for a definitive `completed`, `failed`, or `cancelled` status, making it easy to integrate into request-response patterns like an API server.
 - **Pluggable `BullMQExecutor`**: A custom executor that, instead of running nodes in-memory, enqueues them as jobs in a Redis-backed BullMQ queue.
 - **Client-Worker Separation**:
-  - The **Client** (`src/client.ts`) is a lightweight process that builds the initial context and starts a workflow. This is a non-blocking, "fire-and-forget" operation.
-  - The **Worker** (`src/worker.ts`) is a separate, long-running process that listens for jobs, executes the logic for a single node, and enqueues the next node(s) in the graph. The worker effectively acts as the *true*, step-by-step executor in the distributed system.
+  - The **Client** (`src/client.ts`) is a lightweight process that initiates the workflow and then polls a Redis key for the final status.
+  - The **Worker** (`src/worker.ts`) is a separate, long-running process that listens for jobs, executes the logic for a single node, and reports the final status back to the client via Redis.
 - **State Serialization**: The `Context` is serialized to a plain object and passed between jobs, allowing state to flow through the distributed graph.
-- **Distributed Cancellation**: A `runId` is generated for each workflow. You can gracefully abort a running workflow by pressing 'c' in the worker terminal and providing the corresponding `runId`, demonstrating how to manage distributed processes.
+- **Distributed Cancellation**: A `runId` is generated for each workflow. You can gracefully abort a running workflow by pressing 'c' in the worker terminal and providing the corresponding `runId`, and the client will be notified of the cancellation.
 - **Resilience & Scalability**: By using a message queue, workflows can survive process restarts. You can run multiple worker processes to handle a high volume of concurrent workflows.
 - **Unchanged Business Logic**: The exact same declarative JSON graph definitions from the DAG example are used here. The change in execution environment (in-memory vs. distributed) is completely transparent to the workflow's definition.
 
@@ -42,7 +43,7 @@ It showcases a client-worker architecture where a client can initiate a workflow
     npm run worker
     ```
 
-5. **Run the Client**: Open a **second terminal** and run the client. This will kick off the workflow and log a `Run ID` to the console.
+5. **Run the Client**: Open a **second terminal** and run the client. This will kick off the workflow, log a `Run ID`, and wait for the final result.
 
     ```bash
     npm start
@@ -53,35 +54,35 @@ It showcases a client-worker architecture where a client can initiate a workflow
     The client will log a `Run ID` like this:
 
     ```
-    =============================================================
-    🚀 Starting Workflow Run ID: ab12
-    =============================================================
+    🚀 Starting Workflow and awaiting result...
+    [INFO] [Executor] Enqueuing 1 start node(s) for workflow 123
+    [INFO] [Executor] Starting Run ID: a1
     ```
 
     Keep this `Run ID` handy.
 
 6. **(Optional) Cancel the Workflow**:
-    - Switch back to the **worker terminal**.
+    - While the client is waiting, switch to the **worker terminal**.
     - Press the `c` key.
     - At the prompt, enter the `Run ID` from the client and press Enter.
-    - The worker will signal for cancellation, and any subsequent jobs for that `Run ID` will be aborted.
+    - The worker will signal for cancellation, and the client in the other terminal will immediately report that the workflow was cancelled.
 
 ## How It Works
 
-This example highlights a different implementation of the `IExecutor` pattern.
+This example uses a client-worker architecture with Redis acting as a communication bus.
 
-1. **Client & `BullMQExecutor` (`client.ts`)**:
-    - The client's role is to **initiate** the workflow.
+1. **Client (`client.ts`)**:
+    - The client's role is to **initiate** the workflow and **await its completion**.
     - It generates a unique `runId`.
-    - It creates an instance of `BullMQExecutor`. Unlike the `InMemoryExecutor`, this executor does not have an orchestration loop. Its `run` method simply identifies the starting node(s) of the graph, serializes the initial context, and adds the first job(s) to the BullMQ queue.
-    - After enqueuing the first job, the client's work is done and it exits.
+    - It uses the `BullMQExecutor` to add the first job(s) to the BullMQ queue.
+    - It then enters a polling loop (`waitForWorkflow`), checking a specific Redis key (`workflow:status:<runId>`) for a final status.
 
 2. **Worker Process (`worker.ts`)**:
     - The worker is the **long-running orchestrator** of the distributed system.
-    - Its processor function receives a job containing `{ runId, workflowId, nodeId, context }`.
-    - For each job, it finds the corresponding executable `Node` instance using the `WorkflowRegistry`.
-    - It deserializes the `context` and executes the single node's logic (`node._run()`).
-    - **Cancellation**: The worker polls a cancellation key in Redis for the current `runId`. If the key is found, it triggers a standard `AbortController` to gracefully halt the running node.
-    - After the node runs successfully, the worker determines the successor node(s) based on the returned action.
-    - For each successor, it enqueues a **new job**, passing along the now-updated `context` and the original `runId`.
-    - This process repeats job by job until a branch of the workflow completes or is cancelled.
+    - It processes jobs from the queue one by one.
+    - After executing a node, it checks if it was the final node in a branch (marked by a special `FINAL_ACTION`).
+    - **Status Reporting**: If the node was final, failed, or was cancelled, the worker writes a status object (e.g., `{ "status": "completed", "payload": ... }`) to the Redis status key that the client is polling.
+    - **Cancellation**: The worker also polls Redis for a cancellation signal for the current `runId` and will gracefully abort execution if the signal is found.
+    - If the workflow is not finished, the worker enqueues the next node(s) in the graph, continuing the process.
+
+This architecture decouples the client from the execution, allowing the system to be resilient and scalable while still providing a simple, awaitable interface for the initiating process.

@@ -7,7 +7,7 @@ import { Queue, Worker } from 'bullmq'
 import { AbortError, ConsoleLogger, Flow, TypedContext } from 'cascade'
 import IORedis from 'ioredis'
 import { WorkflowRegistry } from './registry'
-import { RUN_ID } from './types'
+import { FINAL_ACTION, RUN_ID } from './types'
 import 'dotenv/config'
 
 const QUEUE_NAME = 'distributed-cascade-queue'
@@ -89,6 +89,7 @@ async function main() {
 
 	const worker = new Worker<NodeJobPayload>(QUEUE_NAME, async (job) => {
 		const { runId, workflowId, nodeId, context: serializedContext, params } = job.data
+		const statusKey = `workflow:status:${runId}`
 		logger.info(`[Worker] Processing job: ${job.name} (Workflow: ${workflowId}, Run: ${runId})`)
 
 		// 1. Create a job-specific AbortController.
@@ -127,6 +128,17 @@ async function main() {
 				logger,
 			})
 
+			if (action === FINAL_ACTION) {
+				logger.info(`[Worker] Final node executed for Run ID ${runId}. Reporting 'completed' status...`)
+				const finalPayload = context.get('__final_payload')
+
+				// Write the 'completed' status and payload
+				const statusPayload = { status: 'completed', payload: finalPayload ?? null }
+				await redisConnection.set(statusKey, JSON.stringify(statusPayload), 'EX', 3600)
+
+				return finalPayload
+			}
+
 			// 4. If we successfully completed, check for cancellation one last time before enqueuing the next job.
 			if (controller.signal.aborted) {
 				throw new AbortError(`Job for Run ID ${runId} was cancelled after execution, before enqueueing next step.`)
@@ -157,12 +169,23 @@ async function main() {
 		}
 		catch (error) {
 			if (error instanceof AbortError) {
-				logger.warn(`[Worker] Job for Run ID ${runId} was aborted. Halting branch.`)
-				// Do not re-throw, as we don't want BullMQ to retry the job.
-				// This is a successful cancellation.
+				logger.warn(`[Worker] Job for Run ID ${runId} was aborted. Reporting 'cancelled' status.`)
+				// Write the 'cancelled' status to the key for the client.
+				// Use 'SETNX' (set if not exists) to prevent a race condition where a
+				// completion and cancellation signal might overwrite each other. The first one wins.
+				const statusPayload = { status: 'cancelled', reason: error.message }
+				await redisConnection.setnx(statusKey, JSON.stringify(statusPayload))
+				// Expire it anyway, in case SETNX succeeded.
+				await redisConnection.expire(statusKey, 3600)
+				// Do not re-throw, as this is a successful cancellation from the worker's perspective.
 			}
 			else {
-				// Re-throw other errors for BullMQ to handle (e.g., retry logic).
+				// For other errors, report a 'failed' status
+				logger.error(`[Worker] Job for Run ID ${runId} failed. Reporting 'failed' status.`)
+				const statusPayload = { status: 'failed', reason: (error as Error).message }
+				await redisConnection.setnx(statusKey, JSON.stringify(statusPayload))
+				await redisConnection.expire(statusKey, 3600)
+				// Re-throw to let BullMQ handle its own retry logic for this job.
 				throw error
 			}
 		}

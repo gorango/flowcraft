@@ -1,3 +1,4 @@
+import type { Job } from 'bullmq'
 import type { Context, IExecutor, RunOptions } from 'cascade'
 import type IORedis from 'ioredis'
 import type { WorkflowRegistry } from './registry'
@@ -46,8 +47,10 @@ export class BullMQExecutor implements IExecutor {
 			return
 		}
 
-		logger?.info(`[Executor] Enqueuing ${nodesToEnqueue.length} start node(s) for workflow ${workflowId} (Run ID: ${runId}).`)
+		logger?.info(`[Executor] Enqueuing ${nodesToEnqueue.length} start node(s) for workflow ${workflowId}`)
+		logger?.info(`[Executor] Starting Run ID: ${runId}`)
 
+		const jobs: Job[] = []
 		for (const node of nodesToEnqueue) {
 			const nodeId = node.id!
 			const jobPayload: NodeJobPayload = {
@@ -57,7 +60,14 @@ export class BullMQExecutor implements IExecutor {
 				context: serializedContext,
 				params: combinedParams,
 			}
-			await this.queue.add(nodeId, jobPayload)
+			const job = await this.queue.add(nodeId, jobPayload)
+			jobs.push(job)
 		}
+
+		if (jobs.length === 0)
+			return undefined
+		if (jobs.length === 1)
+			return jobs[0]
+		return jobs
 	}
 }

@@ -2,6 +2,7 @@ import type { NodeArgs, NodeOptions } from 'cascade'
 import type { WorkflowRegistry } from './registry'
 import type { AgentNodeTypeMap } from './types'
 import { DEFAULT_ACTION, Node } from 'cascade'
+import { FINAL_ACTION } from './types'
 import { callLLM, resolveTemplate } from './utils'
 
 interface AiNodeOptions<T extends keyof AgentNodeTypeMap> extends NodeOptions {
@@ -167,7 +168,7 @@ export class SubWorkflowNode extends Node {
 /**
  * Aggregates inputs and sets a final value in the context.
  */
-export class OutputNode extends Node<string, void> {
+export class OutputNode extends Node<string, void, typeof FINAL_ACTION | string | typeof DEFAULT_ACTION> {
 	private data: AiNodeOptions<'output'>['data']
 
 	constructor(options: AiNodeOptions<'output'>) {
@@ -177,11 +178,18 @@ export class OutputNode extends Node<string, void> {
 
 	prep = LLMProcessNode.prototype.prep
 
-	async post(args: NodeArgs<string, void>): Promise<string | typeof DEFAULT_ACTION> {
+	async post(args: NodeArgs<string, void>): Promise<typeof FINAL_ACTION | string | typeof DEFAULT_ACTION> {
 		const finalResult = args.prepRes
 		const outputKey = this.data.outputKey || 'final_output'
 		args.ctx.set(outputKey, finalResult)
-		args.logger.info(`[Output] Workflow finished. Final value set to context key '${outputKey}'.`)
-		return this.data.returnAction || DEFAULT_ACTION
+
+		// **The payload is now in the context, where it belongs.**
+		// We set a dedicated context key that the worker will look for.
+		args.ctx.set('__final_payload', finalResult) // Use a conventional key
+
+		args.logger.info(`[Output] Workflow branch finished. Final value set to context key '${outputKey}'.`)
+
+		// Now we return the special action symbol.
+		return FINAL_ACTION
 	}
 }
