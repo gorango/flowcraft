@@ -157,10 +157,10 @@ An **action** is a string returned by a node's `post()` method that the `Executo
 
 Cascade is an excellent choice for:
 
-- **AI Agent Orchestration**: Modeling the "reasoning loop" of an AI agent is a natural fit for a graph. Conditional branching, tool use, and parallel thought processes are easily implemented.
-- **Data Processing & ETL Pipelines**: Fetching data, running transformations, and saving it to a destination.
-- **Complex Business Logic**: Any multi-step process with conditional paths, retries, and fallbacks (e.g., user onboarding, e-commerce order fulfillment).
-- **Multi-Step Background Jobs**: Running tasks in the background of a web application, like generating a report or processing a file.
+- **AI Agent Orchestration**: Modeling the "reasoning loop" of an AI agent is a natural fit for a graph. Conditional branching, tool use, and parallel thought processes are easily implemented. The **[Advanced RAG Agent](https://github.com/gorango/cascade/tree/master/sandbox/6.rag/)** is a complete, end-to-end example of this pattern.
+- **Data Processing & ETL Pipelines**: Fetching data, running transformations, and saving it to a destination. The [Parallel Batch Translation](https://github.com/gorango/cascade/tree/master/sandbox/3.parallel/) is a great example of this task.
+- **Complex Business Logic**: Any multi-step process with conditional paths, retries, and fallbacks (e.g., user onboarding, e-commerce order fulfillment). Look at some of the examples in the [DAG](https://github.com/gorango/cascade/tree/master/sandbox/4.dag/) sandbox.
+- **Multi-Step Background Jobs**: Running tasks in the background of a web application, like generating a report or processing a file. The [Distributed](https://github.com/gorango/cascade/tree/master/sandbox/5.distributed/) examples showcase running all of the same DAG workflows but in the background.
 
 ## How Cascade Compares
 

@@ -1,0 +1,48 @@
+import type { NodeArgs } from 'cascade'
+import type { RagNodeOptions, SearchResult } from '../types'
+import { Node } from 'cascade'
+import { callLLM, resolveTemplate } from '../utils'
+import { FINAL_ANSWER, keyRegistry, SEARCH_RESULTS } from './index'
+
+export class LLMProcessNode extends Node<string, string> {
+	private data: RagNodeOptions<'llm-process'>['data']
+
+	constructor(options: RagNodeOptions<'llm-process'>) {
+		super(options)
+		this.data = options.data
+	}
+
+	prep(args: NodeArgs): Promise<string> {
+		const template = this.data.promptTemplate
+		const templateData: Record<string, any> = {}
+
+		for (const [templateKey, contextKeyString] of Object.entries(this.data.inputs)) {
+			const keySymbol = keyRegistry.get(contextKeyString)
+			if (keySymbol) {
+				let value = args.ctx.get(keySymbol as any)
+
+				if (keySymbol === SEARCH_RESULTS) {
+					const searchResults = value as SearchResult[] | undefined
+					value = searchResults
+						?.map(result => result.chunk.text)
+						.join('\n\n---\n\n') ?? ''
+				}
+
+				templateData[templateKey] = value
+			}
+			else {
+				args.logger.warn(`[LLMProcessNode] Unknown context key '${contextKeyString}' in graph definition.`)
+			}
+		}
+
+		return Promise.resolve(resolveTemplate(template, templateData))
+	}
+
+	exec(args: NodeArgs<string>): Promise<string> {
+		return callLLM(args.prepRes)
+	}
+
+	async post(args: NodeArgs<string, string>) {
+		args.ctx.set(FINAL_ANSWER, args.execRes)
+	}
+}

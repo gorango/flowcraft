@@ -145,6 +145,25 @@ This example takes the same type-safe graph definition from the previous example
   - How business logic (the graph) remains unchanged when the execution environment changes.
 - **[Explore the Distributed AI Agent example &raquo;](./sandbox/5.distributed/)**
 
+### 6. Advanced RAG Agent: Complex Data & Serialization
+
+A complete, end-to-end Retrieval-Augmented Generation (RAG) agent that ingests a document, creates embeddings in parallel, performs a vector search, and synthesizes an answer. This example showcases how to build a sophisticated, data-driven AI workflow.
+
+```mermaid
+graph TD
+    A[Load & Chunk Document] --> B[Generate Embeddings];
+    B --> C[Store in Vector DB];
+    C --> D[Vector Search for Question];
+    D --> E[Generate Final Answer];
+```
+
+- **Demonstrates**:
+  - A full, practical RAG pipeline.
+  - A mix of custom, single-responsibility nodes.
+  - Handling complex data types (`Map`, `Date`, custom classes) in the `Context`.
+  - The necessity of robust serialization (using `superjson`) for state management.
+- **[Explore the RAG Agent example &raquo;](./sandbox/6.rag/)**
+
 ## Core Concepts
 
 ### Node

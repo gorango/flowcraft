@@ -1,0 +1,11 @@
+Cascade is a lightweight, zero-dependency TypeScript framework for building complex, multi-step processes. It empowers you to model everything from simple sequential tasks to dynamic, graph-driven AI agents with a clear and composable API.
+
+The Node is the most fundamental building block. It represents a single, atomic unit of work in your process. Every Node has a well-defined, three-phase lifecycle that separates data preparation (prep), core logic (exec), and result processing (post). This separation makes nodes highly testable and reusable.
+
+A Flow is a special type of Node that acts as an orchestrator. It doesn't have its own business logic; instead, its purpose is to manage the execution of a graph of other nodes. The Executor is the engine that runs the Flow, traversing the graph and executing each node.
+
+An action is a string returned by a node's post() method. The Executor uses this string to determine which path to take next in the workflow graph. If a node returns the default action, the flow proceeds linearly. However, if a node returns a custom string like 'user_is_valid' or 'error_occurred', the Executor will look for a successor connected to that specific action. This is the primary mechanism for implementing conditional branching and creating dynamic, responsive workflows.
+
+The Context is the shared memory of a running workflow. It is a type-safe, Map-like object that is passed to every single node, allowing different steps in the process to communicate and share state with each other. For example, an early node might fetch user data and place it in the context, while a later node reads that data to make a decision.
+
+Cascade also supports advanced features like middleware for cross-cutting concerns, automatic retries with fallback logic for resilience, and robust cancellation support via standard AbortControllers. This makes it suitable for building production-grade applications.

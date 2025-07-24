@@ -97,3 +97,20 @@ When you use composition (a `Flow` within a `Flow`), the sub-flow shares the sam
 **Best Practice**: A sub-flow should only write its final, essential outputs to the `Context`. If possible, use a dedicated output node within the sub-flow to aggregate results and clean up any temporary keys.
 
 The `SubWorkflowNode` in the `sandbox/4.dag` example demonstrates an advanced pattern for this. By defining explicit `input` and `output` maps, it creates a clean data boundary, preventing any leakage of temporary state. For a detailed explanation of this powerful pattern, see the guide on **[Data Flow in Sub-Workflows](./sub-workflow-data.md)**.
+
+## 5. Plan for Serialization
+
+While the `InMemoryExecutor` can handle any JavaScript object in the `Context`, your workflow's state may need to be saved, logged, or sent over a network (as in the `BullMQExecutor` example). Standard `JSON.stringify` is lossy and will not correctly preserve complex data types.
+
+**Common data types that break `JSON.stringify`:**
+
+- `Date` objects (are converted to strings)
+- `Map` and `Set` objects (are converted to empty objects `{}`)
+- Custom class instances (lose their methods and class identity)
+- `Symbol` keys (are dropped entirely)
+
+To build robust, stateful workflows, it is a best practice to use a library that handles this automatically.
+
+**Best Practice**: Use a library like [`superjson`](https://github.com/blitz-js/superjson) to serialize and deserialize your context. It transparently handles all common JavaScript types, ensuring that the state you save is the same as the state you load.
+
+The **[Advanced RAG Agent](https://github.com/gorango/tree/master/sandbox/6.rag/) example** was specifically designed to demonstrate this principle. It uses `superjson` to correctly manage a `Context` containing `Map`, `Date`, and custom class instances, making its state reliable and easy to inspect.
