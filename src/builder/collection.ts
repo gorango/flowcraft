@@ -104,7 +104,7 @@ export class ParallelBatchFlow extends Flow {
 			}
 		}
 
-		return null
+		return results
 	}
 }
 

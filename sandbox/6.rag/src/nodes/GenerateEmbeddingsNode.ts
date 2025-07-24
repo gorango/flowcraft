@@ -1,40 +1,7 @@
-import type { AbstractNode, NodeArgs } from 'cascade'
-import { Flow, Node } from 'cascade'
+import type { NodeArgs } from 'cascade'
+import { Node, ParallelBatchFlow } from 'cascade'
 import { getEmbedding } from '../utils'
 import { CHUNKS, EMBEDDINGS } from './index'
-
-// Modified from the ParallelBatchFlow to return the items from the batch.
-class ParallelBatchFlow extends Flow {
-	constructor(protected nodeToRun: AbstractNode) {
-		super()
-	}
-
-	async prep(_args: NodeArgs): Promise<Iterable<any>> {
-		return []
-	}
-
-	async exec(args: NodeArgs<any, void>): Promise<any> {
-		if (!this.nodeToRun)
-			return null
-
-		const combinedParams = { ...this.params, ...args.params }
-		const batchParamsIterable = (await this.prep(args)) || []
-		const batchParamsList = Array.from(batchParamsIterable)
-		args.logger.info(`ParallelBatchFlow: Starting parallel processing of ${batchParamsList.length} items.`)
-
-		const promises = batchParamsList.map((batchParams) => {
-			return this.nodeToRun._run({
-				ctx: args.ctx,
-				params: { ...combinedParams, ...batchParams },
-				signal: args.signal,
-				logger: args.logger,
-				executor: args.executor,
-			})
-		})
-
-		return Promise.all(promises)
-	}
-}
 
 // The "worker" node that processes a single item from the batch.
 class GetSingleEmbeddingNode extends Node<{ chunkId: string, text: string }, { chunkId: string, vector: number[] }> {
@@ -71,12 +38,16 @@ export class GenerateEmbeddingsNode extends ParallelBatchFlow {
 	// The `post` phase runs after all parallel jobs are complete to aggregate the results.
 	async post({ ctx, execRes, logger }: NodeArgs) {
 		const embeddings = new Map<string, number[]>()
-		const batchResults = execRes as { chunkId: string, vector: number[] }[] | undefined
+		const batchResults = execRes as PromiseSettledResult<{ chunkId: string, vector: number[] }>[] | undefined
 
 		if (batchResults) {
 			for (const result of batchResults) {
-				if (result)
-					embeddings.set(result.chunkId, result.vector)
+				if (result.status === 'fulfilled' && result.value) {
+					embeddings.set(result.value.chunkId, result.value.vector)
+				}
+				else if (result.status === 'rejected') {
+					logger?.error('[GenerateEmbeddingsNode] A batch embedding generation failed.', { error: result.reason })
+				}
 			}
 		}
 
