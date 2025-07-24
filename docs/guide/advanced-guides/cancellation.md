@@ -1,4 +1,4 @@
-# Advanced Guide: Cancellation Support
+# Cancellation Support
 
 In many applications, especially those involving long-running asynchronous operations, you need a way to gracefully abort a process that is already in flight. Cascade provides robust cancellation support out of the box by integrating with the standard web `AbortController` and `AbortSignal` APIs.
 

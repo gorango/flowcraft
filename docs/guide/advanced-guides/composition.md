@@ -1,4 +1,4 @@
-# Advanced Guide: Composition
+# Composition
 
 One of the most powerful features of Cascade is its composability. Because a `Flow` is itself a type of `Node`, you can treat an entire workflow as a single building block within a larger, more complex workflow. This allows you to create highly modular, reusable, and maintainable systems.
 
@@ -104,11 +104,11 @@ As you can see, the parent flow's executor correctly branched based on the final
 
 ## Data Flow and Context
 
-The `Context` is shared between the parent and the sub-flow.
+By default, the `Context` is **shared** between the parent and the sub-flow. The same context instance is passed through all nodes in the parent and all nodes in the sub-flow.
 
-- The sub-flow can read data that was set in the `Context` by previous nodes in the parent flow.
-- The sub-flow can write data to the `Context`, and that data will be available to subsequent nodes in the parent flow.
+- **Pros**: This makes passing data between the parent and child flows trivial. A sub-flow can read data set by previous nodes in the parent, and subsequent nodes in the parent can read data set by the sub-flow.
+- **Cons**: This "shared memory" model can lead to tight coupling and unexpected side effects if sub-flows are not carefully designed. A sub-flow could accidentally overwrite a context value that the parent flow depends on, leading to hard-to-debug issues.
 
-This shared-memory model makes passing data between composed flows trivial. However, be mindful of potential key collisions if sub-flows are developed independently. Using descriptive and unique `ContextKey`s is a good practice to avoid conflicts.
+Using descriptive and unique `ContextKey`s is a good practice to avoid accidental collisions.
 
-For a more advanced and robust pattern for managing data flow, especially when using the declarative `GraphBuilder`, see the guide on **[Best Practices: Data Flow in Sub-Workflows](../best-practices/sub-workflow-data.md)**.
+For building more robust and modular systems where data boundaries are critical, it is highly recommended to implement a pattern that creates an explicit data contract between the parent and child. See the guide on **[Best Practices: Data Flow in Sub-Workflows](../best-practices/sub-workflow-data.md)** for a detailed explanation of this powerful pattern.

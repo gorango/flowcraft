@@ -1,4 +1,4 @@
-# Advanced Guide: Error Handling
+# Error Handling
 
 Real-world processes can fail. Network connections drop, APIs return errors, and unexpected conditions occur. Cascade provides built-in mechanisms for making your workflows resilient through automatic retries and fallback logic.
 

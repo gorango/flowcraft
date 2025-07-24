@@ -1,4 +1,4 @@
-# Advanced Guide: Building a Custom Executor
+# Building a Custom Executor
 
 The `IExecutor` pattern is one of Cascade's most powerful architectural features. It decouples the definition of a workflow (the graph of `Node`s) from its execution environment. While the default `InMemoryExecutor` is perfect for many use cases, you can create your own executors to run workflows in different environments, such as a distributed task queue, a test environment, or even a system that requires pausing and resuming.
 
@@ -175,5 +175,5 @@ When you run this code, you'll see the executor's logs tracing the path. The `co
 
 This `DryRunExecutor` is a simplified example. For a complete understanding, it's highly recommended to study the source code of the official executors:
 
-- **`InMemoryExecutor`**: The canonical implementation of a real executor. It shows the full orchestration logic, including how to correctly apply middleware. ([`src/executors/in-memory.ts`](../../src/executors/in-memory.ts))
-- **`BullMQExecutor`**: A full-featured distributed executor. It demonstrates a completely different execution strategy, managing a job queue instead of an in-memory loop. ([`sandbox/5.distributed/src/executor.ts`](../../sandbox/5.distributed/src/executor.ts))
+- **`InMemoryExecutor`**: The canonical implementation of a real executor. It shows the full orchestration logic, including how to correctly apply middleware. ([`src/executors/in-memory.ts`](https://github.com/gorango/cascade/tree/master/src/executors/in-memory.ts))
+- **`BullMQExecutor`**: A full-featured distributed executor. It demonstrates a completely different execution strategy, managing a job queue instead of an in-memory loop. ([`sandbox/5.distributed/src/executor.ts`](https://github.com/gorango/cascade/tree/master/sandbox/5.distributed/src/executor.ts))

@@ -3,6 +3,7 @@
 Complex workflows with multiple branches, loops, and fan-outs can be difficult to reason about from code alone. To help with this, Cascade includes a `generateMermaidGraph` utility that can automatically create a visual diagram of any `Flow` instance.
 
 This utility is an invaluable tool for:
+
 - **Debugging**: Quickly verify that your nodes are wired together exactly as you intended.
 - **Documentation**: Embed diagrams directly into your project's `README.md` or technical documentation.
 - **Onboarding**: Help new team members understand the control flow of a complex business process at a glance.
@@ -44,7 +45,7 @@ console.log(mermaidGraph);
 
 Running the code above will print the following Mermaid.js syntax to the console:
 
-```mermaid
+```mmd
 graph TD
   DecideActionNode_0[DecideActionNode]
   SearchWebNode_0[SearchWebNode]
@@ -71,6 +72,7 @@ graph TD
 ## How to Render the Graph
 
 You can render the generated syntax in several places:
+
 - **GitHub**: Directly in markdown files (`.md`), issues, and pull requests.
 - **VS Code**: Using a markdown previewer with a Mermaid extension installed.
 - **Online Editors**: Paste the syntax into the [Mermaid Live Editor](https://mermaid.live).
@@ -80,9 +82,11 @@ You can render the generated syntax in several places:
 The visualizer correctly represents all of Cascade's core branching and flow control patterns.
 
 ### Conditional Branching
+
 Custom action strings are rendered as labels on the connecting arrows.
 
 **Code**:
+
 ```typescript
 const decision = new DecisionNode();
 decision.next(new PathANode(), 'path_a');
@@ -90,6 +94,7 @@ decision.next(new PathBNode(), 'path_b');
 ```
 
 **Graph**:
+
 ```mermaid
 graph TD
     DecisionNode_0[DecisionNode]
@@ -98,9 +103,11 @@ graph TD
 ```
 
 ### Filter Logic
+
 The special `FILTER_FAILED` action is given a descriptive label. The `DEFAULT_ACTION` has no label for clarity.
 
 **Code**:
+
 ```typescript
 const filter = new FilterNode();
 filter.next(new SuccessNode(), DEFAULT_ACTION);
@@ -108,6 +115,7 @@ filter.next(new FailureNode(), FILTER_FAILED);
 ```
 
 **Graph**:
+
 ```mermaid
 graph TD
     FilterNode_0[FilterNode]
@@ -116,9 +124,11 @@ graph TD
 ```
 
 ### Fan-In / Convergence
+
 When multiple nodes connect to the same successor, the graph shows all arrows converging.
 
 **Code**:
+
 ```typescript
 const branchA = new PathANode();
 const branchB = new PathBNode();
@@ -128,6 +138,7 @@ branchB.next(end);
 ```
 
 **Graph**:
+
 ```mermaid
 graph TD
     subgraph Fan-Out

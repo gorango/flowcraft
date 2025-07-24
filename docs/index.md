@@ -8,10 +8,10 @@ hero:
   actions:
     - theme: brand
       text: Introduction
-      link: /guide
+      link: /guide/
     - theme: alt
-      text: Quickstart
-      link: /guide/getting-started
+      text: Recipes
+      link: /guide/recipes/
     - theme: alt
       text: Sandbox
       link: https://github.com/gorango/cascade/tree/master/sandbox
