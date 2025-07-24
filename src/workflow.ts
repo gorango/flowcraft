@@ -13,14 +13,21 @@ export * from './executor'
 export * from './logger'
 export * from './types'
 
+/**
+ * The abstract base class for all executable units in a workflow.
+ * It provides the core structure for connecting nodes into a graph.
+ */
 export abstract class AbstractNode {
+	/** A unique identifier for this node instance, often set by the GraphBuilder. */
 	public id?: number | string
+	/** A key-value store for static parameters that configure the node's behavior. */
 	public params: Params = {}
+	/** A map of successor nodes, keyed by the action that triggers the transition. */
 	public successors = new Map<string | typeof DEFAULT_ACTION | typeof FILTER_FAILED, AbstractNode>()
 
 	/**
 	 * Sets a unique identifier for this node instance.
-	 * Primarily used by the GraphBuilder.
+	 * Primarily used by the GraphBuilder for wiring and debugging.
 	 * @param id The unique ID for the node.
 	 * @returns The node instance for chaining.
 	 */
@@ -30,7 +37,8 @@ export abstract class AbstractNode {
 	}
 
 	/**
-	 * Sets or merges parameters for the node.
+	 * Sets or merges static parameters for the node. These parameters are available
+	 * via `args.params` in the node's lifecycle methods.
 	 * @param params The parameters to merge into the node's existing parameters.
 	 * @returns The node instance for chaining.
 	 */
@@ -41,30 +49,45 @@ export abstract class AbstractNode {
 
 	/**
 	 * Defines the next node in the sequence for a given action.
-	 * @param node The successor node.
-	 * @param action The action string that triggers the transition to this successor. Defaults to 'default'.
-	 * @returns The successor node instance for chaining.
+	 * This is the primary method for constructing a workflow graph.
+	 *
+	 * @param node The successor node to execute next.
+	 * @param action The action string from this node's `post` method that triggers
+	 * the transition. Defaults to `DEFAULT_ACTION` for linear flows.
+	 * @returns The successor node instance, allowing for further chaining.
 	 */
 	next(node: AbstractNode, action: string | typeof DEFAULT_ACTION | typeof FILTER_FAILED = DEFAULT_ACTION): AbstractNode {
 		this.successors.set(action, node)
 		return node
 	}
 
+	/**
+	 * The internal method that executes the node's full lifecycle.
+	 * It is called by an `IExecutor`.
+	 * @internal
+	 */
 	abstract _run(ctx: NodeRunContext): Promise<any>
 }
 
 /**
  * The fundamental building block of a workflow, representing a single unit of work.
+ * It features a three-phase lifecycle, retry logic, and a fluent API for creating
+ * data processing pipelines.
+ *
  * @template PrepRes The type of data returned by the `prep` phase.
  * @template ExecRes The type of data returned by the `exec` phase.
  * @template PostRes The type of the action returned by the `post` phase.
  */
 export class Node<PrepRes = any, ExecRes = any, PostRes = any> extends AbstractNode {
+	/** The total number of times the `exec` phase will be attempted. */
 	public maxRetries: number
+	/** The time in milliseconds to wait between failed `exec` attempts. */
 	public wait: number
 
 	/**
 	 * @param options Configuration options for the node's behavior.
+	 * @param options.maxRetries Total number of `exec` attempts. Defaults to `1`.
+	 * @param options.wait Milliseconds to wait between failed `exec` attempts. Defaults to `0`.
 	 */
 	constructor(options: NodeOptions = {}) {
 		super()
@@ -79,13 +102,36 @@ export class Node<PrepRes = any, ExecRes = any, PostRes = any> extends AbstractN
 		return new WorkflowError(`Failed in ${phase} phase for node ${this.constructor.name}`, this.constructor.name, phase, e as Error)
 	}
 
-	/** (Lifecycle) Prepares data for execution. Runs before `exec`. */
+	/**
+	 * (Lifecycle) Prepares data for execution. Runs once before `exec`.
+	 * This is the ideal place to read data from the `Context`.
+	 * @param _args The arguments for the node, including `ctx` and `params`.
+	 * @returns The data required by the `exec` phase.
+	 */
 	async prep(_args: NodeArgs<void, void>): Promise<PrepRes> { return undefined as unknown as PrepRes }
-	/** (Lifecycle) Performs the core logic of the node. */
+
+	/**
+	 * (Lifecycle) Performs the core, isolated logic of the node.
+	 * This is the only phase that is retried on failure. It should not access the `Context` directly.
+	 * @param _args The arguments for the node, including `prepRes`.
+	 * @returns The result of the execution.
+	 */
 	async exec(_args: NodeArgs<PrepRes, void>): Promise<ExecRes> { return undefined as unknown as ExecRes }
-	/** (Lifecycle) Processes results and determines the next action. Runs after `exec`. */
+
+	/**
+	 * (Lifecycle) Processes results and determines the next step. Runs once after `exec` succeeds.
+	 * This is the ideal place to write data to the `Context`.
+	 * @param _args The arguments for the node, including `execRes`.
+	 * @returns An "action" string to determine which successor to execute next. Defaults to `DEFAULT_ACTION`.
+	 */
 	async post(_args: NodeArgs<PrepRes, ExecRes>): Promise<PostRes> { return DEFAULT_ACTION as any }
-	/** (Lifecycle) A fallback that runs if all `exec` retries fail. */
+
+	/**
+	 * (Lifecycle) A fallback that runs if all `exec` retries fail.
+	 * If not implemented, the final error will be re-thrown, halting the workflow.
+	 * @param args The arguments for the node, including the final `error` that caused the failure.
+	 * @returns A fallback result of type `ExecRes`, allowing the workflow to recover and continue.
+	 */
 	async execFallback(args: NodeArgs<PrepRes, void>): Promise<ExecRes> {
 		if (args.error) {
 			throw args.error
@@ -93,6 +139,10 @@ export class Node<PrepRes = any, ExecRes = any, PostRes = any> extends AbstractN
 		throw new Error(`Node ${this.constructor.name} failed and has no fallback implementation.`)
 	}
 
+	/**
+	 * The internal retry-aware execution logic for the `exec` phase.
+	 * @internal
+	 */
 	async _exec(args: NodeArgs<PrepRes, void>): Promise<ExecRes> {
 		let lastError: Error | undefined
 		for (let curRetry = 0; curRetry < this.maxRetries; curRetry++) {
@@ -120,6 +170,10 @@ export class Node<PrepRes = any, ExecRes = any, PostRes = any> extends AbstractN
 		return await this.execFallback({ ...args, error: lastError })
 	}
 
+	/**
+	 * The internal method that executes the node's full lifecycle.
+	 * @internal
+	 */
 	async _run({ ctx, params, signal, logger, executor }: NodeRunContext): Promise<PostRes> {
 		if (this instanceof Flow) {
 			logger.info(`Running flow: ${this.constructor.name}`, { params })
@@ -158,10 +212,12 @@ export class Node<PrepRes = any, ExecRes = any, PostRes = any> extends AbstractN
 	}
 
 	/**
-	 * Runs the node as a standalone unit.
+	 * Runs the node as a standalone unit, independent of a larger flow.
+	 * This is useful for testing individual nodes in isolation.
+	 *
 	 * @param ctx The shared workflow context.
 	 * @param options Runtime options like a logger or abort controller.
-	 * @returns The result of the node's `post` method.
+	 * @returns The result of the node's `post` method (its action).
 	 */
 	async run(ctx: Context, options?: RunOptions): Promise<PostRes> {
 		const logger = options?.logger ?? new NullLogger()
@@ -173,15 +229,18 @@ export class Node<PrepRes = any, ExecRes = any, PostRes = any> extends AbstractN
 	}
 
 	/**
-	 * Creates a new node by applying a transformation function to the result of this node's `exec` method.
-	 * The new node inherits the original's `prep` method. The original `post` method is discarded
-	 * as it is incompatible with the new result type.
+	 * Creates a new node that transforms the result of this node's `exec` phase.
+	 *
+	 * @remarks
+	 * This method returns a **new** `Node` instance and does not modify the original.
+	 * The new node inherits the original's `prep` method. The original `post` method
+	 * is discarded as it is incompatible with the new result type.
 	 *
 	 * @example
-	 * const fetchUserNode = new FetchUserNode()
-	 * const getUserNameNode = fetchUserNode.map(user => user.name)
+	 * const fetchUserNode = new FetchUserNode() // returns { id: 1, name: 'Alice' }
+	 * const getUserNameNode = fetchUserNode.map(user => user.name) // returns 'Alice'
 	 *
-	 * @param fn A function to transform the execution result from `ExecRes` to `NewRes`.
+	 * @param fn A sync or async function to transform the execution result from `ExecRes` to `NewRes`.
 	 * @returns A new `Node` instance with the transformed output type.
 	 */
 	map<NewRes>(fn: (result: ExecRes) => NewRes | Promise<NewRes>): Node<PrepRes, NewRes, any> {
@@ -204,8 +263,11 @@ export class Node<PrepRes = any, ExecRes = any, PostRes = any> extends AbstractN
 	}
 
 	/**
-	 * Creates a new node that takes the result of this node's execution and sets it in the context.
-	 * This is a common terminal operation for a mapping chain.
+	 * Creates a new node that stores the result of this node's `exec` phase in the `Context`.
+	 * This is a common terminal operation for a data processing chain.
+	 *
+	 * @remarks
+	 * This method returns a **new** `Node` instance and does not modify the original.
 	 *
 	 * @example
 	 * const USER_NAME = contextKey<string>('user_name')
@@ -213,7 +275,7 @@ export class Node<PrepRes = any, ExecRes = any, PostRes = any> extends AbstractN
 	 *   .map(user => user.name)
 	 *   .toContext(USER_NAME)
 	 *
-	 * @param key The `ContextKey` to use for storing the result.
+	 * @param key The type-safe `ContextKey` to use for storing the result.
 	 * @returns A new `Node` instance that performs the context update in its `post` phase.
 	 */
 	toContext(key: ContextKey<ExecRes>): Node<PrepRes, ExecRes, any> {
@@ -233,18 +295,20 @@ export class Node<PrepRes = any, ExecRes = any, PostRes = any> extends AbstractN
 	}
 
 	/**
-	 * Creates a new node that acts as a conditional gate. The workflow only proceeds
-	 * if the predicate function returns `true`. If it returns `false`, the node
-	 * returns a special `FILTER_FAILED` action, allowing for branching.
+	 * Creates a new node that acts as a conditional gate based on the `exec` result.
+	 * If the predicate returns `true`, the node returns `DEFAULT_ACTION`.
+	 * If it returns `false`, the node returns `FILTER_FAILED`, enabling branching.
+	 *
+	 * @remarks
+	 * This method returns a **new** `Node` instance and does not modify the original.
 	 *
 	 * @example
-	 * const checkAdminNode = new FetchUserNode()
-	 *   .filter(user => user.isAdmin)
+	 * const checkAdminNode = new FetchUserNode().filter(user => user.isAdmin)
 	 *
 	 * checkAdminNode.next(adminOnlyNode, DEFAULT_ACTION)
 	 * checkAdminNode.next(accessDeniedNode, FILTER_FAILED)
 	 *
-	 * @param predicate A function that returns `true` or `false` based on the execution result.
+	 * @param predicate A sync or async function that returns `true` or `false`.
 	 * @returns A new `Node` instance that implements the filter logic.
 	 */
 	filter(predicate: (result: ExecRes) => boolean | Promise<boolean>): Node<PrepRes, ExecRes, any> {
@@ -270,8 +334,11 @@ export class Node<PrepRes = any, ExecRes = any, PostRes = any> extends AbstractN
 	}
 
 	/**
-	 * Creates a new node that performs a side effect with the result of this node's execution,
-	 * but does not change the result itself. Useful for logging or debugging.
+	 * Creates a new node that performs a side effect with the `exec` result,
+	 * but passes the original result through unmodified. Ideal for logging or debugging.
+	 *
+	 * @remarks
+	 * This method returns a **new** `Node` instance and does not modify the original.
 	 *
 	 * @example
 	 * const workflow = new FetchUserNode()
@@ -290,14 +357,16 @@ export class Node<PrepRes = any, ExecRes = any, PostRes = any> extends AbstractN
 
 	/**
 	 * Creates a new node that applies a context mutation using a lens before executing.
-	 * This allows for functionally setting or updating context as part of a chain.
+	 * This allows for declaratively setting or updating context as part of a fluent chain.
+	 *
+	 * @remarks
+	 * This method returns a **new** `Node` instance and does not modify the original.
 	 *
 	 * @example
 	 * const VALUE = contextKey<number>('value')
 	 * const valueLens = lens(VALUE)
 	 *
-	 * const nodeWithLens = new SomeNode()
-	 *   .withLens(valueLens, 42) // Sets VALUE to 42 before SomeNode runs
+	 * const nodeWithLens = new SomeNode().withLens(valueLens, 42) // Sets VALUE to 42 before SomeNode runs
 	 *
 	 * @param lens The `ContextLens` to use for the operation.
 	 * @param value The value to set in the context via the lens.
@@ -328,10 +397,13 @@ export class Node<PrepRes = any, ExecRes = any, PostRes = any> extends AbstractN
 }
 
 /**
- * A special node that orchestrates a sequence of other nodes.
+ * A special type of `Node` that orchestrates a graph of other nodes.
+ * It can contain its own middleware and can be composed within other flows.
  */
 export class Flow extends Node<any, any, any> {
+	/** The first node to be executed in this flow's graph. */
 	public startNode?: AbstractNode
+	/** An array of middleware functions to be applied to every node within this flow. */
 	public middleware: Middleware[] = []
 
 	/**
@@ -344,20 +416,27 @@ export class Flow extends Node<any, any, any> {
 
 	protected _wrapError(e: any, phase: 'prep' | 'exec' | 'post'): Error {
 		if (phase === 'exec') {
+			// Errors from a sub-flow's orchestration are already wrapped, so we pass them through.
 			return e
 		}
 		return super._wrapError(e, phase)
 	}
 
+	/**
+	 * Adds a middleware function to this flow. Middleware will be executed in the
+	 * order it is added, wrapping the execution of every node within this flow.
+	 * @param fn The middleware function to add.
+	 * @returns The `Flow` instance for chaining.
+	 */
 	public use(fn: Middleware): this {
 		this.middleware.push(fn)
 		return this
 	}
 
 	/**
-	 * Sets the starting node of the flow.
+	 * Sets the starting node of the flow's graph.
 	 * @param start The node to start with.
-	 * @returns The start node instance for chaining.
+	 * @returns The start node instance, allowing for further chaining (`.next()`).
 	 */
 	start(start: AbstractNode): AbstractNode {
 		this.startNode = start
@@ -365,10 +444,11 @@ export class Flow extends Node<any, any, any> {
 	}
 
 	/**
-	 * Executes the flow's internal graph when it is used as a node
-	 * within a larger flow (composition).
-	 * @param args The arguments for the node.
-	 * @returns The action returned by the last node in the flow.
+	 * (Lifecycle) Executes this flow's internal graph when it is used as a sub-flow
+	 * (a node within a larger flow).
+	 * @internal
+	 * @param args The arguments for the node, passed down from the parent executor.
+	 * @returns The final action returned by the last node in this flow's graph.
 	 */
 	async exec(args: NodeArgs<any, any>): Promise<any> {
 		if (!(args.executor instanceof InMemoryExecutor)) {
@@ -376,6 +456,7 @@ export class Flow extends Node<any, any, any> {
 		}
 
 		if (!this.startNode) {
+			// This handles logic-bearing flows like BatchFlow that override exec directly.
 			return super.exec(args)
 		}
 
@@ -400,6 +481,11 @@ export class Flow extends Node<any, any, any> {
 		return finalAction
 	}
 
+	/**
+	 * (Lifecycle) The post-execution step for a `Flow` node. It simply passes through
+	 * the final action from its internal graph execution (`execRes`).
+	 * @internal
+	 */
 	async post({ execRes }: NodeArgs<any, any>): Promise<any> {
 		return execRes
 	}
@@ -408,7 +494,7 @@ export class Flow extends Node<any, any, any> {
 	 * Runs the entire flow as a top-level entry point.
 	 * @param ctx The shared workflow context.
 	 * @param options Runtime options like a logger, abort controller, or a custom executor.
-	 * @returns The action returned by the last node in the flow.
+	 * @returns The final action returned by the last node in the flow.
 	 */
 	async run(ctx: Context, options?: RunOptions): Promise<any> {
 		const executor = options?.executor ?? new InMemoryExecutor()

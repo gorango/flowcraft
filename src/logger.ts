@@ -1,5 +1,6 @@
 /**
  * Defines the interface for a logger that can be used by the workflow engine.
+ * This allows for plugging in any logging library (e.g., Pino, Winston).
  */
 export interface Logger {
 	debug: (message: string, context?: object) => void
@@ -9,9 +10,9 @@ export interface Logger {
 }
 
 /**
- * A logger implementation that performs no action.
+ * A logger implementation that performs no action (a "no-op" logger).
  * This is the default logger used by the framework if none is provided,
- * making the framework silent by default.
+ * making Cascade silent out-of-the-box.
  */
 export class NullLogger implements Logger {
 	debug() { /* no-op */ }
@@ -21,7 +22,8 @@ export class NullLogger implements Logger {
 }
 
 /**
- * A default logger implementation that writes to the console.
+ * A default logger implementation that writes messages to the `console`.
+ * Useful for development and debugging.
  */
 export class ConsoleLogger implements Logger {
 	private log(level: 'debug' | 'info' | 'warn' | 'error', message: string, context?: object) {

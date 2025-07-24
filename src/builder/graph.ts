@@ -3,18 +3,21 @@ import { DEFAULT_ACTION, Flow } from '../workflow'
 import { ParallelFlow } from './collection'
 
 /**
- * The standard options object passed to a Node's constructor.
- * The `data` property is typed based on the NodeTypeMap.
+ * The standard options object passed to a Node's constructor by the `GraphBuilder`.
+ * @template T The type of the `data` payload for this specific node.
  */
 export interface NodeConstructorOptions<T> {
-	data: T & { nodeId: string } // We inject nodeId for debugging/logging
-	[key: string]: any // Allow for other injected dependencies
+	/** The `data` payload from the graph definition, with `nodeId` injected for logging/debugging. */
+	data: T & { nodeId: string }
+	/** A context object containing any dependencies injected into the `GraphBuilder` constructor. */
+	[key: string]: any
 }
 
 /**
  * Represents a single, type-safe node within a declarative workflow graph.
  * This is a discriminated union based on the `type` property, ensuring that
- * the `data` payload matches the node's type.
+ * the `data` payload matches the node's type as defined in the `TypedNodeRegistry`.
+ * @template T The `NodeTypeMap` that defines all possible node types and their data schemas.
  */
 export type TypedGraphNode<T extends { [K in keyof T]: Record<string, any> }> = {
 	[K in keyof T]: {
@@ -22,7 +25,7 @@ export type TypedGraphNode<T extends { [K in keyof T]: Record<string, any> }> = 
 		id: string
 		/** The type of the node, used to look up the corresponding Node class in the registry. */
 		type: K
-		/** A flexible data object that must match the schema defined in the NodeTypeMap for this type. */
+		/** A flexible data object that must match the schema defined in the `NodeTypeMap` for this type. */
 		data: T[K]
 	}
 }[keyof T]
@@ -31,9 +34,9 @@ export type TypedGraphNode<T extends { [K in keyof T]: Record<string, any> }> = 
  * Represents a directed edge connecting two nodes in a workflow graph.
  */
 export interface GraphEdge {
-	/** The ID of the source node. */
+	/** The `id` of the source node. */
 	source: string
-	/** The ID of the target node. */
+	/** The `id` of the target node. */
 	target: string
 	/** The action from the source node that triggers this edge. Defaults to `DEFAULT_ACTION`. */
 	action?: string
@@ -41,38 +44,43 @@ export interface GraphEdge {
 
 /**
  * Defines the structure of a type-safe, declarative workflow graph.
+ * @template T The `NodeTypeMap` that validates the graph's node definitions.
  */
 export interface TypedWorkflowGraph<T extends { [K in keyof T]: Record<string, any> }> {
+	/** An array of node definitions. */
 	nodes: TypedGraphNode<T>[]
+	/** An array of edge definitions that connect the nodes. */
 	edges: GraphEdge[]
 }
 
 /**
- * A type-safe registry that maps a node type string to a constructor.
- * TypeScript ensures that the constructor's options match the definition in the NodeTypeMap.
+ * A type-safe registry that maps a node type string to its corresponding `Node` constructor.
+ * TypeScript ensures that the constructor's options match the schema defined in the `NodeTypeMap`.
+ * @template T The `NodeTypeMap` that defines all possible node types and their data schemas.
  */
 export type TypedNodeRegistry<T extends { [K in keyof T]: Record<string, any> }> = {
 	[K in keyof T]: new (options: NodeConstructorOptions<T[K]>) => AbstractNode
 }
 
 /**
- * A type-safe helper function for creating a node registry.
- * This function works around a TypeScript limitation with assigning heterogeneous
- * constructor maps directly, while preserving full type safety for the caller.
+ * A type-safe helper function for creating a `TypedNodeRegistry`.
+ * This function preserves the strong typing of the registry object, enabling
+ * compile-time validation of `TypedWorkflowGraph` definitions.
  *
- * @param registry The registry object.
- * @returns The same registry object, correctly typed.
+ * @param registry The registry object, where keys are node types and values are `Node` constructors.
+ * @returns The same registry object, correctly typed for use with `GraphBuilder`.
  */
 export function createNodeRegistry<T extends { [K in keyof T]: Record<string, any> }>(registry: TypedNodeRegistry<T>): TypedNodeRegistry<T> {
 	return registry
 }
 
 /**
- * The result of a successful graph build, containing the executable flow
- * and the map of all constructed node instances.
+ * The result of a successful `GraphBuilder.build()` call.
  */
 export interface BuildResult {
+	/** The fully wired, executable `Flow` instance. */
 	flow: Flow
+	/** A map of all created node instances, keyed by their `id` from the graph definition. */
 	nodeMap: Map<string, AbstractNode>
 }
 
@@ -102,18 +110,20 @@ export interface WorkflowGraph {
 export type NodeRegistry = Map<string, new (...args: any[]) => AbstractNode>
 
 /**
- * Constructs an executable `Flow` from a declarative `TypedWorkflowGraph` definition.
- * This allows you to define complex, type-safe workflows in code and then
- * build them into runnable objects.
+ * Constructs an executable `Flow` from a declarative `WorkflowGraph` definition.
+ * It supports a fully type-safe API for compile-time validation of graph definitions
+ * and intelligently handles complex patterns like parallel fan-out and fan-in.
+ * @template T A `NodeTypeMap` for validating type-safe graph definitions.
  */
 export class GraphBuilder<T extends { [K in keyof T]: Record<string, any> }> {
-	/**
-	 * @param nodeRegistry A type-safe object where keys are node `type` strings and
-	 * values are the corresponding `Node` class constructors.
-	 * @param nodeOptionsContext An optional object that is passed to every node's
-	 * constructor, useful for dependency injection.
-	 */
 	private registry: Map<string, new (...args: any[]) => AbstractNode>
+
+	/**
+	 * @param registry A type-safe object or a `Map` where keys are node `type` strings and
+	 * values are the corresponding `Node` class constructors. For type-safety, use `createNodeRegistry`.
+	 * @param nodeOptionsContext An optional object that is passed to every node's
+	 * constructor, useful for dependency injection (e.g., passing a database client or the builder itself).
+	 */
 	// type-safe overload
 	constructor(registry: TypedNodeRegistry<T>, nodeOptionsContext?: Record<string, any>)
 	// untyped overload
@@ -173,8 +183,8 @@ export class GraphBuilder<T extends { [K in keyof T]: Record<string, any> }> {
 
 	/**
 	 * Builds a runnable `Flow` from a graph definition.
-	 * @param graph The `TypedWorkflowGraph` object describing the flow.
-	 * @returns An executable `Flow` instance.
+	 * @param graph The `WorkflowGraph` object describing the flow.
+	 * @returns A `BuildResult` object containing the executable `flow` and a `nodeMap`.
 	 */
 	// type-safe overload
 	build(graph: TypedWorkflowGraph<T>): BuildResult

@@ -62,13 +62,13 @@ export function contextNode<TIn, TOut>(fn: ContextFunction<TIn, TOut>): Node<TIn
 
 /**
  * Creates a `Node` that declaratively applies a series of transformations to the `Context`.
- * This is a "side-effect" node used purely for state management; it does not produce an output.
+ * This is a "side-effect" node used purely for state management; its logic runs in the `prep` phase,
+ * and it does not produce an `exec` output.
  *
  * @example
- * const setupUserContext = (userId: string, name: string) => transformNode(
- *   userLens.set(userId),
- *   nameLens.set(name)
- * )
+ * const USER_ID = contextKey<string>('user_id')
+ * const userLens = lens(USER_ID)
+ * const setupUserContext = (userId: string) => transformNode(userLens.set(userId))
  *
  * @param transforms A sequence of `ContextTransform` functions (e.g., from a lens) to apply.
  * @returns A new `Node` instance that will mutate the context when executed.

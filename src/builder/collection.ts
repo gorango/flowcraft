@@ -3,10 +3,13 @@ import type { AbstractNode, NodeArgs } from '../workflow'
 import { AbortError, Flow } from '../workflow'
 
 /**
- * A builder that creates a linear flow from a sequence of nodes.
- * It is the underlying implementation for `Flow.sequence()`.
+ * A `Flow` that creates a linear workflow from a sequence of nodes,
+ * automatically chaining them in order.
  */
 export class SequenceFlow extends Flow {
+	/**
+	 * @param nodes A sequence of `Node` or `Flow` instances to be executed in order.
+	 */
 	constructor(...nodes: AbstractNode[]) {
 		if (nodes.length === 0) {
 			super()
@@ -20,9 +23,9 @@ export class SequenceFlow extends Flow {
 }
 
 /**
- * A builder that creates a flow from a set of nodes to be executed in parallel.
- * This is the core of the fan-out/fan-in pattern. After all parallel branches
- * have completed, the flow can proceed to a single, subsequent node.
+ * A `Flow` that executes a collection of different nodes concurrently.
+ * This is the core of the "fan-out, fan-in" pattern for structural parallelism.
+ * After all parallel branches complete, the flow can proceed to a single successor.
  */
 export class ParallelFlow extends Flow {
 	/**
@@ -32,6 +35,10 @@ export class ParallelFlow extends Flow {
 		super()
 	}
 
+	/**
+	 * Orchestrates the parallel execution of all nodes.
+	 * @internal
+	 */
 	async exec({ ctx, params, signal, logger, executor }: NodeArgs): Promise<void> {
 		logger.info(`[ParallelFlow] Executing ${this.nodesToRun.length} branches in parallel...`)
 		const promises = this.nodesToRun.map(node =>
@@ -43,10 +50,8 @@ export class ParallelFlow extends Flow {
 				executor,
 			}),
 		)
-		// use allSettled to ensure all branches complete, even if one fails.
 		const results = await Promise.allSettled(promises)
 		logger.info(`[ParallelFlow] ✓ All parallel branches finished.`)
-
 		// Check for and log any failures. A more robust implementation might
 		// collect these errors and decide on a specific failure action.
 		results.forEach((result) => {
@@ -57,9 +62,15 @@ export class ParallelFlow extends Flow {
 }
 
 /**
- * A flow that executes a given node sequentially for each item in a collection.
+ * An abstract `Flow` that processes a collection of items sequentially, one by one.
+ * Subclasses must implement the `prep` method to provide the items and the
+ * `nodeToRun` property to define the processing logic for each item.
  */
 export abstract class BatchFlow extends Flow {
+	/**
+	 * The `Node` instance that will be executed for each item in the batch.
+	 * This must be implemented by any subclass.
+	 */
 	protected abstract nodeToRun: AbstractNode
 
 	constructor() {
@@ -67,13 +78,20 @@ export abstract class BatchFlow extends Flow {
 	}
 
 	/**
-	 * Prepares the list of items to be processed.
+	 * (Abstract) Prepares the list of items to be processed.
+	 * This method is called once before the batch processing begins.
+	 * @param _args The arguments for the node, including `ctx` and `params`.
 	 * @returns An array or iterable of parameter objects, one for each item.
+	 * The `nodeToRun` will be executed once for each of these objects.
 	 */
 	async prep(_args: NodeArgs): Promise<Iterable<any>> {
 		return []
 	}
 
+	/**
+	 * Orchestrates the sequential execution of `nodeToRun` for each item.
+	 * @internal
+	 */
 	async exec(args: NodeArgs): Promise<null> {
 		if (!this.nodeToRun)
 			return null
@@ -100,9 +118,16 @@ export abstract class BatchFlow extends Flow {
 }
 
 /**
- * A flow that executes a given node in parallel for each item in a collection.
+ * An abstract `Flow` that processes a collection of items concurrently.
+ * Subclasses must implement the `prep` method to provide the items and the
+ * `nodeToRun` property to define the processing logic for each item.
+ * This provides a significant performance boost for I/O-bound tasks.
  */
 export abstract class ParallelBatchFlow extends Flow {
+	/**
+	 * The `Node` instance that will be executed concurrently for each item in the batch.
+	 * This must be implemented by any subclass.
+	 */
 	protected abstract nodeToRun: AbstractNode
 
 	constructor() {
@@ -110,13 +135,20 @@ export abstract class ParallelBatchFlow extends Flow {
 	}
 
 	/**
-	 * Prepares the list of items to be processed.
+	 * (Abstract) Prepares the list of items to be processed.
+	 * This method is called once before the batch processing begins.
+	 * @param _args The arguments for the node, including `ctx` and `params`.
 	 * @returns An array or iterable of parameter objects, one for each item.
+	 * The `nodeToRun` will be executed concurrently for each of these objects.
 	 */
 	async prep(_args: NodeArgs): Promise<Iterable<any>> {
 		return []
 	}
 
+	/**
+	 * Orchestrates the parallel execution of `nodeToRun` for each item.
+	 * @internal
+	 */
 	async exec(args: NodeArgs<any, void>): Promise<any> {
 		if (!this.nodeToRun)
 			return null
@@ -154,9 +186,9 @@ export abstract class ParallelBatchFlow extends Flow {
  * and returns a new array containing the results.
  *
  * @example
- * const numbers = [1, 2, 3]
- * const double = (n: number) => n * 2
- * const processingFlow = mapCollection(numbers, double)
+ * const numbers = [1, 2, 3];
+ * const double = (n: number) => n * 2;
+ * const processingFlow = mapCollection(numbers, double);
  * // When run, processingFlow's result will be [2, 4, 6]
  *
  * @param items The initial array of items of type `T`.
@@ -174,13 +206,14 @@ export function mapCollection<T, U>(items: T[], fn: NodeFunction<T, U>): Flow {
 }
 
 /**
- * Creates a flow that filters a collection based on an asynchronous predicate function,
+ * Creates a flow that filters a collection based on a predicate function,
  * returning a new array containing only the items that pass the predicate.
+ * The predicate is applied to all items concurrently.
  *
  * @example
- * const users = [{ id: 1, admin: true }, { id: 2, admin: false }]
- * const isAdmin = async (user: { admin: boolean }) => user.admin
- * const adminFilterFlow = filterCollection(users, isAdmin)
+ * const users = [{ id: 1, admin: true }, { id: 2, admin: false }];
+ * const isAdmin = async (user: { admin: boolean }) => user.admin;
+ * const adminFilterFlow = filterCollection(users, isAdmin);
  * // When run, the result will be [{ id: 1, admin: true }]
  *
  * @param items The initial array of items of type `T`.
@@ -198,12 +231,12 @@ export function filterCollection<T>(items: T[], predicate: (item: T) => boolean 
 
 /**
  * Creates a flow that reduces a collection to a single value by executing a
- * reducer function for each item, similar to `Array.prototype.reduce()`.
+ * reducer function sequentially for each item, similar to `Array.prototype.reduce()`.
  *
  * @example
- * const numbers = [1, 2, 3, 4]
- * const sumReducer = (acc: number, val: number) => acc + val
- * const sumFlow = reduceCollection(numbers, sumReducer, 0)
+ * const numbers = [1, 2, 3, 4];
+ * const sumReducer = (acc: number, val: number) => acc + val;
+ * const sumFlow = reduceCollection(numbers, sumReducer, 0);
  * // When run, the result will be 10.
  *
  * @param items The array of items to be reduced.

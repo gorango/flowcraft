@@ -1,10 +1,11 @@
 import type { IExecutor, InternalRunOptions } from '../executor'
-import type { AbstractNode, Context, Flow, Logger, Middleware, MiddlewareNext, NodeArgs, Params, RunOptions } from '../workflow'
+import type { AbstractNode, Context, Flow, Logger, Middleware, MiddlewareNext, NodeArgs, RunOptions } from '../workflow'
 import { AbortError, NullLogger } from '../workflow'
 
 /**
  * The default executor that runs a workflow within a single, in-memory process.
- * This class contains the core logic for traversing a workflow graph.
+ * This class contains the core logic for traversing a workflow graph, applying middleware,
+ * and handling node execution.
  */
 export class InMemoryExecutor implements IExecutor {
 	/**
@@ -96,10 +97,7 @@ export class InMemoryExecutor implements IExecutor {
 
 	/**
 	 * Determines the next node to execute based on the action returned by the current node.
-	 * @param curr The node that just finished executing.
-	 * @param action The action string returned by the node.
-	 * @param logger The logger instance.
-	 * @returns The next `AbstractNode` to run, or `undefined` if the flow branch ends.
+	 * @internal
 	 */
 	public getNextNode(curr: AbstractNode, action: any, logger: Logger): AbstractNode | undefined {
 		const nextNode = curr.successors.get(action)
@@ -116,9 +114,7 @@ export class InMemoryExecutor implements IExecutor {
 
 	/**
 	 * Composes a chain of middleware functions around a node's execution.
-	 * @param middleware An array of middleware functions.
-	 * @param nodeToRun The node whose execution will be wrapped.
-	 * @returns A `MiddlewareNext` function that represents the start of the composed chain.
+	 * @internal
 	 */
 	public applyMiddleware(middleware: Middleware[], nodeToRun: AbstractNode): MiddlewareNext {
 		// The final function in the chain is the actual execution of the node.
