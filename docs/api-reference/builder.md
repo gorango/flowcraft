@@ -1,10 +1,13 @@
 # API Reference: Builders
 
-This document covers the builder classes provided by Cascade. Builders are helpers that abstract the construction of common and complex workflow patterns. All builders are imported from the main `cascade` package.
+Builders are helper classes provided by Cascade to abstract away the manual construction of common and complex workflow patterns. They allow you to define high-level behavior, and the builder handles the underlying `Node` and `Flow` wiring for you.
+
+You can import all builders from the main `cascade` package.
 
 ```typescript
 import {
   SequenceFlow,
+  ParallelFlow,
   BatchFlow,
   ParallelBatchFlow,
   GraphBuilder,
@@ -31,6 +34,33 @@ const linearFlow = new SequenceFlow(
   new ProcessDataNode(),
   new SaveResultNode()
 )
+```
+
+---
+
+## `ParallelFlow`
+
+A `Flow` that executes a collection of nodes concurrently. This is the core of the "fan-out, fan-in" pattern. After all parallel branches complete, the flow proceeds to its single successor.
+
+`extends Flow`
+
+### Constructor
+
+`new ParallelFlow(nodes: AbstractNode[])`
+
+- `nodes`: An array of `Node` or `Flow` instances to be executed in parallel.
+
+### Example
+
+```typescript
+const parallelStep = new ParallelFlow([
+  new FetchApiANode(),
+  new FetchApiBNode(),
+]);
+const aggregateNode = new AggregateResultsNode();
+
+// After both API calls are complete, the aggregateNode will run.
+parallelStep.next(aggregateNode);
 ```
 
 ---

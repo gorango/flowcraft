@@ -1,5 +1,6 @@
 import type { AbstractNode } from '../workflow'
 import { DEFAULT_ACTION, Flow } from '../workflow'
+import { ParallelFlow } from './collection'
 
 /**
  * The standard options object passed to a Node's constructor.
@@ -101,30 +102,6 @@ export interface WorkflowGraph {
 export type NodeRegistry = Map<string, new (...args: any[]) => AbstractNode>
 
 /**
- * A special node created by the GraphBuilder to execute multiple nodes in parallel.
- * This is used for graph fan-in and fan-out operations.
- */
-class ParallelNode extends Flow {
-	constructor(private nodesToRun: AbstractNode[]) {
-		super()
-	}
-
-	async exec({ ctx, params, signal, logger }: any) {
-		logger.info(`[ParallelNode] Executing ${this.nodesToRun.length} branches in parallel...`)
-		const promises = this.nodesToRun.map(node =>
-			node._run({
-				ctx,
-				params: { ...params, ...node.params },
-				signal,
-				logger,
-			}),
-		)
-		await Promise.allSettled(promises)
-		logger.info(`[ParallelNode] ✓ All parallel branches finished.`)
-	}
-}
-
-/**
  * Constructs an executable `Flow` from a declarative `TypedWorkflowGraph` definition.
  * This allows you to define complex, type-safe workflows in code and then
  * build them into runnable objects.
@@ -187,7 +164,7 @@ export class GraphBuilder<T extends { [K in keyof T]: Record<string, any> }> {
 				sourceNode.next(successorNodes[0], action)
 			}
 			else {
-				const parallelConvergenceNode = new ParallelNode(successorNodes)
+				const parallelConvergenceNode = new ParallelFlow(successorNodes)
 				sourceNode.next(parallelConvergenceNode, action)
 				this.wireSuccessors(parallelConvergenceNode, successorIds, edgeGroups, nodeMap)
 			}
@@ -199,7 +176,6 @@ export class GraphBuilder<T extends { [K in keyof T]: Record<string, any> }> {
 	 * @param graph The `TypedWorkflowGraph` object describing the flow.
 	 * @returns An executable `Flow` instance.
 	 */
-	// type-safe overload
 	// type-safe overload
 	build(graph: TypedWorkflowGraph<T>): BuildResult
 	// untyped overload
@@ -244,7 +220,7 @@ export class GraphBuilder<T extends { [K in keyof T]: Record<string, any> }> {
 					sourceNode.next(targetNodes[0], action)
 				}
 				else if (targetNodes.length > 1) {
-					const parallelFanOutNode = new ParallelNode(targetNodes)
+					const parallelFanOutNode = new ParallelFlow(targetNodes)
 					sourceNode.next(parallelFanOutNode, action)
 					this.wireSuccessors(parallelFanOutNode, targetIds, edgeGroups, nodeMap)
 				}
@@ -263,7 +239,7 @@ export class GraphBuilder<T extends { [K in keyof T]: Record<string, any> }> {
 		}
 
 		const startNodes = startNodeIds.map(id => nodeMap.get(id)!)
-		const parallelStartNode = new ParallelNode(startNodes)
+		const parallelStartNode = new ParallelFlow(startNodes)
 		this.wireSuccessors(parallelStartNode, startNodeIds, edgeGroups, nodeMap)
 
 		return { flow: new Flow(parallelStartNode), nodeMap }

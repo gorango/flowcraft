@@ -1,127 +1,144 @@
 # Builders
 
-Builders are helper classes provided by Cascade to abstract away the manual construction of common and complex workflow patterns. They allow you to define high-level behavior, and the builder handles the underlying `Node` and `Flow` wiring for you.
+Builders are helper classes provided by Cascade to abstract away the manual construction of common and complex workflow patterns. They handle the underlying `Node` and `Flow` wiring for you, so you can focus on your application's logic.
 
-You can import all builders from the main `cascade` package.
+This guide provides an overview of the available builders and helps you choose the right one for your use case.
+
+## Choosing the Right Builder
+
+- **For simple, linear sequences...**
+    ...where one step follows the next without branching, use **[`SequenceFlow`](#sequenceflow)**. It's the simplest way to create a basic pipeline. The functional `pipeline` helper offers an even more concise syntax for the same pattern.
+
+- **For parallel execution of different tasks...**
+    ...where your workflow has distinct branches that can run concurrently (a "fan-out, fan-in" pattern), use **[`ParallelFlow`](#parallelflow)**. This is ideal for structural parallelism, like fetching data from two different APIs at the same time.
+
+- **For processing a collection of data items...**
+    ...where you need to run the *same* operation on many different pieces of data, use a batch processor. Choose **[`ParallelBatchFlow`](#batch-processing-batchflow-and-parallelbatchflow)** for I/O-bound tasks (like making many API calls) or **[`BatchFlow`](#batch-processing-batchflow-and-parallelbatchflow)** for tasks that must run sequentially.
+
+- **For dynamic, data-driven graphs...**
+    ...where your workflow logic is defined in a declarative format like JSON, use the **[`GraphBuilder`](#graphbuilder)**. This is the most powerful and flexible option, perfect for building dynamic AI agent runtimes or systems where workflows are configuration, not code.
+
+---
+
+## `SequenceFlow`
+
+`SequenceFlow` creates a linear `Flow` from a list of nodes, automatically chaining them together in the order they are provided.
+
+### Example: Class-based Builder
+
+Instead of wiring nodes manually with `.next()`:
 
 ```typescript
-import { SequenceFlow, BatchFlow, ParallelBatchFlow, GraphBuilder } from 'cascade'
-```
+const nodeA = new NodeA();
+const nodeB = new NodeB();
+const nodeC = new NodeC();
 
-## SequenceFlow
+nodeA.next(nodeB);
+nodeB.next(nodeC);
 
-`SequenceFlow` is the simplest builder. It creates a linear `Flow` from a list of nodes, automatically chaining them together in the order they are provided. This is a convenient shortcut for creating basic sequential workflows.
-
-### When to Use
-
-Use `SequenceFlow` when you have a simple, fixed pipeline where each step follows the last without any conditional branching.
-
-### Example
-
-Instead of wiring nodes manually:
-
-```typescript
-const nodeA = new NodeA()
-const nodeB = new NodeB()
-const nodeC = new NodeC()
-
-nodeA.next(nodeB)
-nodeB.next(nodeC)
-
-const manualFlow = new Flow(nodeA)
+const manualFlow = new Flow(nodeA);
 ```
 
 You can use `SequenceFlow` for a more concise definition:
 
 ```typescript
-import { SequenceFlow } from 'cascade'
+import { SequenceFlow } from 'cascade';
 
 const sequence = new SequenceFlow(
   new NodeA(),
   new NodeB(),
   new NodeC()
-)
+);
 
-await sequence.run(context)
+await sequence.run(context);
 ```
 
-## Batch Processing
+For an even more functional style, the `pipeline` helper provides the same functionality with a more direct syntax. See the [Functional API Reference](./functional-api.md#pipeline) for more details.
 
-Cascade provides two powerful builders for processing collections of items: `BatchFlow` for sequential processing and `ParallelBatchFlow` for concurrent processing.
+```typescript
+import { pipeline } from 'cascade';
 
-To use them, you extend the base class and implement the `prep` method. This method's job is to return an array of parameter objects, where each object represents one item to be processed. The builder then runs the `Node` you provided in its constructor once for each of these parameter objects.
+const dataPipeline = pipeline(
+  new NodeA(),
+  new NodeB(),
+  new NodeC()
+);
+```
 
-### BatchFlow (Sequential)
+---
 
-`BatchFlow` processes a collection of items one by one, in order. The next item is not processed until the previous one is completely finished.
+## `ParallelFlow`
 
-#### When to Use
+`ParallelFlow` executes a fixed set of different nodes concurrently. This is the "fan-out, fan-in" pattern, used for **structural parallelism**. After all parallel branches complete, the flow can proceed to a single, subsequent node.
 
-- When the order of processing is important.
-- When processing tasks are CPU-bound and running them in parallel would not be beneficial.
-- When you need to avoid overwhelming a rate-limited API.
+### When to Use
 
-### ParallelBatchFlow (Concurrent)
-
-`ParallelBatchFlow` processes all items in a collection concurrently, running them in parallel. This can provide a massive performance boost for I/O-bound tasks, such as making multiple API calls or reading/writing multiple files.
-
-#### When to Use
-
-- For I/O-bound tasks (e.g., network requests, database queries, file system operations).
-- When the order of processing does not matter.
+Use `ParallelFlow` when your workflow logic itself has distinct branches that can run simultaneously. For example, building a user dashboard by fetching profile data and activity data from two different services at the same time.
 
 ### Example
 
-Let's imagine we need to translate a document into several languages.
+```typescript
+import { ParallelFlow } from 'cascade';
+
+// Fetch data from two different sources in parallel.
+const parallelStep = new ParallelFlow([
+  new FetchUserProfileNode(),  // Task A
+  new FetchUserActivityNode(), // Task B
+]);
+
+// This node will only run after both fetch nodes have completed.
+const aggregateNode = new AggregateDashboardDataNode();
+parallelStep.next(aggregateNode);
+
+const dashboardFlow = new Flow(parallelStep);
+```
+
+---
+
+## `BatchFlow` (Sequential)
+
+`BatchFlow` processes items one by one, in order - executing the **same node** many times over a dynamic collection of data items. The next item is not processed until the previous one is completely finished.
+
+**Use Cases**: Processing items in a strict order, or interacting with a rate-limited API where you must avoid sending multiple requests at once.
+
+## `ParallelBatchFlow` (Concurrent)
+
+`ParallelBatchFlow` processes all items concurrently - executing the **same node** many times over a dynamic collection of data items. This provides a massive performance boost for I/O-bound tasks.
+
+**Use Cases**: Translating a document into 10 languages, fetching thumbnails for a list of 100 video URLs, or processing multiple user-uploaded files.
+
+### Example: The Document Translator
+
+This example uses `ParallelBatchFlow` to translate a document into several languages at once.
 
 ```typescript
-import { ParallelBatchFlow, Node, TypedContext, contextKey } from 'cascade'
-
-const LANGUAGES = contextKey<string[]>('languages')
-const DOCUMENT_TEXT = contextKey<string>('document_text')
+import { ParallelBatchFlow, Node, TypedContext } from 'cascade';
 
 // The single unit of work: translates text to one language.
-// It expects 'language' and 'text' in its params.
 class TranslateNode extends Node {
-  async exec({ params }) {
-    console.log(`Translating to ${params.language}...`)
-    // Fake API call
-    const translation = await translateApiCall(params.text, params.language)
-    console.log(`✓ Finished ${params.language}`)
-    return translation
-  }
+  async exec({ params }) { /* ... API call to translate params.text to params.language ... */ }
 }
 
 // The builder orchestrates the batch process.
 class TranslateFlow extends ParallelBatchFlow {
   constructor() {
     // Tell the builder which node to run for each item.
-    super(new TranslateNode())
+    super(new TranslateNode());
   }
 
   // prep provides the list of items to process.
   async prep({ ctx }) {
-    const languages = ctx.get(LANGUAGES) || []
-    const text = ctx.get(DOCUMENT_TEXT)
+    const languages = ctx.get(LANGUAGES) || [];
+    const text = ctx.get(DOCUMENT_TEXT);
 
     // Return an array of parameter objects.
-    // Each object will be merged into the TranslateNode's params.
-    return languages.map(language => ({
-      language,
-      text
-    }))
+    // Each object will be merged into the TranslateNode's params for one parallel run.
+    return languages.map(language => ({ language, text }));
   }
 }
-
-// To run it:
-const flow = new TranslateFlow()
-const context = new TypedContext([
-  [LANGUAGES, ['Spanish', 'German', 'Japanese']],
-  [DOCUMENT_TEXT, 'Hello world!']
-])
-await flow.run(context)
-// This will run three instances of TranslateNode in parallel.
 ```
+
+---
 
 ## GraphBuilder
 
@@ -139,10 +156,4 @@ await flow.run(context)
 2. **Create a Node Registry**: You map the string `type` from your graph nodes to the actual `Node` classes in your code.
 3. **Build the Flow**: You instantiate `GraphBuilder` with the registry and call `.build(graph)`.
 
-The `GraphBuilder` intelligently analyzes the graph's structure. It automatically detects and handles:
-
-- Multiple start nodes (initial fan-out).
-- Mid-flow fan-out (a single node's action triggering multiple parallel branches).
-- Fan-in (multiple branches converging on a single node).
-
-For a complete, in-depth example, see the **[Dynamic AI Agent example (`sandbox/4.dag/`)](https://github.com/gorango/cascade/tree/master/sandbox/4.dag/)**.
+The `GraphBuilder` intelligently analyzes the graph's structure, automatically handling parallel start nodes, mid-flow fan-outs, and fan-ins. For a complete, in-depth example, see the **[Dynamic AI Agent example (`sandbox/4.dag/`)](https://github.com/gorango/cascade/tree/master/sandbox/4.dag/)**.

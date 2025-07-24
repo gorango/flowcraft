@@ -1,11 +1,12 @@
 import type { AbstractNode, Logger, NodeArgs, RunOptions } from '../workflow'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { contextKey, Node, TypedContext } from '../workflow'
+import { contextKey, Flow, Node, TypedContext } from '../workflow'
 import {
 	BatchFlow,
 	filterCollection,
 	mapCollection,
 	ParallelBatchFlow,
+	ParallelFlow,
 	reduceCollection,
 	SequenceFlow,
 } from './collection'
@@ -30,6 +31,7 @@ afterEach(() => {
 const PROCESSED_IDS = contextKey<number[]>('processed_ids')
 const BATCH_RESULTS = contextKey<string[]>('batch_results')
 const VALUE = contextKey<number>('value')
+const PATH = contextKey<string[]>('path')
 
 class ProcessItemNode extends Node {
 	async exec({ ctx, params }: NodeArgs) {
@@ -47,9 +49,11 @@ class ProcessItemNode extends Node {
 
 class AddNode extends Node {
 	constructor(private number: number) { super() }
-	async prep({ ctx }: NodeArgs) {
+	async exec({ ctx }: NodeArgs) {
 		const current = ctx.get(VALUE) ?? 0
 		ctx.set(VALUE, current + this.number)
+		const path = ctx.get(PATH) ?? []
+		ctx.set(PATH, [...path, `add${this.number}`])
 	}
 }
 
@@ -97,7 +101,7 @@ describe('batchFlow (Sequential)', () => {
 		expect(ctx.get(PROCESSED_IDS)).toBeUndefined()
 		expect(ctx.get(BATCH_RESULTS)).toBeUndefined()
 		expect(mockLogger.info).toHaveBeenCalledWith(
-			'BatchFlow: Starting sequential processing of 0 items.',
+			'[BatchFlow] Starting sequential processing of 0 items.',
 		)
 	})
 	it('should pass parent flow parameters to each batch item', async () => {
@@ -152,8 +156,46 @@ describe('parallelBatchFlow', () => {
 		expect(ctx.get(PROCESSED_IDS)).toBeUndefined()
 		expect(ctx.get(BATCH_RESULTS)).toBeUndefined()
 		expect(mockLogger.info).toHaveBeenCalledWith(
-			'ParallelBatchFlow: Starting parallel processing of 0 items.',
+			'[ParallelBatchFlow] Starting parallel processing of 0 items.',
 		)
+	})
+})
+
+describe('parallelFlow', () => {
+	it('should run all nodes in parallel and then proceed', async () => {
+		const ctx = new TypedContext([[VALUE, 0]])
+		const pFlow = new ParallelFlow([
+			new AddNode(1),
+			new AddNode(10),
+			new AddNode(100),
+		])
+		const finalNode = new AddNode(1000)
+		pFlow.next(finalNode)
+
+		await new Flow(pFlow).run(ctx, runOptions)
+
+		// The parallel AddNodes will race. The final value depends on execution order,
+		// but the path should be correct. Let's verify the final step.
+		// Expected path: add1, add10, add100 (in any order), then add1000
+		const path = ctx.get(PATH)
+		expect(path).toHaveLength(4)
+		expect(path).toContain('add1')
+		expect(path).toContain('add10')
+		expect(path).toContain('add100')
+		expect(path![3]).toBe('add1000') // Final node must be last
+
+		// Verify the final sum
+		expect(ctx.get(VALUE)).toBe(1111)
+	})
+
+	it('should handle an empty parallel flow', async () => {
+		const ctx = new TypedContext()
+		const pFlow = new ParallelFlow([])
+		const finalNode = new AddNode(5)
+		pFlow.next(finalNode)
+
+		await new Flow(pFlow).run(ctx, runOptions)
+		expect(ctx.get(VALUE)).toBe(5)
 	})
 })
 

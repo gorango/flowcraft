@@ -2,26 +2,24 @@
 
 A "fan-out, fan-in" pattern is where a workflow splits into multiple parallel branches that execute concurrently (fan-out) and then merges the results of those branches back together before proceeding (fan-in).
 
-Cascade's `GraphBuilder` handles this pattern automatically, but you can also implement it manually to understand the underlying mechanism. This recipe shows how to build a simple fan-out, fan-in flow that processes different parts of an input object in parallel.
+Cascade provides a dedicated `ParallelFlow` builder that makes creating this pattern simple and declarative.
 
 ## The Pattern
 
-1. **Preparation Node**: A starting node that prepares the distinct pieces of data to be processed in parallel.
-2. **Parallel Fan-Out**: A special `ParallelNode` (or `ParallelBatchFlow`) executes multiple independent nodes, each handling one piece of the data.
-3. **Aggregation Node**: After all parallel branches complete, a final node runs to "fan-in" or aggregate the results from the `Context`.
+1. **`ParallelFlow`**: This builder takes an array of nodes that will be executed concurrently.
+2. **Aggregation Node**: A single node is connected to the `ParallelFlow` instance. It will only run after *all* the parallel branches have completed, allowing it to "fan-in" or aggregate the results from the `Context`.
 
 ```mermaid
 graph TD
-    A[Prepare Data] --> B{Fan-Out};
+    A[Start] --> B(ParallelFlow);
     subgraph "Run in Parallel"
       B --> C[Process Branch 1];
       B --> D[Process Branch 2];
       B --> E[...];
     end
-    C --> F{Fan-In};
+    C --> F((Aggregate Results));
     D --> F;
     E --> F;
-    F --> G[Aggregate Results];
 ```
 
 ## Example: Parallel Data Enrichment
@@ -33,7 +31,7 @@ Imagine we have a user object and we want to perform two slow, independent API c
 We'll need keys for the initial input and the results of each parallel branch.
 
 ```typescript
-import { Flow, Node, TypedContext, contextKey, ParallelBatchFlow } from 'cascade'
+import { Flow, Node, TypedContext, contextKey, ParallelFlow } from 'cascade'
 
 // Context Keys
 const USER_ID = contextKey<string>('user_id')
@@ -69,36 +67,21 @@ const createReportNode = new Node()
   .toContext(FINAL_REPORT)
 ```
 
-### 2. Wire the Flow with a Parallel Runner
+### 2. Wire the Flow with `ParallelFlow`
 
-We can use `ParallelBatchFlow` as a simple way to run a dynamic list of nodes in parallel. We'll create a custom flow that prepares the list of nodes to run.
+We create a `ParallelFlow` instance with our two API-calling nodes. Then, we connect our aggregation node to run after the parallel block is complete.
 
 ```typescript
-// This custom flow acts as our parallel fan-out orchestrator.
-class FanOutFlow extends ParallelBatchFlow {
-  constructor() {
-    // The "nodeToRun" for a ParallelBatchFlow is itself a Node.
-    // In this dynamic case, the `prep` method will provide the actual node
-    // instance in the parameters for each "item".
-    super(new Node().exec(async ({ params }) => params.node.run(params.ctx)))
-  }
+// Create the parallel fan-out block
+const parallelEnrichment = new ParallelFlow([
+  fetchActivityNode,
+  fetchMetadataNode,
+])
 
-  // The prep method returns the list of nodes to run in parallel.
-  async prep({ ctx }) {
-    return [
-      { node: fetchActivityNode, ctx },
-      { node: fetchMetadataNode, ctx },
-    ]
-  }
-}
+// After all parallel nodes are done, run the report node.
+parallelEnrichment.next(createReportNode)
 
-// Create instances and wire the flow
-const fanOut = new FanOutFlow()
-const report = createReportNode
-
-fanOut.next(report) // After the parallel block, create the report.
-
-const enrichmentFlow = new Flow(fanOut)
+const enrichmentFlow = new Flow(parallelEnrichment)
 ```
 
 ### 3. Run the Flow
@@ -126,4 +109,4 @@ ParallelExecution: 155.25ms
 Report created. Activity: fetchActivity for user-123 data, Metadata: fetchMetadata for user-123 data
 ```
 
-Notice that the total execution time is approximately the duration of the *longest* API call (150ms), not the sum of both (~250ms). This demonstrates the power of the fan-out, fan-in pattern for I/O-bound tasks. The `GraphBuilder` automates the creation of the parallel runner node whenever it detects this pattern in a declarative graph.
+Notice that the total execution time is approximately the duration of the *longest* API call (150ms), not the sum of both (~250ms). This demonstrates how the `ParallelFlow` builder provides a clean and powerful way to implement the fan-out, fan-in pattern for I/O-bound tasks. The `GraphBuilder` uses this same component internally whenever it detects this pattern in a declarative graph.
