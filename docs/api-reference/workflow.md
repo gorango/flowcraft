@@ -38,7 +38,8 @@ These methods are designed to be overridden in your custom `Node` subclasses.
 
 ### Fluent API Methods
 
-These methods return a *new* `Node` instance for creating data processing pipelines.
+> [!NOTE]
+> These methods are **immutable**. They return a *new* `Node` instance for creating data processing pipelines and do not modify the original node. You must chain them or assign the result to a new variable.
 
 - `.map<NewRes>(fn)`: Transforms the `exec` result into a new type.
 - `.toContext(key)`: Stores the `exec` result in the `Context` using the provided `ContextKey`.

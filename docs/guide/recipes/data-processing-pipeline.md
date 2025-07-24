@@ -2,6 +2,30 @@
 
 A common use case for a workflow is to process a piece of data through a series of transformation, validation, and storage steps. Cascade's fluent API on the `Node` class (`.map`, `.filter`, `.tap`, `.toContext`) is perfect for this, allowing you to define a clear, readable, and powerful pipeline.
 
+> [!IMPORTANT]
+> **Key Concept: Immutable Chains**
+>
+> Each method in the fluent chain (`.map`, `.filter`, etc.) is **immutable**. It returns a brand new `Node` instance and does **not** modify the node it was called on.
+>
+> You must capture the result of the chain in a variable.
+>
+> **Correct:**
+>
+> ```typescript
+> // The entire chain is assigned to a new variable.
+> const userProcessingPipeline = new ValueNode(rawUser)
+>   .tap(...)
+>   .map(...)
+> ```
+>
+> **Incorrect:**
+>
+> ```typescript
+> const startNode = new ValueNode(rawUser);
+> // This does nothing! The new node returned by .tap() is discarded.
+> startNode.tap(...);
+> ```
+
 ## The Goal
 
 Create a workflow that:
