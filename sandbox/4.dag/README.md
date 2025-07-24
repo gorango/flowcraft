@@ -75,13 +75,14 @@ A classic linear workflow for content creation, where the output of one step bec
 ```mermaid
 graph TD
     subgraph "Blog Post Generation (ID: 100)"
-        A[generate_outline] --> B[draft_post];
-        B --> C[suggest_titles];
-        C --> D[final_output];
+        A[generate_outline] --> B[draft_post]
+        B --> C[suggest_titles]
+        C --> D[final_output]
     end
 ```
 
 **Demonstrates**:
+
 - **Sequential Processing**: A simple, powerful chain of nodes.
 - **Content Generation Pipeline**: A common pattern for AI-powered content creation.
 - **For more details, see [`data/1.blog-post/README.md`](./data/1.blog-post/README.md).**
@@ -93,18 +94,19 @@ A workflow that analyzes a resume and cover letter in parallel, then makes a dec
 ```mermaid
 graph TD
     subgraph "Job Application Screener (ID: 200)"
-        A(Resume) --> B[extract_skills];
-        C(Cover Letter) --> D[analyze_tone];
-        B --> E{check_qualifications};
-        D --> E;
-        E -- true --> F["Sub-Workflow: Send Interview (201)"];
-        E -- false --> G["Sub-Workflow: Send Rejection (202)"];
-        F --> H[final_output];
-        G --> H;
+        A(Resume) --> B[extract_skills]
+        C(Cover Letter) --> D[analyze_tone]
+        B --> E{check_qualifications}
+        D --> E
+        E -- true --> F["Sub-Workflow: Send Interview (201)"]
+        E -- false --> G["Sub-Workflow: Send Rejection (202)"]
+        F --> H[final_output]
+        G --> H
     end
 ```
 
 **Demonstrates**:
+
 - **Parallel Inputs**: Processing multiple independent data sources concurrently.
 - **Conditional Branching**: Using an `llm-condition` node to direct the flow.
 - **Sub-Workflows**: Composing flows by calling other, reusable workflows.
@@ -117,25 +119,26 @@ An advanced workflow that runs initial processing in parallel, makes a condition
 ```mermaid
 graph TD
     subgraph "Customer Review Analysis (ID: 300)"
-        A(Initial Review) --> B[summarize];
-        A --> C[categorize];
-        B --> D{check_sentiment};
-        C --> D;
-        D -- true --> E["Sub-Workflow: Positive Reply (301)"];
-        D -- false --> F["Sub-Workflow: Create Ticket & Reply (302)"];
+        A(Initial Review) --> B[summarize]
+        A --> C[categorize]
+        B --> D{check_sentiment}
+        C --> D
+        D -- true --> E["Sub-Workflow: Positive Reply (301)"]
+        D -- false --> F["Sub-Workflow: Create Ticket & Reply (302)"]
 
         subgraph "Negative Path (Parallel Fan-Out)"
-            F --> G[send_to_ticketing_system];
-            F --> H[send_email_to_customer];
+            F --> G[send_to_ticketing_system]
+            F --> H[send_email_to_customer]
         end
 
-        E --> Z[final_step];
-        G --> Z;
-        H --> Z;
+        E --> Z[final_step]
+        G --> Z
+        H --> Z
     end
 ```
 
 **Demonstrates**:
+
 - **Mid-Flow Fan-Out**: A single node (`negative_branch`) triggers multiple concurrent downstream tasks.
 - **Complex Sub-Workflows**: The sub-workflows themselves can have parallel steps.
 - **Data Aggregation**: A final node gathers results from multiple, mutually exclusive branches.
@@ -148,27 +151,28 @@ A sophisticated workflow that performs multiple parallel checks on content and t
 ```mermaid
 graph TD
     subgraph "Content Moderation (ID: 400)"
-        A(User Post) --> B[check_for_pii];
-        A --> C[check_for_hate_speech];
-        A --> D[check_for_spam];
+        A(User Post) --> B[check_for_pii]
+        A --> C[check_for_hate_speech]
+        A --> D[check_for_spam]
 
-        B --> E{triage_post};
-        C --> E;
-        D --> E;
+        B --> E{triage_post}
+        C --> E
+        D --> E
 
-        E -- action_ban --> F["Sub-Workflow: Ban User (401)"];
-        E -- action_redact --> G["Sub-Workflow: Redact Post (402)"];
-        E -- action_delete_spam --> H["Sub-Workflow: Delete Spam (403)"];
-        E -- action_approve --> I[approve_post_branch];
+        E -- action_ban --> F["Sub-Workflow: Ban User (401)"]
+        E -- action_redact --> G["Sub-Workflow: Redact Post (402)"]
+        E -- action_delete_spam --> H["Sub-Workflow: Delete Spam (403)"]
+        E -- action_approve --> I[approve_post_branch]
 
-        F --> Z[final_log];
-        G --> Z;
-        H --> Z;
-        I --> Z;
+        F --> Z[final_log]
+        G --> Z
+        H --> Z
+        I --> Z
     end
 ```
 
 **Demonstrates**:
+
 - **LLM-Powered Routing**: Using the `llm-router` node to implement a dynamic `switch` statement based on multiple inputs.
 - **Multi-Way Branching**: Directing the flow to one of many distinct paths.
 - **Scalable Moderation Logic**: New moderation rules or actions can be added by modifying the graph and prompts, not the core code.

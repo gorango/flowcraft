@@ -44,10 +44,10 @@ The workflow is defined in `data/rag.json` and executed by the `InMemoryExecutor
 ```mermaid
 graph TD
     subgraph "Advanced RAG Agent"
-        A[Load & Chunk Document] --> B[Generate Embeddings in Parallel];
-        B --> C[Store in Vector DB];
-        C --> D[Vector Search for Question];
-        D --> E[Generate Final Answer];
+        A[Load & Chunk Document] --> B[Generate Embeddings in Parallel]
+        B --> C[Store in Vector DB]
+        C --> D[Vector Search for Question]
+        D --> E[Generate Final Answer]
     end
 ```
 

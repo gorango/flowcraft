@@ -178,8 +178,8 @@ export class Node<PrepRes = any, ExecRes = any, PostRes = any> extends AbstractN
 	 * as it is incompatible with the new result type.
 	 *
 	 * @example
-	 * const fetchUserNode = new FetchUserNode();
-	 * const getUserNameNode = fetchUserNode.map(user => user.name);
+	 * const fetchUserNode = new FetchUserNode()
+	 * const getUserNameNode = fetchUserNode.map(user => user.name)
 	 *
 	 * @param fn A function to transform the execution result from `ExecRes` to `NewRes`.
 	 * @returns A new `Node` instance with the transformed output type.
@@ -208,10 +208,10 @@ export class Node<PrepRes = any, ExecRes = any, PostRes = any> extends AbstractN
 	 * This is a common terminal operation for a mapping chain.
 	 *
 	 * @example
-	 * const USER_NAME = contextKey<string>('user_name');
+	 * const USER_NAME = contextKey<string>('user_name')
 	 * const workflow = new FetchUserNode()
 	 *   .map(user => user.name)
-	 *   .toContext(USER_NAME);
+	 *   .toContext(USER_NAME)
 	 *
 	 * @param key The `ContextKey` to use for storing the result.
 	 * @returns A new `Node` instance that performs the context update in its `post` phase.
@@ -239,10 +239,10 @@ export class Node<PrepRes = any, ExecRes = any, PostRes = any> extends AbstractN
 	 *
 	 * @example
 	 * const checkAdminNode = new FetchUserNode()
-	 *   .filter(user => user.isAdmin);
+	 *   .filter(user => user.isAdmin)
 	 *
-	 * checkAdminNode.next(adminOnlyNode, DEFAULT_ACTION);
-	 * checkAdminNode.next(accessDeniedNode, FILTER_FAILED);
+	 * checkAdminNode.next(adminOnlyNode, DEFAULT_ACTION)
+	 * checkAdminNode.next(accessDeniedNode, FILTER_FAILED)
 	 *
 	 * @param predicate A function that returns `true` or `false` based on the execution result.
 	 * @returns A new `Node` instance that implements the filter logic.
@@ -276,7 +276,7 @@ export class Node<PrepRes = any, ExecRes = any, PostRes = any> extends AbstractN
 	 * @example
 	 * const workflow = new FetchUserNode()
 	 *   .tap(user => console.log('Fetched User:', user))
-	 *   .map(user => user.id);
+	 *   .map(user => user.id)
 	 *
 	 * @param fn A function to call with the execution result for its side effect.
 	 * @returns A new `Node` instance that wraps the original.
@@ -293,11 +293,11 @@ export class Node<PrepRes = any, ExecRes = any, PostRes = any> extends AbstractN
 	 * This allows for functionally setting or updating context as part of a chain.
 	 *
 	 * @example
-	 * const VALUE = contextKey<number>('value');
-	 * const valueLens = lens(VALUE);
+	 * const VALUE = contextKey<number>('value')
+	 * const valueLens = lens(VALUE)
 	 *
 	 * const nodeWithLens = new SomeNode()
-	 *   .withLens(valueLens, 42); // Sets VALUE to 42 before SomeNode runs
+	 *   .withLens(valueLens, 42) // Sets VALUE to 42 before SomeNode runs
 	 *
 	 * @param lens The `ContextLens` to use for the operation.
 	 * @param value The value to set in the context via the lens.
@@ -343,12 +343,9 @@ export class Flow extends Node<any, any, any> {
 	}
 
 	protected _wrapError(e: any, phase: 'prep' | 'exec' | 'post'): Error {
-		// An error during a Flow's `exec` phase is from a sub-node or middleware.
-		// Do not wrap it, so the original error is preserved.
 		if (phase === 'exec') {
 			return e
 		}
-		// For other phases, use the default behavior.
 		return super._wrapError(e, phase)
 	}
 
@@ -374,21 +371,17 @@ export class Flow extends Node<any, any, any> {
 	 * @returns The action returned by the last node in the flow.
 	 */
 	async exec(args: NodeArgs<any, any>): Promise<any> {
-		// Guard clause for non-in-memory executors which don't support sub-flows.
 		if (!(args.executor instanceof InMemoryExecutor)) {
 			throw new TypeError('Sub-flow orchestration is only supported by the InMemoryExecutor.')
 		}
 
-		// Handle logic-bearing flows (like BatchFlow) by calling their own `exec`
 		if (!this.startNode) {
 			return super.exec(args)
 		}
 
 		args.logger.info(`-- Entering sub-flow: ${this.constructor.name} --`)
 
-		// Combine the parent flow's params with this sub-flow's own params.
 		const combinedParams = { ...args.params, ...this.params }
-
 		const internalOptions: InternalRunOptions = {
 			logger: args.logger,
 			signal: args.signal,
@@ -396,8 +389,6 @@ export class Flow extends Node<any, any, any> {
 			executor: args.executor,
 		}
 
-		// Delegate orchestration to the executor's stateless helper method.
-		// Pass *this* flow's startNode and *this* flow's middleware.
 		const finalAction = await args.executor._orch(
 			this.startNode,
 			this.middleware,

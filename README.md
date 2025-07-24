@@ -111,20 +111,20 @@ The `GraphBuilder` is fully **type-safe**. By defining a simple map of your node
 
 ```mermaid
 graph TD
-    A(User Post) --> B[check_for_pii];
-    A --> C[check_for_hate_speech];
-    A --> D[check_for_spam];
-    B --> E{triage_post};
-    C --> E;
-    D --> E;
-    E -- action_ban --> F["Sub-Workflow: Ban User"];
-    E -- action_redact --> G["Sub-Workflow: Redact Post"];
-    E -- action_delete_spam --> H["Sub-Workflow: Delete"];
-    E -- action_approve --> I[approve_post_branch];
-    F --> Z[final_log];
-    G --> Z;
-    H --> Z;
-    I --> Z;
+    A(User Post) --> B[check_for_pii]
+    A --> C[check_for_hate_speech]
+    A --> D[check_for_spam]
+    B --> E{triage_post}
+    C --> E
+    D --> E
+    E -- action_ban --> F["Sub-Workflow: Ban User"]
+    E -- action_redact --> G["Sub-Workflow: Redact Post"]
+    E -- action_delete_spam --> H["Sub-Workflow: Delete"]
+    E -- action_approve --> I[approve_post_branch]
+    F --> Z[final_log]
+    G --> Z
+    H --> Z
+    I --> Z
 ```
 
 - **Demonstrates**:
@@ -151,10 +151,10 @@ A complete, end-to-end Retrieval-Augmented Generation (RAG) agent that ingests a
 
 ```mermaid
 graph TD
-    A[Load & Chunk Document] --> B[Generate Embeddings];
-    B --> C[Store in Vector DB];
-    C --> D[Vector Search for Question];
-    D --> E[Generate Final Answer];
+    A[Load & Chunk Document] --> B[Generate Embeddings]
+    B --> C[Store in Vector DB]
+    C --> D[Vector Search for Question]
+    D --> E[Generate Final Answer]
 ```
 
 - **Demonstrates**:

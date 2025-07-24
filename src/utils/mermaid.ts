@@ -27,16 +27,16 @@ function getActionLabel(action: string | symbol): string {
  * @returns A string containing the Mermaid `graph TD` definition.
  *
  * @example
- * const startNode = new Node('start');
- * const processNode = new Node('process');
- * const endNode = new Node('end');
+ * const startNode = new Node('start')
+ * const processNode = new Node('process')
+ * const endNode = new Node('end')
  *
- * startNode.next(processNode);
- * processNode.next(endNode);
+ * startNode.next(processNode)
+ * processNode.next(endNode)
  *
- * const myFlow = new Flow(startNode);
- * const mermaidSyntax = generateMermaidGraph(myFlow);
- * console.log(mermaidSyntax);
+ * const myFlow = new Flow(startNode)
+ * const mermaidSyntax = generateMermaidGraph(myFlow)
+ * console.log(mermaidSyntax)
  * // Outputs:
  * // graph TD
  * //   Node_0[Node]

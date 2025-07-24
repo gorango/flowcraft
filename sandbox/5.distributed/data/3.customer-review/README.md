@@ -23,21 +23,21 @@ This workflow demonstrates an advanced Directed Acyclic Graph (DAG) that include
 ```mermaid
 graph TD
     subgraph "Customer Review Analysis (ID: 300)"
-        A(Initial Review) --> B[summarize];
-        A --> C[categorize];
-        B --> D{check_sentiment};
-        C --> D;
-        D -- true --> E["Sub-Workflow: Positive Reply (301)"];
-        D -- false --> F["Sub-Workflow: Create Ticket & Reply (302)"];
+        A(Initial Review) --> B[summarize]
+        A --> C[categorize]
+        B --> D{check_sentiment}
+        C --> D
+        D -- true --> E["Sub-Workflow: Positive Reply (301)"]
+        D -- false --> F["Sub-Workflow: Create Ticket & Reply (302)"]
 
         subgraph "Negative Path (Parallel Fan-Out)"
-            F --> G[send_to_ticketing_system];
-            F --> H[send_email_to_customer];
+            F --> G[send_to_ticketing_system]
+            F --> H[send_email_to_customer]
         end
 
-        E --> Z[final_step];
-        G --> Z;
-        H --> Z;
+        E --> Z[final_step]
+        G --> Z
+        H --> Z
     end
 ```
 
@@ -52,7 +52,7 @@ A simple workflow to generate a thank-you message for positive feedback.
 ```mermaid
 graph TD
     subgraph "Send Thanks (ID: 301)"
-        A[gen_thanks] --> B[output_thanks];
+        A[gen_thanks] --> B[output_thanks]
     end
 ```
 
@@ -63,8 +63,8 @@ This sub-workflow itself runs tasks in parallel. It generates the data for a sup
 ```mermaid
 graph TD
     subgraph "Create Ticket & Reply (ID: 302)"
-        A[gen_ticket_data] --> B[output_ticket];
-        C[gen_customer_reply] --> D[output_reply];
+        A[gen_ticket_data] --> B[output_ticket]
+        C[gen_customer_reply] --> D[output_reply]
     end
 ```
 

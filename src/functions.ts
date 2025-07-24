@@ -25,8 +25,8 @@ export type ContextFunction<TIn = any, TOut = any> = (ctx: Context, input: TIn) 
  * The node's `params` object is passed as the input to the function.
  *
  * @example
- * const add = (n: number) => mapNode<{ value: number }, number>(params => params.value + n);
- * const add5Node = add(5); // A reusable node that adds 5 to its input parameter.
+ * const add = (n: number) => mapNode<{ value: number }, number>(params => params.value + n)
+ * const add5Node = add(5) // A reusable node that adds 5 to its input parameter.
  *
  * @param fn A function that takes an input object and returns a result.
  * @returns A new `Node` instance that wraps the function.
@@ -45,9 +45,9 @@ export function mapNode<TIn, TOut>(fn: NodeFunction<TIn, TOut>): Node<TIn, TOut>
  *
  * @example
  * const greeter = contextNode((ctx, params: { name: string }) => {
- *   const language = ctx.get(LANGUAGE_KEY) || 'en';
- *   return language === 'en' ? `Hello, ${params.name}` : `Hola, ${params.name}`;
- * });
+ *   const language = ctx.get(LANGUAGE_KEY) || 'en'
+ *   return language === 'en' ? `Hello, ${params.name}` : `Hola, ${params.name}`
+ * })
  *
  * @param fn A function that takes the context and an input object, and returns a result.
  * @returns A new `Node` instance that wraps the function.
@@ -68,7 +68,7 @@ export function contextNode<TIn, TOut>(fn: ContextFunction<TIn, TOut>): Node<TIn
  * const setupUserContext = (userId: string, name: string) => transformNode(
  *   userLens.set(userId),
  *   nameLens.set(name)
- * );
+ * )
  *
  * @param transforms A sequence of `ContextTransform` functions (e.g., from a lens) to apply.
  * @returns A new `Node` instance that will mutate the context when executed.
@@ -87,7 +87,7 @@ export function transformNode(...transforms: ContextTransform[]): Node {
  * where each node executes in the order it is provided.
  *
  * @example
- * const mathPipeline = pipeline(addNode(5), multiplyNode(2));
+ * const mathPipeline = pipeline(addNode(5), multiplyNode(2))
  *
  * @param nodes A sequence of `Node` instances to chain together.
  * @returns A `Flow` instance representing the linear sequence.
@@ -104,9 +104,9 @@ export function pipeline(...nodes: Node[]): Flow {
  * used to create more complex `NodeFunction`s to pass to `mapNode`.
  *
  * @example
- * const add5 = (x: number) => x + 5;
- * const multiply2 = (x: number) => x * 2;
- * const add5ThenMultiply2 = compose(multiply2, add5); // equivalent to: x => (x + 5) * 2
+ * const add5 = (x: number) => x + 5
+ * const multiply2 = (x: number) => x * 2
+ * const add5ThenMultiply2 = compose(multiply2, add5) // equivalent to: x => (x + 5) * 2
  *
  * @param f The outer function, which receives the result of `g`.
  * @param g The inner function, which receives the initial input.

@@ -45,51 +45,51 @@ const dbClient = {
   commit: async () => console.log('[DB] <== COMMIT'),
   rollback: async () => console.log('[DB] <== ROLLBACK'),
   query: async (sql: string) => console.log(`[DB] Executing: ${sql}`),
-};
+}
 
 // Our transaction middleware
 const transactionMiddleware = async (args, next) => {
   // This middleware only acts on the top-level Flow, not individual nodes.
   // We check the node's name to apply the logic selectively.
   if (args.name !== 'TransactionFlow') {
-    return next(args);
+    return next(args)
   }
 
-  await dbClient.beginTransaction();
+  await dbClient.beginTransaction()
   try {
     // Call next() to execute the entire wrapped flow
-    const result = await next(args);
-    await dbClient.commit();
-    return result;
+    const result = await next(args)
+    await dbClient.commit()
+    return result
   } catch (error) {
-    console.error('[DB] Error occurred, rolling back transaction.');
-    await dbClient.rollback();
+    console.error('[DB] Error occurred, rolling back transaction.')
+    await dbClient.rollback()
     // Re-throw the error so the top-level caller knows the flow failed
-    throw error;
+    throw error
   }
-};
+}
 
 // Nodes that simulate database operations
 class CreateUserNode extends Node {
-  async exec() { await dbClient.query("INSERT INTO users..."); }
+  async exec() { await dbClient.query("INSERT INTO users...") }
 }
 class UpdateProfileNode extends Node {
-  async exec() { await dbClient.query("UPDATE profiles..."); }
+  async exec() { await dbClient.query("UPDATE profiles...") }
 }
 
 // A specific Flow class to attach the middleware to
 class TransactionFlow extends Flow {}
 
 // Create a flow with a couple of nodes
-const flow = new TransactionFlow(new CreateUserNode());
-flow.startNode.next(new UpdateProfileNode());
+const flow = new TransactionFlow(new CreateUserNode())
+flow.startNode.next(new UpdateProfileNode())
 
 // Apply the middleware
-flow.use(transactionMiddleware);
+flow.use(transactionMiddleware)
 
 // Run it
-console.log('--- Running successful transaction ---');
-await flow.run(new TypedContext());
+console.log('--- Running successful transaction ---')
+await flow.run(new TypedContext())
 ```
 
 When this runs, the transaction is correctly committed:

@@ -20,14 +20,14 @@ This workflow demonstrates a more complex Directed Acyclic Graph (DAG) for scree
 ```mermaid
 graph TD
     subgraph "Job Application Screener (ID: 200)"
-        A(Resume) --> B[extract_skills];
-        C(Cover Letter) --> D[analyze_tone];
-        B --> E{check_qualifications};
-        D --> E;
-        E -- true --> F["Sub-Workflow: Send Interview (201)"];
-        E -- false --> G["Sub-Workflow: Send Rejection (202)"];
-        F --> H[final_output];
-        G --> H;
+        A(Resume) --> B[extract_skills]
+        C(Cover Letter) --> D[analyze_tone]
+        B --> E{check_qualifications}
+        D --> E
+        E -- true --> F["Sub-Workflow: Send Interview (201)"]
+        E -- false --> G["Sub-Workflow: Send Rejection (202)"]
+        F --> H[final_output]
+        G --> H
     end
 ```
 
@@ -42,7 +42,7 @@ A simple, linear workflow that generates a polite email inviting the candidate t
 ```mermaid
 graph TD
     subgraph "Generate Interview Email (ID: 201)"
-        A[gen_interview_email] --> B[output_email];
+        A[gen_interview_email] --> B[output_email]
     end
 ```
 
@@ -53,6 +53,6 @@ A simple, linear workflow that generates a polite rejection email.
 ```mermaid
 graph TD
     subgraph "Generate Rejection Email (ID: 202)"
-        A[gen_rejection_email] --> B[output_email];
+        A[gen_rejection_email] --> B[output_email]
     end
 ```

@@ -33,17 +33,17 @@ The implementation uses an `ParallelBatchFlow` to process translation requests f
 
 ```mermaid
 graph TD
-    A[Load README.md] --> B["ParallelBatchFlow"];
+    A[Load README.md] --> B["ParallelBatchFlow"]
     subgraph "Concurrent Translation"
         B -- "Chinese" --> T1[TranslateNode]
         B -- "Spanish" --> T2[TranslateNode]
         B -- "Japanese" --> T3[TranslateNode]
         B -- "German" --> T4[TranslateNode]
     end
-    T1 --> S1[Save Chinese.md];
-    T2 --> S2[Save Spanish.md];
-    T3 --> S3[Save Japanese.md];
-    T4 --> S4[Save German.md];
+    T1 --> S1[Save Chinese.md]
+    T2 --> S2[Save Spanish.md]
+    T3 --> S3[Save Japanese.md]
+    T4 --> S4[Save German.md]
 ```
 
 1. **`TranslateFlow` (extends `ParallelBatchFlow`)**: The `prep` method prepares a list of parameters, one for each language.

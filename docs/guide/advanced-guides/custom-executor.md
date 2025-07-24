@@ -10,7 +10,7 @@ At its core, an executor is any class that implements the `IExecutor` interface.
 
 ```typescript
 interface IExecutor {
-  run: (flow: Flow, context: Context, options?: RunOptions) => Promise<any>;
+  run: (flow: Flow, context: Context, options?: RunOptions) => Promise<any>
 }
 ```
 
@@ -46,7 +46,7 @@ import {
   Logger,
   NullLogger,
   DEFAULT_ACTION
-} from 'cascade';
+} from 'cascade'
 
 export class DryRunExecutor implements IExecutor {
   public async run(flow: Flow, context: Context, options?: RunOptions): Promise<any> {
@@ -62,28 +62,28 @@ The `run` method will prepare the logger and initial parameters and then enter t
 ```typescript
 // Inside DryRunExecutor class...
 public async run(flow: Flow, context: Context, options?: RunOptions): Promise<any> {
-    const logger = options?.logger ?? new NullLogger();
-    const params = { ...flow.params, ...options?.params };
+    const logger = options?.logger ?? new NullLogger()
+    const params = { ...flow.params, ...options?.params }
 
-    logger.info(`[DryRunExecutor] Starting dry run for flow: ${flow.constructor.name}`);
+    logger.info(`[DryRunExecutor] Starting dry run for flow: ${flow.constructor.name}`)
 
     if (!flow.startNode) {
-        logger.warn('[DryRunExecutor] Flow has no start node.');
-        return;
+        logger.warn('[DryRunExecutor] Flow has no start node.')
+        return
     }
 
-    let currentNode: AbstractNode | undefined = flow.startNode;
-    let lastAction: any;
+    let currentNode: AbstractNode | undefined = flow.startNode
+    let lastAction: any
 
     // The executor's main orchestration loop.
     while (currentNode) {
-        logger.info(`[DryRunExecutor] --> Visiting node: ${currentNode.constructor.name}`);
+        logger.info(`[DryRunExecutor] --> Visiting node: ${currentNode.constructor.name}`)
 
         // For a dry run, we simulate execution to get the next action.
         // We run `prep` and `post` to see data flow and branching, but SKIP `exec`.
         // This is a powerful debugging pattern.
-        const node = currentNode;
-        let action;
+        const node = currentNode
+        let action
 
         if (node instanceof Flow) {
             // If the node is a sub-flow, we must run it to get its final action.
@@ -98,21 +98,21 @@ public async run(flow: Flow, context: Context, options?: RunOptions): Promise<an
             action = await node.post({ ctx: context, params, logger, execRes: null } as any)
         }
 
-        lastAction = action;
+        lastAction = action
 
         // Display the action for logging.
         const actionDisplay = (typeof lastAction === 'symbol' && lastAction === DEFAULT_ACTION)
             ? 'default'
-            : String(lastAction);
+            : String(lastAction)
 
-        logger.info(`[DryRunExecutor] <-- Node returned action: '${actionDisplay}'`);
+        logger.info(`[DryRunExecutor] <-- Node returned action: '${actionDisplay}'`)
 
         // Find the next node based on the action.
-        currentNode = node.successors.get(lastAction);
+        currentNode = node.successors.get(lastAction)
     }
 
-    logger.info('[DryRunExecutor] Dry run complete.');
-    return lastAction;
+    logger.info('[DryRunExecutor] Dry run complete.')
+    return lastAction
 }
 ```
 
@@ -122,38 +122,38 @@ Now you can use this executor with any flow. Note that the node's `exec` logic (
 
 ```typescript
 // main.ts
-import { Flow, Node, TypedContext, ConsoleLogger, contextKey } from 'cascade';
-import { DryRunExecutor } from './executors/dry-run-executor';
+import { Flow, Node, TypedContext, ConsoleLogger, contextKey } from 'cascade'
+import { DryRunExecutor } from './executors/dry-run-executor'
 
-const VALUE = contextKey<number>('value');
+const VALUE = contextKey<number>('value')
 
 // A node to set up initial state
-const startNode = new Node().prep(async ({ ctx }) => ctx.set(VALUE, 15));
+const startNode = new Node().prep(async ({ ctx }) => ctx.set(VALUE, 15))
 
 // A conditional node
 class CheckValueNode extends Node<void, void, 'over' | 'under'> {
     async post({ ctx }) {
-        return ctx.get(VALUE)! > 10 ? 'over' : 'under';
+        return ctx.get(VALUE)! > 10 ? 'over' : 'under'
     }
 }
-const checkNode = new CheckValueNode();
+const checkNode = new CheckValueNode()
 
 // Nodes for different branches
-const overNode = new Node().exec(() => console.log('This should NOT be logged!'));
-const underNode = new Node().exec(() => console.log('This should NOT be logged either!'));
+const overNode = new Node().exec(() => console.log('This should NOT be logged!'))
+const underNode = new Node().exec(() => console.log('This should NOT be logged either!'))
 
 // Wire the graph
-startNode.next(checkNode);
-checkNode.next(overNode, 'over');
-checkNode.next(underNode, 'under');
+startNode.next(checkNode)
+checkNode.next(overNode, 'over')
+checkNode.next(underNode, 'under')
 
-const flow = new Flow(startNode);
-const context = new TypedContext();
-const logger = new ConsoleLogger();
-const dryRunExecutor = new DryRunExecutor();
+const flow = new Flow(startNode)
+const context = new TypedContext()
+const logger = new ConsoleLogger()
+const dryRunExecutor = new DryRunExecutor()
 
-console.log('--- Starting Dry Run ---');
-await flow.run(context, { logger, executor: dryRunExecutor });
+console.log('--- Starting Dry Run ---')
+await flow.run(context, { logger, executor: dryRunExecutor })
 ```
 
 ### Expected Output

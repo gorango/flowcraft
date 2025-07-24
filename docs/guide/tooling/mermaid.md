@@ -15,30 +15,30 @@ To use the utility, simply import `generateMermaidGraph`, create your `Flow` ins
 Let's visualize the "Research Agent" from the sandbox examples, which contains a decision loop:
 
 ```typescript
-import { DEFAULT_ACTION, Flow, generateMermaidGraph, Node } from 'cascade';
+import { DEFAULT_ACTION, Flow, generateMermaidGraph, Node } from 'cascade'
 
 // Define the nodes for the agent
 class DecideActionNode extends Node<void, void, 'search' | 'answer'> {
-  async post() { return 'search'; /* or 'answer' */ }
+  async post() { return 'search' /* or 'answer' */ }
 }
 class SearchWebNode extends Node {}
 class AnswerQuestionNode extends Node {}
 
 // Create instances
-const decideNode = new DecideActionNode();
-const searchNode = new SearchWebNode();
-const answerNode = new AnswerQuestionNode();
+const decideNode = new DecideActionNode()
+const searchNode = new SearchWebNode()
+const answerNode = new AnswerQuestionNode()
 
 // Wire the graph
-decideNode.next(searchNode, 'search');
-decideNode.next(answerNode, 'answer');
-searchNode.next(decideNode, DEFAULT_ACTION); // Loop back to the decision node
+decideNode.next(searchNode, 'search')
+decideNode.next(answerNode, 'answer')
+searchNode.next(decideNode, DEFAULT_ACTION) // Loop back to the decision node
 
-const researchAgentFlow = new Flow(decideNode);
+const researchAgentFlow = new Flow(decideNode)
 
 // Generate and print the Mermaid syntax
-const mermaidGraph = generateMermaidGraph(researchAgentFlow);
-console.log(mermaidGraph);
+const mermaidGraph = generateMermaidGraph(researchAgentFlow)
+console.log(mermaidGraph)
 ```
 
 ### Generated Syntax
@@ -88,9 +88,9 @@ Custom action strings are rendered as labels on the connecting arrows.
 **Code**:
 
 ```typescript
-const decision = new DecisionNode();
-decision.next(new PathANode(), 'path_a');
-decision.next(new PathBNode(), 'path_b');
+const decision = new DecisionNode()
+decision.next(new PathANode(), 'path_a')
+decision.next(new PathBNode(), 'path_b')
 ```
 
 **Graph**:
@@ -109,9 +109,9 @@ The special `FILTER_FAILED` action is given a descriptive label. The `DEFAULT_AC
 **Code**:
 
 ```typescript
-const filter = new FilterNode();
-filter.next(new SuccessNode(), DEFAULT_ACTION);
-filter.next(new FailureNode(), FILTER_FAILED);
+const filter = new FilterNode()
+filter.next(new SuccessNode(), DEFAULT_ACTION)
+filter.next(new FailureNode(), FILTER_FAILED)
 ```
 
 **Graph**:
@@ -130,11 +130,11 @@ When multiple nodes connect to the same successor, the graph shows all arrows co
 **Code**:
 
 ```typescript
-const branchA = new PathANode();
-const branchB = new PathBNode();
-const end = new EndNode();
-branchA.next(end);
-branchB.next(end);
+const branchA = new PathANode()
+const branchB = new PathBNode()
+const end = new EndNode()
+branchA.next(end)
+branchB.next(end)
 ```
 
 **Graph**:

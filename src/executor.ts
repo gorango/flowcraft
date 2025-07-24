@@ -1,4 +1,4 @@
-import type { Context, Flow, RunOptions } from './workflow'
+import type { Context, Flow, Logger, Params, RunOptions } from './workflow'
 
 /**
  * Defines the interface for a workflow executor.
@@ -13,4 +13,11 @@ export interface IExecutor {
 	 * @returns A promise that resolves with the final action of the workflow.
 	 */
 	run: (flow: Flow, context: Context, options?: RunOptions) => Promise<any>
+}
+
+export interface InternalRunOptions {
+	logger: Logger
+	signal?: AbortSignal
+	params: Params
+	executor: IExecutor
 }

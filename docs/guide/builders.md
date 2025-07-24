@@ -29,40 +29,40 @@ This guide provides an overview of the available builders and helps you choose t
 Instead of wiring nodes manually with `.next()`:
 
 ```typescript
-const nodeA = new NodeA();
-const nodeB = new NodeB();
-const nodeC = new NodeC();
+const nodeA = new NodeA()
+const nodeB = new NodeB()
+const nodeC = new NodeC()
 
-nodeA.next(nodeB);
-nodeB.next(nodeC);
+nodeA.next(nodeB)
+nodeB.next(nodeC)
 
-const manualFlow = new Flow(nodeA);
+const manualFlow = new Flow(nodeA)
 ```
 
 You can use `SequenceFlow` for a more concise definition:
 
 ```typescript
-import { SequenceFlow } from 'cascade';
+import { SequenceFlow } from 'cascade'
 
 const sequence = new SequenceFlow(
   new NodeA(),
   new NodeB(),
   new NodeC()
-);
+)
 
-await sequence.run(context);
+await sequence.run(context)
 ```
 
 For an even more functional style, the `pipeline` helper provides the same functionality with a more direct syntax. See the [Functional API Reference](./functional-api.md#pipeline) for more details.
 
 ```typescript
-import { pipeline } from 'cascade';
+import { pipeline } from 'cascade'
 
 const dataPipeline = pipeline(
   new NodeA(),
   new NodeB(),
   new NodeC()
-);
+)
 ```
 
 ---
@@ -78,19 +78,19 @@ Use `ParallelFlow` when your workflow logic itself has distinct branches that ca
 ### Example
 
 ```typescript
-import { ParallelFlow } from 'cascade';
+import { ParallelFlow } from 'cascade'
 
 // Fetch data from two different sources in parallel.
 const parallelStep = new ParallelFlow([
   new FetchUserProfileNode(),  // Task A
   new FetchUserActivityNode(), // Task B
-]);
+])
 
 // This node will only run after both fetch nodes have completed.
-const aggregateNode = new AggregateDashboardDataNode();
-parallelStep.next(aggregateNode);
+const aggregateNode = new AggregateDashboardDataNode()
+parallelStep.next(aggregateNode)
 
-const dashboardFlow = new Flow(parallelStep);
+const dashboardFlow = new Flow(parallelStep)
 ```
 
 ---
@@ -112,7 +112,7 @@ const dashboardFlow = new Flow(parallelStep);
 This example uses `ParallelBatchFlow` to translate a document into several languages at once.
 
 ```typescript
-import { ParallelBatchFlow, Node, TypedContext } from 'cascade';
+import { ParallelBatchFlow, Node, TypedContext } from 'cascade'
 
 // The single unit of work: translates text to one language.
 class TranslateNode extends Node {
@@ -123,17 +123,17 @@ class TranslateNode extends Node {
 class TranslateFlow extends ParallelBatchFlow {
   constructor() {
     // Tell the builder which node to run for each item.
-    super(new TranslateNode());
+    super(new TranslateNode())
   }
 
   // prep provides the list of items to process.
   async prep({ ctx }) {
-    const languages = ctx.get(LANGUAGES) || [];
-    const text = ctx.get(DOCUMENT_TEXT);
+    const languages = ctx.get(LANGUAGES) || []
+    const text = ctx.get(DOCUMENT_TEXT)
 
     // Return an array of parameter objects.
     // Each object will be merged into the TranslateNode's params for one parallel run.
-    return languages.map(language => ({ language, text }));
+    return languages.map(language => ({ language, text }))
   }
 }
 ```

@@ -5,6 +5,7 @@ A common use case for a workflow is to process a piece of data through a series 
 ## The Goal
 
 Create a workflow that:
+
 1. Starts with a raw user object.
 2. Logs the initial object for debugging (`.tap`).
 3. Transforms the object into a more usable format (`.map`).
@@ -13,11 +14,11 @@ Create a workflow that:
 
 ```mermaid
 graph TD
-    A[Start: Raw User] --> B["tap(log raw)"];
-    B --> C["map(transform)"];
-    C --> D{"filter(isActive)"};
-    D -- "true" --> E["toContext(save)"];
-    D -- "false" --> F[End / Discard];
+    A[Start: Raw User] --> B["tap(log raw)"]
+    B --> C["map(transform)"]
+    C --> D{"filter(isActive)"}
+    D -- "true" --> E["toContext(save)"]
+    D -- "false" --> F[End / Discard]
 ```
 
 ## The Implementation

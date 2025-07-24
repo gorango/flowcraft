@@ -18,8 +18,8 @@ This is a classic example of how to chain nodes together to form a multi-step, s
 ```mermaid
 graph TD
     subgraph "Blog Post Generation (ID: 100)"
-        A[generate_outline] --> B[draft_post];
-        B --> C[suggest_titles];
-        C --> D[final_output];
+        A[generate_outline] --> B[draft_post]
+        B --> C[suggest_titles]
+        C --> D[final_output]
     end
 ```

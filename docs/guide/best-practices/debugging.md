@@ -13,21 +13,21 @@ The most common debugging task is inspecting the data at a certain point in a pr
 **Scenario**: You have a chain of `.map()` calls and want to see the intermediate result.
 
 ```typescript
-import { Node, contextKey } from 'cascade';
+import { Node, contextKey } from 'cascade'
 
-const FINAL_RESULT = contextKey<string>('final_result');
+const FINAL_RESULT = contextKey<string>('final_result')
 
 // A node that fetches a user object
-const fetchUserNode = new Node().exec(() => ({ id: 123, name: 'Alice', email: 'alice@test.com' }));
+const fetchUserNode = new Node().exec(() => ({ id: 123, name: 'Alice', email: 'alice@test.com' }))
 
 const processUser = fetchUserNode
   .map(user => ({ ...user, name: user.name.toUpperCase() }))
   // Let's inspect the data right here!
   .tap(intermediateResult => {
-    console.log('[DEBUG] After capitalization:', intermediateResult);
+    console.log('[DEBUG] After capitalization:', intermediateResult)
   })
   .map(user => `User ID: ${user.id}, Name: ${user.name}`)
-  .toContext(FINAL_RESULT);
+  .toContext(FINAL_RESULT)
 
 // When this runs, the debug log will print the intermediate object.
 ```
@@ -44,14 +44,14 @@ The logger will show:
 - Warnings for retry attempts and errors for fallback execution.
 
 ```typescript
-import { Flow, ConsoleLogger, TypedContext } from 'cascade';
+import { Flow, ConsoleLogger, TypedContext } from 'cascade'
 
 // Assume you have a conditional flow set up
-const myFlow = createMyConditionalFlow();
-const context = new TypedContext();
+const myFlow = createMyConditionalFlow()
+const context = new TypedContext()
 
 // Run the flow with a logger enabled
-await myFlow.run(context, { logger: new ConsoleLogger() });
+await myFlow.run(context, { logger: new ConsoleLogger() })
 ```
 
 **Example Log Output**:
@@ -73,15 +73,15 @@ Sometimes the problem isn't the logic inside your nodes, but the way you've wire
 Cascade includes a `generateMermaidGraph` utility that creates a visual representation of your `Flow`'s structure. You can paste the output into any Mermaid.js renderer (like the one in the GitHub or VS Code markdown preview) to see your workflow.
 
 ```typescript
-import { generateMermaidGraph } from 'cascade';
-import { createMyComplexFlow } from './my-flows';
+import { generateMermaidGraph } from 'cascade'
+import { createMyComplexFlow } from './my-flows'
 
-const complexFlow = createMyComplexFlow();
+const complexFlow = createMyComplexFlow()
 
 // Generate the Mermaid syntax
-const mermaidSyntax = generateMermaidGraph(complexFlow);
+const mermaidSyntax = generateMermaidGraph(complexFlow)
 
-console.log(mermaidSyntax);
+console.log(mermaidSyntax)
 /*
 Outputs something like:
 graph TD
@@ -113,22 +113,22 @@ This pattern is also the foundation for unit testing your nodes.
 ```typescript
 // Assume this node is failing in your main flow
 class AddTenNode extends Node {
-  async prep({ ctx }) { return ctx.get(INPUT) || 0; }
-  async exec({ prepRes: value }) { return value + 10; }
-  async post({ ctx, execRes: result }) { ctx.set(OUTPUT, result); }
+  async prep({ ctx }) { return ctx.get(INPUT) || 0 }
+  async exec({ prepRes: value }) { return value + 10 }
+  async post({ ctx, execRes: result }) { ctx.set(OUTPUT, result) }
 }
 
 // --- Debugging it in isolation ---
-const nodeToDebug = new AddTenNode();
+const nodeToDebug = new AddTenNode()
 const debugContext = new TypedContext([
   [INPUT, 5] // Manually set up the required context
-]);
+])
 
-console.log('--- Running node in isolation ---');
-await nodeToDebug.run(debugContext, { logger: new ConsoleLogger() });
+console.log('--- Running node in isolation ---')
+await nodeToDebug.run(debugContext, { logger: new ConsoleLogger() })
 
 // Check the result
-console.log(`Final value in context: ${debugContext.get(OUTPUT)}`); // Should be 15
+console.log(`Final value in context: ${debugContext.get(OUTPUT)}`) // Should be 15
 ```
 
 ## Common Pitfalls

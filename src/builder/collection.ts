@@ -150,9 +150,9 @@ export class ParallelFlow extends Flow {
  * and returns a new array containing the results.
  *
  * @example
- * const numbers = [1, 2, 3];
- * const double = (n: number) => n * 2;
- * const processingFlow = mapCollection(numbers, double);
+ * const numbers = [1, 2, 3]
+ * const double = (n: number) => n * 2
+ * const processingFlow = mapCollection(numbers, double)
  * // When run, processingFlow's result will be [2, 4, 6]
  *
  * @param items The initial array of items of type `T`.
@@ -174,9 +174,9 @@ export function mapCollection<T, U>(items: T[], fn: NodeFunction<T, U>): Flow {
  * returning a new array containing only the items that pass the predicate.
  *
  * @example
- * const users = [{ id: 1, admin: true }, { id: 2, admin: false }];
- * const isAdmin = async (user: { admin: boolean }) => user.admin;
- * const adminFilterFlow = filterCollection(users, isAdmin);
+ * const users = [{ id: 1, admin: true }, { id: 2, admin: false }]
+ * const isAdmin = async (user: { admin: boolean }) => user.admin
+ * const adminFilterFlow = filterCollection(users, isAdmin)
  * // When run, the result will be [{ id: 1, admin: true }]
  *
  * @param items The initial array of items of type `T`.
@@ -197,9 +197,9 @@ export function filterCollection<T>(items: T[], predicate: (item: T) => boolean 
  * reducer function for each item, similar to `Array.prototype.reduce()`.
  *
  * @example
- * const numbers = [1, 2, 3, 4];
- * const sumReducer = (acc: number, val: number) => acc + val;
- * const sumFlow = reduceCollection(numbers, sumReducer, 0);
+ * const numbers = [1, 2, 3, 4]
+ * const sumReducer = (acc: number, val: number) => acc + val
+ * const sumFlow = reduceCollection(numbers, sumReducer, 0)
  * // When run, the result will be 10.
  *
  * @param items The array of items to be reduced.

@@ -44,7 +44,6 @@ export default defineConfig({
 					text: 'Recipes',
 					collapsed: true,
 					items: [
-						{ text: 'Overview', link: '/guide/recipes/' },
 						{ text: 'Creating a Loop', link: '/guide/recipes/creating-a-loop' },
 						{ text: 'Fan-out and Fan-in', link: '/guide/recipes/fan-out-fan-in' },
 						{ text: 'Resilient API Call Node', link: '/guide/recipes/resilient-api-call' },

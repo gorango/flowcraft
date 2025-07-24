@@ -13,10 +13,10 @@ The key is to have a "decider" node that, based on some condition, either contin
 
 ```mermaid
 graph TD
-    A[Start] --> B(Loop Action);
-    B --> C{Check Condition};
-    C -- "Continue Loop" --> B;
-    C -- "Exit Loop" --> D[End];
+    A[Start] --> B(Loop Action)
+    B --> C{Check Condition}
+    C -- "Continue Loop" --> B
+    C -- "Exit Loop" --> D[End]
 ```
 
 ## Example: A Counter Loop

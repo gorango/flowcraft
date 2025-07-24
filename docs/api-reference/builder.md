@@ -56,11 +56,11 @@ A `Flow` that executes a collection of nodes concurrently. This is the core of t
 const parallelStep = new ParallelFlow([
   new FetchApiANode(),
   new FetchApiBNode(),
-]);
-const aggregateNode = new AggregateResultsNode();
+])
+const aggregateNode = new AggregateResultsNode()
 
 // After both API calls are complete, the aggregateNode will run.
-parallelStep.next(aggregateNode);
+parallelStep.next(aggregateNode)
 ```
 
 ---

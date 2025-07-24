@@ -119,14 +119,14 @@ Creates a `ContextLens` object, which provides a type-safe way to generate funct
 ### Example
 
 ```typescript
-const NAME = contextKey<string>('name');
-const nameLens = lens(NAME);
+const NAME = contextKey<string>('name')
+const nameLens = lens(NAME)
 
 // Create a transform function that sets the name to 'Alice'
-const setNameTransform = nameLens.set('Alice');
+const setNameTransform = nameLens.set('Alice')
 
 // Create a node that applies this transform
-const setNode = transformNode(setNameTransform);
+const setNode = transformNode(setNameTransform)
 ```
 
 ## `composeContext(...transforms)`

@@ -11,15 +11,15 @@ Cascade provides a dedicated `ParallelFlow` builder that makes creating this pat
 
 ```mermaid
 graph TD
-    A[Start] --> B(ParallelFlow);
+    A[Start] --> B(ParallelFlow)
     subgraph "Run in Parallel"
-      B --> C[Process Branch 1];
-      B --> D[Process Branch 2];
-      B --> E[...];
+      B --> C[Process Branch 1]
+      B --> D[Process Branch 2]
+      B --> E[...]
     end
-    C --> F((Aggregate Results));
-    D --> F;
-    E --> F;
+    C --> F((Aggregate Results))
+    D --> F
+    E --> F
 ```
 
 ## Example: Parallel Data Enrichment

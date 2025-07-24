@@ -5,18 +5,19 @@ A very common task in any workflow is calling an external API. These calls can b
 ## The Goal
 
 Create a node that:
+
 1. Calls an external API.
 2. If the API call fails, automatically retries the call a few times.
 3. If all retries fail, executes a fallback logic (e.g., returns a cached or default value) so the workflow can continue.
 
 ```mermaid
 graph TD
-    A[Start] --> B{Call API};
-    B -- Success --> D[Proceed];
-    B -- Failure --> C{Retry?};
-    C -- "Yes (< 3 attempts)" --> B;
-    C -- "No (all retries failed)" --> E[Execute Fallback];
-    E --> D;
+    A[Start] --> B{Call API}
+    B -- Success --> D[Proceed]
+    B -- Failure --> C{Retry?}
+    C -- "Yes (< 3 attempts)" --> B
+    C -- "No (all retries failed)" --> E[Execute Fallback]
+    E --> D
 ```
 
 ## The Implementation
