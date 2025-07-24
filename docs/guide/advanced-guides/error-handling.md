@@ -23,7 +23,8 @@ The most common way to handle transient failures (like a temporary network issue
 - `maxRetries`: The total number of times the `exec` phase will be attempted. A value of `1` (the default) means no retries. A value of `3` means one initial attempt and up to two retries.
 - `wait`: The time in milliseconds to wait between retry attempts. Defaults to `0`.
 
-**Important**: Only the `exec` phase of a node is retried. Errors in `prep` or `post` are considered fatal for that node and will immediately cause a failure. This is by design, as these phases often involve state changes in the `Context` that might not be safe to repeat.
+> [!IMPORTANT]
+> **Only the `exec` phase is retried.** Errors in `prep` or `post` are considered fatal for that node and will immediately cause a failure. This is by design, as these phases often involve state changes in the `Context` that might not be safe to repeat.
 
 ### Example: Retrying an API Call
 

@@ -104,7 +104,9 @@ As you can see, the parent flow's executor correctly branched based on the final
 
 ## Data Flow and Context
 
-By default, the `Context` is **shared** between the parent and the sub-flow. The same context instance is passed through all nodes in the parent and all nodes in the sub-flow.
+> [!WARNING]
+> **Sub-flows Share Context by Default**
+> The same `Context` instance is passed through all nodes in the parent and all nodes in the sub-flow. While simple, this "shared memory" model can lead to tight coupling and unexpected side effects if sub-flows are not carefully designed. A sub-flow could accidentally overwrite a context value that the parent flow depends on.
 
 - **Pros**: This makes passing data between the parent and child flows trivial. A sub-flow can read data set by previous nodes in the parent, and subsequent nodes in the parent can read data set by the sub-flow.
 - **Cons**: This "shared memory" model can lead to tight coupling and unexpected side effects if sub-flows are not carefully designed. A sub-flow could accidentally overwrite a context value that the parent flow depends on, leading to hard-to-debug issues.

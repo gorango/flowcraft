@@ -11,7 +11,8 @@ const controller = new AbortController()
 flow.run(context, { controller })
 ```
 
-Cascade will then pass the `controller.signal` (`AbortSignal`) down to every `Node` that gets executed. It is then the responsibility of your long-running asynchronous logic inside a `Node` to listen for this signal and stop its work when it's aborted.
+> [!IMPORTANT]
+> Cascade passes the `AbortSignal` to every node, but it's your responsibility to use it. The framework cannot magically interrupt your asynchronous code. You must design your `exec` logic to listen for the abort event and stop its work, as shown in the examples below.
 
 Calling `controller.abort()` will cause the currently running asynchronous operation to throw an `AbortError`, which immediately and cleanly halts the entire workflow.
 

@@ -38,7 +38,7 @@ These methods are designed to be overridden in your custom `Node` subclasses.
 
 ### Fluent API Methods
 
-> [!NOTE]
+> [!IMPORTANT]
 > These methods are **immutable**. They return a *new* `Node` instance for creating data processing pipelines and do not modify the original node. You must chain them or assign the result to a new variable.
 
 - `.map<NewRes>(fn)`: Transforms the `exec` result into a new type.
@@ -103,6 +103,9 @@ The shared memory of a workflow.
 ## `ContextKey` and `contextKey()`
 
 The mechanism for type-safe access to the `Context`.
+
+> [!IMPORTANT]
+> Always prefer `contextKey()` over raw strings to access the context. This provides compile-time type checking and prevents common bugs from typos.
 
 - `ContextKey<T>`: An opaque type representing a key for a value of type `T`.
 - `contextKey<T>(description?: string)`: A factory function that creates a new, unique `ContextKey<T>`. The `description` is used for debugging and is not functionally significant.

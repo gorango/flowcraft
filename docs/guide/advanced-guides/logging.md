@@ -22,7 +22,10 @@ The `context` object is used to pass structured data, which is a best practice f
 Cascade comes with two pre-built loggers:
 
 - **`ConsoleLogger`**: A straightforward logger that prints messages to the `console` (e.g., `console.info`, `console.warn`). This is great for development and debugging.
-- **`NullLogger`**: A logger that does nothing. **This is the framework's default if no logger is provided**, ensuring that Cascade is silent out-of-the-box and doesn't clutter your application's output unless you explicitly enable logging.
+- **`NullLogger`**: A logger that does nothing.
+
+> [!NOTE]
+> **Cascade is silent by default.** The `NullLogger` is the framework's default if no logger is provided. This ensures that Cascade doesn't clutter your application's output unless you explicitly enable logging by passing a `logger` in the `RunOptions`.
 
 To use the `ConsoleLogger`, simply pass it in the `RunOptions` when you execute a flow:
 

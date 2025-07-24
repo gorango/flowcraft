@@ -4,7 +4,8 @@ The `Context` is the heart of a running workflow, acting as its shared memory. M
 
 ## 1. Always Use `ContextKey` for Type Safety
 
-This is the most important rule. While the `Context` supports string-based keys for flexibility, you should always prefer using `contextKey` to define your keys.
+> [!IMPORTANT]
+> This is the most important rule for state management. Always prefer `contextKey()` over raw strings to access the `Context`.
 
 **Why?**
 
@@ -100,7 +101,9 @@ The `SubWorkflowNode` in the `sandbox/4.dag` example demonstrates an advanced pa
 
 ## 5. Plan for Serialization
 
-While the `InMemoryExecutor` can handle any JavaScript object in the `Context`, your workflow's state may need to be saved, logged, or sent over a network (as in the `BullMQExecutor` example). Standard `JSON.stringify` is lossy and will not correctly preserve complex data types.
+> [!WARNING]
+> **Standard `JSON.stringify` is Lossy!**
+> While the `InMemoryExecutor` can handle any JavaScript object, your workflow's state may need to be saved or sent over a network (as in the `BullMQExecutor` example). Standard `JSON.stringify` will not correctly preserve complex data types and can lead to silent data loss or bugs.
 
 **Common data types that break `JSON.stringify`:**
 
@@ -111,6 +114,7 @@ While the `InMemoryExecutor` can handle any JavaScript object in the `Context`, 
 
 To build robust, stateful workflows, it is a best practice to use a library that handles this automatically.
 
-**Best Practice**: Use a library like [`superjson`](https://github.com/blitz-js/superjson) to serialize and deserialize your context. It transparently handles all common JavaScript types, ensuring that the state you save is the same as the state you load.
+> [!TIP]
+> Use a library like [`superjson`](https://github.com/blitz-js/superjson) to serialize and deserialize your context. It transparently handles all common JavaScript types, ensuring that the state you save is the same as the state you load.
 
 The **[Advanced RAG Agent](https://github.com/gorango/tree/master/sandbox/6.rag/) example** was specifically designed to demonstrate this principle. It uses `superjson` to correctly manage a `Context` containing `Map`, `Date`, and custom class instances, making its state reliable and easy to inspect.

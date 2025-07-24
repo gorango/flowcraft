@@ -54,7 +54,8 @@ await flow.run()
 
 ## Learn by Example
 
-The best way to understand the framework is by exploring the included sandbox examples. They are ordered by increasing complexity, each introducing new features and demonstrating the flexibility of the core engine.
+> [!TIP]
+> The best way to understand the framework is by exploring the included sandbox examples. They are ordered by increasing complexity, each introducing new features and demonstrating the flexibility of the core engine.
 
 ### 1. Basic Sequential Flow: Article Writer
 
@@ -107,7 +108,8 @@ graph TD
 
 The most advanced example: a powerful runtime that executes complex, graph-based AI workflows defined in simple JSON-like objects. This shows how to build highly dynamic and modular AI agent systems.
 
-The `GraphBuilder` is fully **type-safe**. By defining a simple map of your node types to their data payloads, TypeScript can validate your entire graph at compile time, ensuring that the data provided to each node matches what its class expects. This eliminates a whole category of runtime configuration errors.
+> [!IMPORTANT]
+> The `GraphBuilder` is fully **type-safe**. By defining a simple map of your node types to their data payloads, TypeScript can validate your entire graph at compile time, ensuring that the data provided to each node matches what its class expects. This eliminates a whole category of runtime configuration errors.
 
 ```mermaid
 graph TD
@@ -211,7 +213,8 @@ To simplify the creation of common and complex patterns, the framework provides 
 
 ## Unit Tests
 
-For clear, focused examples of specific, individual features (like retries, middleware, cancellation, and composition), the unit tests are an excellent resource.
+> [!TIP]
+> For clear, focused examples of specific, individual features (like retries, middleware, cancellation, and composition), the unit tests are an excellent resource.
 
 - Core workflow tests: [`src/workflow.test.ts`](src/workflow.test.ts)
 - Collections tests: [`src/builder/collection.test.ts`](src/builder/collection.test.ts)

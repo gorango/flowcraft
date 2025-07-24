@@ -99,6 +99,11 @@ When you extend `ParallelBatchFlow`, you must implement the following:
 
 A powerful builder that constructs an executable `Flow` from a declarative `WorkflowGraph` definition (e.g., from a JSON file). It supports a fully type-safe API for compile-time validation of graph definitions.
 
+> [!IMPORTANT]
+> To leverage compile-time type safety, you must use the `createNodeRegistry` helper and define a `NodeTypeMap` that maps your node type strings to their expected `data` payloads. This prevents configuration errors before you even run your code.
+>
+> (See how the **[Rag Agent](https://github.com/gorango/cascade/tree/master/sandbox/6.rag/)** implements a simple node registry; the **[Dynamic AI Agent](https://github.com/gorango/cascade/tree/master/sandbox/4.dag/)** even demonstrates type-safety despite using *dynamic graphs*.)
+
 ### Constructor
 
 `new GraphBuilder(nodeRegistry, nodeOptionsContext?)`

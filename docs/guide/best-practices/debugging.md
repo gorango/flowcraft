@@ -6,9 +6,10 @@ This guide covers the most effective techniques for debugging your workflows.
 
 ## 1. Inspect Data Flow with `.tap()`
 
-The most common debugging task is inspecting the data at a certain point in a processing pipeline. Instead of breaking your fluent chain to insert a `console.log`, use the `.tap()` method.
+> [!TIP]
+> The `.tap()` method is your best friend for non-disruptive debugging. It's the cleanest way to inspect data mid-pipeline without breaking a fluent chain.
 
-`.tap()` receives the result of the previous step, allows you to perform a side-effect (like logging), and then passes the original result through to the next step, completely unmodified.
+Instead of breaking your chain to insert a `console.log`, use the `.tap()` method. It receives the result of the previous step, allows you to perform a side-effect (like logging), and then passes the original result through to the next step, completely unmodified.
 
 **Scenario**: You have a chain of `.map()` calls and want to see the intermediate result.
 
