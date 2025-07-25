@@ -207,6 +207,22 @@ export class SubWorkflowNode extends Node {
 
 		logger.info(`[SubWorkflow] Exited: ${this.data.workflowId}`)
 	}
+
+	async post(args: NodeArgs) {
+		// After the sub-workflow completes and outputs are mapped,
+		// we must signal that this is a terminal node for the entire parent workflow.
+		const outputMappings = this.data.outputs || {}
+		for (const [parentKey, _] of Object.entries(outputMappings)) {
+			if (args.ctx.has(parentKey)) {
+				args.ctx.set('__final_payload', {
+					result: args.ctx.get(parentKey),
+					context: Object.fromEntries(args.ctx.entries()),
+				})
+				break // Just need the first one
+			}
+		}
+		return FINAL_ACTION
+	}
 }
 
 /**

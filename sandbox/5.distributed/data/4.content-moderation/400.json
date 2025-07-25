@@ -52,7 +52,7 @@
 					"reason": "check_for_hate_speech"
 				},
 				"outputs": {
-					"moderation_result": "ban_summary"
+					"final_output": "ban_summary"
 				}
 			}
 		},
@@ -66,7 +66,7 @@
 					"userId": "userId"
 				},
 				"outputs": {
-					"moderation_result": "redaction_summary"
+					"final_output": "redaction_summary"
 				}
 			}
 		},
@@ -79,30 +79,17 @@
 					"userId": "userId"
 				},
 				"outputs": {
-					"moderation_result": "spam_deletion_summary"
+					"final_output": "spam_deletion_summary"
 				}
 			}
 		},
 		{
 			"id": "approve_post_branch",
-			"type": "llm-process",
+			"type": "output",
 			"data": {
 				"promptTemplate": "The user post from {{userId}} was analyzed and approved with no issues. Create a simple log message confirming this.",
 				"inputs": {
 					"userId": "userId"
-				}
-			}
-		},
-		{
-			"id": "final_log",
-			"type": "output",
-			"data": {
-				"promptTemplate": "--- CONTENT MODERATION COMPLETE ---\n\nFinal Action Log:\n{{final_action_taken}}",
-				"inputs": {
-					"final_action_taken": [
-						"moderation_result",
-						"approve_post_branch"
-					]
 				}
 			}
 		}
@@ -110,7 +97,13 @@
 	"edges": [
 		{
 			"source": "check_for_pii",
-			"target": "triage_post"
+			"target": "triage_post",
+			"action": "true"
+		},
+		{
+			"source": "check_for_pii",
+			"target": "triage_post",
+			"action": "false"
 		},
 		{
 			"source": "check_for_hate_speech",
@@ -118,7 +111,13 @@
 		},
 		{
 			"source": "check_for_spam",
-			"target": "triage_post"
+			"target": "triage_post",
+			"action": "true"
+		},
+		{
+			"source": "check_for_spam",
+			"target": "triage_post",
+			"action": "false"
 		},
 		{
 			"source": "triage_post",
@@ -139,22 +138,6 @@
 			"source": "triage_post",
 			"target": "approve_post_branch",
 			"action": "action_approve"
-		},
-		{
-			"source": "ban_user_branch",
-			"target": "final_log"
-		},
-		{
-			"source": "redact_post_branch",
-			"target": "final_log"
-		},
-		{
-			"source": "delete_spam_branch",
-			"target": "final_log"
-		},
-		{
-			"source": "approve_post_branch",
-			"target": "final_log"
 		}
 	]
 }

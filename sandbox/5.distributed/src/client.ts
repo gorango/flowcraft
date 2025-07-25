@@ -1,4 +1,3 @@
-import type { WorkflowStatus } from './types'
 import path from 'node:path'
 import process from 'node:process'
 import { ConsoleLogger, TypedContext } from 'cascade'
@@ -62,7 +61,8 @@ async function main() {
 	const runId = Math.random().toString(36).substring(2, 4)
 	const redisConnection = new IORedis({ maxRetriesPerRequest: null })
 	const useCaseDirectory = path.join(process.cwd(), 'data', ACTIVE_USE_CASE)
-	const registry = await WorkflowRegistry.create(useCaseDirectory)
+
+	const registry = await WorkflowRegistry.create([useCaseDirectory])
 
 	const flow = await registry.getFlow(WORKFLOW_ID)
 	const context = config[ACTIVE_USE_CASE].getInitialContext()
@@ -80,11 +80,10 @@ async function main() {
 
 	if (!initialJobsOrJob) {
 		logger.error('Workflow did not produce any initial jobs.')
+		await redisConnection.quit()
 		return
 	}
 
-	// For simplicity, let's assume we wait on the first job in a parallel start.
-	// A more robust implementation might use Promise.all on an array of waiters.
 	const firstJob = Array.isArray(initialJobsOrJob)
 		? initialJobsOrJob[0]
 		: initialJobsOrJob
@@ -99,7 +98,7 @@ async function main() {
 				logger.info(`✅ Workflow Run ID: ${runId} COMPLETED.`)
 				console.log('=============================================================\n')
 				console.log('Final Result from Worker:\n')
-				console.log(finalStatus.payload)
+				console.log(finalStatus.payload.result)
 				break
 			case 'cancelled':
 				logger.warn(`🛑 Workflow Run ID: ${runId} was successfully CANCELLED.`)
