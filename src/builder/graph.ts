@@ -82,6 +82,8 @@ export interface BuildResult {
 	flow: Flow
 	/** A map of all created node instances, keyed by their `id` from the graph definition. */
 	nodeMap: Map<string, AbstractNode>
+	/** A map of all node `id`s to their predecessor count. */
+	predecessorCountMap: Map<string, number>
 }
 
 /**
@@ -194,6 +196,19 @@ export class GraphBuilder<T extends { [K in keyof T]: Record<string, any> }> {
 	build(graph: TypedWorkflowGraph<T> | WorkflowGraph): BuildResult {
 		const nodeMap = new Map<string, AbstractNode>()
 
+		const predecessorMap = new Map<string, Set<string>>()
+		for (const edge of graph.edges) {
+			if (!predecessorMap.has(edge.target))
+				predecessorMap.set(edge.target, new Set())
+
+			predecessorMap.get(edge.target)!.add(edge.source)
+		}
+		const predecessorCountMap = new Map<string, number>()
+		for (const node of graph.nodes) {
+			const uniquePredecessors = predecessorMap.get(node.id)
+			predecessorCountMap.set(node.id, uniquePredecessors ? uniquePredecessors.size : 0)
+		}
+
 		for (const graphNode of graph.nodes) {
 			const NodeClass = this.registry.get(graphNode.type.toString())
 			if (!NodeClass)
@@ -245,13 +260,13 @@ export class GraphBuilder<T extends { [K in keyof T]: Record<string, any> }> {
 
 		if (startNodeIds.length === 1) {
 			const startNode = nodeMap.get(startNodeIds[0])!
-			return { flow: new Flow(startNode), nodeMap }
+			return { flow: new Flow(startNode), nodeMap, predecessorCountMap }
 		}
 
 		const startNodes = startNodeIds.map(id => nodeMap.get(id)!)
 		const parallelStartNode = new ParallelFlow(startNodes)
 		this.wireSuccessors(parallelStartNode, startNodeIds, edgeGroups, nodeMap)
 
-		return { flow: new Flow(parallelStartNode), nodeMap }
+		return { flow: new Flow(parallelStartNode), nodeMap, predecessorCountMap }
 	}
 }
