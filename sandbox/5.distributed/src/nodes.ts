@@ -1,13 +1,25 @@
+import type { Queue } from 'bullmq'
 import type { DEFAULT_ACTION, NodeArgs, NodeOptions } from 'cascade'
+import type IORedis from 'ioredis'
 import type { WorkflowRegistry } from './registry'
-import type { AgentNodeTypeMap } from './types'
-import { Node } from 'cascade'
-import { FINAL_ACTION } from './types'
-import { callLLM, resolveTemplate } from './utils'
+import type { AgentNodeTypeMap, NodeJobPayload } from './types'
+import { Flow, Node, TypedContext } from 'cascade'
+import { FINAL_ACTION, RUN_ID } from './types'
+import { callLLM, resolveTemplate, waitForWorkflow } from './utils'
 
 interface AiNodeOptions<T extends keyof AgentNodeTypeMap> extends NodeOptions {
 	data: AgentNodeTypeMap[T] & { nodeId: string }
 	registry?: WorkflowRegistry
+}
+
+/**
+ * A specialized options interface for the distributed SubWorkflowNode.
+ */
+interface DistSubWorkflowNodeOptions extends NodeOptions {
+	data: AgentNodeTypeMap['sub-workflow'] & { nodeId: string }
+	registry?: WorkflowRegistry
+	queue?: Queue<NodeJobPayload>
+	redis?: IORedis
 }
 
 /**
@@ -110,56 +122,90 @@ export class LLMRouterNode extends Node<string, string, string> {
  * Executes a sub-workflow, passing down context and parameters.
  */
 export class SubWorkflowNode extends Node {
-	private data: AiNodeOptions<'sub-workflow'>['data']
-	private registry: WorkflowRegistry
+	private data: DistSubWorkflowNodeOptions['data']
+	private registry?: WorkflowRegistry
+	private queue?: Queue<NodeJobPayload>
+	private redis?: IORedis
 
-	constructor(options: AiNodeOptions<'sub-workflow'>) {
+	constructor(options: DistSubWorkflowNodeOptions) {
 		super(options)
 		this.data = options.data
-		if (!options.registry)
-			throw new Error('SubWorkflowNode requires a registry to be injected.')
-
 		this.registry = options.registry
+		this.queue = options.queue
+		this.redis = options.redis
 	}
 
 	async exec(args: NodeArgs) {
-		args.logger.info(`[SubWorkflow] Entering: ${this.data.workflowId}`)
-		const subFlow = await this.registry.getFlow(this.data.workflowId)
-		const subContext = new (args.ctx.constructor as any)()
+		const { logger, ctx: parentContext, params: parentParams } = args
+		const subWorkflowId = this.data.workflowId
+		if (!this.registry || !this.queue || !this.redis) {
+			throw new Error('SubWorkflowNode cannot be executed without a queue and redis instance. Ensure they are injected into the worker\'s GraphBuilder context.')
+		}
+		// Generate a new, unique run ID for the sub-workflow.
+		const subRunId = `${parentContext.get(RUN_ID)}-sub${Math.random().toString(36).substring(2, 6)}`
+
+		logger.info(`[SubWorkflow] Starting distributed sub-flow ${subWorkflowId} with new Run ID: ${subRunId}`)
+
+		// 1. Get the sub-flow graph.
+		const subFlow = await this.registry.getFlow(subWorkflowId)
+		if (!subFlow.startNode) {
+			logger.warn(`Sub-workflow ${subWorkflowId} has no start node. Skipping.`)
+			return
+		}
+
+		// 2. Prepare the sub-context and map inputs.
+		const subContext = new TypedContext()
 		const inputMappings = this.data.inputs || {}
-		for (const [subContextKey, parentContextKey] of Object.entries(inputMappings)) {
-			if (args.ctx.has(parentContextKey as string)) {
-				subContext.set(subContextKey, args.ctx.get(parentContextKey as string))
+		for (const [subKey, parentKey] of Object.entries(inputMappings)) {
+			if (parentContext.has(parentKey as string))
+				subContext.set(subKey, parentContext.get(parentKey as string))
+		}
+		subContext.set(RUN_ID, subRunId)
+
+		// 3. Enqueue the start node(s) of the sub-workflow.
+		const isParallelStart = subFlow.startNode instanceof Flow
+		const nodesToEnqueue = isParallelStart ? (subFlow.startNode as any).nodesToRun : [subFlow.startNode]
+
+		for (const node of nodesToEnqueue) {
+			const jobPayload: NodeJobPayload = {
+				runId: subRunId,
+				workflowId: subWorkflowId,
+				nodeId: node.id!,
+				context: Object.fromEntries(subContext.entries()),
+				params: { ...parentParams, ...this.params },
+			}
+			await this.queue.add(node.id!, jobPayload)
+		}
+
+		// 4. Await the result of the sub-workflow by polling Redis.
+		logger.info(`[SubWorkflow] Waiting for result of Run ID: ${subRunId}...`)
+		const finalStatus = await waitForWorkflow(this.redis, subRunId, 60000)
+
+		// 5. Process the result and map outputs.
+		if (finalStatus.status === 'completed') {
+			logger.info(`[SubWorkflow] Sub-flow ${subWorkflowId} (Run ID: ${subRunId}) completed successfully.`)
+			const outputMappings = this.data.outputs || {}
+
+			// Re-create a temporary context from the final payload to read from.
+			const finalSubContext = new TypedContext(Object.entries(finalStatus.payload.context || {}))
+
+			if (Object.keys(outputMappings).length === 0) {
+				if (finalSubContext.has('final_output'))
+					parentContext.set(this.data.nodeId, finalSubContext.get('final_output'))
 			}
 			else {
-				args.logger.warn(`[SubWorkflow: ${this.data.nodeId}] Input mapping failed. Key '${parentContextKey}' not found in parent context.`)
+				for (const [parentKey, subKey] of Object.entries(outputMappings)) {
+					if (finalSubContext.has(subKey))
+						parentContext.set(parentKey, finalSubContext.get(subKey))
+				}
 			}
-		}
-
-		const runOptions = {
-			logger: args.logger,
-			controller: args.signal ? ({ signal: args.signal } as AbortController) : undefined,
-		}
-
-		await subFlow.run(subContext, runOptions)
-		const outputMappings = this.data.outputs || {}
-
-		if (Object.keys(outputMappings).length === 0) {
-			if (subContext.has('final_output'))
-				args.ctx.set(this.data.nodeId, subContext.get('final_output'))
 		}
 		else {
-			for (const [parentKey, subKey] of Object.entries(outputMappings)) {
-				if (subContext.has(subKey)) {
-					args.ctx.set(parentKey, subContext.get(subKey))
-				}
-				else {
-					args.logger.warn(`[SubWorkflow: ${this.data.nodeId}] Tried to map output, but key '${subKey}' was not found in sub-workflow '${this.data.workflowId}' context.`)
-				}
-			}
+			// If the sub-workflow failed or was cancelled, fail the parent.
+			throw new Error(`Sub-workflow ${subWorkflowId} (Run ID: ${subRunId}) did not complete successfully. Status: ${finalStatus.status}, Reason: ${finalStatus.reason}`)
 		}
 
-		args.logger.info(`[SubWorkflow] Exited: ${this.data.workflowId}`)
+		logger.info(`[SubWorkflow] Exited: ${this.data.workflowId}`)
 	}
 }
 
@@ -176,18 +222,18 @@ export class OutputNode extends Node<string, void, typeof FINAL_ACTION | string 
 
 	prep = LLMProcessNode.prototype.prep
 
-	async post(args: NodeArgs<string, void>): Promise<typeof FINAL_ACTION | string | typeof DEFAULT_ACTION> {
+	async post(args: NodeArgs<string, void>): Promise<any> {
 		const finalResult = args.prepRes
 		const outputKey = this.data.outputKey || 'final_output'
 		args.ctx.set(outputKey, finalResult)
 
-		// **The payload is now in the context, where it belongs.**
-		// We set a dedicated context key that the worker will look for.
-		args.ctx.set('__final_payload', finalResult) // Use a conventional key
+		// The payload needs to be the *entire context* for sub-workflow output mapping.
+		args.ctx.set('__final_payload', {
+			result: finalResult,
+			context: Object.fromEntries(args.ctx.entries()),
+		})
 
 		args.logger.info(`[Output] Workflow branch finished. Final value set to context key '${outputKey}'.`)
-
-		// Now we return the special action symbol.
 		return FINAL_ACTION
 	}
 }

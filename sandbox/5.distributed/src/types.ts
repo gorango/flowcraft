@@ -42,3 +42,9 @@ export interface NodeJobPayload {
 }
 
 export const FINAL_ACTION = Symbol('final_action')
+
+export interface WorkflowStatus {
+	status: 'completed' | 'failed' | 'cancelled'
+	payload?: any
+	reason?: string
+}

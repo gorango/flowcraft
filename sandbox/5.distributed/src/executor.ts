@@ -1,7 +1,6 @@
 import type { Job } from 'bullmq'
 import type { Context, IExecutor, RunOptions } from 'cascade'
 import type IORedis from 'ioredis'
-import type { WorkflowRegistry } from './registry'
 import type { NodeJobPayload } from './types'
 import { Queue } from 'bullmq'
 import { Flow } from 'cascade'
@@ -12,9 +11,6 @@ export class BullMQExecutor implements IExecutor {
 	constructor(
 		queueName: string,
 		private connection: IORedis,
-		// The registry is not used by the client-side executor, but would be
-		// essential for a more advanced implementation (e.g., synchronous awaits).
-		private registry: WorkflowRegistry,
 	) {
 		this.queue = new Queue(queueName, { connection })
 	}

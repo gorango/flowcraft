@@ -1,3 +1,5 @@
+import type Redis from 'ioredis'
+import type { WorkflowStatus } from './types'
 import OpenAI from 'openai'
 import 'dotenv/config'
 
@@ -39,4 +41,29 @@ export function resolveTemplate(template: string, data: Record<string, any>): st
 		}
 		return String(value)
 	})
+}
+
+/**
+ * Polls Redis for the final status of a workflow run.
+ * @param redis The IORedis client instance.
+ * @param runId The unique ID of the workflow run to wait for.
+ * @param timeoutMs The maximum time to wait in milliseconds.
+ * @returns A promise that resolves with the final WorkflowStatus.
+ */
+export async function waitForWorkflow(redis: Redis, runId: string, timeoutMs: number): Promise<WorkflowStatus> {
+	const statusKey = `workflow:status:${runId}`
+	const startTime = Date.now()
+
+	while (Date.now() - startTime < timeoutMs) {
+		const statusJson = await redis.get(statusKey)
+		if (statusJson) {
+			await redis.del(statusKey) // Clean up the key
+			return JSON.parse(statusJson) as WorkflowStatus
+		}
+		// Wait a bit before polling again
+		await new Promise(resolve => setTimeout(resolve, 500))
+	}
+
+	// If the loop finishes, it's a timeout.
+	return { status: 'failed', reason: `Timeout: Workflow did not complete within ${timeoutMs}ms.` }
 }

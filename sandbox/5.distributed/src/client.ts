@@ -1,3 +1,4 @@
+import type { WorkflowStatus } from './types'
 import path from 'node:path'
 import process from 'node:process'
 import { ConsoleLogger, TypedContext } from 'cascade'
@@ -5,6 +6,7 @@ import IORedis from 'ioredis'
 import { BullMQExecutor } from './executor'
 import { WorkflowRegistry } from './registry'
 import { RUN_ID } from './types'
+import { waitForWorkflow } from './utils'
 
 const config = {
 	'1.blog-post': {
@@ -50,7 +52,7 @@ type UseCase = keyof typeof config
 
 // --- CONFIGURATION ---
 const QUEUE_NAME = 'distributed-cascade-queue'
-const ACTIVE_USE_CASE: UseCase = '2.job-application'
+const ACTIVE_USE_CASE: UseCase = '4.content-moderation'
 const WORKFLOW_ID = config[ACTIVE_USE_CASE].mainWorkflowId
 
 async function main() {
@@ -66,7 +68,7 @@ async function main() {
 	const context = config[ACTIVE_USE_CASE].getInitialContext()
 	context.set(RUN_ID, runId) // Add runId to the context
 
-	const executor = new BullMQExecutor(QUEUE_NAME, redisConnection, registry)
+	const executor = new BullMQExecutor(QUEUE_NAME, redisConnection)
 
 	console.log('🚀 Starting Workflow and awaiting result...')
 
@@ -121,26 +123,3 @@ async function main() {
 }
 
 main().catch(console.error)
-
-interface WorkflowStatus {
-	status: 'completed' | 'failed' | 'cancelled'
-	payload?: any
-	reason?: string
-}
-
-async function waitForWorkflow(redis: IORedis, runId: string, timeoutMs: number): Promise<WorkflowStatus> {
-	const statusKey = `workflow:status:${runId}`
-	const startTime = Date.now()
-
-	while (Date.now() - startTime < timeoutMs) {
-		const statusJson = await redis.get(statusKey)
-		if (statusJson) {
-			await redis.del(statusKey) // Clean up the key
-			return JSON.parse(statusJson) as WorkflowStatus
-		}
-		await new Promise(resolve => setTimeout(resolve, 500))
-	}
-
-	// If the loop finishes, it's a timeout.
-	return { status: 'failed', reason: `Timeout: Workflow did not complete within ${timeoutMs}ms.` }
-}
