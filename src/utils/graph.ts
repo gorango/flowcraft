@@ -1,47 +1,84 @@
-import type { GraphNode, WorkflowGraph } from '../builder/graph.types'
+import type { GraphNode, NodeTypeMap, TypedGraphNode, TypedWorkflowGraph, WorkflowGraph } from '../builder/graph.types'
 
-export interface GraphAnalysis {
-	nodes: Map<string, GraphNode & { inDegree: number, outDegree: number }>
+/** The rich metadata object returned by the analyzeGraph function. */
+export interface GraphAnalysis<T extends NodeTypeMap = any> {
+	/** A map of all nodes, keyed by ID, augmented with their connection degrees. */
+	nodes: Map<string, TypedGraphNode<T> & { inDegree: number, outDegree: number }>
+	/** An array of all node IDs in the graph. */
 	allNodeIds: string[]
+	/** An array of node IDs that have no incoming edges. */
 	startNodeIds: string[]
+	/** A list of cycles found in the graph. Each cycle is an array of node IDs. */
 	cycles: string[][]
 }
 
+/** A standard structure for reporting a single validation error. */
 export interface ValidationError {
+	/** The ID of the node where the error occurred, if applicable. */
 	nodeId?: string
+	/** A category for the error, e.g., 'CycleDetected', 'ConnectionRuleViolation'. */
 	type: string
+	/** A human-readable message explaining the validation failure. */
 	message: string
 }
 
-export type Validator = (analysis: GraphAnalysis, graph: WorkflowGraph) => ValidationError[]
+/**
+ * A function that takes a graph analysis and the original graph,
+ * and returns an array of validation errors.
+ */
+export type Validator<T extends NodeTypeMap = any> = (
+	analysis: GraphAnalysis<T>,
+	graph: TypedWorkflowGraph<T>
+) => ValidationError[]
+
+/**
+ * A helper function that creates a type guard for filtering nodes by their type.
+ * This simplifies writing type-safe validation rules by removing the need for
+ * verbose, explicit type guard syntax.
+ *
+ * @param type The literal string of the node type to check for.
+ * @returns A type guard function that narrows the node to its specific type.
+ */
+export function isNodeType<T extends NodeTypeMap, K extends keyof T>(type: K) {
+	return (node: TypedGraphNode<T>): node is TypedGraphNode<T> & { type: K } => {
+		return node.type === type
+	}
+}
 
 /**
  * Analyzes a declarative workflow graph definition to extract structural metadata.
+ * This is a lightweight, static utility that does not instantiate any nodes.
  *
  * @param graph The WorkflowGraph object containing nodes and edges.
- * @returns An object containing nodes with degree counts, start nodes, and any cycles.
+ * @returns A GraphAnalysis object containing nodes with degree counts, start nodes, and any cycles.
  */
-export function analyzeGraph(graph: WorkflowGraph): GraphAnalysis {
-	const analysis: GraphAnalysis = {
+// (Typesafe Overload) Analyzes a declarative workflow graph, preserving strong types.
+export function analyzeGraph<T extends NodeTypeMap>(graph: TypedWorkflowGraph<T>): GraphAnalysis<T>
+// (Untyped Overload) Analyzes a declarative workflow graph with basic types.
+export function analyzeGraph(graph: WorkflowGraph): GraphAnalysis
+// (Implementation) Analyzes a declarative workflow graph to extract structural metadata.
+export function analyzeGraph<T extends NodeTypeMap>(graph: TypedWorkflowGraph<T> | WorkflowGraph): GraphAnalysis<T> {
+	const typedGraph = graph as TypedWorkflowGraph<T> // Cast for internal consistency
+	const analysis: GraphAnalysis<T> = {
 		nodes: new Map(),
 		allNodeIds: [],
 		startNodeIds: [],
 		cycles: [],
 	}
 
-	if (!graph || !graph.nodes || !graph.nodes.length)
+	if (!typedGraph || !typedGraph.nodes || !typedGraph.nodes.length)
 		return analysis
 
-	const allNodeIds = graph.nodes.map(node => node.id)
+	const allNodeIds = typedGraph.nodes.map(node => node.id)
 	analysis.allNodeIds = allNodeIds
 
 	const adj: Map<string, string[]> = new Map()
-	graph.nodes.forEach((node) => {
+	typedGraph.nodes.forEach((node) => {
 		analysis.nodes.set(node.id, { ...node, inDegree: 0, outDegree: 0 })
 		adj.set(node.id, [])
 	})
 
-	graph.edges.forEach((edge) => {
+	typedGraph.edges.forEach((edge) => {
 		const source = analysis.nodes.get(edge.source)
 		const target = analysis.nodes.get(edge.target)
 		if (source)
@@ -56,8 +93,6 @@ export function analyzeGraph(graph: WorkflowGraph): GraphAnalysis {
 
 	const visited = new Set<string>()
 	const recursionStack = new Set<string>()
-
-	/** Detect cycles by performing a depth-first search on the graph. */
 	function detectCycleUtil(nodeId: string, path: string[]) {
 		visited.add(nodeId)
 		recursionStack.add(nodeId)
@@ -65,13 +100,13 @@ export function analyzeGraph(graph: WorkflowGraph): GraphAnalysis {
 
 		const neighbors = adj.get(nodeId) || []
 		for (const neighbor of neighbors) {
-			if (!visited.has(neighbor)) {
-				detectCycleUtil(neighbor, path)
-			}
-			else if (recursionStack.has(neighbor)) {
+			if (recursionStack.has(neighbor)) {
 				const cycleStartIndex = path.indexOf(neighbor)
 				const cycle = path.slice(cycleStartIndex)
-				analysis.cycles.push([...cycle, neighbor]) // Add neighbor to show the closing loop
+				analysis.cycles.push([...cycle, neighbor])
+			}
+			else if (!visited.has(neighbor)) {
+				detectCycleUtil(neighbor, path)
 			}
 		}
 
@@ -88,19 +123,32 @@ export function analyzeGraph(graph: WorkflowGraph): GraphAnalysis {
 }
 
 /**
- * Factory for creating a validator that checks node connections based on properties.
+ * Factory for creating a generic, reusable validator that checks node properties.
  *
- * @param description A human-readable description of the rule.
+ * @param description A human-readable description of the rule for error messages.
  * @param filter A predicate to select which nodes this rule applies to.
- * @param check A function to check the properties of the selected node.
- * @returns A validator function that takes a graph and returns a list of errors.
+ * @param check A function that validates the properties of a selected node.
+ * @returns A Validator function.
  */
+// (Type-Safe Overload) Creates a validator with strong types based on a NodeTypeMap.
+export function createNodeRule<T extends NodeTypeMap>(
+	description: string,
+	filter: (node: TypedGraphNode<T>) => boolean,
+	check: (node: TypedGraphNode<T> & { inDegree: number, outDegree: number }) => { valid: boolean, message?: string },
+): Validator<T>
+// (Untyped Overload) Creates a validator with basic types.
 export function createNodeRule(
 	description: string,
 	filter: (node: GraphNode) => boolean,
 	check: (node: GraphNode & { inDegree: number, outDegree: number }) => { valid: boolean, message?: string },
+): Validator
+// (Implementation) Factory for creating a generic, reusable validator.
+export function createNodeRule(
+	description: string,
+	filter: (node: any) => boolean,
+	check: (node: any) => { valid: boolean, message?: string },
 ): Validator {
-	return (analysis: GraphAnalysis): ValidationError[] => {
+	return (analysis: GraphAnalysis, _graph: WorkflowGraph): ValidationError[] => {
 		const errors: ValidationError[] = []
 		for (const node of analysis.nodes.values()) {
 			if (filter(node)) {
@@ -121,9 +169,14 @@ export function createNodeRule(
 /**
  * A built-in validator that reports any cycles found in the graph.
  */
-export const checkForCycles: Validator = (analysis: GraphAnalysis): ValidationError[] => {
-	return analysis.cycles.map(cycle => ({
-		type: 'CycleDetected',
-		message: `Cycle detected involving nodes: ${cycle.join(' -> ')}`,
-	}))
+export const checkForCycles: Validator = (analysis) => {
+	const uniqueCycles = new Set(analysis.cycles.map(c => c.slice(0, -1).sort().join(',')))
+	return Array.from(uniqueCycles).map((cycleKey) => {
+		const representativeCycle = analysis.cycles.find(c => c.slice(0, -1).sort().join(',') === cycleKey)!
+		return {
+			nodeId: representativeCycle[0],
+			type: 'CycleDetected',
+			message: `Cycle detected involving nodes: ${representativeCycle.join(' -> ')}`,
+		}
+	})
 }

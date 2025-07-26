@@ -78,6 +78,7 @@ export default defineConfig({
 					collapsed: true,
 					items: [
 						{ text: 'Visualizing Workflows', link: '/guide/tooling/mermaid' },
+						{ text: 'Graph Validation', link: '/guide/tooling/graph-validation' },
 					],
 				},
 				{

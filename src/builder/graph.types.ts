@@ -1,5 +1,7 @@
 import type { AbstractNode, Flow, NodeOptions } from '../workflow'
 
+export interface NodeTypeMap { [key: string]: Record<string, any> }
+
 /**
  * The standard options object passed to a Node's constructor by the `GraphBuilder`.
  * @template T The type of the `data` payload for this specific node.
