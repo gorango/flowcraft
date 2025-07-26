@@ -41,6 +41,19 @@ export default defineConfig({
 					],
 				},
 				{
+					text: 'Advanced Concepts',
+					collapsed: true,
+					items: [
+						{ text: 'Composition', link: '/guide/advanced-guides/composition' },
+						{ text: 'Error Handling', link: '/guide/advanced-guides/error-handling' },
+						{ text: 'Cancellation', link: '/guide/advanced-guides/cancellation' },
+						{ text: 'Middleware', link: '/guide/advanced-guides/middleware' },
+						{ text: 'Pluggable Logging', link: '/guide/advanced-guides/logging' },
+						{ text: 'Observability', link: '/guide/advanced-guides/observability' },
+						{ text: 'Custom Executor', link: '/guide/advanced-guides/custom-executor' },
+					],
+				},
+				{
 					text: 'Recipes',
 					collapsed: true,
 					items: [
@@ -58,19 +71,6 @@ export default defineConfig({
 						{ text: 'Data Flow in Sub-Workflows', link: '/guide/best-practices/sub-workflow-data' },
 						{ text: 'Testing Workflows', link: '/guide/best-practices/testing' },
 						{ text: 'Debugging Workflows', link: '/guide/best-practices/debugging' },
-					],
-				},
-				{
-					text: 'Advanced Concepts',
-					collapsed: true,
-					items: [
-						{ text: 'Composition', link: '/guide/advanced-guides/composition' },
-						{ text: 'Error Handling', link: '/guide/advanced-guides/error-handling' },
-						{ text: 'Cancellation', link: '/guide/advanced-guides/cancellation' },
-						{ text: 'Middleware', link: '/guide/advanced-guides/middleware' },
-						{ text: 'Pluggable Logging', link: '/guide/advanced-guides/logging' },
-						{ text: 'Observability', link: '/guide/advanced-guides/observability' },
-						{ text: 'Custom Executor', link: '/guide/advanced-guides/custom-executor' },
 					],
 				},
 				{

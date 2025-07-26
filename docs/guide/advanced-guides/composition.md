@@ -1,116 +1,68 @@
 # Composition
 
-One of the most powerful features of Cascade is its composability. Because a `Flow` is itself a type of `Node`, you can treat an entire workflow as a single building block within a larger, more complex workflow. This allows you to create highly modular, reusable, and maintainable systems.
+One of the most powerful features of Cascade is its composability. Because a `Flow` is itself a type of `Node`, you can treat an entire workflow as a single building block within a larger, more complex workflow.
 
-## Why Use Composition?
+Cascade supports two primary models for composition, each suited to different use cases.
 
-- **Modularity**: Break down a large, monolithic workflow into smaller, self-contained sub-flows. Each sub-flow can manage its own internal logic and middleware.
-- **Reusability**: Define a common workflow (e.g., "send a formatted email") once and reuse it in multiple different parent flows (e.g., "user registration flow", "password reset flow").
-- **Clarity**: The parent flow becomes simpler and easier to read. Instead of a dozen small nodes, you might have three high-level sub-flows, making the overall business logic clearer.
-- **Independent Testing**: Each sub-flow can be tested in isolation before being integrated into a larger system.
+## 1. Programmatic Composition (In-Memory)
 
-## How It Works
+When you build workflows programmatically (by instantiating `Node` and `Flow` classes and wiring them with `.next()`), you can place one `Flow` instance inside another.
 
-Composing flows is as simple as treating a `Flow` instance as if it were a `Node` instance and using it with methods like `.next()` or in builders like `SequenceFlow`.
+**How It Works:** The `InMemoryExecutor` understands this pattern. When its orchestration loop encounters a `Flow` node, it calls that node's `exec` method. The `Flow.exec` method then takes over and runs its *own* internal orchestration loop, executing its entire graph from start to finish. The final action from the sub-flow is returned to the parent, allowing for branching.
 
-When an executor's main orchestration loop is running a parent flow and encounters a `Flow` node (a sub-flow), it calls that node's `exec` method. The `Flow.exec` method then takes over and runs its *own* internal orchestration loop, executing its entire graph from start to finish.
-
-The **final action** returned by the sub-flow's last node is then returned as the result of the `exec` method. The parent flow's executor uses this action to decide which of the sub-flow's successors to execute next, enabling conditional branching based on the outcome of an entire encapsulated workflow.
+**When to Use:** This model is excellent for simple, in-memory workflows where you want to organize logic into reusable, testable sub-units.
 
 ### Example: A Reusable "Math" Sub-Flow
 
-Let's create a simple sub-flow that performs a calculation and a parent flow that uses it.
-
-#### 1. Define the Sub-Flow
-
-This sub-flow will take a number, add 10, multiply by 2, and then return a specific action based on the result.
-
 ```typescript
-// sub-flow.ts
-import { Flow, Node, contextKey, TypedContext } from 'cascade'
-
-export const MATH_VALUE = contextKey<number>('math_value')
-
-// A node that returns a different action based on the result
-class CheckResultNode extends Node<void, void, 'over_50' | 'under_50'> {
-  async post({ ctx }) {
-    const value = ctx.get(MATH_VALUE)!
-    return value > 50 ? 'over_50' : 'under_50'
-  }
-}
-
+// --- sub-flow.ts ---
+// A sub-flow that adds 10, multiplies by 2, and returns an action.
 export function createMathFlow(): Flow {
-  const addNode = new Node()
-    .exec(async ({ params }) => params.input + 10)
-    .toContext(MATH_VALUE)
-
-  const multiplyNode = new Node()
-    .exec(async ({ ctx }) => ctx.get(MATH_VALUE)! * 2)
-    .toContext(MATH_VALUE)
-
-  const checkNode = new CheckResultNode()
+  const addNode = new Node().exec(async ({ params }) => params.input + 10).toContext(MATH_VALUE)
+  const multiplyNode = new Node().exec(async ({ ctx }) => ctx.get(MATH_VALUE)! * 2).toContext(MATH_VALUE)
+  const checkNode = new CheckResultNode() // Returns 'over_50' or 'under_50'
 
   addNode.next(multiplyNode).next(checkNode)
-
-  const mathFlow = new Flow(addNode)
-  return mathFlow
+  return new Flow(addNode)
 }
-```
 
-#### 2. Compose it in a Parent Flow
-
-Now, the main workflow can use `createMathFlow()` as a single step.
-
-```typescript
-// main.ts
-import { Flow, Node, TypedContext } from 'cascade'
-import { createMathFlow } from './sub-flow'
-
-// Create an instance of our reusable sub-flow
+// --- main.ts ---
 const mathSubFlow = createMathFlow()
-
-// Create nodes for the parent flow's branching logic
 const handleOver50Node = new Node().exec(() => console.log('Result was over 50.'))
 const handleUnder50Node = new Node().exec(() => console.log('Result was 50 or under.'))
 
-// The parent flow starts with the sub-flow.
+// The parent flow starts with the sub-flow instance.
 const parentFlow = new Flow(mathSubFlow)
-
-// Use the actions returned by the sub-flow to branch.
 mathSubFlow.next(handleOver50Node, 'over_50')
 mathSubFlow.next(handleUnder50Node, 'under_50')
 
-// Run the parent flow with an input that will result in a value over 50.
-// (20 + 10) * 2 = 60
-console.log('--- Running with input 20 ---')
-await parentFlow.withParams({ input: 20 }).run(new TypedContext())
-
-// Run it again with an input that results in a value under 50.
-// (5 + 10) * 2 = 30
-console.log('--- Running with input 5 ---')
-await parentFlow.withParams({ input: 5 }).run(new TypedContext())
+await parentFlow.withParams({ input: 20 }).run(new TypedContext()) // "Result was over 50."
 ```
 
-The output will be:
+## 2. Declarative Composition with `GraphBuilder`
 
-```
---- Running with input 20 ---
-Result was over 50.
---- Running with input 5 ---
-Result was 50 or under.
-```
+For complex, declarative, and distributed workflows, Cascade uses a more powerful **"Graph Inlining"** pattern. This is the recommended approach for building scalable systems.
 
-As you can see, the parent flow's executor correctly branched based on the final action returned by the `mathSubFlow`, demonstrating seamless composition.
+> [!IMPORTANT]
+> **You must explicitly tell the builder which node types represent sub-workflows** by passing them in its constructor. This gives you the flexibility to use semantically rich names like `"search-workflow"` or `"process-document-pipeline"`.
+>
+> If the builder encounters a node with a `workflowId` property in its `data` payload whose `type` has not been registered as a sub-workflow, it will throw a configuration error.
 
-## Data Flow and Context
+**How It Works:** This is a **build-time** process, not a runtime one. When the `GraphBuilder` encounters a node whose type is registered as a sub-workflow, it performs "graph surgery":
 
-> [!WARNING]
-> **Sub-flows Share Context by Default**
-> The same `Context` instance is passed through all nodes in the parent and all nodes in the sub-flow. While simple, this "shared memory" model can lead to tight coupling and unexpected side effects if sub-flows are not carefully designed. A sub-flow could accidentally overwrite a context value that the parent flow depends on.
+1.  **Replaces the Node**: It removes the composite node from the graph.
+2.  **Inlines the Graph**: It fetches the sub-workflow's graph definition and injects all of its nodes and edges into the parent graph, prefixing their IDs to prevent collisions.
+3.  **Inserts Mapping Nodes**: It automatically creates two lightweight "gatekeeper" nodes:
+    *   An **`InputMappingNode`** at the entry point, which copies data from the parent context to the keys expected by the sub-workflow (based on your `inputs` map).
+    *   An **`OutputMappingNode`** at the exit point, which copies data from the sub-workflow's context back to the parent (based on your `outputs` map).
+4.  **Re-wires Edges**: All original edges are seamlessly re-wired to these new mapping nodes.
 
-- **Pros**: This makes passing data between the parent and child flows trivial. A sub-flow can read data set by previous nodes in the parent, and subsequent nodes in the parent can read data set by the sub-flow.
-- **Cons**: This "shared memory" model can lead to tight coupling and unexpected side effects if sub-flows are not carefully designed. A sub-flow could accidentally overwrite a context value that the parent flow depends on, leading to hard-to-debug issues.
+The result is a single, unified, "flat" graph that is handed to the executor.
 
-Using descriptive and unique `ContextKey`s is a good practice to avoid accidental collisions.
+### Benefits of Graph Inlining
 
-For building more robust and modular systems where data boundaries are critical, it is highly recommended to implement a pattern that creates an explicit data contract between the parent and child. See the guide on **[Best Practices: Data Flow in Sub-Workflows](../best-practices/sub-workflow-data.md)** for a detailed explanation of this powerful pattern.
+-   **Simplified Runtimes**: The executor (e.g., `BullMQExecutor`) is completely unaware of composition. It just runs a larger, pre-compiled graph, making the runtime logic much simpler and faster.
+-   **Non-Blocking Workers**: This is critical for distributed systems. A worker never has to block and wait for a sub-workflow to finish. It executes its single node and moves on.
+-   **Clear Data Contracts**: The `inputs` and `outputs` maps in your JSON definition become an explicit, declarative data contract, preventing state leakage and making data flow easy to trace. See the guide on **[Best Practices: Data Flow in Sub-Workflows](../best-practices/sub-workflow-data.md)** for more details.
+
+This powerful pattern moves complexity from the runtime to the build step, which is a best practice for building robust, high-performance systems.

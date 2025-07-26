@@ -451,8 +451,11 @@ export class Flow extends Node<any, any, any> {
 	 * @returns The final action returned by the last node in this flow's graph.
 	 */
 	async exec(args: NodeArgs<any, any>): Promise<any> {
+		// For programmatic composition, a Flow node orchestrates its own graph.
+		// This is a feature of the InMemoryExecutor. Distributed systems should
+		// rely on pre-flattened graphs produced by the GraphBuilder.
 		if (!(args.executor instanceof InMemoryExecutor)) {
-			throw new TypeError('Sub-flow orchestration is only supported by the InMemoryExecutor.')
+			throw new TypeError('Programmatic sub-flow execution is only supported by the InMemoryExecutor. For other environments, use GraphBuilder to create a single, flattened workflow.')
 		}
 
 		if (!this.startNode) {

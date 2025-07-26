@@ -112,7 +112,7 @@ describe('graphBuilder', () => {
 	})
 })
 
-describe('graphBuilder (Legacy API)', () => {
+describe('graphBuilder (no type safety)', () => {
 	const VALUE = contextKey<number>('value')
 
 	class SetValueNode extends Node {
@@ -184,5 +184,135 @@ describe('graphBuilder (Legacy API)', () => {
 		const ctx = new TypedContext()
 		await flow.run(ctx)
 		expect(ctx.get(VALUE)).toBe(1023)
+	})
+})
+
+describe('graphBuilder with sub-workflows', () => {
+	interface TestSubWorkflowNodeTypeMap {
+		append: { value: string }
+		final: Record<string, never>
+		custom_sub_workflow: {
+			workflowId: number
+			inputs: Record<string, string>
+			outputs: Record<string, string>
+		}
+	}
+
+	const PARENT_VALUE = contextKey<string>('parent_value')
+	const SUB_VALUE = contextKey<string>('sub_value')
+	const FINAL_VALUE = contextKey<string>('final_value')
+
+	class AppendStringNode extends Node {
+		private str: string
+		constructor(options: NodeConstructorOptions<TestSubWorkflowNodeTypeMap['append']>) {
+			super()
+			this.str = options.data.value
+		}
+
+		async exec({ prepRes }: NodeArgs<string>): Promise<string> {
+			return `${prepRes} -> ${this.str}`
+		}
+
+		async prep({ ctx }: NodeArgs): Promise<string> {
+			return ctx.get(SUB_VALUE) ?? ctx.get(PARENT_VALUE) ?? 'start'
+		}
+
+		async post({ ctx, execRes }: NodeArgs<string, string>) {
+			ctx.set(SUB_VALUE, execRes)
+		}
+	}
+
+	class FinalOutputNode extends Node {
+		constructor(_options: NodeConstructorOptions<TestSubWorkflowNodeTypeMap['final']>) {
+			super()
+		}
+
+		async prep({ ctx }: NodeArgs) {
+			const subResult = ctx.get(SUB_VALUE) ?? ''
+			ctx.set(FINAL_VALUE, `final: ${subResult}`)
+		}
+	}
+
+	const mockRegistry = {
+		registry: createNodeRegistry({
+			append: AppendStringNode,
+			final: FinalOutputNode,
+		}),
+		graphs: new Map<number, WorkflowGraph>([
+			[200, {
+				nodes: [
+					{ id: 'step_d', type: 'append', data: { value: 'D' } },
+					{ id: 'step_e', type: 'append', data: { value: 'E' } },
+				],
+				edges: [{ source: 'step_d', target: 'step_e' }],
+			}],
+		]),
+		getGraph(id: number) {
+			return this.graphs.get(id)
+		},
+	}
+
+	it('should correctly inline a sub-workflow and run the flattened graph', async () => {
+		const parentGraph: TypedWorkflowGraph<TestSubWorkflowNodeTypeMap> = {
+			nodes: [
+				{ id: 'step_a', type: 'append', data: { value: 'A' } },
+				{
+					id: 'the_sub',
+					type: 'custom_sub_workflow',
+					data: {
+						workflowId: 200,
+						inputs: { sub_value: 'parent_value' }, // PARENT_VALUE
+						outputs: { parent_value: 'sub_value' }, // SUB_VALUE
+					},
+				},
+				{ id: 'step_c', type: 'final', data: {} },
+			],
+			edges: [
+				{ source: 'step_a', target: 'the_sub' },
+				{ source: 'the_sub', target: 'step_c' },
+			],
+		}
+
+		const builder = new GraphBuilder(mockRegistry.registry, { registry: mockRegistry }, {
+			subWorkflowNodeTypes: ['custom_sub_workflow'],
+		})
+
+		const { flow } = builder.build(parentGraph)
+		const ctx = new TypedContext([
+			[PARENT_VALUE, 'start'],
+		])
+
+		await flow.run(ctx, runOptions)
+
+		// Expected execution path:
+		// 1. step_a: runs on PARENT_VALUE='start', sets SUB_VALUE='start -> A'
+		// 2. input_mapper: No-op, PARENT_VALUE is already in context for sub-nodes.
+		// 3. step_d (inlined): reads SUB_VALUE='start -> A', sets SUB_VALUE='start -> A -> D'
+		// 4. step_e (inlined): reads SUB_VALUE='start -> A -> D', sets SUB_VALUE='start -> A -> D -> E'
+		// 5. output_mapper: copies SUB_VALUE='...E' to PARENT_VALUE.
+		// 6. step_c: reads SUB_VALUE='...E', sets FINAL_VALUE.
+		expect(ctx.get(FINAL_VALUE)).toBe('final: start -> A -> D -> E')
+	})
+
+	it('should throw an error if a node with workflowId is not a registered sub-workflow type', () => {
+		const graphWithUndeclaredSub: TypedWorkflowGraph<TestSubWorkflowNodeTypeMap> = {
+			nodes: [
+				{ id: 'step_a', type: 'append', data: { value: 'A' } },
+				// This node has a `workflowId` but its type ('some_other_type') isn't in our list.
+				// Note: We cast to `any` because TS would correctly catch this error at compile time!
+				{ id: 'the_sub', type: 'some_other_type' as any, data: { workflowId: 200 } as any },
+			],
+			edges: [
+				{ source: 'step_a', target: 'the_sub' },
+			],
+		}
+
+		const builder = new GraphBuilder(mockRegistry.registry, { registry: mockRegistry }, {
+			subWorkflowNodeTypes: ['custom_sub_workflow'],
+		})
+
+		expect(() => builder.build(graphWithUndeclaredSub)).toThrow(
+			/Node with ID 'the_sub' and type 'some_other_type' contains a 'workflowId' property, but its type is not registered/,
+		)
 	})
 })

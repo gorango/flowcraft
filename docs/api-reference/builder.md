@@ -104,23 +104,36 @@ A powerful builder that constructs an executable `Flow` from a declarative `Work
 >
 > (See how the **[Rag Agent](https://github.com/gorango/cascade/tree/master/sandbox/6.rag/)** implements a simple node registry; the **[Dynamic AI Agent](https://github.com/gorango/cascade/tree/master/sandbox/4.dag/)** even demonstrates type-safety despite using *dynamic graphs*.)
 
+### Sub-Workflow Composition (Graph Inlining)
+
+The `GraphBuilder` has built-in support for composing workflows. You must declare which node types should be treated as sub-workflows by passing them in the `options` parameter of the constructor. When the builder encounters a node of a registered sub-workflow type, it automatically performs **graph inlining**:
+
+1.  It fetches the sub-workflow's graph definition from a `WorkflowRegistry` (which must be provided in the `nodeOptionsContext`).
+2.  It injects the sub-workflow's nodes and edges into the parent graph.
+3.  It automatically creates and wires lightweight mapping nodes to handle the data contract defined in the `inputs` and `outputs` properties of the node's `data` payload.
+
+This powerful, build-time process creates a single, flattened graph, which simplifies the execution logic for both in-memory and distributed runtimes.
+
 ### Constructor
 
-`new GraphBuilder(nodeRegistry, nodeOptionsContext?)`
+`new GraphBuilder(registry, nodeOptionsContext?, options?)`
 
-- `nodeRegistry: TypedNodeRegistry | NodeRegistry`: An object or `Map` where keys are `type` strings from the graph definition and values are the corresponding `Node` class constructors. For type-safety, use the `createNodeRegistry` helper.
-- `nodeOptionsContext?: Record<string, any>`: An optional object that is passed to every node's constructor, useful for dependency injection (e.g., passing the `GraphBuilder` instance itself to a `SubWorkflowNode`).
+-   `registry: TypedNodeRegistry | NodeRegistry`: An object or `Map` where keys are `type` strings from the graph definition and values are the corresponding `Node` class constructors. For type-safety, use the `createNodeRegistry` helper.
+-   `nodeOptionsContext?: Record<string, any>`: An optional object passed to every node's constructor. This is crucial for dependency injection, such as passing a `WorkflowRegistry` instance that the builder can use to resolve sub-workflow graphs.
+-   `options?: { subWorkflowNodeTypes?: string[] }`: An optional configuration object.
+    -   `subWorkflowNodeTypes`: An array of node `type` strings that should be treated as composable sub-workflows. The builder will inline any node whose type is in this list.
 
 ### Methods
 
-- `.build(graph: WorkflowGraph): BuildResult`: The main method that takes a graph definition and returns a `BuildResult` object.
+-   `.build(graph: WorkflowGraph): BuildResult`: The main method that takes a graph definition and returns a `BuildResult` object.
 
 #### The `BuildResult` Object
 
 The `.build()` method returns an object containing:
 
-- `flow: Flow`: The fully wired, executable `Flow` instance.
-- `nodeMap: Map<string, AbstractNode>`: A map of all created node instances, keyed by their `id` from the graph definition.
+-   `flow: Flow`: The fully wired, executable `Flow` instance.
+-   `nodeMap: Map<string, AbstractNode>`: A map of all created node instances, keyed by their `id` from the graph definition.
+-   `predecessorCountMap: Map<string, number>`: A map of each node's `id` to the number of its direct predecessors. This is essential for implementing a reliable "fan-in" or "join" pattern in custom distributed executors.
 
 > [!TIP]
 > The `nodeMap` is the most efficient way to get a reference to a specific node instance within a built flow. It provides an instant, O(1) lookup, which is ideal for debugging, monitoring, or dynamic inspection.
@@ -134,11 +147,11 @@ The `.build()` method returns an object containing:
 
 The data structure that `GraphBuilder` consumes.
 
-- `nodes: GraphNode[] | TypedGraphNode[]`: An array of node definitions.
-  - `id: string`: A unique identifier for the node.
-  - `type: string`: The key to look up the node's class in the `NodeRegistry`.
-  - `data?: Record<string, any>`: A flexible data object passed as options to the node's constructor. When using the type-safe API, this object's schema is validated at compile time.
-- `edges: GraphEdge[]`: An array of edge definitions.
-  - `source: string`: The `id` of the source node.
-  - `target: string`: The `id` of the target node.
-  - `action?: string`: The action from the source node that triggers this edge. Defaults to `DEFAULT_ACTION`.
+-   `nodes: GraphNode[] | TypedGraphNode[]`: An array of node definitions.
+    -   `id: string`: A unique identifier for the node.
+    -   `type: string`: The key to look up the node's class in the `NodeRegistry`.
+    -   `data?: Record<string, any>`: A flexible data object passed as options to the node's constructor. For sub-workflow nodes, this must contain a `workflowId`.
+-   `edges: GraphEdge[]`: An array of edge definitions.
+    -   `source: string`: The `id` of the source node.
+    -   `target: string`: The `id` of the target node.
+    -   `action?: string`: The action from the source node that triggers this edge. Defaults to `DEFAULT_ACTION`.
