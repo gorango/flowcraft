@@ -101,6 +101,44 @@ graph TD
 
 This is the fastest way to verify that your graph is connected as you intend.
 
+### Visualizing `GraphBuilder` Flows
+
+You can pass a `Logger` instance to the `GraphBuilder`'s constructor. When you do, it will automatically generate and log a detailed Mermaid.js diagram of the final, "flattened" graph every time you call `.build()`. This diagram shows you the exact structure the `Executor` will run, including inlined sub-workflows and automatically generated parallel blocks.
+
+**Scenario**: You are building a complex workflow and want to see the final executable graph.
+
+```typescript
+import { GraphBuilder, ConsoleLogger } from 'cascade'
+
+// Assume `nodeRegistry` and `myComplexGraph` are defined
+
+// Instantiate the builder WITH a logger
+const builder = new GraphBuilder(
+  nodeRegistry,
+  { /* dependencies */ },
+  { /* options */ },
+  new ConsoleLogger() // <-- This enables automatic logging
+)
+
+// When you call .build(), the Mermaid graph will be logged to the console.
+const { flow } = builder.build(myComplexGraph)
+```
+
+**Example Log Output**:
+
+The builder will log a complete Mermaid diagram, which you can paste into any compatible renderer (like GitHub's markdown preview) to see the visual graph. This is invaluable for verifying complex wiring, fan-outs, and sub-workflow logic.
+
+```
+[INFO] [GraphBuilder] Flattened Graph
+[INFO] graph TD
+[INFO]   ParallelBlock_0{Parallel Block}
+[INFO]   check_sentiment_0["check_sentiment (llm-condition)"]
+[INFO]   ... and so on ...
+```
+
+> [!TIP]
+> For programmatically built flows (using `.next()`), you can still use the standalone `generateMermaidGraph` utility. However, for declarative workflows, the `GraphBuilder`'s built-in logging is the recommended approach.
+
 ## 4. Isolate and Inspect Nodes
 
 If a single node is behaving incorrectly, you can debug it in isolation.

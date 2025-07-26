@@ -1,3 +1,4 @@
+import type { GraphNode } from './builder/graph.types'
 import type { Context, ContextKey, ContextLens } from './context'
 import type { InternalRunOptions } from './executor'
 import type { Middleware, NodeArgs, NodeOptions, NodeRunContext, Params, RunOptions } from './types'
@@ -24,6 +25,8 @@ export abstract class AbstractNode {
 	public params: Params = {}
 	/** A map of successor nodes, keyed by the action that triggers the transition. */
 	public successors = new Map<string | typeof DEFAULT_ACTION | typeof FILTER_FAILED, AbstractNode>()
+	/** The original graph definition for this node, if created by a GraphBuilder. */
+	public graphData?: GraphNode
 
 	/**
 	 * Sets a unique identifier for this node instance.
@@ -33,6 +36,17 @@ export abstract class AbstractNode {
 	 */
 	withId(id: number | string): this {
 		this.id = id
+		return this
+	}
+
+	/**
+	 * Attaches the original graph definition data to the node instance.
+	 * @internal
+	 * @param data The graph node definition.
+	 * @returns The node instance for chaining.
+	 */
+	withGraphData(data: GraphNode): this {
+		this.graphData = data
 		return this
 	}
 

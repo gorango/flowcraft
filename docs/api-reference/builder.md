@@ -116,12 +116,13 @@ This powerful, build-time process creates a single, flattened graph, which simpl
 
 ### Constructor
 
-`new GraphBuilder(registry, nodeOptionsContext?, options?)`
+`new GraphBuilder(registry, nodeOptionsContext?, options?, logger?)`
 
 -   `registry: TypedNodeRegistry | NodeRegistry`: An object or `Map` where keys are `type` strings from the graph definition and values are the corresponding `Node` class constructors. For type-safety, use the `createNodeRegistry` helper.
 -   `nodeOptionsContext?: Record<string, any>`: An optional object passed to every node's constructor. This is crucial for dependency injection, such as passing a `WorkflowRegistry` instance that the builder can use to resolve sub-workflow graphs.
 -   `options?: { subWorkflowNodeTypes?: string[] }`: An optional configuration object.
     -   `subWorkflowNodeTypes`: An array of node `type` strings that should be treated as composable sub-workflows. The builder will inline any node whose type is in this list.
+-   `logger?: Logger`: An optional `Logger` instance. If provided, the `GraphBuilder` will automatically generate and log a Mermaid.js diagram of the final, flattened graph every time `.build()` is called. This is an invaluable tool for debugging.
 
 ### Methods
 

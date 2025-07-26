@@ -1,4 +1,6 @@
+import type { AbstractNode } from '../workflow'
 import { describe, expect, it } from 'vitest'
+import { ParallelFlow } from '../builder'
 import { DEFAULT_ACTION, FILTER_FAILED, Flow, Node } from '../workflow'
 import { generateMermaidGraph } from './mermaid'
 
@@ -178,5 +180,60 @@ describe('testGenerateMermaidGraph', () => {
 		expect(result).toContain('DecisionNode_0 -- "continue" --> ProcessNode_0')
 		expect(result).toContain('DecisionNode_0 -- "finish" --> EndNode_0')
 		expect(result).toContain('ProcessNode_0 --> DecisionNode_0')
+	})
+})
+
+describe('testGraphBuilderGraphs', () => {
+	class ParallelBranchContainer extends ParallelFlow {
+		public readonly isParallelContainer = true
+		constructor(public readonly nodesToRun: AbstractNode[]) { super(nodesToRun) }
+	}
+	it('should generate descriptive labels using node.graphData', () => {
+		const nodeA = new Node().withGraphData({ id: 'start-node', type: 'llm-process' })
+		const nodeB = new Node().withGraphData({ id: 'end-node', type: 'output' })
+		nodeA.next(nodeB)
+		const flow = new Flow(nodeA)
+		const result = generateMermaidGraph(flow)
+
+		expect(result).toContain('startnode_0["start-node (llm-process)"]')
+		expect(result).toContain('endnode_0["end-node (output)"]')
+		expect(result).toContain('startnode_0 --> endnode_0')
+	})
+
+	it('should generate special labels for parallel containers and mappers', () => {
+		const start = new Node().withGraphData({ id: 'start', type: 'start-type' })
+		const branchA = new Node().withGraphData({ id: 'branch-a', type: 'type-a' })
+		const branchB = new Node().withGraphData({ id: 'branch-b', type: 'type-b' })
+		const parallel = new ParallelBranchContainer([branchA, branchB])
+		const finalNode = new Node().withGraphData({ id: 'final', type: 'end-type' })
+
+		// This is how the GraphBuilder wires the flow
+		start.next(parallel)
+		branchA.next(finalNode) // Internal node fans out
+		branchB.next(finalNode) // Internal node fans out
+
+		const flow = new Flow(start)
+		const result = generateMermaidGraph(flow)
+
+		// Check for container label
+		expect(result).toContain('ParallelBlock_0{Parallel Block}')
+		// Check for fan-out from container
+		expect(result).toContain('start_0 --> ParallelBlock_0')
+		expect(result).toContain('ParallelBlock_0 --> brancha_0')
+		expect(result).toContain('ParallelBlock_0 --> branchb_0')
+		// Check for fan-in to final node
+		expect(result).toContain('brancha_0 --> final_0')
+		expect(result).toContain('branchb_0 --> final_0')
+	})
+
+	it('should get original ID from graphData, ignoring prefixes', () => {
+		// Simulates a node from an inlined sub-workflow
+		const inlinedNode = new Node().withGraphData({
+			id: 'parent:child-node',
+			type: 'child-type',
+		})
+		const flow = new Flow(inlinedNode)
+		const result = generateMermaidGraph(flow)
+		expect(result).toContain('childnode_0["child-node (child-type)"]')
 	})
 })
