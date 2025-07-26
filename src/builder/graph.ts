@@ -1,4 +1,4 @@
-import type { AbstractNode, NodeArgs } from '../workflow'
+import type { AbstractNode, FILTER_FAILED, NodeArgs, NodeOptions } from '../workflow'
 import { DEFAULT_ACTION, Flow, Node } from '../workflow'
 import { ParallelFlow } from './collection'
 
@@ -6,7 +6,7 @@ import { ParallelFlow } from './collection'
  * The standard options object passed to a Node's constructor by the `GraphBuilder`.
  * @template T The type of the `data` payload for this specific node.
  */
-export interface NodeConstructorOptions<T> {
+export interface NodeConstructorOptions<T> extends NodeOptions {
 	/** The `data` payload from the graph definition, with `nodeId` injected for logging/debugging. */
 	data: T & { nodeId: string }
 	/** A context object containing any dependencies injected into the `GraphBuilder` constructor. */
@@ -118,7 +118,13 @@ export type NodeRegistry = Map<string, new (...args: any[]) => AbstractNode>
  * @internal
  */
 class InputMappingNode extends Node {
-	constructor(private mappings: Record<string, string>) { super() }
+	private mappings: Record<string, string>
+	constructor(options: { data: Record<string, string> }) {
+		super()
+		const { nodeId, ...mappings } = options.data
+		this.mappings = mappings
+	}
+
 	async prep({ ctx, logger }: NodeArgs) {
 		for (const [subKey, parentKey] of Object.entries(this.mappings)) {
 			if (ctx.has(parentKey)) {
@@ -138,7 +144,13 @@ class InputMappingNode extends Node {
  * @internal
  */
 class OutputMappingNode extends Node {
-	constructor(private mappings: Record<string, string>) { super() }
+	private mappings: Record<string, string>
+	constructor(options: { data: Record<string, string> }) {
+		super()
+		const { nodeId, ...mappings } = options.data
+		this.mappings = mappings
+	}
+
 	async prep({ ctx, logger }: NodeArgs) {
 		for (const [parentKey, subKey] of Object.entries(this.mappings)) {
 			if (ctx.has(subKey)) {
@@ -196,14 +208,34 @@ export class GraphBuilder<T extends { [K in keyof T]: Record<string, any> }> {
 		const finalNodes: GraphNode[] = []
 		const finalEdges: GraphEdge[] = []
 
-		// Pass 1: Recursively add all nodes, inlining registered sub-workflows.
+		const localNodeIds = new Set(graph.nodes.map(n => n.id))
+
+		// Pass 1: Recursively add all nodes, inlining sub-workflows and rewriting input paths.
 		for (const node of graph.nodes) {
 			const prefixedNodeId = `${idPrefix}${node.id}`
 			const isRegisteredSubWorkflow = this.subWorkflowNodeTypes.includes(node.type)
 			const hasWorkflowId = node.data && 'workflowId' in node.data
 
+			// Create a mutable copy of node data to safely rewrite input paths.
+			const newNodeData = JSON.parse(JSON.stringify(node.data || {}))
+
+			if (newNodeData.inputs) {
+				const inputs = newNodeData.inputs as Record<string, string | string[]>
+				for (const [templateKey, sourcePathOrPaths] of Object.entries(inputs)) {
+					const sourcePaths = Array.isArray(sourcePathOrPaths) ? sourcePathOrPaths : [sourcePathOrPaths]
+					const newSourcePaths = sourcePaths.map((sourcePath) => {
+						// If the input source is another node within this same graph file, prefix its ID.
+						// Otherwise, leave it as is (it's from a parent context or an initial value).
+						if (localNodeIds.has(sourcePath))
+							return `${idPrefix}${sourcePath}`
+
+						return sourcePath
+					})
+					inputs[templateKey] = Array.isArray(sourcePathOrPaths) ? newSourcePaths : newSourcePaths[0]
+				}
+			}
+
 			if (isRegisteredSubWorkflow) {
-				// This is a declared sub-workflow. Inline it.
 				const subWorkflowData = node.data as any
 				const subWorkflowId = subWorkflowData.workflowId
 				const registry = this.nodeOptionsContext.registry as any
@@ -232,7 +264,6 @@ export class GraphBuilder<T extends { [K in keyof T]: Record<string, any> }> {
 					finalEdges.push({ source: terminalId, target: outputMapperId, action: DEFAULT_ACTION as any })
 			}
 			else if (hasWorkflowId) {
-				// This looks like a sub-workflow but its type wasn't declared. This is a configuration error.
 				throw new Error(
 					`GraphBuilder Error: Node with ID '${node.id}' and type '${node.type}' contains a 'workflowId' property, `
 					+ `but its type is not registered in the 'subWorkflowNodeTypes' option. `
@@ -240,8 +271,8 @@ export class GraphBuilder<T extends { [K in keyof T]: Record<string, any> }> {
 				)
 			}
 			else {
-				// This is a normal node.
-				finalNodes.push({ ...node, id: prefixedNodeId })
+				// Add the normal node with its newly resolved input paths.
+				finalNodes.push({ ...node, id: prefixedNodeId, data: newNodeData })
 			}
 		}
 
@@ -282,19 +313,18 @@ export class GraphBuilder<T extends { [K in keyof T]: Record<string, any> }> {
 
 		const nodeMap = new Map<string, AbstractNode>()
 		const predecessorMap = new Map<string, Set<string>>()
-		for (const edge of graph.edges) {
+		for (const edge of flatGraph.edges) {
 			if (!predecessorMap.has(edge.target))
 				predecessorMap.set(edge.target, new Set())
-
 			predecessorMap.get(edge.target)!.add(edge.source)
 		}
 		const predecessorCountMap = new Map<string, number>()
-		for (const node of graph.nodes) {
+		for (const node of flatGraph.nodes) {
 			const uniquePredecessors = predecessorMap.get(node.id)
 			predecessorCountMap.set(node.id, uniquePredecessors ? uniquePredecessors.size : 0)
 		}
 
-		// Pass 1: Instantiate all nodes from the flattened graph
+		// Pass 1: Instantiate all nodes.
 		for (const graphNode of flatGraph.nodes) {
 			const NodeClass = this.registry.get(graphNode.type.toString())
 			if (!NodeClass)
@@ -308,63 +338,49 @@ export class GraphBuilder<T extends { [K in keyof T]: Record<string, any> }> {
 			nodeMap.set(graphNode.id, executableNode)
 		}
 
-		// Pass 2: Wire all successors, creating ParallelFlows for fan-outs
-		const edgeGroups = new Map<string, Map<string | typeof DEFAULT_ACTION, string[]>>()
+		// Pass 2: Group all edges by their source and action. This map is the source of truth for wiring.
+		const edgeGroups = new Map<string, Map<string | typeof DEFAULT_ACTION | typeof FILTER_FAILED, AbstractNode[]>>()
 		for (const edge of flatGraph.edges) {
-			if (!edgeGroups.has(edge.source))
-				edgeGroups.set(edge.source, new Map())
-			const sourceActions = edgeGroups.get(edge.source)!
+			const sourceId = edge.source
 			const action = edge.action || DEFAULT_ACTION
+			const targetNode = nodeMap.get(edge.target)!
+
+			if (!edgeGroups.has(sourceId))
+				edgeGroups.set(sourceId, new Map())
+			const sourceActions = edgeGroups.get(sourceId)!
 			if (!sourceActions.has(action))
 				sourceActions.set(action, [])
-			sourceActions.get(action)!.push(edge.target)
+			sourceActions.get(action)!.push(targetNode)
 		}
 
+		// Pass 3: Wire the graph using the grouped edges, creating ParallelFlows where necessary.
 		for (const [sourceId, actions] of edgeGroups.entries()) {
 			const sourceNode = nodeMap.get(sourceId)!
-			for (const [action, targetIds] of actions.entries()) {
-				const targetNodes = targetIds.map(id => nodeMap.get(id)!).filter(Boolean)
-
-				if (targetNodes.length === 1) {
-					sourceNode.next(targetNodes[0], action)
+			for (const [action, successors] of actions.entries()) {
+				if (successors.length === 1) {
+					// Simple 1-to-1 connection.
+					sourceNode.next(successors[0], action)
 				}
-				else if (targetNodes.length > 1) {
-					// Fan-out detected, create a ParallelFlow container
-					const parallelFanOutNode = new ParallelFlow(targetNodes)
-					sourceNode.next(parallelFanOutNode, action)
-				}
-			}
-		}
+				else if (successors.length > 1) {
+					// Fan-out detected. Create a container.
+					const parallelNode = new ParallelFlow(successors)
+					sourceNode.next(parallelNode, action)
 
-		// Pass 3: Find the convergence points for all ParallelFlows (fan-in)
-		for (const node of nodeMap.values()) {
-			for (const successor of node.successors.values()) {
-				if (!(successor instanceof ParallelFlow))
-					continue
-
-				const parallelFlow = successor
-				const parallelNodes = (parallelFlow as any).nodesToRun as AbstractNode[]
-				if (parallelNodes.length === 0)
-					continue
-
-				// Get the single successor of the first node in the parallel block
-				const firstNodeSuccessor = parallelNodes[0].successors.get(DEFAULT_ACTION)
-				if (!firstNodeSuccessor)
-					continue // This parallel block is a terminal point
-
-				// Check if all other nodes in the block converge to the exact same successor
-				const allConverge = parallelNodes.slice(1).every(
-					pNode => pNode.successors.get(DEFAULT_ACTION) === firstNodeSuccessor,
-				)
-
-				if (allConverge) {
-					// If they all converge, wire the ParallelFlow itself to the convergence point
-					parallelFlow.next(firstNodeSuccessor, DEFAULT_ACTION)
+					// Determine the single convergence point for this parallel block.
+					const firstBranchSuccessor = edgeGroups.get(successors[0].id!.toString())?.get(DEFAULT_ACTION)?.[0]
+					if (firstBranchSuccessor) {
+						const allConverge = successors.slice(1).every(
+							node => edgeGroups.get(node.id!.toString())?.get(DEFAULT_ACTION)?.[0] === firstBranchSuccessor,
+						)
+						// If all branches lead to the same next node, wire the container to it.
+						if (allConverge)
+							parallelNode.next(firstBranchSuccessor)
+					}
 				}
 			}
 		}
 
-		// Final step: Find start nodes and return the fully built flow
+		// Final Step: Determine the start node(s) for the entire flow.
 		const allNodeIds = Array.from(nodeMap.keys())
 		const allTargetIds = new Set(flatGraph.edges.map(e => e.target))
 		const startNodeIds = allNodeIds.filter(id => !allTargetIds.has(id))
@@ -374,11 +390,24 @@ export class GraphBuilder<T extends { [K in keyof T]: Record<string, any> }> {
 
 		if (startNodeIds.length === 1) {
 			const startNode = nodeMap.get(startNodeIds[0])!
-			return { flow: new Flow(startNode), nodeMap, predecessorCountMap }
+			const flow = new Flow(startNode)
+			return { flow, nodeMap, predecessorCountMap }
 		}
 
+		// Handle parallel start nodes.
 		const startNodes = startNodeIds.map(id => nodeMap.get(id)!)
 		const parallelStartNode = new ParallelFlow(startNodes)
-		return { flow: new Flow(parallelStartNode), nodeMap, predecessorCountMap }
+
+		if (startNodes.length > 0) {
+			const firstSuccessor = edgeGroups.get(startNodes[0].id!.toString())?.get(DEFAULT_ACTION)?.[0]
+			if (firstSuccessor) {
+				const allConverge = startNodes.slice(1).every(node => edgeGroups.get(node.id!.toString())?.get(DEFAULT_ACTION)?.[0] === firstSuccessor)
+				if (allConverge)
+					parallelStartNode.next(firstSuccessor)
+			}
+		}
+
+		const flow = new Flow(parallelStartNode)
+		return { flow, nodeMap, predecessorCountMap }
 	}
 }

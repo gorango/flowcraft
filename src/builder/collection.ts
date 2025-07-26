@@ -40,6 +40,11 @@ export class ParallelFlow extends Flow {
 	 * @internal
 	 */
 	async exec({ ctx, params, signal, logger, executor }: NodeArgs): Promise<void> {
+		if (this.nodesToRun.length === 0) {
+			logger.info('[ParallelFlow] No branches to execute in parallel.')
+			return
+		}
+
 		logger.info(`[ParallelFlow] Executing ${this.nodesToRun.length} branches in parallel...`)
 		const promises = this.nodesToRun.map(node =>
 			node._run({

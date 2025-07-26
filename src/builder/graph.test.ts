@@ -18,11 +18,13 @@ const runOptions: RunOptions = { logger: mockLogger }
 
 describe('graphBuilder', () => {
 	const VALUE = contextKey<number>('value')
+	const PATH = contextKey<string[]>('path')
 
 	interface TestNodeTypeMap {
 		set: { value: number }
 		add: { value: number }
 		branch: { threshold: number }
+		logPath: { id: string }
 	}
 
 	class SetValueNode extends Node {
@@ -63,10 +65,24 @@ describe('graphBuilder', () => {
 		}
 	}
 
+	class LogPathNode extends Node {
+		private pathId: string
+		constructor(options: NodeConstructorOptions<TestNodeTypeMap['logPath']>) {
+			super()
+			this.pathId = options.data.id
+		}
+
+		async prep({ ctx }: NodeArgs) {
+			const currentPath = ctx.get(PATH) ?? []
+			ctx.set(PATH, [...currentPath, this.pathId])
+		}
+	}
+
 	const testRegistry = createNodeRegistry({
 		set: SetValueNode,
 		add: AddValueNode,
 		branch: ConditionalBranchNode,
+		logPath: LogPathNode,
 	})
 
 	it('should build and run a complex graph with parallel fan-out', async () => {
@@ -74,10 +90,9 @@ describe('graphBuilder', () => {
 			nodes: [
 				{ id: 'start', type: 'set', data: { value: 10 } },
 				{ id: 'brancher', type: 'branch', data: { threshold: 15 } },
-				{ id: 'add-10', type: 'add', data: { value: 10 } }, // Path A
-				{ id: 'add-100', type: 'add', data: { value: 100 } }, // Path B
-				{ id: 'add-1', type: 'add', data: { value: 1 } }, // Path C, runs in parallel with D
-				{ id: 'add-2', type: 'add', data: { value: 2 } }, // Path D, runs in parallel with C
+				{ id: 'add-10', type: 'add', data: { value: 10 } },
+				{ id: 'log-A', type: 'logPath', data: { id: 'path_A' } }, // Parallel branch 1
+				{ id: 'log-B', type: 'logPath', data: { id: 'path_B' } }, // Parallel branch 2
 				{ id: 'final', type: 'add', data: { value: 1000 } },
 				// TRY THIS: Uncomment the lines below. TypeScript will throw an error!
 				// { id: 'error-test', type: 'add', data: { threshold: 99 } },
@@ -86,14 +101,12 @@ describe('graphBuilder', () => {
 			edges: [
 				{ source: 'start', target: 'brancher' },
 				{ source: 'brancher', target: 'add-10', action: 'under' },
-				{ source: 'brancher', target: 'add-100', action: 'over' },
 				// Fan-out from 'add-10'
-				{ source: 'add-10', target: 'add-1' },
-				{ source: 'add-10', target: 'add-2' },
+				{ source: 'add-10', target: 'log-A' },
+				{ source: 'add-10', target: 'log-B' },
 				// Fan-in to 'final'
-				{ source: 'add-1', target: 'final' },
-				{ source: 'add-2', target: 'final' },
-				{ source: 'add-100', target: 'final' },
+				{ source: 'log-A', target: 'final' },
+				{ source: 'log-B', target: 'final' },
 			],
 		}
 
@@ -101,19 +114,17 @@ describe('graphBuilder', () => {
 		const { flow } = builder.build(graph)
 		const ctx = new TypedContext()
 		await flow.run(ctx, runOptions)
-		// Calculation:
-		// 1. start: sets value to 10
-		// 2. brancher: 10 is not > 15, so action is 'under'
-		// 3. add-10: value becomes 10 + 10 = 20
-		// 4. Parallel fan-out: add-1 and add-2 run.
-		//    One will read 20 and write 21. The other will then read 21 and write 23.
-		// 5. final: value becomes 23 + 1000 = 1023
-		expect(ctx.get(VALUE)).toBe(1023)
+		expect(ctx.get(VALUE)).toBe(1020)
+		const path = ctx.get(PATH)
+		expect(path).toBeDefined()
+		expect(path).toHaveLength(2)
+		expect(path).toEqual(expect.arrayContaining(['path_A', 'path_B']))
 	})
 })
 
 describe('graphBuilder (no type safety)', () => {
 	const VALUE = contextKey<number>('value')
+	const PATH = contextKey<string[]>('path')
 
 	class SetValueNode extends Node {
 		private value: number
@@ -151,10 +162,24 @@ describe('graphBuilder (no type safety)', () => {
 		}
 	}
 
+	class LogPathNode extends Node {
+		private pathId: string
+		constructor(options: { data: { id: string } }) {
+			super()
+			this.pathId = options.data.id
+		}
+
+		async prep({ ctx }: NodeArgs) {
+			const currentPath = ctx.get(PATH) ?? []
+			ctx.set(PATH, [...currentPath, this.pathId])
+		}
+	}
+
 	const testRegistry: NodeRegistry = new Map<string, new (...args: any[]) => AbstractNode>([
 		['set', SetValueNode],
 		['add', AddValueNode],
 		['branch', ConditionalBranchNode],
+		['logPath', LogPathNode],
 	])
 
 	it('should build and run a simple graph using the untyped API', async () => {
@@ -163,27 +188,28 @@ describe('graphBuilder (no type safety)', () => {
 				{ id: 'start', type: 'set', data: { value: 10 } },
 				{ id: 'brancher', type: 'branch', data: { threshold: 15 } },
 				{ id: 'add-10', type: 'add', data: { value: 10 } },
-				{ id: 'add-100', type: 'add', data: { value: 100 } },
-				{ id: 'add-1', type: 'add', data: { value: 1 } },
-				{ id: 'add-2', type: 'add', data: { value: 2 } },
+				{ id: 'log-A', type: 'logPath', data: { id: 'path_A' } },
+				{ id: 'log-B', type: 'logPath', data: { id: 'path_B' } },
 				{ id: 'final', type: 'add', data: { value: 1000 } },
 			],
 			edges: [
 				{ source: 'start', target: 'brancher' },
 				{ source: 'brancher', target: 'add-10', action: 'under' },
-				{ source: 'brancher', target: 'add-100', action: 'over' },
-				{ source: 'add-10', target: 'add-1' },
-				{ source: 'add-10', target: 'add-2' },
-				{ source: 'add-1', target: 'final' },
-				{ source: 'add-2', target: 'final' },
-				{ source: 'add-100', target: 'final' },
+				{ source: 'add-10', target: 'log-A' },
+				{ source: 'add-10', target: 'log-B' },
+				{ source: 'log-A', target: 'final' },
+				{ source: 'log-B', target: 'final' },
 			],
 		}
 		const builder = new GraphBuilder(testRegistry)
 		const { flow } = builder.build(graph)
 		const ctx = new TypedContext()
 		await flow.run(ctx)
-		expect(ctx.get(VALUE)).toBe(1023)
+		expect(ctx.get(VALUE)).toBe(1020)
+		const path = ctx.get(PATH)
+		expect(path).toBeDefined()
+		expect(path).toHaveLength(2)
+		expect(path).toEqual(expect.arrayContaining(['path_A', 'path_B']))
 	})
 })
 
@@ -283,14 +309,6 @@ describe('graphBuilder with sub-workflows', () => {
 		])
 
 		await flow.run(ctx, runOptions)
-
-		// Expected execution path:
-		// 1. step_a: runs on PARENT_VALUE='start', sets SUB_VALUE='start -> A'
-		// 2. input_mapper: No-op, PARENT_VALUE is already in context for sub-nodes.
-		// 3. step_d (inlined): reads SUB_VALUE='start -> A', sets SUB_VALUE='start -> A -> D'
-		// 4. step_e (inlined): reads SUB_VALUE='start -> A -> D', sets SUB_VALUE='start -> A -> D -> E'
-		// 5. output_mapper: copies SUB_VALUE='...E' to PARENT_VALUE.
-		// 6. step_c: reads SUB_VALUE='...E', sets FINAL_VALUE.
 		expect(ctx.get(FINAL_VALUE)).toBe('final: start -> A -> D -> E')
 	})
 
@@ -314,5 +332,70 @@ describe('graphBuilder with sub-workflows', () => {
 		expect(() => builder.build(graphWithUndeclaredSub)).toThrow(
 			/Node with ID 'the_sub' and type 'some_other_type' contains a 'workflowId' property, but its type is not registered/,
 		)
+	})
+})
+
+describe('graphBuilder with parallel start nodes', () => {
+	const A = contextKey<string>('a')
+	const B = contextKey<string>('b')
+	const RESULT = contextKey<string>('result')
+
+	interface ParallelTestMap {
+		'set-value': { key: 'a' | 'b', value: string }
+		'combine': Record<string, never>
+	}
+
+	class SetValueNode extends Node {
+		private key: 'a' | 'b'
+		private value: string
+		constructor(options: NodeConstructorOptions<ParallelTestMap['set-value']>) {
+			super(options) // Pass options up for potential retries etc.
+			this.key = options.data.key
+			this.value = options.data.value
+		}
+
+		async exec({ ctx }: NodeArgs) {
+			const key = this.key === 'a' ? A : B
+			ctx.set(key, this.value)
+		}
+	}
+
+	class CombineNode extends Node {
+		constructor(options: NodeConstructorOptions<ParallelTestMap['combine']>) {
+			super(options)
+		}
+
+		async exec({ ctx }: NodeArgs) {
+			const valA = ctx.get(A)
+			const valB = ctx.get(B)
+			ctx.set(RESULT, `${valA}-${valB}`)
+		}
+	}
+
+	const parallelRegistry = createNodeRegistry<ParallelTestMap>({
+		'set-value': SetValueNode,
+		'combine': CombineNode,
+	})
+
+	it('should build and run a graph with multiple start nodes in parallel', async () => {
+		const graph: TypedWorkflowGraph<ParallelTestMap> = {
+			nodes: [
+				{ id: 'set-a', type: 'set-value', data: { key: 'a', value: 'Hello' } },
+				{ id: 'set-b', type: 'set-value', data: { key: 'b', value: 'World' } },
+				{ id: 'combiner', type: 'combine', data: {} },
+			],
+			edges: [
+				{ source: 'set-a', target: 'combiner' },
+				{ source: 'set-b', target: 'combiner' },
+			],
+		}
+
+		const builder = new GraphBuilder(parallelRegistry)
+		const { flow } = builder.build(graph)
+		const ctx = new TypedContext()
+
+		await flow.run(ctx, runOptions)
+
+		expect(ctx.get(RESULT)).toBe('Hello-World')
 	})
 })
