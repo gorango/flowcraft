@@ -14,6 +14,7 @@
 			"id": "output_thanks",
 			"type": "output",
 			"data": {
+				"outputKey": "final_output",
 				"promptTemplate": "{{result}}",
 				"inputs": {
 					"result": "gen_thanks"

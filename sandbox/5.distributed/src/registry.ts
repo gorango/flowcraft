@@ -2,20 +2,18 @@ import type { AbstractNode, Flow, TypedWorkflowGraph } from 'cascade'
 import type { AgentNodeTypeMap } from './types'
 import { promises as fs } from 'node:fs'
 import path from 'node:path'
-import { createNodeRegistry, GraphBuilder } from 'cascade'
+import { ConsoleLogger, createNodeRegistry, GraphBuilder } from 'cascade'
 import {
 	LLMConditionNode,
 	LLMProcessNode,
 	LLMRouterNode,
 	OutputNode,
-	SubWorkflowNode,
 } from './nodes'
 
 export const nodeRegistry = createNodeRegistry({
 	'llm-process': LLMProcessNode,
 	'llm-condition': LLMConditionNode,
 	'llm-router': LLMRouterNode,
-	'sub-workflow': SubWorkflowNode,
 	'output': OutputNode,
 })
 
@@ -26,12 +24,17 @@ export class WorkflowRegistry {
 	private graphDatabase = new Map<number, TypedWorkflowGraph<AgentNodeTypeMap>>()
 	private builder: GraphBuilder<AgentNodeTypeMap>
 
-	private constructor(nodeOptionsContext: Record<string, any> = {}) {
-		this.builder = new GraphBuilder(nodeRegistry, { registry: this, ...nodeOptionsContext })
+	private constructor() {
+		this.builder = new GraphBuilder(
+			nodeRegistry,
+			{ registry: this },
+			{ subWorkflowNodeTypes: ['sub-workflow'] },
+			new ConsoleLogger(),
+		)
 	}
 
-	public static async create(useCaseDirectories: string[], nodeOptionsContext?: Record<string, any>): Promise<WorkflowRegistry> {
-		const registry = new WorkflowRegistry(nodeOptionsContext)
+	public static async create(useCaseDirectories: string[]): Promise<WorkflowRegistry> {
+		const registry = new WorkflowRegistry()
 		for (const dir of useCaseDirectories) {
 			await registry.initialize(dir)
 		}
@@ -58,6 +61,10 @@ export class WorkflowRegistry {
 			console.error(`[Registry] Failed to initialize from directory ${useCaseDirectory}`, error)
 			throw error
 		}
+	}
+
+	public getGraph(workflowId: number): TypedWorkflowGraph<AgentNodeTypeMap> | undefined {
+		return this.graphDatabase.get(workflowId)
 	}
 
 	private async buildAndCache(workflowId: number): Promise<void> {

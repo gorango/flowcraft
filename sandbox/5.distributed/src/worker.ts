@@ -55,9 +55,6 @@ async function main() {
 	const redisConnection = new IORedis({ maxRetriesPerRequest: null })
 	const queue = new Queue(QUEUE_NAME, { connection: redisConnection })
 
-	// The context object to inject dependencies into node constructors.
-	const nodeOptionsContext = { queue, redis: redisConnection }
-
 	// Define all use-case directories the worker should be aware of.
 	const useCaseDirectories = [
 		'1.blog-post',
@@ -67,7 +64,7 @@ async function main() {
 	].map(dir => path.join(process.cwd(), 'data', dir))
 
 	// Create and initialize the registry from all directories in one clean call.
-	const masterRegistry = await WorkflowRegistry.create(useCaseDirectories, nodeOptionsContext)
+	const masterRegistry = await WorkflowRegistry.create(useCaseDirectories)
 
 	setupCancellationListener(redisConnection, logger)
 	logger.info(`Worker listening on queue: "${QUEUE_NAME}"`)
@@ -131,11 +128,16 @@ async function main() {
 				logger,
 			})
 
-			// Atomically save this node's specific output to the context hash.
-			if (context.has(nodeId)) {
-				const result = context.get(nodeId)
-				await redisConnection.hset(contextKey, nodeId, JSON.stringify(result))
-			}
+			// Persist the entire updated context back to Redis for the next job.
+			const updatedContextObject = Object.fromEntries(context.entries())
+			const serializedUpdatedContext = Object.entries(updatedContextObject).flatMap(([key, value]) => {
+				if (typeof key === 'symbol')
+					return [] // Symbols cannot be keys in Redis hashes
+				return [key, JSON.stringify(value)]
+			})
+
+			if (serializedUpdatedContext.length > 0)
+				await redisConnection.hset(contextKey, ...serializedUpdatedContext)
 
 			if (action === FINAL_ACTION) {
 				logger.info(`[Worker] Final node executed for Run ID ${runId}. Reporting 'completed' status...`)

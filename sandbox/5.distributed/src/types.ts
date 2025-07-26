@@ -17,11 +17,6 @@ export interface AgentNodeTypeMap {
 		promptTemplate: string
 		inputs: NodeInputMap
 	}
-	'sub-workflow': {
-		workflowId: number
-		inputs?: NodeInputMap
-		outputs?: Record<string, string>
-	}
 	'output': {
 		promptTemplate: string
 		inputs: NodeInputMap

@@ -51,7 +51,7 @@ type UseCase = keyof typeof config
 
 // --- CONFIGURATION ---
 const QUEUE_NAME = 'distributed-cascade-queue'
-const ACTIVE_USE_CASE: UseCase = '4.content-moderation'
+const ACTIVE_USE_CASE: UseCase = '2.job-application'
 const WORKFLOW_ID = config[ACTIVE_USE_CASE].mainWorkflowId
 
 async function main() {
@@ -89,7 +89,7 @@ async function main() {
 		: initialJobsOrJob
 
 	try {
-		const finalStatus = await waitForWorkflow(redisConnection, runId, 60000)
+		const finalStatus = await waitForWorkflow(redisConnection, runId, 30000)
 
 		console.log('\n=============================================================')
 

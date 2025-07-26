@@ -36,10 +36,15 @@ export class LLMProcessNode extends Node<string, string> {
 					break
 			}
 
-			if (value === undefined)
-				args.logger.warn(`[Node: ${this.data.nodeId}] Template variable '{{${templateKey}}}' could not be resolved from any source: [${sourcePaths.join(', ')}].`)
-
-			templateData[templateKey] = value
+			// If the value is still undefined after checking all sources, use an empty string.
+			// This prevents '{{placeholder}}' from appearing in the final output.
+			if (value === undefined) {
+				args.logger.warn(`[Node: ${this.data.nodeId}] Template variable '{{${templateKey}}}' could not be resolved. Using empty string.`)
+				templateData[templateKey] = ''
+			}
+			else {
+				templateData[templateKey] = value
+			}
 		}
 
 		const resolvedPrompt = resolveTemplate(template, templateData)
@@ -52,8 +57,9 @@ export class LLMProcessNode extends Node<string, string> {
 	}
 
 	async post(args: NodeArgs<string, string>) {
-		args.ctx.set(this.data.nodeId, args.execRes)
-		args.logger.info(`[Node: ${this.data.nodeId}] ✓ Process complete.`)
+		const keyToSet = this.data.outputKey || this.data.nodeId
+		args.ctx.set(keyToSet, args.execRes)
+		args.logger.info(`[Node: ${this.data.nodeId}] ✓ Process complete. Result in context key '${keyToSet}'.`)
 	}
 }
 
@@ -106,63 +112,6 @@ export class LLMRouterNode extends Node<string, string, string> {
 }
 
 /**
- * Executes a sub-workflow, passing down context and parameters.
- */
-export class SubWorkflowNode extends Node {
-	private data: AiNodeOptions<'sub-workflow'>['data']
-	private registry: WorkflowRegistry
-
-	constructor(options: AiNodeOptions<'sub-workflow'>) {
-		super(options)
-		this.data = options.data
-		if (!options.registry)
-			throw new Error('SubWorkflowNode requires a registry to be injected.')
-
-		this.registry = options.registry
-	}
-
-	async exec(args: NodeArgs) {
-		args.logger.info(`[SubWorkflow] Entering: ${this.data.workflowId}`)
-		const subFlow = await this.registry.getFlow(this.data.workflowId)
-		const subContext = new (args.ctx.constructor as any)()
-		const inputMappings = this.data.inputs || {}
-		for (const [subContextKey, parentContextKey] of Object.entries(inputMappings)) {
-			if (args.ctx.has(parentContextKey as string)) {
-				subContext.set(subContextKey, args.ctx.get(parentContextKey as string))
-			}
-			else {
-				args.logger.warn(`[SubWorkflow: ${this.data.nodeId}] Input mapping failed. Key '${parentContextKey}' not found in parent context.`)
-			}
-		}
-
-		const runOptions = {
-			logger: args.logger,
-			controller: args.signal ? ({ signal: args.signal } as AbortController) : undefined,
-		}
-
-		await subFlow.run(subContext, runOptions)
-		const outputMappings = this.data.outputs || {}
-
-		if (Object.keys(outputMappings).length === 0) {
-			if (subContext.has('final_output'))
-				args.ctx.set(this.data.nodeId, subContext.get('final_output'))
-		}
-		else {
-			for (const [parentKey, subKey] of Object.entries(outputMappings)) {
-				if (subContext.has(subKey)) {
-					args.ctx.set(parentKey, subContext.get(subKey))
-				}
-				else {
-					args.logger.warn(`[SubWorkflow: ${this.data.nodeId}] Tried to map output, but key '${subKey}' was not found in sub-workflow '${this.data.workflowId}' context.`)
-				}
-			}
-		}
-
-		args.logger.info(`[SubWorkflow] Exited: ${this.data.workflowId}`)
-	}
-}
-
-/**
  * Aggregates inputs and sets a final value in the context.
  */
 export class OutputNode extends Node<string, void> {
@@ -177,7 +126,7 @@ export class OutputNode extends Node<string, void> {
 
 	async post(args: NodeArgs<string, void>): Promise<string | typeof DEFAULT_ACTION> {
 		const finalResult = args.prepRes
-		const outputKey = this.data.outputKey || 'final_output'
+		const outputKey = this.data.outputKey
 		args.ctx.set(outputKey, finalResult)
 		args.logger.info(`[Output] Workflow finished. Final value set to context key '${outputKey}'.`)
 		return this.data.returnAction || DEFAULT_ACTION

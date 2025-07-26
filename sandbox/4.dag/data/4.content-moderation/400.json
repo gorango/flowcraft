@@ -97,6 +97,7 @@
 			"id": "final_log",
 			"type": "output",
 			"data": {
+				"outputKey": "final_output",
 				"promptTemplate": "--- CONTENT MODERATION COMPLETE ---\n\nFinal Action Log:\n{{final_action_taken}}",
 				"inputs": {
 					"final_action_taken": [

@@ -8,7 +8,8 @@
 				"inputs": {
 					"category": "category",
 					"summary": "summary"
-				}
+				},
+				"outputKey": "ticket_payload"
 			}
 		},
 		{
@@ -18,40 +19,10 @@
 				"promptTemplate": "Write a polite, reassuring email to a customer. Inform them that you have received their feedback regarding '{{summary}}' and have created a ticket for the team to review. Do not include a subject line.",
 				"inputs": {
 					"summary": "summary"
-				}
-			}
-		},
-		{
-			"id": "output_ticket",
-			"type": "output",
-			"data": {
-				"outputKey": "ticket_payload",
-				"promptTemplate": "{{result}}",
-				"inputs": {
-					"result": "gen_ticket_data"
-				}
-			}
-		},
-		{
-			"id": "output_reply",
-			"type": "output",
-			"data": {
-				"outputKey": "customer_message",
-				"promptTemplate": "{{result}}",
-				"inputs": {
-					"result": "gen_customer_reply"
-				}
+				},
+				"outputKey": "customer_message"
 			}
 		}
 	],
-	"edges": [
-		{
-			"source": "gen_ticket_data",
-			"target": "output_ticket"
-		},
-		{
-			"source": "gen_customer_reply",
-			"target": "output_reply"
-		}
-	]
+	"edges": []
 }

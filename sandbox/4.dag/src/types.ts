@@ -6,6 +6,7 @@ export interface AgentNodeTypeMap {
 	'llm-process': {
 		promptTemplate: string
 		inputs: NodeInputMap
+		outputKey?: string
 	}
 	'llm-condition': {
 		promptTemplate: string
@@ -15,15 +16,10 @@ export interface AgentNodeTypeMap {
 		promptTemplate: string
 		inputs: NodeInputMap
 	}
-	'sub-workflow': {
-		workflowId: number
-		inputs?: NodeInputMap
-		outputs?: Record<string, string>
-	}
 	'output': {
 		promptTemplate: string
 		inputs: NodeInputMap
-		outputKey?: string // defaults to 'final_output'
+		outputKey: string
 		returnAction?: string
 	}
 }

@@ -37,6 +37,9 @@
 				"workflowId": 301,
 				"inputs": {
 					"summary": "summarize"
+				},
+				"outputs": {
+					"final_positive_reply": "final_output"
 				}
 			}
 		},
@@ -79,7 +82,8 @@
 			"id": "final_step",
 			"type": "output",
 			"data": {
-				"promptTemplate": "--- Final Actions Taken ---\nTicket System: {{ticket_action}}\n\nCustomer Email: {{email_action}}\n\nPositive Flow: {{positive_result}}",
+				"outputKey": "final_output",
+				"promptTemplate": "--- Final Actions Taken ---\nTicket System: {{ticket_action}}\n\nCustomer Email: {{email_action}}\n\nPositive Flow Result: {{positive_result}}",
 				"inputs": {
 					"ticket_action": [
 						"send_to_ticketing_system"
@@ -88,7 +92,7 @@
 						"send_email_to_customer"
 					],
 					"positive_result": [
-						"positive_branch"
+						"final_positive_reply"
 					]
 				}
 			}

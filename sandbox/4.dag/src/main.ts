@@ -51,7 +51,7 @@ type UseCase = keyof typeof config
 type WorkflowId<U extends UseCase> = (typeof config)[U]['allWorkflowIds'][number]
 
 // --- CONFIGURATION ---
-const ACTIVE_USE_CASE: UseCase = '2.job-application'
+const ACTIVE_USE_CASE: UseCase = '4.content-moderation'
 const WORKFLOW_ID: WorkflowId<typeof ACTIVE_USE_CASE> = config[ACTIVE_USE_CASE].mainWorkflowId
 
 async function main() {
