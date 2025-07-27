@@ -21,6 +21,8 @@ export interface NodeArgs<PrepRes = any, ExecRes = any> {
 	ctx: Context
 	/** The static parameters for the node, merged from the node and flow's `withParams`. */
 	params: Params
+	/** An `AbortController` to gracefully cancel the workflow. */
+	controller?: AbortController
 	/** An `AbortSignal` for handling cancellation. */
 	signal?: AbortSignal
 	/** The logger instance for the workflow run. */
@@ -61,6 +63,8 @@ export interface NodeOptions {
 export interface RunOptions {
 	/** An `AbortController` to gracefully cancel the workflow. */
 	controller?: AbortController
+	/** An `AbortSignal` for handling cancellation. */
+	signal?: AbortSignal
 	/** A `Logger` instance to receive logs from the execution engine. */
 	logger?: Logger
 	/** Top-level parameters to be merged into the context for the entire run. */
@@ -70,6 +74,6 @@ export interface RunOptions {
 }
 
 /** The function signature for the `next` function passed to middleware. */
-export type MiddlewareNext = (args: NodeArgs) => Promise<any>
+export type MiddlewareNext<T = any> = (args: NodeArgs) => Promise<T>
 /** The function signature for a middleware function. */
-export type Middleware = (args: NodeArgs, next: MiddlewareNext) => Promise<any>
+export type Middleware<T = any> = (args: NodeArgs, next: MiddlewareNext<T>) => Promise<T>

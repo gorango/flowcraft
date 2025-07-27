@@ -14,7 +14,7 @@ export interface IExecutor {
 	 * @returns A promise that resolves with the final action of the workflow, or another result
 	 * depending on the executor's implementation (e.g., a job ID for a distributed executor).
 	 */
-	run: (flow: Flow, context: Context, options?: RunOptions) => Promise<any>
+	run: <T>(flow: Flow<any, T>, context: Context, options?: RunOptions) => Promise<T>
 }
 
 /**

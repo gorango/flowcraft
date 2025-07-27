@@ -1,3 +1,4 @@
+/* eslint-disable unused-imports/no-unused-vars */
 import type { GraphNode } from './builder/graph.types'
 import type { Context, ContextKey, ContextLens } from './context'
 import type { InternalRunOptions } from './executor'
@@ -119,26 +120,26 @@ export class Node<PrepRes = any, ExecRes = any, PostRes = any> extends AbstractN
 	/**
 	 * (Lifecycle) Prepares data for execution. Runs once before `exec`.
 	 * This is the ideal place to read data from the `Context`.
-	 * @param _args The arguments for the node, including `ctx` and `params`.
+	 * @param args The arguments for the node, including `ctx` and `params`.
 	 * @returns The data required by the `exec` phase.
 	 */
-	async prep(_args: NodeArgs<void, void>): Promise<PrepRes> { return undefined as unknown as PrepRes }
+	async prep(args: NodeArgs<void, void>): Promise<PrepRes> { return undefined as unknown as PrepRes }
 
 	/**
 	 * (Lifecycle) Performs the core, isolated logic of the node.
 	 * This is the only phase that is retried on failure. It should not access the `Context` directly.
-	 * @param _args The arguments for the node, including `prepRes`.
+	 * @param args The arguments for the node, including `prepRes`.
 	 * @returns The result of the execution.
 	 */
-	async exec(_args: NodeArgs<PrepRes, void>): Promise<ExecRes> { return undefined as unknown as ExecRes }
+	async exec(args: NodeArgs<PrepRes, void>): Promise<ExecRes> { return undefined as unknown as ExecRes }
 
 	/**
 	 * (Lifecycle) Processes results and determines the next step. Runs once after `exec` succeeds.
 	 * This is the ideal place to write data to the `Context`.
-	 * @param _args The arguments for the node, including `execRes`.
+	 * @param args The arguments for the node, including `execRes`.
 	 * @returns An "action" string to determine which successor to execute next. Defaults to `DEFAULT_ACTION`.
 	 */
-	async post(_args: NodeArgs<PrepRes, ExecRes>): Promise<PostRes> { return DEFAULT_ACTION as any }
+	async post(args: NodeArgs<PrepRes, ExecRes>): Promise<PostRes> { return DEFAULT_ACTION as any }
 
 	/**
 	 * (Lifecycle) A fallback that runs if all `exec` retries fail.
@@ -205,6 +206,7 @@ export class Node<PrepRes = any, ExecRes = any, PostRes = any> extends AbstractN
 		catch (e) {
 			throw this._wrapError(e, 'prep')
 		}
+
 		if (signal?.aborted)
 			throw new AbortError()
 		let execRes: ExecRes
@@ -214,6 +216,7 @@ export class Node<PrepRes = any, ExecRes = any, PostRes = any> extends AbstractN
 		catch (e) {
 			throw this._wrapError(e, 'exec')
 		}
+
 		if (signal?.aborted)
 			throw new AbortError()
 		try {
@@ -414,7 +417,7 @@ export class Node<PrepRes = any, ExecRes = any, PostRes = any> extends AbstractN
  * A special type of `Node` that orchestrates a graph of other nodes.
  * It can contain its own middleware and can be composed within other flows.
  */
-export class Flow extends Node<any, any, any> {
+export class Flow<PrepRes = any, ExecRes = any> extends Node<PrepRes, ExecRes, ExecRes> {
 	/** The first node to be executed in this flow's graph. */
 	public startNode?: AbstractNode
 	/** An array of middleware functions to be applied to every node within this flow. */
@@ -464,7 +467,7 @@ export class Flow extends Node<any, any, any> {
 	 * @param args The arguments for the node, passed down from the parent executor.
 	 * @returns The final action returned by the last node in this flow's graph.
 	 */
-	async exec(args: NodeArgs<any, any>): Promise<any> {
+	async exec(args: NodeArgs<any, any>): Promise<ExecRes> {
 		// For programmatic composition, a Flow node orchestrates its own graph.
 		// This is a feature of the InMemoryExecutor. Distributed systems should
 		// rely on pre-flattened graphs produced by the GraphBuilder.
@@ -487,7 +490,7 @@ export class Flow extends Node<any, any, any> {
 			executor: args.executor,
 		}
 
-		const finalAction = await args.executor._orch(
+		const finalAction = await args.executor._orch<ExecRes>(
 			this.startNode,
 			this.middleware,
 			args.ctx,
@@ -495,7 +498,7 @@ export class Flow extends Node<any, any, any> {
 		)
 
 		args.logger.info(`-- Exiting sub-flow: ${this.constructor.name} --`)
-		return finalAction
+		return finalAction as ExecRes
 	}
 
 	/**
@@ -503,7 +506,7 @@ export class Flow extends Node<any, any, any> {
 	 * the final action from its internal graph execution (`execRes`).
 	 * @internal
 	 */
-	async post({ execRes }: NodeArgs<any, any>): Promise<any> {
+	async post({ execRes }: NodeArgs<any, ExecRes>): Promise<ExecRes> {
 		return execRes
 	}
 
@@ -513,7 +516,7 @@ export class Flow extends Node<any, any, any> {
 	 * @param options Runtime options like a logger, abort controller, or a custom executor.
 	 * @returns The final action returned by the last node in the flow.
 	 */
-	async run(ctx: Context, options?: RunOptions): Promise<any> {
+	async run(ctx: Context, options?: RunOptions): Promise<ExecRes> {
 		const executor = options?.executor ?? new InMemoryExecutor()
 		return executor.run(this, ctx, options)
 	}

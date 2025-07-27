@@ -1,7 +1,7 @@
 import type { AbstractNode, Logger, NodeArgs, RunOptions } from '../workflow'
 import type { NodeConstructorOptions, NodeRegistry, NodeTypeMap, TypedNodeRegistry, TypedWorkflowGraph, WorkflowGraph } from './graph.types'
 import { describe, expect, it, vi } from 'vitest'
-import { ConsoleLogger, contextKey, Node, TypedContext } from '../workflow'
+import { contextKey, Node, TypedContext } from '../workflow'
 import { createNodeRegistry, GraphBuilder } from './graph'
 
 function createMockLogger(): Logger {
@@ -398,7 +398,6 @@ describe('graphBuilder with parallel start nodes', () => {
 			parallelRegistry,
 			{ registry: parallelRegistry },
 			{ subWorkflowNodeTypes: [] },
-			new ConsoleLogger(),
 		)
 		const { flow } = builder.build(graph)
 		const ctx = new TypedContext()

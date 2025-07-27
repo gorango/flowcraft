@@ -6,7 +6,7 @@ import { AbortError, Flow } from '../workflow'
  * A `Flow` that creates a linear workflow from a sequence of nodes,
  * automatically chaining them in order.
  */
-export class SequenceFlow extends Flow {
+export class SequenceFlow<PrepRes = any, ExecRes = any> extends Flow<PrepRes, ExecRes> {
 	/**
 	 * @param nodes A sequence of `Node` or `Flow` instances to be executed in order.
 	 */
@@ -27,7 +27,7 @@ export class SequenceFlow extends Flow {
  * This is the core of the "fan-out, fan-in" pattern for structural parallelism.
  * After all parallel branches complete, the flow can proceed to a single successor.
  */
-export class ParallelFlow extends Flow {
+export class ParallelFlow extends Flow<any, void> {
 	/**
 	 * @param nodesToRun The array of nodes to execute concurrently.
 	 */
@@ -71,7 +71,7 @@ export class ParallelFlow extends Flow {
  * Subclasses must implement the `prep` method to provide the items and the
  * `nodeToRun` property to define the processing logic for each item.
  */
-export abstract class BatchFlow extends Flow {
+export abstract class BatchFlow<T = any> extends Flow<Iterable<T>, null> {
 	/**
 	 * The `Node` instance that will be executed for each item in the batch.
 	 * This must be implemented by any subclass.
@@ -128,7 +128,7 @@ export abstract class BatchFlow extends Flow {
  * `nodeToRun` property to define the processing logic for each item.
  * This provides a significant performance boost for I/O-bound tasks.
  */
-export abstract class ParallelBatchFlow extends Flow {
+export abstract class ParallelBatchFlow<T = any> extends Flow<Iterable<T>, PromiseSettledResult<any>[]> {
 	/**
 	 * The `Node` instance that will be executed concurrently for each item in the batch.
 	 * This must be implemented by any subclass.
@@ -154,9 +154,9 @@ export abstract class ParallelBatchFlow extends Flow {
 	 * Orchestrates the parallel execution of `nodeToRun` for each item.
 	 * @internal
 	 */
-	async exec(args: NodeArgs<any, void>): Promise<any> {
+	async exec(args: NodeArgs<any, void>): Promise<PromiseSettledResult<any>[]> {
 		if (!this.nodeToRun)
-			return null
+			return []
 
 		const combinedParams = { ...this.params, ...args.params }
 		const batchParamsIterable = (await this.prep(args)) || []
@@ -200,7 +200,7 @@ export abstract class ParallelBatchFlow extends Flow {
  * @param fn An async or sync function that transforms an item from type `T` to type `U`.
  * @returns A `Flow` instance that, when run, will output an array of type `U[]`.
  */
-export function mapCollection<T, U>(items: T[], fn: NodeFunction<T, U>): Flow {
+export function mapCollection<T, U>(items: T[], fn: NodeFunction<T, U>): Flow<void, U[]> {
 	return new class extends Flow {
 		async exec(): Promise<U[]> {
 			// Using Promise.all to run the mapping function on all items concurrently.
@@ -225,7 +225,7 @@ export function mapCollection<T, U>(items: T[], fn: NodeFunction<T, U>): Flow {
  * @param predicate An async or sync function that returns `true` or `false` for an item.
  * @returns A `Flow` instance that, when run, will output a filtered array of type `T[]`.
  */
-export function filterCollection<T>(items: T[], predicate: (item: T) => boolean | Promise<boolean>): Flow {
+export function filterCollection<T>(items: T[], predicate: (item: T) => boolean | Promise<boolean>): Flow<void, T[]> {
 	return new class extends Flow {
 		async exec(): Promise<T[]> {
 			const results = await Promise.all(items.map(item => predicate(item)))
@@ -253,7 +253,7 @@ export function reduceCollection<T, U>(
 	items: T[],
 	reducer: (accumulator: U, item: T) => U | Promise<U>,
 	initialValue: U,
-): Flow {
+): Flow<void, U> {
 	return new class extends Flow {
 		async exec(_args: NodeArgs): Promise<U> {
 			let accumulator = initialValue

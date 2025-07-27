@@ -18,41 +18,44 @@ export class InMemoryExecutor implements IExecutor {
 	 * @returns The final action from the last executed node in the graph.
 	 * @internal
 	 */
-	public async _orch(
+	public async _orch<T = any>(
 		startNode: AbstractNode,
 		flowMiddleware: Middleware[],
 		context: Context,
 		options: InternalRunOptions,
-	): Promise<any> {
+	): Promise<T> {
 		let currentNode: AbstractNode | undefined = startNode
-		let lastAction: any
+		let nextNode: AbstractNode | undefined
+		let action: any
 
-		const { logger, signal, params, executor } = options
+		const { logger, signal } = options
 
 		while (currentNode) {
 			if (signal?.aborted)
 				throw new AbortError()
 
-			const chain = this.applyMiddleware(flowMiddleware, currentNode)
-
 			const nodeArgs: NodeArgs = {
 				ctx: context,
-				params,
+				params: { ...options.params, ...currentNode.params },
 				signal,
 				logger,
 				prepRes: undefined,
 				execRes: undefined,
 				name: currentNode.constructor.name,
-				executor,
+				executor: options.executor,
 			}
 
-			lastAction = await chain(nodeArgs)
+			const chain = this.applyMiddleware(flowMiddleware, currentNode)
+			action = await chain(nodeArgs)
+			nextNode = this.getNextNode(currentNode, action, logger)
 
-			const previousNode = currentNode
-			currentNode = this.getNextNode(previousNode, lastAction, logger)
+			if (!nextNode)
+				return action as T
+
+			currentNode = nextNode
 		}
 
-		return lastAction
+		return undefined as T
 	}
 
 	/**
@@ -63,14 +66,13 @@ export class InMemoryExecutor implements IExecutor {
 	 * @param options Runtime options, including a logger, abort controller, or initial params.
 	 * @returns A promise that resolves with the final action of the workflow.
 	 */
-	public async run(flow: Flow, context: Context, options?: RunOptions): Promise<any> {
+	public async run<T>(flow: Flow<any, T>, context: Context, options?: RunOptions): Promise<T> {
 		const logger = options?.logger ?? new NullLogger()
-		const controller = options?.controller
 		const combinedParams = { ...flow.params, ...options?.params }
 
 		const internalOptions: InternalRunOptions = {
 			logger,
-			signal: controller?.signal,
+			signal: options?.signal ?? options?.controller?.signal,
 			params: combinedParams,
 			executor: this,
 		}
@@ -116,9 +118,9 @@ export class InMemoryExecutor implements IExecutor {
 	 * Composes a chain of middleware functions around a node's execution.
 	 * @internal
 	 */
-	public applyMiddleware(middleware: Middleware[], nodeToRun: AbstractNode): MiddlewareNext {
+	public applyMiddleware<T = any>(middleware: Middleware<T>[], nodeToRun: AbstractNode): MiddlewareNext<T> {
 		// The final function in the chain is the actual execution of the node.
-		const runNode: MiddlewareNext = (args: NodeArgs) => {
+		const runNode: MiddlewareNext<T> = (args: NodeArgs) => {
 			return nodeToRun._run({
 				ctx: args.ctx,
 				params: { ...args.params, ...nodeToRun.params },
@@ -132,7 +134,7 @@ export class InMemoryExecutor implements IExecutor {
 			return runNode
 
 		// Build the chain backwards, so the first middleware in the array is the outermost.
-		return middleware.reduceRight<MiddlewareNext>(
+		return middleware.reduceRight<MiddlewareNext<T>>(
 			(next, mw) => (args: NodeArgs) => mw(args, next),
 			runNode,
 		)
