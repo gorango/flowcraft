@@ -1,4 +1,4 @@
-import type { NodeConstructorOptions, NodeOptions } from 'flowcraft'
+import type { NodeConstructorOptions, NodeTypeMap } from 'flowcraft'
 
 // A class representing a single chunk of a document.
 // Using a class demonstrates a common data modeling pattern.
@@ -21,7 +21,7 @@ export class SearchResult {
 
 // A type-safe mapping of our graph node types to their expected `data` payloads.
 // This will be used by the GraphBuilder for compile-time validation.
-export interface RagNodeTypeMap {
+export interface RagNodeTypeMap extends NodeTypeMap {
 	'load-and-chunk': {
 		filePath: string
 	}
@@ -39,6 +39,9 @@ export interface RagNodeTypeMap {
 	}
 }
 
-// The options object passed to each node's constructor by the GraphBuilder.
+// This represents the strongly-typed dependency injection context for this workflow.
+export type RagContext = object
+
+// A helper type for node constructors, combining the data payload with the context.
 export type RagNodeOptions<T extends keyof RagNodeTypeMap>
-	= & NodeConstructorOptions<RagNodeTypeMap[T]> & NodeOptions
+	= NodeConstructorOptions<RagNodeTypeMap[T], RagContext>

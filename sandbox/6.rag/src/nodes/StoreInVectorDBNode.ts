@@ -1,10 +1,10 @@
-import type { NodeArgs, NodeOptions } from 'flowcraft'
-import type { DocumentChunk } from '../types'
+import type { NodeArgs } from 'flowcraft'
+import type { DocumentChunk, RagContext } from '../types'
 import { Node } from 'flowcraft'
 import { CHUNKS, EMBEDDINGS, VECTOR_DB } from './index'
 
 export class StoreInVectorDBNode extends Node {
-	constructor(options?: NodeOptions) {
+	constructor(options?: RagContext) {
 		super(options)
 	}
 

@@ -1,5 +1,5 @@
 import type { AbstractNode, FILTER_FAILED, Logger, NodeArgs } from '../workflow'
-import type { BuildResult, GraphBuilderOptions, GraphEdge, GraphNode, NodeRegistry, TypedNodeRegistry, TypedWorkflowGraph, WorkflowGraph } from './graph.types'
+import type { BuildResult, GraphBuilderOptions, GraphEdge, GraphNode, NodeRegistry, NodeTypeMap, TypedNodeRegistry, TypedWorkflowGraph, WorkflowGraph } from './graph.types'
 import { generateMermaidGraph } from '../utils/mermaid'
 import { DEFAULT_ACTION, Flow, Node, NullLogger } from '../workflow'
 import { ParallelFlow } from './collection'
@@ -12,7 +12,10 @@ import { ParallelFlow } from './collection'
  * @param registry The registry object, where keys are node types and values are `Node` constructors.
  * @returns The same registry object, correctly typed for use with `GraphBuilder`.
  */
-export function createNodeRegistry<T extends { [K in keyof T]: Record<string, any> }>(registry: TypedNodeRegistry<T>): TypedNodeRegistry<T> {
+export function createNodeRegistry<
+	TNodeMap extends NodeTypeMap,
+	TContext = object,
+>(registry: TypedNodeRegistry<TNodeMap, TContext>): TypedNodeRegistry<TNodeMap, TContext> {
 	return registry
 }
 
@@ -77,11 +80,13 @@ class ParallelBranchContainer extends ParallelFlow {
 
 /**
  * Constructs an executable `Flow` from a declarative `WorkflowGraph` definition.
- * It supports a fully type-safe API for compile-time validation of graph definitions
- * and intelligently handles complex patterns like parallel fan-out and fan-in.
- * @template T A `NodeTypeMap` for validating type-safe graph definitions.
+ * @template TNodeMap A `NodeTypeMap` for validating type-safe graph definitions.
+ * @template TContext The shape of the dependency injection context object.
  */
-export class GraphBuilder<T extends { [K in keyof T]: Record<string, any> }> {
+export class GraphBuilder<
+	TNodeMap extends NodeTypeMap,
+	TContext extends { registry?: any } = object,
+> {
 	private registry: Map<string, new (...args: any[]) => AbstractNode>
 	private subWorkflowNodeTypes: string[]
 	private logger: Logger
@@ -93,13 +98,13 @@ export class GraphBuilder<T extends { [K in keyof T]: Record<string, any> }> {
 	 * constructor, useful for dependency injection (e.g., passing a database client or the builder itself).
 	 */
 	// type-safe overload
-	constructor(registry: TypedNodeRegistry<T>, nodeOptionsContext?: Record<string, any>, options?: GraphBuilderOptions, logger?: Logger)
+	constructor(registry: TypedNodeRegistry<TNodeMap, TContext>, nodeOptionsContext?: TContext, options?: GraphBuilderOptions, logger?: Logger)
 	// untyped overload
 	constructor(registry: NodeRegistry, nodeOptionsContext?: Record<string, any>, options?: GraphBuilderOptions, logger?: Logger)
 	// handle both cases
 	constructor(
-		registry: TypedNodeRegistry<T> | NodeRegistry,
-		private nodeOptionsContext: Record<string, any> = {},
+		registry: TypedNodeRegistry<TNodeMap, TContext> | NodeRegistry,
+		private nodeOptionsContext: TContext | Record<string, any> = {},
 		options: GraphBuilderOptions = {},
 		logger: Logger = new NullLogger(),
 	) {
@@ -223,11 +228,11 @@ export class GraphBuilder<T extends { [K in keyof T]: Record<string, any> }> {
 	 * @returns A `BuildResult` object containing the executable `flow` and a `nodeMap`.
 	 */
 	// type-safe overload
-	build(graph: TypedWorkflowGraph<T>): BuildResult
+	build(graph: TypedWorkflowGraph<TNodeMap>): BuildResult
 	// untyped overload
 	build(graph: WorkflowGraph): BuildResult
 	// single implementation that handles both cases
-	build(graph: TypedWorkflowGraph<T> | WorkflowGraph): BuildResult {
+	build(graph: TypedWorkflowGraph<TNodeMap> | WorkflowGraph): BuildResult {
 		const flatGraph = this._flattenGraph(graph as WorkflowGraph)
 
 		const nodeMap = new Map<string, AbstractNode>()

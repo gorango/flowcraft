@@ -22,9 +22,10 @@ This module contains classes that simplify the creation of common and complex wo
 
 - **[Builder API](./builder.md)**: Documentation for the builder classes:
   - `SequenceFlow`: For creating simple, linear workflows.
+  - `ParallelFlow`: For creating concurrent workflows.
   - `BatchFlow`: For processing a collection of items sequentially.
   - `ParallelBatchFlow`: For processing a collection of items concurrently.
-  - `GraphBuilder`: For constructing a `Flow` from a declarative, type-safe graph definition.
+  - `GraphBuilder`: For constructing a `Flow` from a declarative graph, with type-safe dependency injection.
 
 ## Functional API
 

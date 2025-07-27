@@ -1,5 +1,5 @@
 import type { Flow, TypedWorkflowGraph } from 'flowcraft'
-import type { AgentNodeTypeMap } from './types'
+import type { AgentNodeTypeMap, DagContext } from './types'
 import { promises as fs } from 'node:fs'
 import path from 'node:path'
 import { ConsoleLogger, createNodeRegistry, GraphBuilder } from 'flowcraft'
@@ -10,7 +10,7 @@ import {
 	OutputNode,
 } from './nodes'
 
-export const nodeRegistry = createNodeRegistry({
+export const nodeRegistry = createNodeRegistry<AgentNodeTypeMap, DagContext>({
 	'llm-process': LLMProcessNode,
 	'llm-condition': LLMConditionNode,
 	'llm-router': LLMRouterNode,
@@ -20,11 +20,11 @@ export const nodeRegistry = createNodeRegistry({
 export class WorkflowRegistry {
 	private flowCache = new Map<number, Flow>()
 	private graphDatabase = new Map<number, TypedWorkflowGraph<AgentNodeTypeMap>>()
-	private builder: GraphBuilder<AgentNodeTypeMap>
+	private builder: GraphBuilder<AgentNodeTypeMap, DagContext>
 	private isInitialized = false
 
 	private constructor() {
-		this.builder = new GraphBuilder(
+		this.builder = new GraphBuilder<AgentNodeTypeMap, DagContext>(
 			nodeRegistry,
 			{ registry: this },
 			{ subWorkflowNodeTypes: ['sub-workflow'] },

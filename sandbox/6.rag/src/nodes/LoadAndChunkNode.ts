@@ -1,5 +1,5 @@
 import type { NodeArgs } from 'flowcraft'
-import type { RagNodeOptions } from '../types'
+import type { RagContext, RagNodeOptions } from '../types'
 import { promises as fs } from 'node:fs'
 import { Node } from 'flowcraft'
 import { DocumentChunk } from '../types'
@@ -8,7 +8,7 @@ import { CHUNKS, DOCUMENT_PATH } from './index'
 export class LoadAndChunkNode extends Node<string, Map<string, DocumentChunk>> {
 	private filePath: string
 
-	constructor(options: RagNodeOptions<'load-and-chunk'>) {
+	constructor(options: RagNodeOptions<'load-and-chunk'> & RagContext) {
 		super(options)
 		this.filePath = options.data.filePath
 	}

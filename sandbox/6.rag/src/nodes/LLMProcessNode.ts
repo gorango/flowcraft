@@ -1,5 +1,5 @@
 import type { NodeArgs } from 'flowcraft'
-import type { RagNodeOptions, SearchResult } from '../types'
+import type { RagContext, RagNodeOptions, SearchResult } from '../types'
 import { Node } from 'flowcraft'
 import { callLLM, resolveTemplate } from '../utils'
 import { FINAL_ANSWER, keyRegistry, SEARCH_RESULTS } from './index'
@@ -7,7 +7,7 @@ import { FINAL_ANSWER, keyRegistry, SEARCH_RESULTS } from './index'
 export class LLMProcessNode extends Node<string, string> {
 	private data: RagNodeOptions<'llm-process'>['data']
 
-	constructor(options: RagNodeOptions<'llm-process'>) {
+	constructor(options: RagNodeOptions<'llm-process'> & RagContext) {
 		super(options)
 		this.data = options.data
 	}

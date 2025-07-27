@@ -1,14 +1,47 @@
 import type { AbstractNode, Flow, NodeOptions } from '../workflow'
 
+/**
+ * Defines the schema for all custom node types within a specific workflow application.
+ *
+ * It is a map where each key is a string identifier for a node `type`
+ * (e.g., `'llm-process'`), and the value is an object defining the expected
+ * shape of that node's `data` payload.
+ *
+ * By creating an application-specific interface that extends `NodeTypeMap`,
+ * you enable compile-time validation and autocompletion for your declarative
+ * graph definitions. This type is the central generic constraint used by
+ * `TypedWorkflowGraph`, `TypedNodeRegistry`, and `GraphBuilder` to provide a
+ * fully type-safe development experience.
+ *
+ * @example
+ * // 1. Define the data payloads for your application's nodes.
+ * interface MyAppNodeTypeMap extends NodeTypeMap {
+ *   'api-call': { url: string; retries: number };
+ *   'data-transform': { mode: 'uppercase' | 'lowercase' };
+ *   'output': { destination: string };
+ * }
+ *
+ * // 2. Use it to create a type-safe graph definition.
+ * const myGraph: TypedWorkflowGraph<MyAppNodeTypeMap> = {
+ *   nodes: [
+ *     // TypeScript will validate that `data` matches the 'api-call' schema.
+ *     { id: 'fetch', type: 'api-call', data: { url: '/users', retries: 3 } },
+ *     // TypeScript would throw an error on the following line:
+ *     { id: 'bad', type: 'api-call', data: { path: '/users' } } // Missing 'url' and 'retries'
+ *   ],
+ *   edges: [],
+ * };
+ */
 export interface NodeTypeMap { [key: string]: Record<string, any> }
 
 /**
  * The standard options object passed to a Node's constructor by the `GraphBuilder`.
- * @template T The type of the `data` payload for this specific node.
+ * @template TData The type of the `data` payload for this specific node.
+ * @template TContext The type of the dependency injection context.
  */
-export interface NodeConstructorOptions<T> extends NodeOptions {
+export interface NodeConstructorOptions<TData, _TContext = object> extends NodeOptions {
 	/** The `data` payload from the graph definition, with `nodeId` injected for logging/debugging. */
-	data: T & { nodeId: string }
+	data: TData & { nodeId: string }
 	/** A context object containing any dependencies injected into the `GraphBuilder` constructor. */
 	[key: string]: any
 }
@@ -55,11 +88,12 @@ export interface TypedWorkflowGraph<T extends { [K in keyof T]: Record<string, a
 
 /**
  * A type-safe registry that maps a node type string to its corresponding `Node` constructor.
- * TypeScript ensures that the constructor's options match the schema defined in the `NodeTypeMap`.
- * @template T The `NodeTypeMap` that defines all possible node types and their data schemas.
+ * @template TNodeMap The `NodeTypeMap` that defines all possible node types and their data schemas.
+ * @template TContext The type of the dependency injection context passed to each constructor.
  */
-export type TypedNodeRegistry<T extends { [K in keyof T]: Record<string, any> }> = {
-	[K in keyof T]: new (options: NodeConstructorOptions<T[K]>) => AbstractNode
+export type TypedNodeRegistry<TNodeMap extends NodeTypeMap, TContext = object> = {
+	[K in keyof TNodeMap as string extends K ? never : number extends K ? never : K]:
+	new (options: NodeConstructorOptions<TNodeMap[K], TContext> & TContext) => AbstractNode
 }
 
 /**

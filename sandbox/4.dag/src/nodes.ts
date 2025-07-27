@@ -1,13 +1,7 @@
-import type { NodeArgs, NodeOptions } from 'flowcraft'
-import type { WorkflowRegistry } from './registry'
-import type { AgentNodeTypeMap } from './types'
+import type { NodeArgs } from 'flowcraft'
+import type { AiNodeOptions, DagContext } from './types'
 import { DEFAULT_ACTION, Node } from 'flowcraft'
 import { callLLM, resolveTemplate } from './utils'
-
-interface AiNodeOptions<T extends keyof AgentNodeTypeMap> extends NodeOptions {
-	data: AgentNodeTypeMap[T] & { nodeId: string }
-	registry?: WorkflowRegistry
-}
 
 /**
  * A generic node that executes an LLM prompt.
@@ -16,7 +10,7 @@ interface AiNodeOptions<T extends keyof AgentNodeTypeMap> extends NodeOptions {
 export class LLMProcessNode extends Node<string, string> {
 	private data: AiNodeOptions<'llm-process'>['data']
 
-	constructor(options: AiNodeOptions<'llm-process'>) {
+	constructor(options: AiNodeOptions<'llm-process'> & DagContext) {
 		super(options)
 		this.data = options.data
 	}
@@ -69,7 +63,7 @@ export class LLMProcessNode extends Node<string, string> {
 export class LLMConditionNode extends Node<string, string, 'true' | 'false'> {
 	private data: AiNodeOptions<'llm-condition'>['data']
 
-	constructor(options: AiNodeOptions<'llm-condition'>) {
+	constructor(options: AiNodeOptions<'llm-condition'> & DagContext) {
 		super(options)
 		this.data = options.data
 	}
@@ -95,7 +89,7 @@ export class LLMConditionNode extends Node<string, string, 'true' | 'false'> {
 export class LLMRouterNode extends Node<string, string, string> {
 	private data: AiNodeOptions<'llm-router'>['data']
 
-	constructor(options: AiNodeOptions<'llm-router'>) {
+	constructor(options: AiNodeOptions<'llm-router'> & DagContext) {
 		super(options)
 		this.data = options.data
 	}
@@ -117,7 +111,7 @@ export class LLMRouterNode extends Node<string, string, string> {
 export class OutputNode extends Node<string, void> {
 	private data: AiNodeOptions<'output'>['data']
 
-	constructor(options: AiNodeOptions<'output'>) {
+	constructor(options: AiNodeOptions<'output'> & DagContext) {
 		super(options)
 		this.data = options.data
 	}

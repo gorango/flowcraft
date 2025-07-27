@@ -97,12 +97,12 @@ When you extend `ParallelBatchFlow`, you must implement the following:
 
 ## `GraphBuilder`
 
-A powerful builder that constructs an executable `Flow` from a declarative `WorkflowGraph` definition (e.g., from a JSON file). It supports a fully type-safe API for compile-time validation of graph definitions.
+A powerful builder that constructs an executable `Flow` from a declarative `WorkflowGraph` definition (e.g., from a JSON file). It supports a fully type-safe API for compile-time validation of graph definitions and dependency injection.
 
 > [!IMPORTANT]
-> To leverage compile-time type safety, you must use the `createNodeRegistry` helper and define a `NodeTypeMap` that maps your node type strings to their expected `data` payloads. This prevents configuration errors before you even run your code.
+> To leverage compile-time type safety, you must use the `createNodeRegistry` helper. By defining a `NodeTypeMap` (for your node `data` payloads) and a `TContext` type (for your shared dependencies), TypeScript can validate your entire graph and dependency usage at compile time, eliminating a whole category of runtime configuration errors.
 >
-> (See how the **[Rag Agent](https://github.com/gorango/flowcraft/tree/master/sandbox/6.rag/)** implements a simple node registry; the **[Dynamic AI Agent](https://github.com/gorango/flowcraft/tree/master/sandbox/4.dag/)** even demonstrates type-safety despite using *dynamic graphs*.)
+> (See how the **[Rag Agent](https://github.com/gorango/flowcraft/tree/master/sandbox/6.rag/)** implements a simple node registry; the **[Dynamic AI Agent](https://github.com/gorango/flowcraft/tree/master/sandbox/5.distributed/)** even demonstrates type-safety despite using *dynamic graphs*.)
 
 ### Sub-Workflow Composition (Graph Inlining)
 
@@ -116,13 +116,54 @@ This powerful, build-time process creates a single, flattened graph, which simpl
 
 ### Constructor
 
-`new GraphBuilder(registry, nodeOptionsContext?, options?, logger?)`
+`new GraphBuilder<TNodeMap, TContext>(registry, nodeOptionsContext?, options?, logger?)`
 
--   `registry: TypedNodeRegistry | NodeRegistry`: An object or `Map` where keys are `type` strings from the graph definition and values are the corresponding `Node` class constructors. For type-safety, use the `createNodeRegistry` helper.
--   `nodeOptionsContext?: Record<string, any>`: An optional object passed to every node's constructor. This is crucial for dependency injection, such as passing a `WorkflowRegistry` instance that the builder can use to resolve sub-workflow graphs.
+-   `registry: TypedNodeRegistry<TNodeMap, TContext> | NodeRegistry`: An object or `Map` where keys are `type` strings from the graph definition and values are the corresponding `Node` class constructors. For type-safety, use the `createNodeRegistry` helper.
+-   `nodeOptionsContext?: TContext`: An optional object passed to every node's constructor, merged with the node's `data`. This is the primary mechanism for **type-safe dependency injection**, allowing you to pass shared services like database clients or API handlers to all nodes.
 -   `options?: { subWorkflowNodeTypes?: string[] }`: An optional configuration object.
     -   `subWorkflowNodeTypes`: An array of node `type` strings that should be treated as composable sub-workflows. The builder will inline any node whose type is in this list.
 -   `logger?: Logger`: An optional `Logger` instance. If provided, the `GraphBuilder` will automatically generate and log a Mermaid.js diagram of the final, flattened graph every time `.build()` is called. This is an invaluable tool for debugging.
+
+### Type-Safe Dependency Injection Example
+
+```typescript
+import { createNodeRegistry, GraphBuilder, Node, NodeConstructorOptions } from 'flowcraft'
+
+// 1. Define the shape of your dependencies
+interface MyAppContext { api: { fetch: (url: string) => Promise<any> } }
+
+// 2. Define your node type map
+interface MyNodeTypeMap {
+	'fetch-user': { userId: number }
+}
+
+// 3. Create a node that uses the injected context
+class FetchUserNode extends Node {
+	private userId: number
+	private api: MyAppContext['api']
+
+	constructor(options: NodeConstructorOptions<MyNodeTypeMap['fetch-user'], MyAppContext> & MyAppContext) {
+		super(options)
+		this.userId = options.data.userId
+		// The `api` dependency is available and fully typed!
+		this.api = options.api
+	}
+
+	async exec() {
+		return this.api.fetch(`/users/${this.userId}`)
+	}
+}
+
+// 4. Create a type-safe registry with the context
+const registry = createNodeRegistry<MyNodeTypeMap, MyAppContext>({
+	'fetch-user': FetchUserNode,
+})
+
+// 5. Instantiate the builder with the dependencies
+const builder = new GraphBuilder(registry, {
+	api: { fetch: async url => ({ name: 'Alice' }) },
+})
+```
 
 ### Methods
 

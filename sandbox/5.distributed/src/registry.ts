@@ -1,5 +1,5 @@
 import type { AbstractNode, Flow, TypedWorkflowGraph } from 'flowcraft'
-import type { AgentNodeTypeMap } from './types'
+import type { AgentNodeTypeMap, DistributedContext } from './types'
 import { promises as fs } from 'node:fs'
 import path from 'node:path'
 import { ConsoleLogger, createNodeRegistry, GraphBuilder } from 'flowcraft'
@@ -10,7 +10,7 @@ import {
 	OutputNode,
 } from './nodes'
 
-export const nodeRegistry = createNodeRegistry({
+export const nodeRegistry = createNodeRegistry<AgentNodeTypeMap, DistributedContext>({
 	'llm-process': LLMProcessNode,
 	'llm-condition': LLMConditionNode,
 	'llm-router': LLMRouterNode,
@@ -22,10 +22,10 @@ export class WorkflowRegistry {
 	private nodeMapCache = new Map<number, Map<string, AbstractNode>>()
 	private predecessorCountCache = new Map<number, Map<string, number>>()
 	private graphDatabase = new Map<number, TypedWorkflowGraph<AgentNodeTypeMap>>()
-	private builder: GraphBuilder<AgentNodeTypeMap>
+	private builder: GraphBuilder<AgentNodeTypeMap, DistributedContext>
 
 	private constructor() {
-		this.builder = new GraphBuilder(
+		this.builder = new GraphBuilder<AgentNodeTypeMap, DistributedContext>(
 			nodeRegistry,
 			{ registry: this },
 			{ subWorkflowNodeTypes: ['sub-workflow'] },

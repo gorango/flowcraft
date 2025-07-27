@@ -1,5 +1,5 @@
 import type { TypedNodeRegistry } from 'flowcraft'
-import type { RagNodeTypeMap } from './types'
+import type { RagContext, RagNodeTypeMap } from './types'
 import { createNodeRegistry, GraphBuilder } from 'flowcraft'
 import {
 	GenerateEmbeddingsNode,
@@ -9,8 +9,7 @@ import {
 	VectorSearchNode,
 } from './nodes'
 
-// Create a type-safe registry that maps our node type strings to their classes.
-export const nodeRegistry = createNodeRegistry({
+export const nodeRegistry = createNodeRegistry<RagNodeTypeMap, RagContext>({
 	'load-and-chunk': LoadAndChunkNode,
 	'generate-embeddings': GenerateEmbeddingsNode,
 	'store-in-db': StoreInVectorDBNode,
@@ -20,4 +19,4 @@ export const nodeRegistry = createNodeRegistry({
 
 // Instantiate the GraphBuilder with our registry.
 // This builder will be used in main.ts to construct the flow.
-export const ragGraphBuilder = new GraphBuilder<RagNodeTypeMap>(nodeRegistry)
+export const ragGraphBuilder = new GraphBuilder<RagNodeTypeMap, RagContext>(nodeRegistry)

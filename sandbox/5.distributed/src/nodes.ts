@@ -1,14 +1,8 @@
-import type { DEFAULT_ACTION, NodeArgs, NodeOptions } from 'flowcraft'
-import type { WorkflowRegistry } from './registry'
-import type { AgentNodeTypeMap } from './types'
+import type { DEFAULT_ACTION, NodeArgs } from 'flowcraft'
+import type { AiNodeOptions, DistributedContext } from './types'
 import { Node } from 'flowcraft'
 import { FINAL_ACTION } from './types'
 import { callLLM, resolveTemplate } from './utils'
-
-interface AiNodeOptions<T extends keyof AgentNodeTypeMap> extends NodeOptions {
-	data: AgentNodeTypeMap[T] & { nodeId: string }
-	registry?: WorkflowRegistry
-}
 
 /**
  * A generic node that executes an LLM prompt.
@@ -17,7 +11,7 @@ interface AiNodeOptions<T extends keyof AgentNodeTypeMap> extends NodeOptions {
 export class LLMProcessNode extends Node<string, string> {
 	private data: AiNodeOptions<'llm-process'>['data']
 
-	constructor(options: AiNodeOptions<'llm-process'>) {
+	constructor(options: AiNodeOptions<'llm-process'> & DistributedContext) {
 		super(options)
 		this.data = options.data
 	}
@@ -64,7 +58,7 @@ export class LLMProcessNode extends Node<string, string> {
 export class LLMConditionNode extends Node<string, string, 'true' | 'false'> {
 	private data: AiNodeOptions<'llm-condition'>['data']
 
-	constructor(options: AiNodeOptions<'llm-condition'>) {
+	constructor(options: AiNodeOptions<'llm-condition'> & DistributedContext) {
 		super(options)
 		this.data = options.data
 	}
@@ -90,7 +84,7 @@ export class LLMConditionNode extends Node<string, string, 'true' | 'false'> {
 export class LLMRouterNode extends Node<string, string, string> {
 	private data: AiNodeOptions<'llm-router'>['data']
 
-	constructor(options: AiNodeOptions<'llm-router'>) {
+	constructor(options: AiNodeOptions<'llm-router'> & DistributedContext) {
 		super(options)
 		this.data = options.data
 	}
@@ -112,7 +106,7 @@ export class LLMRouterNode extends Node<string, string, string> {
 export class OutputNode extends Node<string, void, typeof FINAL_ACTION | string | typeof DEFAULT_ACTION> {
 	private data: AiNodeOptions<'output'>['data']
 
-	constructor(options: AiNodeOptions<'output'>) {
+	constructor(options: AiNodeOptions<'output'> & DistributedContext) {
 		super(options)
 		this.data = options.data
 	}

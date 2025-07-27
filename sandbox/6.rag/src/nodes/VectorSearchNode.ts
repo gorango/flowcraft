@@ -1,5 +1,5 @@
 import type { NodeArgs } from 'flowcraft'
-import type { RagNodeOptions } from '../types'
+import type { RagContext, RagNodeOptions } from '../types'
 import { Node } from 'flowcraft'
 import { SearchResult } from '../types'
 import { cosineSimilarity, getEmbedding } from '../utils'
@@ -9,7 +9,7 @@ export class VectorSearchNode extends Node<void, SearchResult[]> {
 	private question: string
 	private topK: number
 
-	constructor(options: RagNodeOptions<'vector-search'>) {
+	constructor(options: RagNodeOptions<'vector-search'> & RagContext) {
 		super(options)
 		this.question = options.data.question
 		this.topK = options.data.topK

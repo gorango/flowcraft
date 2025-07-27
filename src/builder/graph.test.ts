@@ -1,5 +1,5 @@
 import type { AbstractNode, Logger, NodeArgs, RunOptions } from '../workflow'
-import type { NodeConstructorOptions, NodeRegistry, TypedWorkflowGraph, WorkflowGraph } from './graph.types'
+import type { NodeConstructorOptions, NodeRegistry, NodeTypeMap, TypedNodeRegistry, TypedWorkflowGraph, WorkflowGraph } from './graph.types'
 import { describe, expect, it, vi } from 'vitest'
 import { ConsoleLogger, contextKey, Node, TypedContext } from '../workflow'
 import { createNodeRegistry, GraphBuilder } from './graph'
@@ -340,16 +340,20 @@ describe('graphBuilder with parallel start nodes', () => {
 	const B = contextKey<string>('b')
 	const RESULT = contextKey<string>('result')
 
-	interface ParallelTestMap {
+	interface ParallelTestMap extends NodeTypeMap {
 		'set-value': { key: 'a' | 'b', value: string }
 		'combine': Record<string, never>
+	}
+
+	interface ParallelTestContext {
+		registry: TypedNodeRegistry<ParallelTestMap, ParallelTestContext>
 	}
 
 	class SetValueNode extends Node {
 		private key: 'a' | 'b'
 		private value: string
-		constructor(options: NodeConstructorOptions<ParallelTestMap['set-value']>) {
-			super(options) // Pass options up for potential retries etc.
+		constructor(options: NodeConstructorOptions<ParallelTestMap['set-value'], ParallelTestContext> & ParallelTestContext) {
+			super(options)
 			this.key = options.data.key
 			this.value = options.data.value
 		}
@@ -361,7 +365,7 @@ describe('graphBuilder with parallel start nodes', () => {
 	}
 
 	class CombineNode extends Node {
-		constructor(options: NodeConstructorOptions<ParallelTestMap['combine']>) {
+		constructor(options: NodeConstructorOptions<ParallelTestMap['combine'], ParallelTestContext> & ParallelTestContext) {
 			super(options)
 		}
 
@@ -372,7 +376,7 @@ describe('graphBuilder with parallel start nodes', () => {
 		}
 	}
 
-	const parallelRegistry = createNodeRegistry<ParallelTestMap>({
+	const parallelRegistry = createNodeRegistry<ParallelTestMap, ParallelTestContext>({
 		'set-value': SetValueNode,
 		'combine': CombineNode,
 	})
@@ -399,7 +403,7 @@ describe('graphBuilder with parallel start nodes', () => {
 		const { flow } = builder.build(graph)
 		const ctx = new TypedContext()
 
-		await flow.run(ctx, runOptions)
+		await flow.run(ctx)
 
 		expect(ctx.get(RESULT)).toBe('Hello-World')
 	})

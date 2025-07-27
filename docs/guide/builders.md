@@ -154,4 +154,13 @@ class TranslateFlow extends ParallelBatchFlow {
 2. **Create a Node Registry**: You map the string `type` from your graph nodes to the actual `Node` classes in your code.
 3. **Build the Flow**: You instantiate `GraphBuilder` with the registry and call `.build(graph)`.
 
-The `GraphBuilder` intelligently analyzes the graph's structure, automatically handling parallel start nodes, mid-flow fan-outs, and fan-ins. For a complete, in-depth example, see the **[Dynamic AI Agent example (`sandbox/4.dag/`)](https://github.com/gorango/flowcraft/tree/master/sandbox/4.dag/)**.
+The `GraphBuilder` intelligently analyzes the graph's structure, automatically handling parallel start nodes, mid-flow fan-outs, and fan-ins.
+
+> [!TIP]
+> **Type-Safe Dependency Injection**
+>
+> The `GraphBuilder` also supports passing a `nodeOptionsContext` object to its constructor. This object is passed to the constructor of *every* node created by the builder. This is the primary pattern for dependency injection, allowing you to provide shared services (like a database client, an API service, or a configuration object) to all your nodes in a **fully type-safe** way.
+>
+> By defining a context type, TypeScript will ensure you provide the correct dependencies when you create the builder and that your nodes receive them with the correct types.
+
+For a complete, in-depth example, see the **[Dynamic AI Agent example (`sandbox/4.dag/`)](https://github.com/gorango/flowcraft/tree/master/sandbox/4.dag/)**.
