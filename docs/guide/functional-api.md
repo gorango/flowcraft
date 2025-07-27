@@ -1,18 +1,18 @@
 # Functional API
 
-While Cascade's core is built on composable classes like `Node` and `Flow`, it also provides a suite of functional helpers for developers who prefer a more functional programming style. These helpers allow you to define nodes and simple pipelines without explicitly creating new classes.
+While Flowcraft's core is built on composable classes like `Node` and `Flow`, it also provides a suite of functional helpers for developers who prefer a more functional programming style. These helpers allow you to define nodes and simple pipelines without explicitly creating new classes.
 
-All helpers are imported from the main `cascade` package.
+All helpers are imported from the main `flowcraft` package.
 
 ```typescript
 import {
-  mapNode,
-  contextNode,
-  transformNode,
-  pipeline,
-  lens,
-  composeContext
-} from 'cascade'
+	composeContext,
+	contextNode,
+	lens,
+	mapNode,
+	pipeline,
+	transformNode
+} from 'flowcraft'
 ```
 
 ## Creating Nodes from Functions
@@ -30,7 +30,7 @@ Use `mapNode` for simple, stateless transformations where the logic doesn't need
 #### Example
 
 ```typescript
-import { mapNode, Flow } from 'cascade'
+import { Flow, mapNode } from 'flowcraft'
 
 // A simple function that adds two numbers from the params
 const add = (params: { a: number, b: number }) => params.a + params.b
@@ -53,14 +53,14 @@ Use `contextNode` when your node's logic depends on state stored in the `Context
 #### Example
 
 ```typescript
-import { contextNode, contextKey, TypedContext, Flow } from 'cascade'
+import { contextKey, contextNode, Flow, TypedContext } from 'flowcraft'
 
 const LANGUAGE = contextKey<'en' | 'es'>('language')
 
 // A function that uses the context to determine the greeting
-const greeter = (ctx, params: { name: string }) => {
-  const lang = ctx.get(LANGUAGE) || 'en'
-  return lang === 'es' ? `Hola, ${params.name}` : `Hello, ${params.name}`
+function greeter(ctx, params: { name: string }) {
+	const lang = ctx.get(LANGUAGE) || 'en'
+	return lang === 'es' ? `Hola, ${params.name}` : `Hello, ${params.name}`
 }
 
 // Create a Node from the context-aware function
@@ -83,16 +83,16 @@ Use `pipeline` as a more readable, functional-style alternative to `new Sequence
 #### Example
 
 ```typescript
-import { pipeline, mapNode, contextNode } from 'cascade'
+import { contextNode, mapNode, pipeline } from 'flowcraft'
 
 const fetchNode = mapNode(() => ({ user: 'Alice' }))
-const processNode = mapNode((data) => `Processed ${data.user}`)
+const processNode = mapNode(data => `Processed ${data.user}`)
 const saveNode = contextNode((ctx, result) => { /* save result */ })
 
 const dataPipeline = pipeline(
-  fetchNode,
-  processNode,
-  saveNode
+	fetchNode,
+	processNode,
+	saveNode
 )
 
 await dataPipeline.run(context)
@@ -115,7 +115,7 @@ Use this combination for declaratively setting up or mutating state in the `Cont
 #### Example
 
 ```typescript
-import { transformNode, lens, contextKey } from 'cascade'
+import { contextKey, lens, transformNode } from 'flowcraft'
 
 const USER_ID = contextKey<string>('user_id')
 const ATTEMPTS = contextKey<number>('attempts')
@@ -127,7 +127,7 @@ const attemptsLens = lens(ATTEMPTS)
 // A node that sets an initial user and resets the attempt counter.
 // The `set` and `update` methods from the lens return `ContextTransform` functions.
 const setupContextNode = transformNode(
-  userIdLens.set('user-123'),
-  attemptsLens.update(current => (current || 0) + 1) // Safely increments
+	userIdLens.set('user-123'),
+	attemptsLens.update(current => (current || 0) + 1) // Safely increments
 )
 ```

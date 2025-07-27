@@ -1,7 +1,7 @@
-import type { Context } from 'cascade'
+import type { Context } from 'flowcraft'
 import process from 'node:process'
-import { ConsoleLogger, TypedContext } from 'cascade'
 import dotenv from 'dotenv'
+import { ConsoleLogger, TypedContext } from 'flowcraft'
 import { createArticleFlow } from './flow'
 import { FINAL_ARTICLE, TOPIC } from './nodes'
 

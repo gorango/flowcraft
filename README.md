@@ -1,4 +1,4 @@
-# Cascade: A Workflow Framework
+# Flowcraft: A Workflow Framework
 
 Build complex, multi-step processes, from simple sequences to dynamic, graph-driven AI agents.
 
@@ -31,7 +31,7 @@ Build complex, multi-step processes, from simple sequences to dynamic, graph-dri
 ## Installation
 
 ```bash
-npm install gorango/cascade
+npm install flowcraft
 ```
 
 ## Quick Start
@@ -39,13 +39,13 @@ npm install gorango/cascade
 Create and run a simple workflow in a few lines of code.
 
 ```typescript
-import { Node, Flow } from 'cascade'
+import { Flow, Node } from 'flowcraft'
 
 const greetNode = new Node()
-  // The exec method contains the core logic of the node.
-  .exec(() => 'Hello, World!')
-  // Functional helpers make common tasks easy.
-  .tap(console.log)
+// The exec method contains the core logic of the node.
+	.exec(() => 'Hello, World!')
+// Functional helpers make common tasks easy.
+	.tap(console.log)
 
 const flow = new Flow(greetNode)
 // Run using the default InMemoryExecutor.

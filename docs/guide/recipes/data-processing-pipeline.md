@@ -1,6 +1,6 @@
 # Recipes: Creating a Data Processing Pipeline
 
-A common use case for a workflow is to process a piece of data through a series of transformation, validation, and storage steps. Cascade's fluent API on the `Node` class (`.map`, `.filter`, `.tap`, `.toContext`) is perfect for this, allowing you to define a clear, readable, and powerful pipeline.
+A common use case for a workflow is to process a piece of data through a series of transformation, validation, and storage steps. Flowcraft's fluent API on the `Node` class (`.map`, `.filter`, `.tap`, `.toContext`) is perfect for this, allowing you to define a clear, readable, and powerful pipeline.
 
 > [!IMPORTANT]
 > **Key Concept: Immutable Chains**
@@ -54,12 +54,12 @@ We can define this entire pipeline by chaining methods, starting from a simple n
 We'll use a `ValueNode` (a simple `Node` that just returns a value from its `exec` method) as the starting point for our chain.
 
 ```typescript
-import { Node, contextKey, TypedContext, Flow, FILTER_FAILED } from 'cascade'
+import { contextKey, FILTER_FAILED, Flow, Node, TypedContext } from 'flowcraft'
 
 // A simple node that just returns a value, to start our chain
 class ValueNode<T> extends Node<void, T> {
-  constructor(private value: T) { super() }
-  async exec(): Promise<T> { return this.value }
+	constructor(private value: T) { super() }
+	async exec(): Promise<T> { return this.value }
 }
 
 // Define context keys for our results
@@ -71,15 +71,15 @@ const rawUser = { id: 42, firstName: 'jane', lastName: 'doe', status: 'active' }
 
 // --- The Pipeline ---
 const userProcessingPipeline = new ValueNode(rawUser)
-  .tap(user => console.log(`[DEBUG] Processing user ID: ${user.id}`))
-  .map(user => ({
-    userId: user.id,
-    fullName: `${user.firstName.charAt(0).toUpperCase()}${user.firstName.slice(1)} ${user.lastName.toUpperCase()}`,
-    isActive: user.status === 'active',
-  }))
-  .filter(processedUser => processedUser.isActive) // <-- This is our conditional gate
-  .map(activeUser => `Welcome, ${activeUser.fullName}!`)
-  .toContext(PROCESSED_USER) // <-- This only runs if the filter passes
+	.tap(user => console.log(`[DEBUG] Processing user ID: ${user.id}`))
+	.map(user => ({
+		userId: user.id,
+		fullName: `${user.firstName.charAt(0).toUpperCase()}${user.firstName.slice(1)} ${user.lastName.toUpperCase()}`,
+		isActive: user.status === 'active',
+	}))
+	.filter(processedUser => processedUser.isActive) // <-- This is our conditional gate
+	.map(activeUser => `Welcome, ${activeUser.fullName}!`)
+	.toContext(PROCESSED_USER) // <-- This only runs if the filter passes
 ```
 
 ### 2. Wiring the Branches
@@ -89,8 +89,8 @@ The `.filter()` method creates a branch. The `DEFAULT_ACTION` path continues the
 ```typescript
 // A node to handle the case where the filter fails
 const handleInactiveUser = new ValueNode(rawUser)
-  .map(user => user.id)
-  .toContext(FAILED_USER_ID)
+	.map(user => user.id)
+	.toContext(FAILED_USER_ID)
 
 // Connect the failure path
 userProcessingPipeline.next(handleInactiveUser, FILTER_FAILED)

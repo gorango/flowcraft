@@ -1,6 +1,6 @@
 # Advanced RAG Agent with Document Analysis
 
-This example demonstrates a sophisticated Retrieval-Augmented Generation (RAG) agent built with Cascade. The workflow ingests and analyzes a document, uses embeddings to find relevant information, and generates a precise answer to a user's question.
+This example demonstrates a sophisticated Retrieval-Augmented Generation (RAG) agent built with Flowcraft. The workflow ingests and analyzes a document, uses embeddings to find relevant information, and generates a precise answer to a user's question.
 
 This project serves two main purposes:
 
@@ -35,7 +35,7 @@ This project serves two main purposes:
     npm start
     ```
 
-    The application will process the `documents/sample-cascade.txt` file and answer a hard-coded question. You can change the question in `src/main.ts`.
+    The application will process the `documents/sample-flowcraft.txt` file and answer a hard-coded question. You can change the question in `src/main.ts`.
 
 ## How It Works
 

@@ -1,4 +1,4 @@
-import { DEFAULT_ACTION, Flow, generateMermaidGraph, Node } from 'cascade'
+import { DEFAULT_ACTION, Flow, generateMermaidGraph, Node } from 'flowcraft'
 
 // Re-create the Research Agent flow from the README
 class DecideActionNode extends Node {

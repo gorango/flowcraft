@@ -1,7 +1,7 @@
-import type { NodeArgs, NodeOptions } from 'cascade'
+import type { NodeArgs, NodeOptions } from 'flowcraft'
 import type { WorkflowRegistry } from './registry'
 import type { AgentNodeTypeMap } from './types'
-import { DEFAULT_ACTION, Node } from 'cascade'
+import { DEFAULT_ACTION, Node } from 'flowcraft'
 import { callLLM, resolveTemplate } from './utils'
 
 interface AiNodeOptions<T extends keyof AgentNodeTypeMap> extends NodeOptions {

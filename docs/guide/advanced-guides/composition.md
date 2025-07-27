@@ -1,8 +1,8 @@
 # Composition
 
-One of the most powerful features of Cascade is its composability. Because a `Flow` is itself a type of `Node`, you can treat an entire workflow as a single building block within a larger, more complex workflow.
+One of the most powerful features of Flowcraft is its composability. Because a `Flow` is itself a type of `Node`, you can treat an entire workflow as a single building block within a larger, more complex workflow.
 
-Cascade supports two primary models for composition, each suited to different use cases.
+Flowcraft supports two primary models for composition, each suited to different use cases.
 
 ## 1. Programmatic Composition (In-Memory)
 
@@ -18,12 +18,12 @@ When you build workflows programmatically (by instantiating `Node` and `Flow` cl
 // --- sub-flow.ts ---
 // A sub-flow that adds 10, multiplies by 2, and returns an action.
 export function createMathFlow(): Flow {
-  const addNode = new Node().exec(async ({ params }) => params.input + 10).toContext(MATH_VALUE)
-  const multiplyNode = new Node().exec(async ({ ctx }) => ctx.get(MATH_VALUE)! * 2).toContext(MATH_VALUE)
-  const checkNode = new CheckResultNode() // Returns 'over_50' or 'under_50'
+	const addNode = new Node().exec(async ({ params }) => params.input + 10).toContext(MATH_VALUE)
+	const multiplyNode = new Node().exec(async ({ ctx }) => ctx.get(MATH_VALUE)! * 2).toContext(MATH_VALUE)
+	const checkNode = new CheckResultNode() // Returns 'over_50' or 'under_50'
 
-  addNode.next(multiplyNode).next(checkNode)
-  return new Flow(addNode)
+	addNode.next(multiplyNode).next(checkNode)
+	return new Flow(addNode)
 }
 
 // --- main.ts ---
@@ -41,7 +41,7 @@ await parentFlow.withParams({ input: 20 }).run(new TypedContext()) // "Result wa
 
 ## 2. Declarative Composition with `GraphBuilder`
 
-For complex, declarative, and distributed workflows, Cascade uses a more powerful **"Graph Inlining"** pattern. This is the recommended approach for building scalable systems.
+For complex, declarative, and distributed workflows, Flowcraft uses a more powerful **"Graph Inlining"** pattern. This is the recommended approach for building scalable systems.
 
 > [!IMPORTANT]
 > **You must explicitly tell the builder which node types represent sub-workflows** by passing them in its constructor. This gives you the flexibility to use semantically rich names like `"search-workflow"` or `"process-document-pipeline"`.

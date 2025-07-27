@@ -2,7 +2,7 @@
 
 As your workflows grow in complexity, it becomes crucial to ensure their structural integrity before they are ever executed. A graph with a cycle, an orphaned node, or an incorrect connection can lead to unexpected runtime behavior or infinite loops.
 
-Cascade provides a powerful, lightweight, and **type-safe** utility library for performing static analysis and validation on your declarative `WorkflowGraph` definitions. This allows you to catch errors early, enforce best practices, and build more reliable systems.
+Flowcraft provides a powerful, lightweight, and **type-safe** utility library for performing static analysis and validation on your declarative `WorkflowGraph` definitions. This allows you to catch errors early, enforce best practices, and build more reliable systems.
 
 ## The `analyzeGraph` Utility
 
@@ -13,7 +13,7 @@ The foundation of the validation library is the `analyzeGraph` function. This is
 -   **`cycles`**: An array of any cycles found, where each cycle is an array of node IDs.
 
 ```typescript
-import { analyzeGraph } from 'cascade'
+import { analyzeGraph } from 'flowcraft'
 import { myGraph } from './my-workflows'
 
 const analysis = analyzeGraph(myGraph)
@@ -35,7 +35,7 @@ This factory function is the primary tool for building custom validators. It tak
 
 ### Built-in Validators
 
-Cascade includes a pre-built validator for the most common and critical graph error:
+Flowcraft includes a pre-built validator for the most common and critical graph error:
 
 -   `checkForCycles`: A validator that checks the analysis for any cycles and returns a `ValidationError` for each one found.
 
@@ -49,53 +49,53 @@ Let's create a custom validation function for our application that enforces a se
 3.  Nodes of type `condition` must have exactly one input.
 
 ```typescript
-import {
-  analyzeGraph,
-  createNodeRule,
-  checkForCycles,
-  ValidationError,
-  TypedWorkflowGraph
-} from 'cascade'
 import type { MyAppNodeTypeMap } from './my-types' // Your application's node types
+import {
+	analyzeGraph,
+	checkForCycles,
+	createNodeRule,
+	TypedWorkflowGraph,
+	ValidationError
+} from 'flowcraft'
 
 // --- 1. Define the validation ruleset for our application ---
 const myRules = [
-  // Use the built-in cycle checker
-  checkForCycles,
+	// Use the built-in cycle checker
+	checkForCycles,
 
-  // Rule: 'output' nodes must be terminal.
-  createNodeRule<MyAppNodeTypeMap>(
-    'Output must be terminal',
-    node => node.type === 'output',
-    node => ({
-      valid: node.outDegree === 0,
-      message: `Output node '${node.id}' cannot have outgoing connections.`
-    })
-  ),
+	// Rule: 'output' nodes must be terminal.
+	createNodeRule<MyAppNodeTypeMap>(
+		'Output must be terminal',
+		node => node.type === 'output',
+		node => ({
+			valid: node.outDegree === 0,
+			message: `Output node '${node.id}' cannot have outgoing connections.`
+		})
+	),
 
-  // Rule: 'condition' nodes must have exactly one input.
-  createNodeRule<MyAppNodeTypeMap>(
-    'Condition needs one input',
-    node => node.type === 'condition',
-    node => ({
-      valid: node.inDegree === 1,
-      message: `Condition node '${node.id}' must have exactly one input, but has ${node.inDegree}.`
-    })
-  ),
+	// Rule: 'condition' nodes must have exactly one input.
+	createNodeRule<MyAppNodeTypeMap>(
+		'Condition needs one input',
+		node => node.type === 'condition',
+		node => ({
+			valid: node.inDegree === 1,
+			message: `Condition node '${node.id}' must have exactly one input, but has ${node.inDegree}.`
+		})
+	),
 ]
 
 /**
  * The main validation function for our application.
  */
 function validateMyWorkflow(graph: TypedWorkflowGraph<MyAppNodeTypeMap>): { isValid: boolean, errors: ValidationError[] } {
-  const analysis = analyzeGraph(graph)
-  // Apply every rule in the ruleset to the graph analysis
-  const errors = myRules.flatMap(rule => rule(analysis, graph))
+	const analysis = analyzeGraph(graph)
+	// Apply every rule in the ruleset to the graph analysis
+	const errors = myRules.flatMap(rule => rule(analysis, graph))
 
-  return {
-    isValid: errors.length === 0,
-    errors,
-  }
+	return {
+		isValid: errors.length === 0,
+		errors,
+	}
 }
 ```
 
@@ -113,12 +113,12 @@ This is the most powerful way to use the library. By defining a `NodeTypeMap` an
 **Example**: Let's ensure all our `api-call` nodes have a valid `retries` property.
 
 ```typescript
-import { createNodeRule, isNodeType, TypedWorkflowGraph } from 'cascade'
+import { createNodeRule, isNodeType, TypedWorkflowGraph } from 'flowcraft'
 
 // 1. Define your application's specific node types
 interface MyAppNodeTypeMap {
-    'api-call': { url: string, retries: number }
-    'output': { destination: string }
+	'api-call': { url: string, retries: number }
+	'output': { destination: string }
 }
 
 // Your graph is strongly typed
@@ -126,15 +126,15 @@ const myGraph: TypedWorkflowGraph<MyAppNodeTypeMap> = { /* ... */ }
 
 // 2. Use the `isNodeType` helper for a clean, readable filter
 const rule_apiRetries = createNodeRule<MyAppNodeTypeMap>(
-    'API calls must have retries',
-    // The helper creates the type guard for you!
-    isNodeType('api-call'),
-    (node) => {
-        // Because of the type guard, `node` is correctly narrowed.
-        // `node.data.retries` is fully typed and autocompletes in your IDE!
-        const valid = node.data.retries > 0
-        return { valid, message: `API call '${node.id}' must have at least 1 retry.` }
-    }
+	'API calls must have retries',
+	// The helper creates the type guard for you!
+	isNodeType('api-call'),
+	(node) => {
+		// Because of the type guard, `node` is correctly narrowed.
+		// `node.data.retries` is fully typed and autocompletes in your IDE!
+		const valid = node.data.retries > 0
+		return { valid, message: `API call '${node.id}' must have at least 1 retry.` }
+	}
 )
 ```
 
@@ -143,19 +143,18 @@ const rule_apiRetries = createNodeRule<MyAppNodeTypeMap>(
 If you are working with a graph where the types are dynamic or you don't have a `NodeTypeMap` available, you can use the untyped version of the API. The functions will work with the base `WorkflowGraph` and `GraphNode` types.
 
 ```typescript
-import { createNodeRule, WorkflowGraph } from 'cascade'
+import { createNodeRule, WorkflowGraph } from 'flowcraft'
 
 // The graph is of the basic, untyped shape
 const myGraph: WorkflowGraph = { /* ... */ }
 
 const rule_noOrphans = createNodeRule(
-    'No orphaned nodes',
-    // The `node` parameter is of the base `GraphNode` type
-    _node => true, // Apply to all nodes
-    (node) => ({
-        valid: node.inDegree > 0 || node.outDegree > 0,
-        message: `Node '${node.id}' has no connections.`
-    })
+	'No orphaned nodes',
+	// The `node` parameter is of the base `GraphNode` type
+	_node => true, // Apply to all nodes
+	node => ({
+		valid: node.inDegree > 0 || node.outDegree > 0,
+		message: `Node '${node.id}' has no connections.`
+	})
 )
 ```
-

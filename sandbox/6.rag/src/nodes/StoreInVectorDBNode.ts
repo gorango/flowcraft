@@ -1,6 +1,6 @@
-import type { NodeArgs, NodeOptions } from 'cascade'
+import type { NodeArgs, NodeOptions } from 'flowcraft'
 import type { DocumentChunk } from '../types'
-import { Node } from 'cascade'
+import { Node } from 'flowcraft'
 import { CHUNKS, EMBEDDINGS, VECTOR_DB } from './index'
 
 export class StoreInVectorDBNode extends Node {

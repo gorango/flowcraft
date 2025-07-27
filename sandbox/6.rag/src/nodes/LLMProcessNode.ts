@@ -1,6 +1,6 @@
-import type { NodeArgs } from 'cascade'
+import type { NodeArgs } from 'flowcraft'
 import type { RagNodeOptions, SearchResult } from '../types'
-import { Node } from 'cascade'
+import { Node } from 'flowcraft'
 import { callLLM, resolveTemplate } from '../utils'
 import { FINAL_ANSWER, keyRegistry, SEARCH_RESULTS } from './index'
 

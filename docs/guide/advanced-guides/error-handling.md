@@ -1,10 +1,10 @@
 # Error Handling
 
-Real-world processes can fail. Network connections drop, APIs return errors, and unexpected conditions occur. Cascade provides built-in mechanisms for making your workflows resilient through automatic retries and fallback logic.
+Real-world processes can fail. Network connections drop, APIs return errors, and unexpected conditions occur. Flowcraft provides built-in mechanisms for making your workflows resilient through automatic retries and fallback logic.
 
 ## How Errors are Handled
 
-When an error is thrown inside a `Node`, Cascade wraps it in a `WorkflowError` object. This custom error provides additional context, including:
+When an error is thrown inside a `Node`, Flowcraft wraps it in a `WorkflowError` object. This custom error provides additional context, including:
 
 - `nodeName`: The name of the `Node` class where the error occurred.
 - `phase`: The lifecycle phase (`'prep'`, `'exec'`, or `'post'`) where the error was thrown.
@@ -31,27 +31,27 @@ The most common way to handle transient failures (like a temporary network issue
 Let's create a node that simulates a flaky API call and configure it to retry.
 
 ```typescript
-import { Node, Flow, TypedContext, ConsoleLogger } from 'cascade'
+import { ConsoleLogger, Flow, Node, TypedContext } from 'flowcraft'
 
 class FlakyApiNode extends Node {
-  private attempts = 0
+	private attempts = 0
 
-  constructor() {
-    // Configure to try a total of 3 times, waiting 100ms between failures.
-    super({ maxRetries: 3, wait: 100 })
-  }
+	constructor() {
+		// Configure to try a total of 3 times, waiting 100ms between failures.
+		super({ maxRetries: 3, wait: 100 })
+	}
 
-  async exec() {
-    this.attempts++
-    console.log(`Calling API, attempt #${this.attempts}...`)
+	async exec() {
+		this.attempts++
+		console.log(`Calling API, attempt #${this.attempts}...`)
 
-    if (this.attempts < 3) {
-      throw new Error('API is temporarily unavailable!')
-    }
+		if (this.attempts < 3) {
+			throw new Error('API is temporarily unavailable!')
+		}
 
-    console.log('API call successful!')
-    return { data: 'some important data' }
-  }
+		console.log('API call successful!')
+		return { data: 'some important data' }
+	}
 }
 
 const flow = new Flow(new FlakyApiNode())
@@ -84,30 +84,30 @@ The return value of `execFallback` will be passed to the `post` phase, just as a
 Let's modify the previous example to handle a permanent failure.
 
 ```typescript
-import { Node, Flow, TypedContext, contextKey, ConsoleLogger } from 'cascade'
+import { ConsoleLogger, contextKey, Flow, Node, TypedContext } from 'flowcraft'
 
 class ResilientApiNode extends Node<void, { data: string }> {
-  constructor() {
-    super({ maxRetries: 2 }) // Try twice
-  }
+	constructor() {
+		super({ maxRetries: 2 }) // Try twice
+	}
 
-  async exec() {
-    console.log('Attempting to call the API...')
-    throw new Error('API is down!')
-  }
+	async exec() {
+		console.log('Attempting to call the API...')
+		throw new Error('API is down!')
+	}
 
-  // This method runs after all exec retries fail.
-  async execFallback({ error }) {
-    console.error(`All API attempts failed. Reason: ${error.message}`)
-    console.log('Returning cached/default data as a fallback.')
-    return { data: 'default fallback data' }
-  }
+	// This method runs after all exec retries fail.
+	async execFallback({ error }) {
+		console.error(`All API attempts failed. Reason: ${error.message}`)
+		console.log('Returning cached/default data as a fallback.')
+		return { data: 'default fallback data' }
+	}
 
-  async post({ ctx, execRes }) {
-    // The post phase doesn't care if exec or execFallback ran.
-    // It just receives the result.
-    ctx.set(DATA_KEY, execRes.data)
-  }
+	async post({ ctx, execRes }) {
+		// The post phase doesn't care if exec or execFallback ran.
+		// It just receives the result.
+		ctx.set(DATA_KEY, execRes.data)
+	}
 }
 
 const DATA_KEY = contextKey<string>('data')

@@ -1,16 +1,16 @@
 # API Reference: Functional Helpers
 
-This document covers the functions provided by Cascade for a more functional-style approach to creating `Node` instances and simple workflows. All helpers are imported from the main `cascade` package.
+This document covers the functions provided by Flowcraft for a more functional-style approach to creating `Node` instances and simple workflows. All helpers are imported from the main `flowcraft` package.
 
 ```typescript
 import {
-  mapNode,
-  contextNode,
-  transformNode,
-  pipeline,
-  lens,
-  composeContext,
-} from 'cascade'
+	composeContext,
+	contextNode,
+	lens,
+	mapNode,
+	pipeline,
+	transformNode,
+} from 'flowcraft'
 ```
 
 ## `mapNode<TIn, TOut>(fn)`
@@ -28,7 +28,7 @@ Creates a `Node` from a simple, pure function that transforms an input to an out
 ### Example
 
 ```typescript
-import { mapNode } from 'cascade'
+import { mapNode } from 'flowcraft'
 
 // Define a reusable node that doubles the 'value' param
 const doublerNode = mapNode((params: { value: number }) => params.value * 2)
@@ -52,12 +52,12 @@ Creates a `Node` from a function that requires access to the shared `Context` in
 ### Example
 
 ```typescript
-import { contextNode, contextKey } from 'cascade'
+import { contextKey, contextNode } from 'flowcraft'
 
 const USER_NAME = contextKey<string>('user_name')
 
 // A node that constructs a greeting using a value from the context
-const greetingNode = contextNode((ctx) => `Hello, ${ctx.get(USER_NAME)}!`)
+const greetingNode = contextNode(ctx => `Hello, ${ctx.get(USER_NAME)}!`)
 ```
 
 ## `transformNode(...transforms)`
@@ -75,7 +75,7 @@ Creates a `Node` that is used purely for its side effect of modifying the `Conte
 ### Example
 
 ```typescript
-import { transformNode, lens } from 'cascade'
+import { lens, transformNode } from 'flowcraft'
 
 const NAME = contextKey<string>('name')
 const AGE = contextKey<number>('age')
@@ -84,8 +84,8 @@ const ageLens = lens(AGE)
 
 // A single node that sets both name and age in the context
 const setupContextNode = transformNode(
-  nameLens.set('Alice'),
-  ageLens.set(30)
+	nameLens.set('Alice'),
+	ageLens.set(30)
 )
 ```
 

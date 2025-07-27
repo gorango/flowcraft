@@ -1,9 +1,9 @@
 import type { Job } from 'bullmq'
-import type { Context, IExecutor, RunOptions } from 'cascade'
+import type { Context, IExecutor, RunOptions } from 'flowcraft'
 import type IORedis from 'ioredis'
 import type { NodeJobPayload } from './types'
 import { Queue } from 'bullmq'
-import { Flow } from 'cascade'
+import { Flow } from 'flowcraft'
 
 export class BullMQExecutor implements IExecutor {
 	public readonly queue: Queue<NodeJobPayload>

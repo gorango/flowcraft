@@ -1,4 +1,4 @@
-import type { NodeConstructorOptions, NodeOptions } from 'cascade'
+import type { NodeConstructorOptions, NodeOptions } from 'flowcraft'
 
 // A class representing a single chunk of a document.
 // Using a class demonstrates a common data modeling pattern.

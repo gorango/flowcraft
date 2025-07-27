@@ -1,18 +1,18 @@
 # API Reference: Core Workflow
 
-This document covers the core classes and types exported from the main `cascade` entry point. These are the fundamental building blocks of any workflow.
+This document covers the core classes and types exported from the main `flowcraft` entry point. These are the fundamental building blocks of any workflow.
 
 ```typescript
 import {
-  Node,
-  Flow,
-  InMemoryExecutor,
-  TypedContext,
-  Context,
-  ContextKey,
-  contextKey,
-  // ...and more
-} from 'cascade'
+	Context,
+	ContextKey,
+	contextKey,
+	Flow,
+	InMemoryExecutor,
+	Node,
+	TypedContext,
+	// ...and more
+} from 'flowcraft'
 ```
 
 ## `Node<PrepRes, ExecRes, PostRes>`

@@ -1,6 +1,6 @@
 # Visualizing Workflows with Mermaid.js
 
-Complex workflows with multiple branches, loops, and fan-outs can be difficult to reason about from code alone. To help with this, Cascade includes a `generateMermaidGraph` utility that can automatically create a visual diagram of any `Flow` instance.
+Complex workflows with multiple branches, loops, and fan-outs can be difficult to reason about from code alone. To help with this, Flowcraft includes a `generateMermaidGraph` utility that can automatically create a visual diagram of any `Flow` instance.
 
 This utility is an invaluable tool for:
 
@@ -15,11 +15,11 @@ To use the utility, simply import `generateMermaidGraph`, create your `Flow` ins
 Let's visualize the "Research Agent" from the sandbox examples, which contains a decision loop:
 
 ```typescript
-import { DEFAULT_ACTION, Flow, generateMermaidGraph, Node } from 'cascade'
+import { DEFAULT_ACTION, Flow, generateMermaidGraph, Node } from 'flowcraft'
 
 // Define the nodes for the agent
 class DecideActionNode extends Node<void, void, 'search' | 'answer'> {
-  async post() { return 'search' /* or 'answer' */ }
+	async post() { return 'search' /* or 'answer' */ }
 }
 class SearchWebNode extends Node {}
 class AnswerQuestionNode extends Node {}
@@ -79,7 +79,7 @@ You can render the generated syntax in several places:
 
 ## Supported Features
 
-The visualizer correctly represents all of Cascade's core branching and flow control patterns.
+The visualizer correctly represents all of Flowcraft's core branching and flow control patterns.
 
 ### Conditional Branching
 

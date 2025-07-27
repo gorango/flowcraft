@@ -1,6 +1,6 @@
 import path from 'node:path'
 import process from 'node:process'
-import { ConsoleLogger, TypedContext } from 'cascade'
+import { ConsoleLogger, TypedContext } from 'flowcraft'
 import IORedis from 'ioredis'
 import { BullMQExecutor } from './executor'
 import { WorkflowRegistry } from './registry'
@@ -50,7 +50,7 @@ const config = {
 type UseCase = keyof typeof config
 
 // --- CONFIGURATION ---
-const QUEUE_NAME = 'distributed-cascade-queue'
+const QUEUE_NAME = 'distributed-flowcraft-queue'
 const ACTIVE_USE_CASE: UseCase = '2.job-application'
 const WORKFLOW_ID = config[ACTIVE_USE_CASE].mainWorkflowId
 

@@ -1,6 +1,6 @@
 # Best Practices: Debugging Workflows
 
-Debugging multi-step, asynchronous workflows can be challenging. State can change in unexpected ways, and control flow can be complex. Cascade is designed with debuggability in mind and provides several tools and patterns to help you pinpoint issues quickly.
+Debugging multi-step, asynchronous workflows can be challenging. State can change in unexpected ways, and control flow can be complex. Flowcraft is designed with debuggability in mind and provides several tools and patterns to help you pinpoint issues quickly.
 
 This guide covers the most effective techniques for debugging your workflows.
 
@@ -14,7 +14,7 @@ Instead of breaking your chain to insert a `console.log`, use the `.tap()` metho
 **Scenario**: You have a chain of `.map()` calls and want to see the intermediate result.
 
 ```typescript
-import { Node, contextKey } from 'cascade'
+import { contextKey, Node } from 'flowcraft'
 
 const FINAL_RESULT = contextKey<string>('final_result')
 
@@ -22,13 +22,13 @@ const FINAL_RESULT = contextKey<string>('final_result')
 const fetchUserNode = new Node().exec(() => ({ id: 123, name: 'Alice', email: 'alice@test.com' }))
 
 const processUser = fetchUserNode
-  .map(user => ({ ...user, name: user.name.toUpperCase() }))
-  // Let's inspect the data right here!
-  .tap(intermediateResult => {
-    console.log('[DEBUG] After capitalization:', intermediateResult)
-  })
-  .map(user => `User ID: ${user.id}, Name: ${user.name}`)
-  .toContext(FINAL_RESULT)
+	.map(user => ({ ...user, name: user.name.toUpperCase() }))
+// Let's inspect the data right here!
+	.tap((intermediateResult) => {
+		console.log('[DEBUG] After capitalization:', intermediateResult)
+	})
+	.map(user => `User ID: ${user.id}, Name: ${user.name}`)
+	.toContext(FINAL_RESULT)
 
 // When this runs, the debug log will print the intermediate object.
 ```
@@ -45,7 +45,7 @@ The logger will show:
 - Warnings for retry attempts and errors for fallback execution.
 
 ```typescript
-import { Flow, ConsoleLogger, TypedContext } from 'cascade'
+import { ConsoleLogger, Flow, TypedContext } from 'flowcraft'
 
 // Assume you have a conditional flow set up
 const myFlow = createMyConditionalFlow()
@@ -71,10 +71,10 @@ This output makes it immediately clear that `CheckConditionNode` returned `'acti
 
 Sometimes the problem isn't the logic inside your nodes, but the way you've wired them together. It's easy to make a mistake with `.next()`, creating a dead end or an incorrect branch.
 
-Cascade includes a `generateMermaidGraph` utility that creates a visual representation of your `Flow`'s structure. You can paste the output into any Mermaid.js renderer (like the one in the GitHub or VS Code markdown preview) to see your workflow.
+Flowcraft includes a `generateMermaidGraph` utility that creates a visual representation of your `Flow`'s structure. You can paste the output into any Mermaid.js renderer (like the one in the GitHub or VS Code markdown preview) to see your workflow.
 
 ```typescript
-import { generateMermaidGraph } from 'cascade'
+import { generateMermaidGraph } from 'flowcraft'
 import { createMyComplexFlow } from './my-flows'
 
 const complexFlow = createMyComplexFlow()
@@ -108,16 +108,16 @@ You can pass a `Logger` instance to the `GraphBuilder`'s constructor. When you d
 **Scenario**: You are building a complex workflow and want to see the final executable graph.
 
 ```typescript
-import { GraphBuilder, ConsoleLogger } from 'cascade'
+import { ConsoleLogger, GraphBuilder } from 'flowcraft'
 
 // Assume `nodeRegistry` and `myComplexGraph` are defined
 
 // Instantiate the builder WITH a logger
 const builder = new GraphBuilder(
-  nodeRegistry,
-  { /* dependencies */ },
-  { /* options */ },
-  new ConsoleLogger() // <-- This enables automatic logging
+	nodeRegistry,
+	{ /* dependencies */ },
+	{ /* options */ },
+	new ConsoleLogger() // <-- This enables automatic logging
 )
 
 // When you call .build(), the Mermaid graph will be logged to the console.
@@ -159,17 +159,17 @@ For flows built programmatically (with `.next()`), you can get a direct referenc
 > For flows built with `GraphBuilder`, always use the `nodeMap` returned by the `.build()` method for the most efficient lookup.
 
 ```typescript
-const startNode = new Node().withId('start');
-const decisionNode = new Node().withId('decision');
-startNode.next(decisionNode);
+const startNode = new Node().withId('start')
+const decisionNode = new Node().withId('decision')
+startNode.next(decisionNode)
 
-const myFlow = new Flow(startNode);
+const myFlow = new Flow(startNode)
 
 // Get a reference to the node
-const nodeToInspect = myFlow.getNodeById('decision');
+const nodeToInspect = myFlow.getNodeById('decision')
 
 // You can now inspect its properties, e.g., its successors
-console.log(nodeToInspect?.successors);
+console.log(nodeToInspect?.successors)
 ```
 
 ## Common Pitfalls

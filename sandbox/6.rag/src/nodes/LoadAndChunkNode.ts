@@ -1,7 +1,7 @@
-import type { NodeArgs } from 'cascade'
+import type { NodeArgs } from 'flowcraft'
 import type { RagNodeOptions } from '../types'
 import { promises as fs } from 'node:fs'
-import { Node } from 'cascade'
+import { Node } from 'flowcraft'
 import { DocumentChunk } from '../types'
 import { CHUNKS, DOCUMENT_PATH } from './index'
 

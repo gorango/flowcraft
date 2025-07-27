@@ -1,6 +1,6 @@
 # Best Practices: State Management
 
-The `Context` is the heart of a running workflow, acting as its shared memory. Managing the state within the `Context` effectively is one of the most important skills for building clean, maintainable, and scalable workflows in Cascade.
+The `Context` is the heart of a running workflow, acting as its shared memory. Managing the state within the `Context` effectively is one of the most important skills for building clean, maintainable, and scalable workflows in Flowcraft.
 
 ## 1. Always Use `ContextKey` for Type Safety
 
@@ -14,7 +14,7 @@ The `Context` is the heart of a running workflow, acting as its shared memory. M
 - **Easy Refactoring**: Renaming a `ContextKey` is a simple, safe refactoring operation in any modern IDE. Renaming a string key across a large codebase is risky.
 
 ```typescript
-import { contextKey, TypedContext } from 'cascade'
+import { contextKey, TypedContext } from 'flowcraft'
 
 // --- BAD: Using strings ---
 const ctxStrings = new TypedContext()
@@ -38,19 +38,19 @@ The `Context` should not be a dumping ground for all data ever generated in the 
 If a node generates intermediate data that is only used within that same node, it should be stored in a local variable, not written to the `Context`.
 
 ```typescript
-import { Node } from 'cascade'
+import { Node } from 'flowcraft'
 
 class DataProcessorNode extends Node {
-  async exec({ prepRes: data }) {
-    // BAD: Don't put temporary data in the context
-    // ctx.set(TEMP_VALUE, data.a + data.b)
-    // const intermediate = ctx.get(TEMP_VALUE)
-    // return intermediate * 2
+	async exec({ prepRes: data }) {
+		// BAD: Don't put temporary data in the context
+		// ctx.set(TEMP_VALUE, data.a + data.b)
+		// const intermediate = ctx.get(TEMP_VALUE)
+		// return intermediate * 2
 
-    // GOOD: Use local variables for intermediate steps
-    const intermediate = data.a + data.b
-    return intermediate * 2
-  }
+		// GOOD: Use local variables for intermediate steps
+		const intermediate = data.a + data.b
+		return intermediate * 2
+	}
 }
 ```
 
@@ -64,7 +64,7 @@ Distinguish between *dynamic state* and *static configuration*.
 Using `params` makes your nodes more reusable and their dependencies more explicit.
 
 ```typescript
-import { Node, contextKey } from 'cascade'
+import { contextKey, Node } from 'flowcraft'
 
 const NUMBER_TO_ADD = contextKey<number>('number_to_add')
 const CURRENT_VALUE = contextKey<number>('current_value')
@@ -72,19 +72,19 @@ const CURRENT_VALUE = contextKey<number>('current_value')
 // --- BAD: Configuration is mixed with state ---
 // This node's behavior depends on a value that must be in the context.
 class AddNumberFromContext extends Node {
-  async exec({ ctx }) {
-    const valueToAdd = ctx.get(NUMBER_TO_ADD) // less reusable
-    return ctx.get(CURRENT_VALUE) + valueToAdd
-  }
+	async exec({ ctx }) {
+		const valueToAdd = ctx.get(NUMBER_TO_ADD) // less reusable
+		return ctx.get(CURRENT_VALUE) + valueToAdd
+	}
 }
 
 // --- GOOD: Configuration is passed as a parameter ---
 // This node is self-contained. Its configuration comes from its params.
 class AddNumberFromParams extends Node {
-  async exec({ ctx, params }) {
-    const valueToAdd = params.amount // much more reusable
-    return ctx.get(CURRENT_VALUE) + valueToAdd
-  }
+	async exec({ ctx, params }) {
+		const valueToAdd = params.amount // much more reusable
+		return ctx.get(CURRENT_VALUE) + valueToAdd
+	}
 }
 
 // Usage:

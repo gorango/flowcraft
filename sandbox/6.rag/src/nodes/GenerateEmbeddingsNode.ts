@@ -1,5 +1,5 @@
-import type { AbstractNode, NodeArgs } from 'cascade'
-import { Node, ParallelBatchFlow } from 'cascade'
+import type { AbstractNode, NodeArgs } from 'flowcraft'
+import { Node, ParallelBatchFlow } from 'flowcraft'
 import { getEmbedding } from '../utils'
 import { CHUNKS, EMBEDDINGS } from './index'
 

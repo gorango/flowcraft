@@ -1,6 +1,6 @@
 import path from 'node:path'
 import process from 'node:process'
-import { ConsoleLogger, TypedContext } from 'cascade'
+import { ConsoleLogger, TypedContext } from 'flowcraft'
 import { WorkflowRegistry } from './registry'
 
 const config = {

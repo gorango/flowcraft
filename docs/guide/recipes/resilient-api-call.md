@@ -1,6 +1,6 @@
 # Recipes: Building a Resilient API Call Node
 
-A very common task in any workflow is calling an external API. These calls can be unreliable due to network issues or temporary service outages. This recipe shows you how to build a robust `Node` that can handle these failures gracefully using Cascade's built-in retry and fallback mechanisms.
+A very common task in any workflow is calling an external API. These calls can be unreliable due to network issues or temporary service outages. This recipe shows you how to build a robust `Node` that can handle these failures gracefully using Flowcraft's built-in retry and fallback mechanisms.
 
 ## The Goal
 
@@ -29,45 +29,45 @@ We will create a `FetchDataNode` that simulates calling a flaky API.
 We configure the node's retry behavior directly in its constructor options. The core logic is in `exec`, and the safety net is in `execFallback`.
 
 ```typescript
-import { Node, NodeArgs, contextKey, TypedContext } from 'cascade'
+import { contextKey, Node, NodeArgs, TypedContext } from 'flowcraft'
 
 const API_RESULT = contextKey<any>('api_result')
 
 class FetchDataNode extends Node<void, any> {
-  private attempts = 0
+	private attempts = 0
 
-  constructor() {
-    // Configure the node to try a total of 3 times (1 initial + 2 retries),
-    // waiting 200ms between attempts.
-    super({ maxRetries: 3, wait: 200 })
-  }
+	constructor() {
+		// Configure the node to try a total of 3 times (1 initial + 2 retries),
+		// waiting 200ms between attempts.
+		super({ maxRetries: 3, wait: 200 })
+	}
 
-  // The main logic: try to call the API.
-  async exec(): Promise<any> {
-    this.attempts++
-    console.log(`Attempting to call API... (attempt #${this.attempts})`)
+	// The main logic: try to call the API.
+	async exec(): Promise<any> {
+		this.attempts++
+		console.log(`Attempting to call API... (attempt #${this.attempts})`)
 
-    // Simulate a failing API
-    if (this.attempts < 3) {
-      throw new Error('API service is temporarily unavailable.')
-    }
+		// Simulate a failing API
+		if (this.attempts < 3) {
+			throw new Error('API service is temporarily unavailable.')
+		}
 
-    // This will only be reached on the 3rd attempt in our simulation.
-    console.log('API call successful!')
-    return { id: 123, data: 'live data from API' }
-  }
+		// This will only be reached on the 3rd attempt in our simulation.
+		console.log('API call successful!')
+		return { id: 123, data: 'live data from API' }
+	}
 
-  // The fallback logic: run if all `exec` attempts fail.
-  async execFallback({ error }): Promise<any> {
-    console.error(`All API attempts failed. Final error: "${error.message}"`)
-    console.log('Returning cached/default data as a fallback.')
-    return { id: 123, data: 'cached fallback data' }
-  }
+	// The fallback logic: run if all `exec` attempts fail.
+	async execFallback({ error }): Promise<any> {
+		console.error(`All API attempts failed. Final error: "${error.message}"`)
+		console.log('Returning cached/default data as a fallback.')
+		return { id: 123, data: 'cached fallback data' }
+	}
 
-  // The post-logic: store the result (from either exec or execFallback)
-  async post({ ctx, execRes }: NodeArgs<void, any>) {
-    ctx.set(API_RESULT, execRes)
-  }
+	// The post-logic: store the result (from either exec or execFallback)
+	async post({ ctx, execRes }: NodeArgs<void, any>) {
+		ctx.set(API_RESULT, execRes)
+	}
 }
 ```
 
@@ -76,7 +76,7 @@ class FetchDataNode extends Node<void, any> {
 Now, we can run this node as part of a flow. Even though the API "fails" twice, the workflow will complete successfully because of the retry and fallback logic.
 
 ```typescript
-import { Flow, TypedContext, ConsoleLogger } from 'cascade'
+import { ConsoleLogger, Flow, TypedContext } from 'flowcraft'
 
 const resilientNode = new FetchDataNode()
 const flow = new Flow(resilientNode)

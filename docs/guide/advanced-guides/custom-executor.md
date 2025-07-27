@@ -1,6 +1,6 @@
 # Building a Custom Executor
 
-The `IExecutor` pattern is one of Cascade's most powerful architectural features. It decouples the definition of a workflow (the graph of `Node`s) from its execution environment. While the default `InMemoryExecutor` is perfect for many use cases, you can create your own executors to run workflows in different environments, such as a distributed task queue, a test environment, or even a system that requires pausing and resuming.
+The `IExecutor` pattern is one of Flowcraft's most powerful architectural features. It decouples the definition of a workflow (the graph of `Node`s) from its execution environment. While the default `InMemoryExecutor` is perfect for many use cases, you can create your own executors to run workflows in different environments, such as a distributed task queue, a test environment, or even a system that requires pausing and resuming.
 
 This guide will walk you through the responsibilities of an executor and show you how to build a simple `DryRunExecutor` from scratch.
 
@@ -10,7 +10,7 @@ At its core, an executor is any class that implements the `IExecutor` interface.
 
 ```typescript
 interface IExecutor {
-  run: (flow: Flow, context: Context, options?: RunOptions) => Promise<any>
+	run: (flow: Flow, context: Context, options?: RunOptions) => Promise<any>
 }
 ```
 
@@ -38,20 +38,20 @@ First, create the class and implement the `IExecutor` interface.
 ```typescript
 // src/executors/dry-run-executor.ts
 import {
-  IExecutor,
-  Flow,
-  Context,
-  RunOptions,
-  AbstractNode,
-  Logger,
-  NullLogger,
-  DEFAULT_ACTION
-} from 'cascade'
+	AbstractNode,
+	Context,
+	DEFAULT_ACTION,
+	Flow,
+	IExecutor,
+	Logger,
+	NullLogger,
+	RunOptions
+} from 'flowcraft'
 
 export class DryRunExecutor implements IExecutor {
-  public async run(flow: Flow, context: Context, options?: RunOptions): Promise<any> {
-    // Implementation will go here
-  }
+	public async run(flow: Flow, context: Context, options?: RunOptions): Promise<any> {
+		// Implementation will go here
+	}
 }
 ```
 
@@ -122,7 +122,7 @@ Now you can use this executor with any flow. Note that the node's `exec` logic (
 
 ```typescript
 // main.ts
-import { Flow, Node, TypedContext, ConsoleLogger, contextKey } from 'cascade'
+import { ConsoleLogger, contextKey, Flow, Node, TypedContext } from 'flowcraft'
 import { DryRunExecutor } from './executors/dry-run-executor'
 
 const VALUE = contextKey<number>('value')
@@ -132,9 +132,9 @@ const startNode = new Node().prep(async ({ ctx }) => ctx.set(VALUE, 15))
 
 // A conditional node
 class CheckValueNode extends Node<void, void, 'over' | 'under'> {
-    async post({ ctx }) {
-        return ctx.get(VALUE)! > 10 ? 'over' : 'under'
-    }
+	async post({ ctx }) {
+		return ctx.get(VALUE)! > 10 ? 'over' : 'under'
+	}
 }
 const checkNode = new CheckValueNode()
 
@@ -176,5 +176,5 @@ When you run this code, you'll see the executor's logs tracing the path. The `co
 
 This `DryRunExecutor` is a simplified example. For a complete understanding, it's highly recommended to study the source code of the official executors:
 
-- **`InMemoryExecutor`**: The canonical implementation of a real executor. It shows the full orchestration logic, including how to correctly apply middleware. ([`src/executors/in-memory.ts`](https://github.com/gorango/cascade/tree/master/src/executors/in-memory.ts))
-- **`BullMQExecutor`**: A full-featured distributed executor. It demonstrates a completely different execution strategy, managing a job queue instead of an in-memory loop. ([`sandbox/5.distributed/src/executor.ts`](https://github.com/gorango/cascade/tree/master/sandbox/5.distributed/src/executor.ts))
+- **`InMemoryExecutor`**: The canonical implementation of a real executor. It shows the full orchestration logic, including how to correctly apply middleware. ([`src/executors/in-memory.ts`](https://github.com/gorango/flowcraft/tree/master/src/executors/in-memory.ts))
+- **`BullMQExecutor`**: A full-featured distributed executor. It demonstrates a completely different execution strategy, managing a job queue instead of an in-memory loop. ([`sandbox/5.distributed/src/executor.ts`](https://github.com/gorango/flowcraft/tree/master/sandbox/5.distributed/src/executor.ts))

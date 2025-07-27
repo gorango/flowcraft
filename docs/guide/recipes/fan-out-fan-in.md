@@ -2,7 +2,7 @@
 
 A "fan-out, fan-in" pattern is where a workflow splits into multiple parallel branches that execute concurrently (fan-out) and then merges the results of those branches back together before proceeding (fan-in).
 
-Cascade provides a dedicated `ParallelFlow` builder that makes creating this pattern simple and declarative.
+Flowcraft provides a dedicated `ParallelFlow` builder that makes creating this pattern simple and declarative.
 
 ## The Pattern
 
@@ -31,7 +31,7 @@ Imagine we have a user object and we want to perform two slow, independent API c
 We'll need keys for the initial input and the results of each parallel branch.
 
 ```typescript
-import { Flow, Node, TypedContext, contextKey, ParallelFlow } from 'cascade'
+import { contextKey, Flow, Node, ParallelFlow, TypedContext } from 'flowcraft'
 
 // Context Keys
 const USER_ID = contextKey<string>('user_id')
@@ -40,31 +40,31 @@ const METADATA = contextKey<any>('metadata')
 const FINAL_REPORT = contextKey<string>('final_report')
 
 // A mock API call
-const mockApiCall = (operation: string, delay: number) => {
-  console.log(`Starting API call: ${operation}...`)
-  return new Promise(resolve => setTimeout(() => {
-    console.log(`...Finished API call: ${operation}`)
-    resolve({ result: `${operation} data` })
-  }, delay))
+function mockApiCall(operation: string, delay: number) {
+	console.log(`Starting API call: ${operation}...`)
+	return new Promise(resolve => setTimeout(() => {
+		console.log(`...Finished API call: ${operation}`)
+		resolve({ result: `${operation} data` })
+	}, delay))
 }
 
 // Nodes for each parallel task
 const fetchActivityNode = new Node()
-  .exec(async ({ ctx }) => mockApiCall(`fetchActivity for ${ctx.get(USER_ID)}`, 100))
-  .toContext(ACTIVITY_DATA)
+	.exec(async ({ ctx }) => mockApiCall(`fetchActivity for ${ctx.get(USER_ID)}`, 100))
+	.toContext(ACTIVITY_DATA)
 
 const fetchMetadataNode = new Node()
-  .exec(async ({ ctx }) => mockApiCall(`fetchMetadata for ${ctx.get(USER_ID)}`, 150))
-  .toContext(METADATA)
+	.exec(async ({ ctx }) => mockApiCall(`fetchMetadata for ${ctx.get(USER_ID)}`, 150))
+	.toContext(METADATA)
 
 // The final aggregation node (the "fan-in" point)
 const createReportNode = new Node()
-  .exec(async ({ ctx }) => {
-    const activity = ctx.get(ACTIVITY_DATA)
-    const metadata = ctx.get(METADATA)
-    return `Report created. Activity: ${activity.result}, Metadata: ${metadata.result}`
-  })
-  .toContext(FINAL_REPORT)
+	.exec(async ({ ctx }) => {
+		const activity = ctx.get(ACTIVITY_DATA)
+		const metadata = ctx.get(METADATA)
+		return `Report created. Activity: ${activity.result}, Metadata: ${metadata.result}`
+	})
+	.toContext(FINAL_REPORT)
 ```
 
 ### 2. Wire the Flow with `ParallelFlow`
@@ -74,8 +74,8 @@ We create a `ParallelFlow` instance with our two API-calling nodes. Then, we con
 ```typescript
 // Create the parallel fan-out block
 const parallelEnrichment = new ParallelFlow([
-  fetchActivityNode,
-  fetchMetadataNode,
+	fetchActivityNode,
+	fetchMetadataNode,
 ])
 
 // After all parallel nodes are done, run the report node.
@@ -88,7 +88,7 @@ const enrichmentFlow = new Flow(parallelEnrichment)
 
 ```typescript
 const context = new TypedContext([
-  [USER_ID, 'user-123']
+	[USER_ID, 'user-123']
 ])
 
 console.time('ParallelExecution')

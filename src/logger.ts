@@ -12,7 +12,7 @@ export interface Logger {
 /**
  * A logger implementation that performs no action (a "no-op" logger).
  * This is the default logger used by the framework if none is provided,
- * making Cascade silent out-of-the-box.
+ * making Flowcraft silent out-of-the-box.
  */
 export class NullLogger implements Logger {
 	debug() { /* no-op */ }

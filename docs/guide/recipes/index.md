@@ -1,6 +1,6 @@
 # Recipes
 
-This section provides practical, copy-paste-friendly solutions for common patterns you'll encounter when building workflows with Cascade.
+This section provides practical, copy-paste-friendly solutions for common patterns you'll encounter when building workflows with Flowcraft.
 
 - **[Creating a Loop](./creating-a-loop.md)**
   - Learn how to use a cyclical graph structure to repeat actions until a condition is met.

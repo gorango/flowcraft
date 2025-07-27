@@ -1,6 +1,6 @@
 # Parallel Batch Translation
 
-This project demonstrates using `cascade`'s `ParallelBatchFlow` to translate a document into multiple languages concurrently, showcasing significant performance improvements for I/O-bound tasks.
+This project demonstrates using `flowcraft`'s `ParallelBatchFlow` to translate a document into multiple languages concurrently, showcasing significant performance improvements for I/O-bound tasks.
 
 ## Goal
 

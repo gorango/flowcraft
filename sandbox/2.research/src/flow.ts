@@ -1,4 +1,4 @@
-import { Flow } from 'cascade'
+import { Flow } from 'flowcraft'
 import { AnswerQuestionNode, DecideActionNode, SearchWebNode } from './nodes.js'
 
 export function createAgentFlow(): Flow {

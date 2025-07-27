@@ -1,5 +1,5 @@
-import type { AbstractNode, NodeArgs } from 'cascade'
-import { BatchFlow, contextKey, Node } from 'cascade'
+import type { AbstractNode, NodeArgs } from 'flowcraft'
+import { BatchFlow, contextKey, Node } from 'flowcraft'
 import yaml from 'yaml'
 import { callLLM } from './utils'
 

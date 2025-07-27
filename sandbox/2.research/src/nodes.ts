@@ -1,5 +1,5 @@
-import type { NodeArgs } from 'cascade'
-import { DEFAULT_ACTION, Node } from 'cascade'
+import type { NodeArgs } from 'flowcraft'
+import { DEFAULT_ACTION, Node } from 'flowcraft'
 import yaml from 'yaml'
 import { callLLM, searchWeb } from './utils.js'
 

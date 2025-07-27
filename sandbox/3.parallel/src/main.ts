@@ -1,9 +1,9 @@
-import type { Context } from 'cascade'
+import type { Context } from 'flowcraft'
 import * as fs from 'node:fs/promises'
 import * as path from 'node:path'
 import process from 'node:process'
-import { ConsoleLogger, TypedContext } from 'cascade'
 import dotenv from 'dotenv'
+import { ConsoleLogger, TypedContext } from 'flowcraft'
 import { TranslateFlow } from './nodes'
 
 dotenv.config()

@@ -1,12 +1,12 @@
-# Introduction to Cascade
+# Introduction to Flowcraft
 
-Welcome to Cascade! This guide will take you from the fundamental concepts to building your first workflow, giving you a comprehensive understanding of what Cascade is, why it's useful, and how it works.
+Welcome to Flowcraft! This guide will take you from the fundamental concepts to building your first workflow, giving you a comprehensive understanding of what Flowcraft is, why it's useful, and how it works.
 
-## What is Cascade?
+## What is Flowcraft?
 
-Cascade is a lightweight, zero-dependency TypeScript framework for building complex, multi-step processes. It empowers you to model everything from simple sequential tasks to dynamic, graph-driven AI agents with a clear and composable API.
+Flowcraft is a lightweight, zero-dependency TypeScript framework for building complex, multi-step processes. It empowers you to model everything from simple sequential tasks to dynamic, graph-driven AI agents with a clear and composable API.
 
-At its core, Cascade is guided by a few key principles:
+At its core, Flowcraft is guided by a few key principles:
 
 1. **Structure for Complexity**: It provides a clear way to model asynchronous processes. By breaking logic into discrete `Node`s with a defined lifecycle, you can turn tangled promise chains and `async/await` blocks into maintainable, testable graphs.
 2. **Start Simple, Scale Gracefully**: You can start with an in-memory workflow in a single file. As your needs grow, the architecture allows you to scale up to a robust, distributed system using message queues—**without changing your core business logic**.
@@ -26,10 +26,10 @@ This tutorial will walk you through creating a simple, three-step pipeline that 
 
 ### Step 1: Project Setup
 
-In your project directory, install Cascade and the necessary TypeScript tools. We'll use `tsx` to run our TypeScript file directly.
+In your project directory, install Flowcraft and the necessary TypeScript tools. We'll use `tsx` to run our TypeScript file directly.
 
 ```bash
-npm install gorango/cascade
+npm install flowcraft
 ```
 
 ### Step 2: Define the Workflow Logic
@@ -40,11 +40,11 @@ Create a new file named `main.ts`. This is where we'll define and run our workfl
 touch main.ts
 ```
 
-Inside `main.ts`, we'll start by importing the core components we need from Cascade.
+Inside `main.ts`, we'll start by importing the core components we need from Flowcraft.
 
 ```typescript
 // main.ts
-import { Node, Flow, TypedContext, contextKey } from 'cascade'
+import { contextKey, Flow, Node, TypedContext } from 'flowcraft'
 
 // Define type-safe keys for our shared data
 const NAME = contextKey<string>('name')
@@ -53,18 +53,18 @@ const FINAL_MESSAGE = contextKey<string>('final_message')
 
 // 1. nameNode: Takes a name from input `params` and stores it in the Context.
 const nameNode = new Node()
-    .exec(async ({ params }) => params.name)
-    .toContext(NAME)
+	.exec(async ({ params }) => params.name)
+	.toContext(NAME)
 
 // 2. greetingNode: Reads the name from the Context, creates a greeting, and stores it back.
 const greetingNode = new Node()
-    .exec(async ({ ctx }) => `Hello, ${ctx.get(NAME)}!`)
-    .toContext(GREETING)
+	.exec(async ({ ctx }) => `Hello, ${ctx.get(NAME)}!`)
+	.toContext(GREETING)
 
 // 3. finalNode: Reads the greeting from the Context and assembles the final message.
 const finalNode = new Node()
-    .exec(async ({ ctx }) => `${ctx.get(GREETING)} Welcome to Cascade!`)
-    .toContext(FINAL_MESSAGE)
+	.exec(async ({ ctx }) => `${ctx.get(GREETING)} Welcome to Flowcraft!`)
+	.toContext(FINAL_MESSAGE)
 ```
 
 ### Step 3: Orchestrate and Run the `Flow`
@@ -82,14 +82,14 @@ const flow = new Flow(nameNode)
 
 // Execute the flow.
 async function main() {
-    const context = new TypedContext()
+	const context = new TypedContext()
 
-    console.log('Starting workflow...')
-    await flow.withParams({ name: 'Developer' }).run(context)
+	console.log('Starting workflow...')
+	await flow.withParams({ name: 'Developer' }).run(context)
 
-    const result = context.get(FINAL_MESSAGE)
-    console.log('Workflow complete!')
-    console.log(`Final Result: "${result}"`)
+	const result = context.get(FINAL_MESSAGE)
+	console.log('Workflow complete!')
+	console.log(`Final Result: "${result}"`)
 }
 
 main()
@@ -108,16 +108,16 @@ You should see the following output:
 ```
 Starting workflow...
 Workflow complete!
-Final Result: "Hello, Developer! Welcome to Cascade!"
+Final Result: "Hello, Developer! Welcome to Flowcraft!"
 ```
 
-Congratulations! You've just built and run a Cascade workflow. Now, let's break down the concepts you just used.
+Congratulations! You've just built and run a Flowcraft workflow. Now, let's break down the concepts you just used.
 
 ---
 
 ## Core Concepts
 
-Cascade is built around a few simple, powerful concepts.
+Flowcraft is built around a few simple, powerful concepts.
 
 ### 1. Node
 
@@ -153,20 +153,20 @@ An **action** is a string returned by a node's `post()` method that the `Executo
 
 ---
 
-## When to Use Cascade
+## When to Use Flowcraft
 
-Cascade is an excellent choice for:
+Flowcraft is an excellent choice for:
 
-- **AI Agent Orchestration**: Modeling the "reasoning loop" of an AI agent is a natural fit for a graph. Conditional branching, tool use, and parallel thought processes are easily implemented. The **[Advanced RAG Agent](https://github.com/gorango/cascade/tree/master/sandbox/6.rag/)** is a complete, end-to-end example of this pattern.
-- **Data Processing & ETL Pipelines**: Fetching data, running transformations, and saving it to a destination. The [Parallel Batch Translation](https://github.com/gorango/cascade/tree/master/sandbox/3.parallel/) is a great example of this task.
-- **Complex Business Logic**: Any multi-step process with conditional paths, retries, and fallbacks (e.g., user onboarding, e-commerce order fulfillment). Look at some of the examples in the [DAG](https://github.com/gorango/cascade/tree/master/sandbox/4.dag/) sandbox.
-- **Multi-Step Background Jobs**: Running tasks in the background of a web application, like generating a report or processing a file. The [Distributed](https://github.com/gorango/cascade/tree/master/sandbox/5.distributed/) examples showcase running all of the same DAG workflows but in the background.
+- **AI Agent Orchestration**: Modeling the "reasoning loop" of an AI agent is a natural fit for a graph. Conditional branching, tool use, and parallel thought processes are easily implemented. The **[Advanced RAG Agent](https://github.com/gorango/flowcraft/tree/master/sandbox/6.rag/)** is a complete, end-to-end example of this pattern.
+- **Data Processing & ETL Pipelines**: Fetching data, running transformations, and saving it to a destination. The [Parallel Batch Translation](https://github.com/gorango/flowcraft/tree/master/sandbox/3.parallel/) is a great example of this task.
+- **Complex Business Logic**: Any multi-step process with conditional paths, retries, and fallbacks (e.g., user onboarding, e-commerce order fulfillment). Look at some of the examples in the [DAG](https://github.com/gorango/flowcraft/tree/master/sandbox/4.dag/) sandbox.
+- **Multi-Step Background Jobs**: Running tasks in the background of a web application, like generating a report or processing a file. The [Distributed](https://github.com/gorango/flowcraft/tree/master/sandbox/5.distributed/) examples showcase running all of the same DAG workflows but in the background.
 
-## How Cascade Compares
+## How Flowcraft Compares
 
-- **vs. Plain `async/await`**: Use `async/await` for simple, linear sequences. Use Cascade when your process starts to look like a state machine or a graph, with retries, fallbacks, or complex conditional logic.
-- **vs. LangChain / LlamaIndex**: Use those frameworks for rapid prototyping with their vast ecosystem of pre-built integrations. Use Cascade when you want an unopinionated **runtime** for your custom AI logic, giving you full control over your prompts and business logic.
-- **vs. Temporal / Airflow**: Use these heavy-duty platforms when you need **durability** (guaranteed execution that survives server crashes) out of the box. Use Cascade when you want to start with a lightweight, in-process library and have the *option* to build a distributed system later.
+- **vs. Plain `async/await`**: Use `async/await` for simple, linear sequences. Use Flowcraft when your process starts to look like a state machine or a graph, with retries, fallbacks, or complex conditional logic.
+- **vs. LangChain / LlamaIndex**: Use those frameworks for rapid prototyping with their vast ecosystem of pre-built integrations. Use Flowcraft when you want an unopinionated **runtime** for your custom AI logic, giving you full control over your prompts and business logic.
+- **vs. Temporal / Airflow**: Use these heavy-duty platforms when you need **durability** (guaranteed execution that survives server crashes) out of the box. Use Flowcraft when you want to start with a lightweight, in-process library and have the *option* to build a distributed system later.
 
 ## Next Steps
 

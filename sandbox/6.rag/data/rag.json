@@ -4,7 +4,7 @@
 			"id": "load_and_chunk",
 			"type": "load-and-chunk",
 			"data": {
-				"filePath": "./documents/sample-cascade.txt"
+				"filePath": "./documents/sample-flowcraft.txt"
 			}
 		},
 		{
@@ -21,7 +21,7 @@
 			"id": "vector_search",
 			"type": "vector-search",
 			"data": {
-				"question": "How does Cascade handle conditional branching?",
+				"question": "How does Flowcraft handle conditional branching?",
 				"topK": 2
 			}
 		},

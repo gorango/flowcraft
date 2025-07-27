@@ -1,5 +1,5 @@
 import type { DocumentChunk, SearchResult } from '../types'
-import { contextKey } from 'cascade'
+import { contextKey } from 'flowcraft'
 
 // These are the type-safe keys we'll use to pass state through the workflow.
 export const DOCUMENT_PATH = contextKey<string>('document_path')

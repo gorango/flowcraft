@@ -2,7 +2,7 @@
 layout: home
 
 hero:
-  name: Cascade
+  name: Flowcraft
   text: A Workflow Framework
   tagline: Build complex, multi-step processes, from simple sequences to dynamic, graph-driven AI agents.
   actions:
@@ -14,7 +14,7 @@ hero:
       link: /guide/recipes/
     - theme: alt
       text: Sandbox
-      link: https://github.com/gorango/cascade/tree/master/sandbox
+      link: https://github.com/gorango/flowcraft/tree/master/sandbox
 
 features:
   - title: Zero Dependencies

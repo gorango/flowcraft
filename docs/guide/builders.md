@@ -1,6 +1,6 @@
 # Builders
 
-Builders are helper classes provided by Cascade to abstract away the manual construction of common and complex workflow patterns. They handle the underlying `Node` and `Flow` wiring for you, so you can focus on your application's logic.
+Builders are helper classes provided by Flowcraft to abstract away the manual construction of common and complex workflow patterns. They handle the underlying `Node` and `Flow` wiring for you, so you can focus on your application's logic.
 
 This guide provides an overview of the available builders and helps you choose the right one for your use case.
 
@@ -42,12 +42,12 @@ const manualFlow = new Flow(nodeA)
 You can use `SequenceFlow` for a more concise definition:
 
 ```typescript
-import { SequenceFlow } from 'cascade'
+import { SequenceFlow } from 'flowcraft'
 
 const sequence = new SequenceFlow(
-  new NodeA(),
-  new NodeB(),
-  new NodeC()
+	new NodeA(),
+	new NodeB(),
+	new NodeC()
 )
 
 await sequence.run(context)
@@ -56,12 +56,12 @@ await sequence.run(context)
 For an even more functional style, the `pipeline` helper provides the same functionality with a more direct syntax. See the [Functional API Reference](./functional-api.md#pipeline) for more details.
 
 ```typescript
-import { pipeline } from 'cascade'
+import { pipeline } from 'flowcraft'
 
 const dataPipeline = pipeline(
-  new NodeA(),
-  new NodeB(),
-  new NodeC()
+	new NodeA(),
+	new NodeB(),
+	new NodeC()
 )
 ```
 
@@ -78,12 +78,12 @@ Use `ParallelFlow` when your workflow logic itself has distinct branches that ca
 ### Example
 
 ```typescript
-import { ParallelFlow } from 'cascade'
+import { ParallelFlow } from 'flowcraft'
 
 // Fetch data from two different sources in parallel.
 const parallelStep = new ParallelFlow([
-  new FetchUserProfileNode(),  // Task A
-  new FetchUserActivityNode(), // Task B
+	new FetchUserProfileNode(), // Task A
+	new FetchUserActivityNode(), // Task B
 ])
 
 // This node will only run after both fetch nodes have completed.
@@ -112,27 +112,27 @@ const dashboardFlow = new Flow(parallelStep)
 This example uses `ParallelBatchFlow` to translate a document into several languages at once.
 
 ```typescript
-import { ParallelBatchFlow, Node, TypedContext, AbstractNode } from 'cascade'
+import { AbstractNode, Node, ParallelBatchFlow, TypedContext } from 'flowcraft'
 
 // The single unit of work: translates text to one language.
 class TranslateNode extends Node {
-  async exec({ params }) { /* ... API call to translate params.text to params.language ... */ }
+	async exec({ params }) { /* ... API call to translate params.text to params.language ... */ }
 }
 
 // The builder orchestrates the batch process.
 class TranslateFlow extends ParallelBatchFlow {
-  // 1. Implement the abstract property to define which node to run for each item.
-  protected nodeToRun: AbstractNode = new TranslateNode()
+	// 1. Implement the abstract property to define which node to run for each item.
+	protected nodeToRun: AbstractNode = new TranslateNode()
 
-  // 2. The `prep` method provides the list of items to process.
-  async prep({ ctx }) {
-    const languages = ctx.get(LANGUAGES) || []
-    const text = ctx.get(DOCUMENT_TEXT)
+	// 2. The `prep` method provides the list of items to process.
+	async prep({ ctx }) {
+		const languages = ctx.get(LANGUAGES) || []
+		const text = ctx.get(DOCUMENT_TEXT)
 
-    // Return an array of parameter objects.
-    // Each object will be merged into the TranslateNode's params for one parallel run.
-    return languages.map(language => ({ language, text }))
-  }
+		// Return an array of parameter objects.
+		// Each object will be merged into the TranslateNode's params for one parallel run.
+		return languages.map(language => ({ language, text }))
+	}
 }
 ```
 
@@ -154,4 +154,4 @@ class TranslateFlow extends ParallelBatchFlow {
 2. **Create a Node Registry**: You map the string `type` from your graph nodes to the actual `Node` classes in your code.
 3. **Build the Flow**: You instantiate `GraphBuilder` with the registry and call `.build(graph)`.
 
-The `GraphBuilder` intelligently analyzes the graph's structure, automatically handling parallel start nodes, mid-flow fan-outs, and fan-ins. For a complete, in-depth example, see the **[Dynamic AI Agent example (`sandbox/4.dag/`)](https://github.com/gorango/cascade/tree/master/sandbox/4.dag/)**.
+The `GraphBuilder` intelligently analyzes the graph's structure, automatically handling parallel start nodes, mid-flow fan-outs, and fan-ins. For a complete, in-depth example, see the **[Dynamic AI Agent example (`sandbox/4.dag/`)](https://github.com/gorango/flowcraft/tree/master/sandbox/4.dag/)**.

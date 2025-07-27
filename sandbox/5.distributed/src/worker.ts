@@ -3,13 +3,13 @@ import path from 'node:path'
 import process from 'node:process'
 import readline from 'node:readline'
 import { Queue, Worker } from 'bullmq'
-import { AbortError, ConsoleLogger, Flow, TypedContext } from 'cascade'
+import { AbortError, ConsoleLogger, Flow, TypedContext } from 'flowcraft'
 import IORedis from 'ioredis'
 import { WorkflowRegistry } from './registry'
 import { FINAL_ACTION, RUN_ID } from './types'
 import 'dotenv/config'
 
-const QUEUE_NAME = 'distributed-cascade-queue'
+const QUEUE_NAME = 'distributed-flowcraft-queue'
 const CANCELLATION_KEY_PREFIX = 'workflow:cancel:'
 
 function getCancellationKey(runId: string) {

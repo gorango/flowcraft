@@ -1,6 +1,6 @@
 # Best Practices: Data Flow in Sub-Workflows
 
-When you compose workflows, managing the flow of data between the parent and child is critical for creating modular and predictable systems. By default, Cascade uses a **shared context**, which is simple but can lead to tight coupling.
+When you compose workflows, managing the flow of data between the parent and child is critical for creating modular and predictable systems. By default, Flowcraft uses a **shared context**, which is simple but can lead to tight coupling.
 
 This guide describes a powerful pattern for creating an explicit data boundary between flows, as demonstrated by the `SubWorkflowNode` in the Dynamic Graph Engine example.
 
@@ -17,17 +17,17 @@ To solve this, you can create a specialized `Node` (like the `SubWorkflowNode` i
 
 ```json
 {
-  "id": "my_sub_workflow_node",
-  "type": "sub-workflow",
-  "data": {
-    "workflowId": 201,
-    "inputs": {
-      "sub_flow_key": "parent_flow_key"
-    },
-    "outputs": {
-      "parent_flow_key_for_result": "sub_flow_output_key"
-    }
-  }
+	"id": "my_sub_workflow_node",
+	"type": "sub-workflow",
+	"data": {
+		"workflowId": 201,
+		"inputs": {
+			"sub_flow_key": "parent_flow_key"
+		},
+		"outputs": {
+			"parent_flow_key_for_result": "sub_flow_output_key"
+		}
+	}
 }
 ```
 
@@ -63,17 +63,17 @@ Imagine a parent flow that has a `USER_OBJECT`. We want to call a sub-workflow t
 
 ```json
 {
-  "id": "generate_greeting",
-  "type": "sub-workflow",
-  "data": {
-    "workflowId": 101,
-    "inputs": {
-      "user_to_greet": "USER_OBJECT"
-    },
-    "outputs": {
-      "FINAL_GREETING_MESSAGE": "greeting_result"
-    }
-  }
+	"id": "generate_greeting",
+	"type": "sub-workflow",
+	"data": {
+		"workflowId": 101,
+		"inputs": {
+			"user_to_greet": "USER_OBJECT"
+		},
+		"outputs": {
+			"FINAL_GREETING_MESSAGE": "greeting_result"
+		}
+	}
 }
 ```
 

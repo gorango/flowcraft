@@ -1,4 +1,4 @@
-import { Flow } from 'cascade'
+import { Flow } from 'flowcraft'
 import {
 	ApplyStyleNode,
 	GenerateOutlineNode,

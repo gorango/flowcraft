@@ -1,6 +1,6 @@
-import type { TypedNodeRegistry } from 'cascade'
+import type { TypedNodeRegistry } from 'flowcraft'
 import type { RagNodeTypeMap } from './types'
-import { createNodeRegistry, GraphBuilder } from 'cascade'
+import { createNodeRegistry, GraphBuilder } from 'flowcraft'
 import {
 	GenerateEmbeddingsNode,
 	LLMProcessNode,

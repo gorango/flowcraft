@@ -1,17 +1,17 @@
 # API Reference: Builders
 
-Builders are helper classes provided by Cascade to abstract away the manual construction of common and complex workflow patterns. They allow you to define high-level behavior, and the builder handles the underlying `Node` and `Flow` wiring for you.
+Builders are helper classes provided by Flowcraft to abstract away the manual construction of common and complex workflow patterns. They allow you to define high-level behavior, and the builder handles the underlying `Node` and `Flow` wiring for you.
 
-You can import all builders from the main `cascade` package.
+You can import all builders from the main `flowcraft` package.
 
 ```typescript
 import {
-  SequenceFlow,
-  ParallelFlow,
-  BatchFlow,
-  ParallelBatchFlow,
-  GraphBuilder,
-} from 'cascade'
+	BatchFlow,
+	GraphBuilder,
+	ParallelBatchFlow,
+	ParallelFlow,
+	SequenceFlow,
+} from 'flowcraft'
 ```
 
 ## `SequenceFlow`
@@ -30,9 +30,9 @@ A `Flow` that creates a linear workflow from a sequence of nodes, automatically 
 
 ```typescript
 const linearFlow = new SequenceFlow(
-  new GetUserNode(),
-  new ProcessDataNode(),
-  new SaveResultNode()
+	new GetUserNode(),
+	new ProcessDataNode(),
+	new SaveResultNode()
 )
 ```
 
@@ -54,8 +54,8 @@ A `Flow` that executes a collection of nodes concurrently. This is the core of t
 
 ```typescript
 const parallelStep = new ParallelFlow([
-  new FetchApiANode(),
-  new FetchApiBNode(),
+	new FetchApiANode(),
+	new FetchApiBNode(),
 ])
 const aggregateNode = new AggregateResultsNode()
 
@@ -102,7 +102,7 @@ A powerful builder that constructs an executable `Flow` from a declarative `Work
 > [!IMPORTANT]
 > To leverage compile-time type safety, you must use the `createNodeRegistry` helper and define a `NodeTypeMap` that maps your node type strings to their expected `data` payloads. This prevents configuration errors before you even run your code.
 >
-> (See how the **[Rag Agent](https://github.com/gorango/cascade/tree/master/sandbox/6.rag/)** implements a simple node registry; the **[Dynamic AI Agent](https://github.com/gorango/cascade/tree/master/sandbox/4.dag/)** even demonstrates type-safety despite using *dynamic graphs*.)
+> (See how the **[Rag Agent](https://github.com/gorango/flowcraft/tree/master/sandbox/6.rag/)** implements a simple node registry; the **[Dynamic AI Agent](https://github.com/gorango/flowcraft/tree/master/sandbox/4.dag/)** even demonstrates type-safety despite using *dynamic graphs*.)
 
 ### Sub-Workflow Composition (Graph Inlining)
 
@@ -140,8 +140,8 @@ The `.build()` method returns an object containing:
 > The `nodeMap` is the most efficient way to get a reference to a specific node instance within a built flow. It provides an instant, O(1) lookup, which is ideal for debugging, monitoring, or dynamic inspection.
 >
 > ```typescript
-> const { flow, nodeMap } = builder.build(myGraph);
-> const specificNode = nodeMap.get('my-node-id');
+> const { flow, nodeMap } = builder.build(myGraph)
+> const specificNode = nodeMap.get('my-node-id')
 > ```
 
 ### `WorkflowGraph` Interface

@@ -1,6 +1,6 @@
-import type { NodeArgs } from 'cascade'
+import type { NodeArgs } from 'flowcraft'
 import type { RagNodeOptions } from '../types'
-import { Node } from 'cascade'
+import { Node } from 'flowcraft'
 import { SearchResult } from '../types'
 import { cosineSimilarity, getEmbedding } from '../utils'
 import { SEARCH_RESULTS, VECTOR_DB } from './index'

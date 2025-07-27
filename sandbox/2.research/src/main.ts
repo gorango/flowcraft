@@ -1,7 +1,7 @@
-import type { Context } from 'cascade'
+import type { Context } from 'flowcraft'
 import process from 'node:process'
-import { ConsoleLogger, TypedContext } from 'cascade'
 import dotenv from 'dotenv'
+import { ConsoleLogger, TypedContext } from 'flowcraft'
 import { createAgentFlow } from './flow.js'
 
 dotenv.config()

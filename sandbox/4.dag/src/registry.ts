@@ -1,8 +1,8 @@
-import type { Flow, TypedWorkflowGraph } from 'cascade'
+import type { Flow, TypedWorkflowGraph } from 'flowcraft'
 import type { AgentNodeTypeMap } from './types'
 import { promises as fs } from 'node:fs'
 import path from 'node:path'
-import { ConsoleLogger, createNodeRegistry, GraphBuilder } from 'cascade'
+import { ConsoleLogger, createNodeRegistry, GraphBuilder } from 'flowcraft'
 import {
 	LLMConditionNode,
 	LLMProcessNode,

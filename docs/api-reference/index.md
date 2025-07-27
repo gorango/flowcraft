@@ -1,8 +1,8 @@
 # API Reference
 
-This section provides a detailed, technical breakdown of the core classes, functions, and types available in the Cascade framework. It is intended as a reference for when you know what component you need to use and want to understand its specific capabilities.
+This section provides a detailed, technical breakdown of the core classes, functions, and types available in the Flowcraft framework. It is intended as a reference for when you know what component you need to use and want to understand its specific capabilities.
 
-All components are imported from the main `cascade` package. For a more narrative-driven explanation of these concepts, please see the **[Guide](../guide/)**.
+All components are imported from the main `flowcraft` package. For a more narrative-driven explanation of these concepts, please see the **[Guide](../guide/)**.
 
 ## Core Workflow API
 

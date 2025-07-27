@@ -41,40 +41,41 @@ Let's assume we have a `dbClient` with `beginTransaction`, `commit`, and `rollba
 ```typescript
 // A mock database client
 const dbClient = {
-  beginTransaction: async () => console.log('[DB] ==> BEGIN TRANSACTION'),
-  commit: async () => console.log('[DB] <== COMMIT'),
-  rollback: async () => console.log('[DB] <== ROLLBACK'),
-  query: async (sql: string) => console.log(`[DB] Executing: ${sql}`),
+	beginTransaction: async () => console.log('[DB] ==> BEGIN TRANSACTION'),
+	commit: async () => console.log('[DB] <== COMMIT'),
+	rollback: async () => console.log('[DB] <== ROLLBACK'),
+	query: async (sql: string) => console.log(`[DB] Executing: ${sql}`),
 }
 
 // Our transaction middleware
-const transactionMiddleware = async (args, next) => {
-  // This middleware only acts on the top-level Flow, not individual nodes.
-  // We check the node's name to apply the logic selectively.
-  if (args.name !== 'TransactionFlow') {
-    return next(args)
-  }
+async function transactionMiddleware(args, next) {
+	// This middleware only acts on the top-level Flow, not individual nodes.
+	// We check the node's name to apply the logic selectively.
+	if (args.name !== 'TransactionFlow') {
+		return next(args)
+	}
 
-  await dbClient.beginTransaction()
-  try {
-    // Call next() to execute the entire wrapped flow
-    const result = await next(args)
-    await dbClient.commit()
-    return result
-  } catch (error) {
-    console.error('[DB] Error occurred, rolling back transaction.')
-    await dbClient.rollback()
-    // Re-throw the error so the top-level caller knows the flow failed
-    throw error
-  }
+	await dbClient.beginTransaction()
+	try {
+		// Call next() to execute the entire wrapped flow
+		const result = await next(args)
+		await dbClient.commit()
+		return result
+	}
+	catch (error) {
+		console.error('[DB] Error occurred, rolling back transaction.')
+		await dbClient.rollback()
+		// Re-throw the error so the top-level caller knows the flow failed
+		throw error
+	}
 }
 
 // Nodes that simulate database operations
 class CreateUserNode extends Node {
-  async exec() { await dbClient.query("INSERT INTO users...") }
+	async exec() { await dbClient.query('INSERT INTO users...') }
 }
 class UpdateProfileNode extends Node {
-  async exec() { await dbClient.query("UPDATE profiles...") }
+	async exec() { await dbClient.query('UPDATE profiles...') }
 }
 
 // A specific Flow class to attach the middleware to

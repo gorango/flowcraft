@@ -1,9 +1,9 @@
-import type { TypedWorkflowGraph } from 'cascade'
+import type { TypedWorkflowGraph } from 'flowcraft'
 import type { RagNodeTypeMap } from './types'
 import { promises as fs } from 'node:fs'
 import path from 'node:path'
 import process from 'node:process'
-import { ConsoleLogger, TypedContext } from 'cascade'
+import { ConsoleLogger, TypedContext } from 'flowcraft'
 import SuperJSON from 'superjson'
 import { DOCUMENT_PATH, FINAL_ANSWER, keyRegistry, QUESTION } from './nodes'
 import { ragGraphBuilder } from './registry'
@@ -20,10 +20,10 @@ async function main() {
 	const { flow } = ragGraphBuilder.build(graph)
 
 	// 3. Set up the initial context for the workflow run.
-	const documentPath = path.join(process.cwd(), 'documents', 'sample-cascade.txt')
+	const documentPath = path.join(process.cwd(), 'documents', 'sample-flowcraft.txt')
 	const context = new TypedContext()
 	context.set(DOCUMENT_PATH, documentPath)
-	context.set(QUESTION, 'How does Cascade handle conditional branching?')
+	context.set(QUESTION, 'How does Flowcraft handle conditional branching?')
 
 	// 4. Run the workflow.
 	await flow.run(context, { logger: new ConsoleLogger() })

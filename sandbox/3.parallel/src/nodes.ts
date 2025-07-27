@@ -1,7 +1,7 @@
-import type { AbstractNode, NodeArgs } from 'cascade'
+import type { AbstractNode, NodeArgs } from 'flowcraft'
 import * as fs from 'node:fs/promises'
 import * as path from 'node:path'
-import { Node, ParallelBatchFlow } from 'cascade'
+import { Node, ParallelBatchFlow } from 'flowcraft'
 import { callLLM } from './utils'
 
 export class TranslateNode extends Node<void, { language: string, translation: string }> {

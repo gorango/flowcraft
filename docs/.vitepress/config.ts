@@ -3,7 +3,7 @@ import { MermaidMarkdown, MermaidPlugin } from 'vitepress-plugin-mermaid'
 
 export default defineConfig({
 	cleanUrls: true, // might need to change depending on deployment
-	title: 'Cascade',
+	title: 'Flowcraft',
 	description: 'A Workflow Framework',
 	vite: {
 		optimizeDeps: {
@@ -99,7 +99,7 @@ export default defineConfig({
 			],
 		},
 		socialLinks: [
-			{ icon: 'github', link: 'https://github.com/gorango/cascade' },
+			{ icon: 'github', link: 'https://github.com/gorango/flowcraft' },
 		],
 	},
 })

@@ -5,8 +5,8 @@
 		"start": "npx tsx src/main.ts"
 	},
 	"dependencies": {
-		"cascade": "workspace:*",
 		"dotenv": "^16.4.5",
+		"flowcraft": "workspace:*",
 		"lodash-es": "^4.17.21",
 		"openai": "^4.52.7",
 		"yaml": "^2.5.0"

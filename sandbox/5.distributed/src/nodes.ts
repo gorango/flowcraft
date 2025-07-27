@@ -1,7 +1,7 @@
-import type { DEFAULT_ACTION, NodeArgs, NodeOptions } from 'cascade'
+import type { DEFAULT_ACTION, NodeArgs, NodeOptions } from 'flowcraft'
 import type { WorkflowRegistry } from './registry'
 import type { AgentNodeTypeMap } from './types'
-import { Node } from 'cascade'
+import { Node } from 'flowcraft'
 import { FINAL_ACTION } from './types'
 import { callLLM, resolveTemplate } from './utils'
 
