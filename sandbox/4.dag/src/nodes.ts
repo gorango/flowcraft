@@ -1,5 +1,4 @@
 import type { NodeArgs } from 'flowcraft'
-import type { AiNodeOptions, DagContext } from './types'
 import { DEFAULT_ACTION, Node } from 'flowcraft'
 import { callLLM, resolveTemplate } from './utils'
 
@@ -8,9 +7,9 @@ import { callLLM, resolveTemplate } from './utils'
  * The prompt is a template that gets resolved with inputs from the context.
  */
 export class LLMProcessNode extends Node<string, string> {
-	private data: AiNodeOptions<'llm-process'>['data']
+	private data: any
 
-	constructor(options: AiNodeOptions<'llm-process'> & DagContext) {
+	constructor(options: any) {
 		super(options)
 		this.data = options.data
 	}
@@ -61,9 +60,9 @@ export class LLMProcessNode extends Node<string, string> {
  * An LLM-powered node that evaluates a condition and returns 'true' or 'false'.
  */
 export class LLMConditionNode extends Node<string, string, 'true' | 'false'> {
-	private data: AiNodeOptions<'llm-condition'>['data']
+	private data: any
 
-	constructor(options: AiNodeOptions<'llm-condition'> & DagContext) {
+	constructor(options: any) {
 		super(options)
 		this.data = options.data
 	}
@@ -87,9 +86,9 @@ export class LLMConditionNode extends Node<string, string, 'true' | 'false'> {
  * An LLM-powered node that returns its raw output as an action for dynamic routing.
  */
 export class LLMRouterNode extends Node<string, string, string> {
-	private data: AiNodeOptions<'llm-router'>['data']
+	private data: any
 
-	constructor(options: AiNodeOptions<'llm-router'> & DagContext) {
+	constructor(options: any) {
 		super(options)
 		this.data = options.data
 	}
@@ -109,9 +108,9 @@ export class LLMRouterNode extends Node<string, string, string> {
  * Aggregates inputs and sets a final value in the context.
  */
 export class OutputNode extends Node<string, void> {
-	private data: AiNodeOptions<'output'>['data']
+	private data: any
 
-	constructor(options: AiNodeOptions<'output'> & DagContext) {
+	constructor(options: any) {
 		super(options)
 		this.data = options.data
 	}
