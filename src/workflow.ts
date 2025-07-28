@@ -195,6 +195,7 @@ export class Node<PrepRes = any, ExecRes = any, PostRes = any> extends AbstractN
 		}
 		else {
 			logger.info(`Running node: ${this.constructor.name}`, { params })
+			logger.debug(`[${this.constructor.name}] Received params`, params)
 		}
 
 		if (signal?.aborted)
@@ -202,6 +203,7 @@ export class Node<PrepRes = any, ExecRes = any, PostRes = any> extends AbstractN
 		let prepRes: PrepRes
 		try {
 			prepRes = await this.prep({ ctx, params, signal, logger, prepRes: undefined, execRes: undefined, executor })
+			logger.debug(`[${this.constructor.name}] prep() result`, { prepRes })
 		}
 		catch (e) {
 			throw this._wrapError(e, 'prep')
@@ -212,6 +214,7 @@ export class Node<PrepRes = any, ExecRes = any, PostRes = any> extends AbstractN
 		let execRes: ExecRes
 		try {
 			execRes = await this._exec({ ctx, params, signal, logger, prepRes, execRes: undefined, executor })
+			logger.debug(`[${this.constructor.name}] exec() result`, { execRes })
 		}
 		catch (e) {
 			throw this._wrapError(e, 'exec')
@@ -221,6 +224,8 @@ export class Node<PrepRes = any, ExecRes = any, PostRes = any> extends AbstractN
 			throw new AbortError()
 		try {
 			const action = await this.post({ ctx, params, signal, logger, prepRes, execRes, executor })
+			const actionDisplay = typeof action === 'symbol' ? action.toString() : action
+			logger.debug(`[${this.constructor.name}] post() returned action: '${actionDisplay}'`)
 			return action === undefined ? DEFAULT_ACTION as any : action
 		}
 		catch (e) {
@@ -306,6 +311,7 @@ export class Node<PrepRes = any, ExecRes = any, PostRes = any> extends AbstractN
 			async exec(args: NodeArgs<PrepRes>): Promise<ExecRes> { return originalNode.exec(args as any) }
 			async post(args: NodeArgs<PrepRes, ExecRes>): Promise<any> {
 				args.ctx.set(key, args.execRes)
+				args.logger.debug(`[toContext] Set context key '${String(key.description)}'`, { value: args.execRes })
 				return DEFAULT_ACTION
 			}
 		}()

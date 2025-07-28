@@ -117,8 +117,14 @@ The mechanism for type-safe access to the `Context`.
 ## Logger Interfaces
 
 - `Logger`: The interface that any logger passed to a flow must implement (`debug`, `info`, `warn`, `error`).
-- `ConsoleLogger`: A default implementation that logs messages to the `console`.
+- `ConsoleLogger`: A default implementation that logs messages to the `console`, with support for configurable log levels.
 - `NullLogger`: A default implementation that performs no action. This is the framework's default if no logger is provided, ensuring it is silent by default.
+
+### `ConsoleLogger` Constructor
+
+`new ConsoleLogger(options?: { level?: 'debug' | 'info' | 'warn' | 'error' })`
+
+- `options.level`: The minimum level of messages to log. Defaults to `'info'`.
 
 ## Error Types
 

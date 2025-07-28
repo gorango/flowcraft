@@ -21,17 +21,44 @@ export class NullLogger implements Logger {
 	error() { /* no-op */ }
 }
 
+type LogLevel = 'debug' | 'info' | 'warn' | 'error'
+
+const levelPriorities: Record<LogLevel, number> = {
+	debug: 1,
+	info: 2,
+	warn: 3,
+	error: 4,
+}
+
 /**
  * A default logger implementation that writes messages to the `console`.
- * Useful for development and debugging.
+ * It supports a minimum log level to control verbosity.
  */
 export class ConsoleLogger implements Logger {
-	private log(level: 'debug' | 'info' | 'warn' | 'error', message: string, context?: object) {
+	private minLevel: LogLevel
+
+	/**
+	 * @param options Configuration for the logger.
+	 * @param options.level The minimum level of messages to log. Defaults to 'info'.
+	 */
+	constructor(options: { level?: LogLevel } = {}) {
+		this.minLevel = options.level ?? 'info'
+	}
+
+	private log(level: LogLevel, message: string, context?: object) {
+		if (levelPriorities[level] < levelPriorities[this.minLevel]) {
+			return
+		}
+
 		const fullMessage = `[${level.toUpperCase()}] ${message}`
-		if (context && Object.keys(context).length > 0)
-			console[level](fullMessage, context)
-		else
-			console[level](fullMessage)
+		if (context && Object.keys(context).length > 0) {
+			const logMethod = console[level] || console.log
+			logMethod(fullMessage, context)
+		}
+		else {
+			const logMethod = console[level] || console.log
+			logMethod(fullMessage)
+		}
 	}
 
 	debug(message: string, context?: object) { this.log('debug', message, context) }

@@ -110,6 +110,8 @@ export abstract class BatchFlow<T = any> extends Flow<Iterable<T>, null> {
 			if (args.signal?.aborted)
 				throw new AbortError()
 
+			args.logger.debug(`[BatchFlow] Processing item`, { batchParams })
+
 			await this.nodeToRun._run({
 				ctx: args.ctx,
 				params: { ...combinedParams, ...batchParams },
@@ -163,15 +165,16 @@ export abstract class ParallelBatchFlow<T = any> extends Flow<Iterable<T>, Promi
 		const batchParamsList = Array.from(batchParamsIterable)
 		args.logger.info(`[ParallelBatchFlow] Starting parallel processing of ${batchParamsList.length} items.`)
 
-		const promises = batchParamsList.map(batchParams =>
-			this.nodeToRun._run({
+		const promises = batchParamsList.map((batchParams) => {
+			args.logger.debug(`[ParallelBatchFlow] Processing item`, { batchParams })
+			return this.nodeToRun._run({
 				ctx: args.ctx,
 				params: { ...combinedParams, ...batchParams },
 				signal: args.signal,
 				logger: args.logger,
 				executor: args.executor,
-			}),
-		)
+			})
+		})
 
 		const results = await Promise.allSettled(promises)
 

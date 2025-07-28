@@ -160,6 +160,7 @@ export class GraphBuilder<
 			}
 
 			if (isRegisteredSubWorkflow) {
+				this.logger.debug(`[GraphBuilder] Inlining sub-workflow node '${prefixedNodeId}'...`)
 				const subWorkflowData = node.data as any
 				const subWorkflowId = subWorkflowData.workflowId
 				const registry = this.nodeOptionsContext.registry as any
@@ -170,6 +171,7 @@ export class GraphBuilder<
 				if (!subGraph)
 					throw new Error(`Sub-workflow with ID ${subWorkflowId} not found in registry.`)
 
+				this.logger.debug(`[GraphBuilder]   -> Fetched graph for sub-workflow ID: ${subWorkflowId}`)
 				const inputMapperId = `${prefixedNodeId}_input_mapper`
 				const outputMapperId = `${prefixedNodeId}_output_mapper`
 				finalNodes.push({ id: inputMapperId, type: '__internal_input_mapper__', data: subWorkflowData.inputs || {} })
@@ -262,6 +264,7 @@ export class GraphBuilder<
 				.withId(graphNode.id)
 				.withGraphData(graphNode)
 			nodeMap.set(graphNode.id, executableNode)
+			this.logger.debug(`[GraphBuilder] Instantiated node '${graphNode.id}' of type '${graphNode.type}'`)
 		}
 
 		// Pass 2: Group all edges by their source and action. This map is the source of truth for wiring.
@@ -283,14 +286,17 @@ export class GraphBuilder<
 		for (const [sourceId, actions] of edgeGroups.entries()) {
 			const sourceNode = nodeMap.get(sourceId)!
 			for (const [action, successors] of actions.entries()) {
+				const actionDisplay = typeof action === 'symbol' ? action.toString() : action
 				if (successors.length === 1) {
 					// Simple 1-to-1 connection.
 					sourceNode.next(successors[0], action)
+					this.logger.debug(`[GraphBuilder] Wired edge: ${sourceId} --"${actionDisplay}"--> ${successors[0].id}`)
 				}
 				else if (successors.length > 1) {
 					// Fan-out detected. Use our named container.
 					const parallelNode = new ParallelBranchContainer(successors)
 					sourceNode.next(parallelNode, action)
+					this.logger.debug(`[GraphBuilder] Detected fan-out from ${sourceId} on action "${actionDisplay}". Creating parallel block.`)
 
 					// Determine the single convergence point for this parallel block.
 					const firstBranchSuccessor = edgeGroups.get(successors[0].id!.toString())?.get(DEFAULT_ACTION)?.[0]

@@ -35,37 +35,44 @@ const processUser = fetchUserNode
 
 ## 2. Trace Execution with the Logger
 
-When your problem is about *control flow* ("Why did my workflow take the wrong branch?"), the logger is your best friend. By passing a `ConsoleLogger` to your `flow.run()` call, you get a detailed, step-by-step trace of the entire execution.
+When your problem is about *control flow* ("Why did my workflow take the wrong branch?") or *data flow* ("What was the exact data passed to this node?"), the logger is your best friend.
 
-The logger will show:
-
-- Which node is currently running.
-- The **action** string returned by each node.
-- The successor node chosen for that action.
-- Warnings for retry attempts and errors for fallback execution.
+By passing a `ConsoleLogger` to your `flow.run()` call, you get a detailed, step-by-step trace of the entire execution. For maximum visibility, **set the log level to `'debug'`**.
 
 ```typescript
 import { ConsoleLogger, Flow, TypedContext } from 'flowcraft'
 
-// Assume you have a conditional flow set up
 const myFlow = createMyConditionalFlow()
 const context = new TypedContext()
 
-// Run the flow with a logger enabled
-await myFlow.run(context, { logger: new ConsoleLogger() })
+// Run the flow with verbose debug logging enabled
+const logger = new ConsoleLogger({ level: 'debug' })
+await myFlow.run(context, { logger })
 ```
 
-**Example Log Output**:
+The `debug` logger will show:
+
+-   Which node is currently running.
+-   The exact `params` passed to the node.
+-   The result of the `prep()` and `exec()` phases.
+-   The **action** string returned by each node.
+-   The successor node chosen for that action.
+-   Warnings for retry attempts and errors for fallback execution.
+
+**Example Debug Log Output**:
 
 ```
-[INFO] Running flow: MyFlow
 [INFO] Running node: CheckConditionNode
+[DEBUG] [CheckConditionNode] Received params { userId: 123 }
+[DEBUG] [CheckConditionNode] prep() result { user: { name: 'Alice', role: 'admin' } }
+[DEBUG] [CheckConditionNode] exec() result true
+[DEBUG] [CheckConditionNode] post() returned action: 'action_approve'
 [DEBUG] Action 'action_approve' from CheckConditionNode leads to ApproveNode
 [INFO] Running node: ApproveNode
-[INFO] Flow ends: Action 'Symbol(default)' from ApproveNode has no configured successor.
+...
 ```
 
-This output makes it immediately clear that `CheckConditionNode` returned `'action_approve'`, which led to `ApproveNode`.
+This output makes it immediately clear what data the node received, what it produced, and why it took a specific branch. See the **[Logging Guide](../advanced-guides/logging.md)** for more details.
 
 ## 3. Visualize Your Graph with `generateMermaidGraph`
 

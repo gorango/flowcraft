@@ -17,17 +17,17 @@ export interface Logger {
 
 The `context` object is used to pass structured data, which is a best practice for modern logging. The Flowcraft engine will automatically pass contextual information here, such as retry attempts or error details.
 
-## Using the Built-in Loggers
+## Using the Built-in `ConsoleLogger`
 
 Flowcraft comes with two pre-built loggers:
 
-- **`ConsoleLogger`**: A straightforward logger that prints messages to the `console` (e.g., `console.info`, `console.warn`). This is great for development and debugging.
+- **`ConsoleLogger`**: A straightforward logger that prints messages to the `console`. It supports log levels to control verbosity.
 - **`NullLogger`**: A logger that does nothing.
 
 > [!NOTE]
 > **Flowcraft is silent by default.** The `NullLogger` is the framework's default if no logger is provided. This ensures that Flowcraft doesn't clutter your application's output unless you explicitly enable logging by passing a `logger` in the `RunOptions`.
 
-To use the `ConsoleLogger`, simply pass it in the `RunOptions` when you execute a flow:
+To use the `ConsoleLogger`, simply pass it in the `RunOptions` when you execute a flow. You can specify a minimum log level (`'debug'`, `'info'`, `'warn'`, `'error'`) in its constructor.
 
 ```typescript
 import { ConsoleLogger, Flow, Node, TypedContext } from 'flowcraft'
@@ -35,15 +35,31 @@ import { ConsoleLogger, Flow, Node, TypedContext } from 'flowcraft'
 const myFlow = new Flow(new Node().exec(() => 'done'))
 const context = new TypedContext()
 
-// Run the flow with the console logger enabled
-await myFlow.run(context, { logger: new ConsoleLogger() })
+// Default level is 'info'
+const logger = new ConsoleLogger()
+await myFlow.run(context, { logger })
+
+// Enable verbose debug logging for deep tracing
+const debugLogger = new ConsoleLogger({ level: 'debug' })
+await myFlow.run(context, { logger: debugLogger })
 ```
 
-This will produce detailed output about the flow's execution, including which nodes are running, what actions they return, and any warnings or errors.
+### Understanding Log Levels
+
+-   **`info` (Default)**: Provides a high-level overview of the workflow's execution. It logs when flows and nodes start, when a flow ends because an action has no successor, and important warnings or errors.
+-   **`debug` (Verbose)**: Provides a detailed, step-by-step trace of the entire process. This is invaluable for debugging. Enabling it will show you:
+    -   The exact `params` passed to each node.
+    -   The result of each lifecycle phase (`prep` and `exec`).
+    -   The specific `action` string returned by each node's `post()` method.
+    -   The precise branching decisions made by the executor.
+    -   Detailed steps of the `GraphBuilder`, including node instantiation and edge wiring.
+    -   The sub-workflow inlining process.
 
 ## Integrating a Custom Logger (e.g., Pino)
 
 Plugging in a production-grade logger like [Pino](https://github.com/pinojs/pino) is easy. All you need is a simple adapter class that maps Pino's logging methods to Flowcraft's `Logger` interface.
+
+Because your Pino instance will have its own internal log level configuration, it will automatically filter messages from Flowcraft, giving you full control over the output in your production environment.
 
 ### Example: Pino Logger Adapter
 
@@ -63,17 +79,13 @@ import pino, { Logger as PinoLogger } from 'pino'
 export class PinoFlowcraftLogger implements FlowcraftLogger {
 	private pino: PinoLogger
 
-	constructor(options?: pino.LoggerOptions) {
-		// Initialize pino with your desired configuration
-		this.pino = pino(options || {
-			level: 'info',
-			transport: {
-				target: 'pino-pretty', // for development
-			},
-		})
+	constructor(pinoInstance: PinoLogger) {
+		// The user provides their own pre-configured pino instance.
+		// Flowcraft will call .debug(), .info(), etc., and pino
+		// will decide whether to print them based on its own level.
+		this.pino = pinoInstance
 	}
 
-	// Map the interface methods to pino's methods
 	public debug(message: string, context?: object): void {
 		this.pino.debug(context || {}, message)
 	}
@@ -92,15 +104,17 @@ export class PinoFlowcraftLogger implements FlowcraftLogger {
 }
 ```
 
-Now you can use your custom logger just like a built-in one:
+Now you can use your custom logger:
 
 ```typescript
 // main.ts
 import { PinoFlowcraftLogger } from './loggers/pino-logger'
+import pino from 'pino'
 
-const pinoLogger = new PinoFlowcraftLogger()
+// The user configures pino as they normally would.
+const pinoInstance = pino({ level: 'info' }) // or 'debug' for more verbosity
+
+const pinoLogger = new PinoFlowcraftLogger(pinoInstance)
 
 await myFlow.run(context, { logger: pinoLogger })
 ```
-
-Your workflow's execution logs will now be formatted as structured JSON (or pretty-printed, depending on your Pino configuration), ready to be shipped to a log aggregation service like Datadog, Logstash, or Splunk.

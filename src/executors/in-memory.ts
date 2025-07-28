@@ -66,6 +66,8 @@ export class InMemoryExecutor implements IExecutor {
 	 * @param options Runtime options, including a logger, abort controller, or initial params.
 	 * @returns A promise that resolves with the final action of the workflow.
 	 */
+	public run<T>(flow: Flow<any, T>, context: Context, options?: RunOptions): Promise<T>
+	public run(flow: Flow, context: Context, options?: RunOptions): Promise<any>
 	public async run<T>(flow: Flow<any, T>, context: Context, options?: RunOptions): Promise<T> {
 		const logger = options?.logger ?? new NullLogger()
 		const combinedParams = { ...flow.params, ...options?.params }
@@ -94,7 +96,7 @@ export class InMemoryExecutor implements IExecutor {
 		logger.info(`Executor is running flow graph: ${flow.constructor.name}`)
 		// Delegate the graph traversal to our new stateless helper.
 		// Pass the flow's own middleware to be applied to its nodes.
-		return this._orch(flow.startNode, flow.middleware, context, internalOptions)
+		return this._orch<T>(flow.startNode, flow.middleware, context, internalOptions)
 	}
 
 	/**
