@@ -1,5 +1,5 @@
 import type { Context, ContextTransform } from './context'
-import type { NodeArgs } from './types'
+import type { NodeArgs, Params } from './types'
 import type { Flow, Node } from './workflow'
 import { SequenceFlow } from './builder/patterns'
 import { composeContext } from './context'
@@ -32,9 +32,9 @@ export type ContextFunction<TIn = any, TOut = any> = (ctx: Context, input: TIn) 
  * @param fn A function that takes an input object and returns a result.
  * @returns A new `Node` instance that wraps the function.
  */
-export function mapNode<TIn, TOut>(fn: NodeFunction<TIn, TOut>): Node<TIn, TOut> {
-	return new class extends BaseNode<TIn, TOut> {
-		async exec({ params }: NodeArgs<TIn>): Promise<TOut> {
+export function mapNode<TIn extends Params, TOut>(fn: NodeFunction<TIn, TOut>): Node<void, TOut, any, TIn> {
+	return new class extends BaseNode<void, TOut, any, TIn> {
+		async exec({ params }: NodeArgs<void, void, TIn>): Promise<TOut> {
 			return fn(params as TIn)
 		}
 	}()
@@ -53,9 +53,9 @@ export function mapNode<TIn, TOut>(fn: NodeFunction<TIn, TOut>): Node<TIn, TOut>
  * @param fn A function that takes the context and an input object, and returns a result.
  * @returns A new `Node` instance that wraps the function.
  */
-export function contextNode<TIn, TOut>(fn: ContextFunction<TIn, TOut>): Node<TIn, TOut> {
-	return new class extends BaseNode<TIn, TOut> {
-		async exec({ ctx, params }: NodeArgs<TIn>): Promise<TOut> {
+export function contextNode<TIn extends Params, TOut>(fn: ContextFunction<TIn, TOut>): Node<void, TOut, any, TIn> {
+	return new class extends BaseNode<void, TOut, any, TIn> {
+		async exec({ ctx, params }: NodeArgs<void, void, TIn>): Promise<TOut> {
 			return fn(ctx, params as TIn)
 		}
 	}()

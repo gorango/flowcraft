@@ -15,9 +15,14 @@ import {
 } from 'flowcraft'
 ```
 
-## `Node<PrepRes, ExecRes, PostRes>`
+## `Node<PrepRes, ExecRes, PostRes, TParams>`
 
-The base class for a single unit of work.
+The base class for a single unit of work. It is generic over its lifecycle results and its static parameters.
+
+- `PrepRes`: The type of data returned by the `prep` phase.
+- `ExecRes`: The type of data returned by the `exec` phase.
+- `PostRes`: The type of the "action" returned by the `post` phase.
+- `TParams`: **(Optional)** The type of the static parameters object for the node. Defaults to `Params`.
 
 ### Constructor
 
@@ -31,10 +36,10 @@ The base class for a single unit of work.
 
 These methods are designed to be overridden in your custom `Node` subclasses.
 
-- `async prep(args: NodeArgs): Promise<PrepRes>`: Prepares data for execution. Runs before `exec`. Ideal for reading from the context.
-- `async exec(args: NodeArgs<PrepRes>): Promise<ExecRes>`: Performs the core, isolated logic. Its result is passed to `post`. This is the only phase that is retried on failure.
-- `async post(args: NodeArgs<PrepRes, ExecRes>): Promise<PostRes>`: Processes results and determines the next step. Runs after `exec`. Ideal for writing to the context. Should return an action string. The default return is `DEFAULT_ACTION`.
-- `async execFallback(args: NodeArgs<PrepRes>): Promise<ExecRes>`: Runs if all `exec` retries fail. If not implemented, the error will be re-thrown.
+- `async prep(args: NodeArgs<void, void, TParams>): Promise<PrepRes>`: Prepares data for execution. Runs before `exec`. Ideal for reading from the context.
+- `async exec(args: NodeArgs<PrepRes, void, TParams>): Promise<ExecRes>`: Performs the core, isolated logic. Its result is passed to `post`. This is the only phase that is retried on failure.
+- `async post(args: NodeArgs<PrepRes, ExecRes, TParams>): Promise<PostRes>`: Processes results and determines the next step. Runs after `exec`. Ideal for writing to the context. Should return an action string. The default return is `DEFAULT_ACTION`.
+- `async execFallback(args: NodeArgs<PrepRes, void, TParams>): Promise<ExecRes>`: Runs if all `exec` retries fail. If not implemented, the error will be re-thrown.
 
 ### Fluent API Methods
 
@@ -50,10 +55,10 @@ These methods are designed to be overridden in your custom `Node` subclasses.
 ### Other Methods
 
 - `.next(node, action?)`: Connects this node to a successor. Returns the successor node for chaining.
-- `.withParams(params)`: Sets or merges parameters for the node.
+- `.withParams(params: Partial<TParams>)`: Sets or merges type-safe parameters for the node.
 - `.run(ctx, options?)`: Runs the node as a standalone unit using an `IExecutor`.
 
-## `Flow`
+## `Flow<PrepRes, ExecRes, TParams>`
 
 A special `Node` that acts as a container for a graph of other nodes and their shared middleware.
 

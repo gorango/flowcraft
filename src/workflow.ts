@@ -12,14 +12,20 @@ import { sleep } from './utils/index'
 /**
  * The abstract base class for all executable units in a workflow.
  * It provides the core structure for connecting nodes into a graph.
+ *
+ * @template TPostRes The type for the action returned by the node's `post` method.
+ * @template TParams The type for the node's static parameters.
  */
-export abstract class AbstractNode {
+export abstract class AbstractNode<
+	TPostRes = any,
+	TParams extends Params = Params,
+> {
 	/** A unique identifier for this node instance, often set by the GraphBuilder. */
 	public id?: number | string
 	/** A key-value store for static parameters that configure the node's behavior. */
-	public params: Params = {}
+	public params: TParams = {} as TParams
 	/** A map of successor nodes, keyed by the action that triggers the transition. */
-	public successors = new Map<string | typeof DEFAULT_ACTION | typeof FILTER_FAILED, AbstractNode>()
+	public successors = new Map<TPostRes | string | typeof DEFAULT_ACTION | typeof FILTER_FAILED, AbstractNode<any, any>>()
 	/** The original graph definition for this node, if created by a GraphBuilder. */
 	public graphData?: GraphNode
 
@@ -51,7 +57,7 @@ export abstract class AbstractNode {
 	 * @param params The parameters to merge into the node's existing parameters.
 	 * @returns The node instance for chaining.
 	 */
-	withParams(params: Params): this {
+	withParams(params: Partial<TParams>): this {
 		this.params = { ...this.params, ...params }
 		return this
 	}
@@ -61,11 +67,14 @@ export abstract class AbstractNode {
 	 * This is the primary method for constructing a workflow graph.
 	 *
 	 * @param node The successor node to execute next.
-	 * @param action The action string from this node's `post` method that triggers
+	 * @param action The action from this node's `post` method that triggers
 	 * the transition. Defaults to `DEFAULT_ACTION` for linear flows.
 	 * @returns The successor node instance, allowing for further chaining.
 	 */
-	next(node: AbstractNode, action: string | typeof DEFAULT_ACTION | typeof FILTER_FAILED = DEFAULT_ACTION): AbstractNode {
+	next<NextNode extends AbstractNode<any, any>>(
+		node: NextNode,
+		action: TPostRes | string | typeof DEFAULT_ACTION | typeof FILTER_FAILED = DEFAULT_ACTION as any,
+	): NextNode {
 		this.successors.set(action, node)
 		return node
 	}
@@ -75,7 +84,7 @@ export abstract class AbstractNode {
 	 * It is called by an `IExecutor`.
 	 * @internal
 	 */
-	abstract _run(ctx: NodeRunContext): Promise<any>
+	abstract _run(ctx: NodeRunContext): Promise<TPostRes>
 }
 
 /**
@@ -86,8 +95,14 @@ export abstract class AbstractNode {
  * @template PrepRes The type of data returned by the `prep` phase.
  * @template ExecRes The type of data returned by the `exec` phase.
  * @template PostRes The type of the action returned by the `post` phase.
+ * @template TParams The type for the node's static parameters.
  */
-export class Node<PrepRes = any, ExecRes = any, PostRes = any> extends AbstractNode {
+export class Node<
+	PrepRes = any,
+	ExecRes = any,
+	PostRes = any,
+	TParams extends Params = Params,
+> extends AbstractNode<PostRes, TParams> {
 	/** The total number of times the `exec` phase will be attempted. */
 	public maxRetries: number
 	/** The time in milliseconds to wait between failed `exec` attempts. */
@@ -105,9 +120,9 @@ export class Node<PrepRes = any, ExecRes = any, PostRes = any> extends AbstractN
 	}
 
 	protected _wrapError(e: any, phase: 'prep' | 'exec' | 'post'): Error {
-		if (e instanceof AbortError || e instanceof WorkflowError) {
+		if (e instanceof AbortError || e instanceof WorkflowError)
 			return e
-		}
+
 		return new WorkflowError(`Failed in ${phase} phase for node ${this.constructor.name}`, this.constructor.name, phase, e as Error)
 	}
 
@@ -117,7 +132,7 @@ export class Node<PrepRes = any, ExecRes = any, PostRes = any> extends AbstractN
 	 * @param args The arguments for the node, including `ctx` and `params`.
 	 * @returns The data required by the `exec` phase.
 	 */
-	async prep(args: NodeArgs<void, void>): Promise<PrepRes> { return undefined as unknown as PrepRes }
+	async prep(args: NodeArgs<void, void, TParams>): Promise<PrepRes> { return undefined as unknown as PrepRes }
 
 	/**
 	 * (Lifecycle) Performs the core, isolated logic of the node.
@@ -125,7 +140,7 @@ export class Node<PrepRes = any, ExecRes = any, PostRes = any> extends AbstractN
 	 * @param args The arguments for the node, including `prepRes`.
 	 * @returns The result of the execution.
 	 */
-	async exec(args: NodeArgs<PrepRes, void>): Promise<ExecRes> { return undefined as unknown as ExecRes }
+	async exec(args: NodeArgs<PrepRes, void, TParams>): Promise<ExecRes> { return undefined as unknown as ExecRes }
 
 	/**
 	 * (Lifecycle) Processes results and determines the next step. Runs once after `exec` succeeds.
@@ -133,7 +148,7 @@ export class Node<PrepRes = any, ExecRes = any, PostRes = any> extends AbstractN
 	 * @param args The arguments for the node, including `execRes`.
 	 * @returns An "action" string to determine which successor to execute next. Defaults to `DEFAULT_ACTION`.
 	 */
-	async post(args: NodeArgs<PrepRes, ExecRes>): Promise<PostRes> { return DEFAULT_ACTION as any }
+	async post(args: NodeArgs<PrepRes, ExecRes, TParams>): Promise<PostRes> { return DEFAULT_ACTION as any }
 
 	/**
 	 * (Lifecycle) A fallback that runs if all `exec` retries fail.
@@ -141,10 +156,10 @@ export class Node<PrepRes = any, ExecRes = any, PostRes = any> extends AbstractN
 	 * @param args The arguments for the node, including the final `error` that caused the failure.
 	 * @returns A fallback result of type `ExecRes`, allowing the workflow to recover and continue.
 	 */
-	async execFallback(args: NodeArgs<PrepRes, void>): Promise<ExecRes> {
-		if (args.error) {
+	async execFallback(args: NodeArgs<PrepRes, void, TParams>): Promise<ExecRes> {
+		if (args.error)
 			throw args.error
-		}
+
 		throw new Error(`Node ${this.constructor.name} failed and has no fallback implementation.`)
 	}
 
@@ -152,7 +167,7 @@ export class Node<PrepRes = any, ExecRes = any, PostRes = any> extends AbstractN
 	 * The internal retry-aware execution logic for the `exec` phase.
 	 * @internal
 	 */
-	async _exec(args: NodeArgs<PrepRes, void>): Promise<ExecRes> {
+	async _exec(args: NodeArgs<PrepRes, void, TParams>): Promise<ExecRes> {
 		let lastError: Error | undefined
 		for (let curRetry = 0; curRetry < this.maxRetries; curRetry++) {
 			if (args.signal?.aborted)
@@ -196,7 +211,7 @@ export class Node<PrepRes = any, ExecRes = any, PostRes = any> extends AbstractN
 			throw new AbortError()
 		let prepRes: PrepRes
 		try {
-			prepRes = await this.prep({ ctx, params, signal, logger, prepRes: undefined, execRes: undefined, executor })
+			prepRes = await this.prep({ ctx, params: params as TParams, signal, logger, prepRes: undefined, execRes: undefined, executor })
 			logger.debug(`[${this.constructor.name}] prep() result`, { prepRes })
 		}
 		catch (e) {
@@ -207,7 +222,7 @@ export class Node<PrepRes = any, ExecRes = any, PostRes = any> extends AbstractN
 			throw new AbortError()
 		let execRes: ExecRes
 		try {
-			execRes = await this._exec({ ctx, params, signal, logger, prepRes, execRes: undefined, executor })
+			execRes = await this._exec({ ctx, params: params as TParams, signal, logger, prepRes, execRes: undefined, executor })
 			logger.debug(`[${this.constructor.name}] exec() result`, { execRes })
 		}
 		catch (e) {
@@ -217,7 +232,7 @@ export class Node<PrepRes = any, ExecRes = any, PostRes = any> extends AbstractN
 		if (signal?.aborted)
 			throw new AbortError()
 		try {
-			const action = await this.post({ ctx, params, signal, logger, prepRes, execRes, executor })
+			const action = await this.post({ ctx, params: params as TParams, signal, logger, prepRes, execRes, executor })
 			const actionDisplay = typeof action === 'symbol' ? action.toString() : action
 			logger.debug(`[${this.constructor.name}] post() returned action: '${actionDisplay}'`)
 			return action === undefined ? DEFAULT_ACTION as any : action
@@ -259,20 +274,20 @@ export class Node<PrepRes = any, ExecRes = any, PostRes = any> extends AbstractN
 	 * @param fn A sync or async function to transform the execution result from `ExecRes` to `NewRes`.
 	 * @returns A new `Node` instance with the transformed output type.
 	 */
-	map<NewRes>(fn: (result: ExecRes) => NewRes | Promise<NewRes>): Node<PrepRes, NewRes, any> {
+	map<NewRes>(fn: (result: ExecRes) => NewRes | Promise<NewRes>): Node<PrepRes, NewRes, any, TParams> {
 		const originalNode = this
 		const maxRetries = this.maxRetries
 		const wait = this.wait
 
-		return new class extends Node<PrepRes, NewRes, any> {
+		return new class extends Node<PrepRes, NewRes, any, TParams> {
 			constructor() { super({ maxRetries, wait }) }
-			async prep(args: NodeArgs): Promise<PrepRes> { return originalNode.prep(args) }
-			async exec(args: NodeArgs<PrepRes>): Promise<NewRes> {
+			async prep(args: NodeArgs<void, void, TParams>): Promise<PrepRes> { return originalNode.prep(args) }
+			async exec(args: NodeArgs<PrepRes, void, TParams>): Promise<NewRes> {
 				const originalResult = await originalNode.exec(args)
 				return fn(originalResult)
 			}
 
-			async post(_args: NodeArgs<PrepRes, NewRes>): Promise<any> {
+			async post(_args: NodeArgs<PrepRes, NewRes, TParams>): Promise<any> {
 				return DEFAULT_ACTION
 			}
 		}()
@@ -294,16 +309,16 @@ export class Node<PrepRes = any, ExecRes = any, PostRes = any> extends AbstractN
 	 * @param key The type-safe `ContextKey` to use for storing the result.
 	 * @returns A new `Node` instance that performs the context update in its `post` phase.
 	 */
-	toContext(key: ContextKey<ExecRes>): Node<PrepRes, ExecRes, any> {
+	toContext(key: ContextKey<ExecRes>): Node<PrepRes, ExecRes, any, TParams> {
 		const originalNode = this
 		const maxRetries = this.maxRetries
 		const wait = this.wait
 
-		return new class extends Node<PrepRes, ExecRes, any> {
+		return new class extends Node<PrepRes, ExecRes, any, TParams> {
 			constructor() { super({ maxRetries, wait }) }
-			async prep(args: NodeArgs): Promise<PrepRes> { return originalNode.prep(args) }
-			async exec(args: NodeArgs<PrepRes>): Promise<ExecRes> { return originalNode.exec(args as any) }
-			async post(args: NodeArgs<PrepRes, ExecRes>): Promise<any> {
+			async prep(args: NodeArgs<void, void, TParams>): Promise<PrepRes> { return originalNode.prep(args) }
+			async exec(args: NodeArgs<PrepRes, void, TParams>): Promise<ExecRes> { return originalNode.exec(args) }
+			async post(args: NodeArgs<PrepRes, ExecRes, TParams>): Promise<any> {
 				args.ctx.set(key, args.execRes)
 				args.logger.debug(`[toContext] Set context key '${String(key.description)}'`, { value: args.execRes })
 				return DEFAULT_ACTION
@@ -328,14 +343,14 @@ export class Node<PrepRes = any, ExecRes = any, PostRes = any> extends AbstractN
 	 * @param predicate A sync or async function that returns `true` or `false`.
 	 * @returns A new `Node` instance that implements the filter logic.
 	 */
-	filter(predicate: (result: ExecRes) => boolean | Promise<boolean>): Node<PrepRes, ExecRes, any> {
+	filter(predicate: (result: ExecRes) => boolean | Promise<boolean>): Node<PrepRes, ExecRes, any, TParams> {
 		const originalNode = this
 
-		return new class extends Node<PrepRes, ExecRes, any> {
+		return new class extends Node<PrepRes, ExecRes, any, TParams> {
 			private didPass = false
 
-			async prep(args: NodeArgs) { return originalNode.prep(args) }
-			async exec(args: NodeArgs<PrepRes>): Promise<ExecRes> {
+			async prep(args: NodeArgs<void, void, TParams>) { return originalNode.prep(args) }
+			async exec(args: NodeArgs<PrepRes, void, TParams>): Promise<ExecRes> {
 				const result = await originalNode.exec(args)
 				this.didPass = await predicate(result)
 				if (!this.didPass)
@@ -344,7 +359,7 @@ export class Node<PrepRes = any, ExecRes = any, PostRes = any> extends AbstractN
 				return result
 			}
 
-			async post(_args: NodeArgs<PrepRes, ExecRes>): Promise<any> {
+			async post(_args: NodeArgs<PrepRes, ExecRes, TParams>): Promise<any> {
 				return this.didPass ? DEFAULT_ACTION : FILTER_FAILED
 			}
 		}()
@@ -365,11 +380,27 @@ export class Node<PrepRes = any, ExecRes = any, PostRes = any> extends AbstractN
 	 * @param fn A function to call with the execution result for its side effect.
 	 * @returns A new `Node` instance that wraps the original.
 	 */
-	tap(fn: (result: ExecRes) => void | Promise<void>): Node<PrepRes, ExecRes, PostRes> {
-		return this.map(async (result) => {
-			await fn(result)
-			return result
-		})
+	tap(fn: (result: ExecRes) => void | Promise<void>): Node<PrepRes, ExecRes, PostRes, TParams> {
+		const originalNode = this
+		const maxRetries = this.maxRetries
+		const wait = this.wait
+
+		return new class extends Node<PrepRes, ExecRes, PostRes, TParams> {
+			constructor() { super({ maxRetries, wait }) }
+			async prep(args: NodeArgs<void, void, TParams>): Promise<PrepRes> {
+				return originalNode.prep(args)
+			}
+
+			async exec(args: NodeArgs<PrepRes, void, TParams>): Promise<ExecRes> {
+				const originalResult = await originalNode.exec(args)
+				await fn(originalResult)
+				return originalResult
+			}
+
+			async post(args: NodeArgs<PrepRes, ExecRes, TParams>): Promise<PostRes> {
+				return originalNode.post(args)
+			}
+		}()
 	}
 
 	/**
@@ -389,24 +420,24 @@ export class Node<PrepRes = any, ExecRes = any, PostRes = any> extends AbstractN
 	 * @param value The value to set in the context via the lens.
 	 * @returns A new `Node` instance that applies the context change.
 	 */
-	withLens<T>(lens: ContextLens<T>, value: T): Node<PrepRes, ExecRes, PostRes> {
+	withLens<T>(lens: ContextLens<T>, value: T): Node<PrepRes, ExecRes, PostRes, TParams> {
 		const originalNode = this
 		const maxRetries = this.maxRetries
 		const wait = this.wait
 
-		return new class extends Node<PrepRes, ExecRes, PostRes> {
+		return new class extends Node<PrepRes, ExecRes, PostRes, TParams> {
 			constructor() { super({ maxRetries, wait }) }
-			async prep(args: NodeArgs): Promise<PrepRes> {
+			async prep(args: NodeArgs<void, void, TParams>): Promise<PrepRes> {
 				// Apply the lens transformation before executing the original node's logic.
 				lens.set(value)(args.ctx)
 				return originalNode.prep(args)
 			}
 
-			async exec(args: NodeArgs<PrepRes>): Promise<ExecRes> {
-				return originalNode.exec(args as any)
+			async exec(args: NodeArgs<PrepRes, void, TParams>): Promise<ExecRes> {
+				return originalNode.exec(args)
 			}
 
-			async post(args: NodeArgs<PrepRes, ExecRes>): Promise<PostRes> {
+			async post(args: NodeArgs<PrepRes, ExecRes, TParams>): Promise<PostRes> {
 				return originalNode.post(args)
 			}
 		}()
@@ -416,17 +447,25 @@ export class Node<PrepRes = any, ExecRes = any, PostRes = any> extends AbstractN
 /**
  * A special type of `Node` that orchestrates a graph of other nodes.
  * It can contain its own middleware and can be composed within other flows.
+ *
+ * @template PrepRes The type of data returned by the `prep` phase.
+ * @template ExecRes The type of data returned by the `exec` phase (the final action).
+ * @template TParams The type for the flow's static parameters.
  */
-export class Flow<PrepRes = any, ExecRes = any> extends Node<PrepRes, ExecRes, ExecRes> {
+export class Flow<
+	PrepRes = any,
+	ExecRes = any,
+	TParams extends Params = Params,
+> extends Node<PrepRes, ExecRes, ExecRes, TParams> {
 	/** The first node to be executed in this flow's graph. */
-	public startNode?: AbstractNode
+	public startNode?: AbstractNode<any, any>
 	/** An array of middleware functions to be applied to every node within this flow. */
 	public middleware: Middleware[] = []
 
 	/**
 	 * @param start An optional node to start the flow with.
 	 */
-	constructor(start?: AbstractNode) {
+	constructor(start?: AbstractNode<any, any>) {
 		super()
 		this.startNode = start
 	}
@@ -455,7 +494,7 @@ export class Flow<PrepRes = any, ExecRes = any> extends Node<PrepRes, ExecRes, E
 	 * @param start The node to start with.
 	 * @returns The start node instance, allowing for further chaining (`.next()`).
 	 */
-	start(start: AbstractNode): AbstractNode {
+	start<StartNode extends AbstractNode<any, any>>(start: StartNode): StartNode {
 		this.startNode = start
 		return start
 	}
@@ -467,7 +506,7 @@ export class Flow<PrepRes = any, ExecRes = any> extends Node<PrepRes, ExecRes, E
 	 * @param args The arguments for the node, passed down from the parent executor.
 	 * @returns The final action returned by the last node in this flow's graph.
 	 */
-	async exec(args: NodeArgs<any, any>): Promise<ExecRes> {
+	async exec(args: NodeArgs<any, any, TParams>): Promise<ExecRes> {
 		// For programmatic composition, a Flow node orchestrates its own graph.
 		// This is a feature of the InMemoryExecutor. Distributed systems should
 		// rely on pre-flattened graphs produced by the GraphBuilder.
@@ -506,7 +545,7 @@ export class Flow<PrepRes = any, ExecRes = any> extends Node<PrepRes, ExecRes, E
 	 * the final action from its internal graph execution (`execRes`).
 	 * @internal
 	 */
-	async post({ execRes }: NodeArgs<any, ExecRes>): Promise<ExecRes> {
+	async post({ execRes }: NodeArgs<PrepRes, ExecRes, TParams>): Promise<ExecRes> {
 		return execRes
 	}
 
@@ -537,19 +576,17 @@ export class Flow<PrepRes = any, ExecRes = any> extends Node<PrepRes, ExecRes, E
 	 * @param id The unique ID of the node to find (set via `.withId()` or by the `GraphBuilder`).
 	 * @returns The `AbstractNode` instance if found, otherwise `undefined`.
 	 */
-	public getNodeById(id: string | number): AbstractNode | undefined {
-		if (!this.startNode) {
+	public getNodeById(id: string | number): AbstractNode<any, any> | undefined {
+		if (!this.startNode)
 			return undefined
-		}
 
-		const queue: AbstractNode[] = [this.startNode]
-		const visited = new Set<AbstractNode>([this.startNode])
+		const queue: AbstractNode<any, any>[] = [this.startNode]
+		const visited = new Set<AbstractNode<any, any>>([this.startNode])
 		while (queue.length > 0) {
 			const currentNode = queue.shift()!
 
-			if (currentNode.id === id) {
+			if (currentNode.id === id)
 				return currentNode
-			}
 
 			for (const successor of currentNode.successors.values()) {
 				if (!visited.has(successor)) {

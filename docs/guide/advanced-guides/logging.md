@@ -107,9 +107,9 @@ export class PinoFlowcraftLogger implements FlowcraftLogger {
 Now you can use your custom logger:
 
 ```typescript
+import pino from 'pino'
 // main.ts
 import { PinoFlowcraftLogger } from './loggers/pino-logger'
-import pino from 'pino'
 
 // The user configures pino as they normally would.
 const pinoInstance = pino({ level: 'info' }) // or 'debug' for more verbosity

@@ -46,7 +46,7 @@ export class WriteContentNode extends BatchFlow {
 		return sections.map(section => ({ section }))
 	}
 
-	async post({ ctx }: NodeArgs) {
+	async post({ ctx, execRes }: NodeArgs) {
 		const sectionContents = ctx.get(SECTION_CONTENTS) || {}
 		const draft = (ctx.get(SECTIONS) || []).map(section =>
 			`## ${section}\n\n${sectionContents[section]}\n`,
@@ -58,6 +58,8 @@ export class WriteContentNode extends BatchFlow {
 			console.log(`--- ${section} ---\n${sectionContents[section]}\n`)
 
 		console.log('============================\n')
+
+		return execRes
 	}
 }
 

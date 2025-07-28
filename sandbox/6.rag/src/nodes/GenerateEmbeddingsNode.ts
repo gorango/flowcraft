@@ -50,5 +50,7 @@ export class GenerateEmbeddingsNode extends ParallelBatchFlow {
 
 		ctx.set(EMBEDDINGS, embeddings)
 		logger?.info(`[GenerateEmbeddingsNode] Generated ${embeddings.size} embeddings.`)
+
+		return execRes
 	}
 }

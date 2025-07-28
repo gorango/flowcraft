@@ -127,7 +127,7 @@ This powerful, build-time process creates a single, flattened graph, which simpl
 ### Type-Safe Dependency Injection Example
 
 ```typescript
-import { createNodeRegistry, GraphBuilder, Node, NodeConstructorOptions } from 'flowcraft'
+import { createNodeRegistry, GraphBuilder, Node, NodeArgs, NodeConstructorOptions } from 'flowcraft'
 
 // 1. Define the shape of your dependencies
 interface MyAppContext { api: { fetch: (url: string) => Promise<any> } }
@@ -138,7 +138,7 @@ interface MyNodeTypeMap {
 }
 
 // 3. Create a node that uses the injected context
-class FetchUserNode extends Node {
+class FetchUserNode extends Node<void, any, any, { userId: number }> {
 	private userId: number
 	private api: MyAppContext['api']
 

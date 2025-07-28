@@ -23,7 +23,7 @@ Creates a `Node` from a simple, pure function that transforms an input to an out
 
 ### Returns
 
-- `Node<TIn, TOut>`: A new `Node` instance that wraps the function.
+- `Node<void, TOut, any, TIn>`: A new `Node` instance that wraps the function.
 
 ### Example
 
@@ -47,7 +47,7 @@ Creates a `Node` from a function that requires access to the shared `Context` in
 
 ### Returns
 
-- `Node<TIn, TOut>`: A new `Node` instance that wraps the function.
+- `Node<void, TOut, any, TIn>`: A new `Node` instance that wraps the function.
 
 ### Example
 
@@ -57,7 +57,9 @@ import { contextKey, contextNode } from 'flowcraft'
 const USER_NAME = contextKey<string>('user_name')
 
 // A node that constructs a greeting using a value from the context
-const greetingNode = contextNode(ctx => `Hello, ${ctx.get(USER_NAME)}!`)
+const greetingNode = contextNode((ctx, params: { punctuation: string }) =>
+	`Hello, ${ctx.get(USER_NAME)}${params.punctuation}`
+)
 ```
 
 ## `transformNode(...transforms)`

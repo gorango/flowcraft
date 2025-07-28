@@ -15,12 +15,13 @@ export const FILTER_FAILED = Symbol('filter_failed')
  * The standard arguments object passed to a node's lifecycle methods.
  * @template PrepRes The type of the `prepRes` property.
  * @template ExecRes The type of the `execRes` property.
+ * @template TParams The type for the node's static parameters.
  */
-export interface NodeArgs<PrepRes = any, ExecRes = any> {
+export interface NodeArgs<PrepRes = any, ExecRes = any, TParams extends Params = Params> {
 	/** The shared, mutable context for the workflow run. */
 	ctx: Context
 	/** The static parameters for the node, merged from the node and flow's `withParams`. */
-	params: Params
+	params: TParams
 	/** An `AbortController` to gracefully cancel the workflow. */
 	controller?: AbortController
 	/** An `AbortSignal` for handling cancellation. */

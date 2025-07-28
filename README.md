@@ -10,7 +10,7 @@ Build complex, multi-step processes, from simple sequences to dynamic, graph-dri
 
 - **Extensible Execution Engine**: A pluggable `Executor` pattern enables in-memory or distributed flows.
 
-- **Type-Safe**: Written in TypeScript to provide strong typing for your workflow definitions and context.
+- **Type-Safe**: Written in TypeScript to provide strong typing for your workflow definitions, context, and node parameters.
 
 - **Async by Default**: Built on an asynchronous foundation to handle I/O-bound and CPU-bound tasks.
 
@@ -170,14 +170,50 @@ graph TD
 
 ### Node
 
-The `Node` is the fundamental building block of a workflow. It represents a single, potentially asynchronous unit of work with a three-phase lifecycle:
+The `Node` is the fundamental building block of a workflow. It represents a single unit of work and is fully generic, allowing you to define types for its lifecycle results and its static parameters.
 
-1. `prep(args)`: Prepare data for execution (e.g., fetch from `Context`).
-2. `exec(args)`: Perform the core logic, isolated from the context.
-3. `post(args)`: Process results, update the `Context`, and return an "action" string to determine the next step.
+The class signature is: `Node<PrepRes, ExecRes, PostRes, TParams>`
+
+- `PrepRes`: The type of data returned by the `prep` phase.
+- `ExecRes`: The type of data returned by the `exec` phase.
+- `PostRes`: The type of the "action" returned by the `post` phase.
+- `TParams`: The type of the static parameters object for the node, accessible via `.withParams()`.
+
+**Example: A Type-Safe GreetNode**
+
+For nodes that do require static configuration, you can provide a type for the parameters to get full autocompletion and compile-time safety.
+
+```typescript
+// 1. Define the shape of the node's parameters.
+interface GreetParams {
+	greeting: string
+	loudly: boolean
+}
+
+// 2. Define the node with the TParams generic.
+class GreetNode extends Node<void, string, any, GreetParams> {
+	// 3. The 'exec' method can safely access typed parameters.
+	async exec({ params }: NodeArgs<GreetParams>): Promise<string> {
+		let message = `${params.greeting}, World!`
+		if (params.loudly) {
+			message = message.toUpperCase()
+		}
+		return message
+	}
+}
+
+// 4. Instantiate and configure with type-safe .withParams()
+const greetNode = new GreetNode()
+	.withParams({ greeting: 'Hello', loudly: true }) // Autocompletes and type-checks!
+	.tap(console.log) // "HELLO, WORLD!"
+
+// TypeScript would throw an error on this line:
+// greetNode.withParams({ greting: 'Hi', loudly: false }); // Property 'greting' does not exist.
+```
 
 A chainable API on the `Node` class has a set of functional helpers:
 
+- `.withParams(params)`: Sets type-safe static parameters for the node.
 - `.map(fn)`: Transform the output of a node.
 - `.filter(predicate)`: Conditionally proceed based on a node's output.
 - `.tap(fn)`: Perform a side-effect without changing the output.
@@ -185,7 +221,7 @@ A chainable API on the `Node` class has a set of functional helpers:
 
 ### Flow
 
-A `Flow` is a special type of `Node` that orchestrates a sequence of other nodes. It contains the logic for traversing its own graph of operations, making it a powerful, self-contained unit of work.
+A `Flow` is a special type of `Node` that orchestrates a sequence of other nodes. It is also generic (`Flow<PrepRes, ExecRes, TParams>`) and can be configured with its own parameters and middleware. It contains the logic for traversing its own graph of operations, making it a powerful, self-contained unit of work.
 
 ### Executor
 
@@ -224,8 +260,8 @@ To simplify the creation of common and complex patterns, the framework provides 
 
 ### Core Classes
 
-- `Node`: The base class for a unit of work with built-in retry logic and a fluent API (`.map`, `.filter`, etc.).
-- `Flow`: Orchestrates a sequence of nodes and supports middleware via `.use()`.
+- `Node`: The base class for a unit of work: `Node<PrepRes, ExecRes, PostRes, TParams>`. It has built-in retry logic and a fluent API (`.map`, `.filter`, etc.).
+- `Flow`: Orchestrates a sequence of nodes: `Flow<PrepRes, ExecRes, TParams>`. Supports middleware via `.use()`.
 - `InMemoryExecutor`: The default `IExecutor` implementation for running flows in-memory.
 - `TypedContext`: The standard `Map`-based implementation for the `Context` interface.
 - `ConsoleLogger`, `NullLogger`: Pre-built logger implementations.
@@ -234,8 +270,8 @@ To simplify the creation of common and complex patterns, the framework provides 
 
 A collection of functions for creating nodes and pipelines in a more functional style.
 
-- `mapNode`: Creates a `Node` from a simple, pure function.
-- `contextNode`: Creates a `Node` from a function that requires access to the `Context`.
+- `mapNode`: Creates a `Node` from a simple, pure function: `mapNode<TIn extends Params, TOut>(fn)`. The function receives the node's `params` as its input.
+- `contextNode`: Creates a `Node` from a function that requires access to the `Context`: `contextNode<TIn extends Params, TOut>(fn)`. The function receives the context and the node's `params`.
 - `pipeline`: A functional alias for creating a linear sequence of nodes.
 
 ### Builder Classes

@@ -28,7 +28,7 @@ features:
     details: A pluggable Executor pattern enables in-memory or distributed flows.
   # - title: Type-Safe
   #   icon: 🛡️
-  #   details: Written in TypeScript to provide strong typing for your workflow definitions and context.
+  #   details: Provide strong typing for your workflow definitions, context, and node parameters.
   # - title: Async by Default
   #   icon: ⚡
   #   details: Built on an asynchronous foundation to handle I/O-bound and CPU-bound tasks.
