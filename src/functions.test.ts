@@ -1,5 +1,7 @@
-import type { Logger, RunOptions } from './workflow'
+import type { Logger } from './logger'
+import type { RunOptions } from './types'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { contextKey, lens, TypedContext } from './context'
 import {
 	compose,
 	contextNode,
@@ -7,7 +9,7 @@ import {
 	pipeline,
 	transformNode,
 } from './functions'
-import { contextKey, DEFAULT_ACTION, lens, TypedContext } from './workflow'
+import { DEFAULT_ACTION } from './types'
 
 // Mock logger for testing
 function createMockLogger(): Logger {

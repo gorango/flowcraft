@@ -1,7 +1,11 @@
-import type { AbstractNode, FILTER_FAILED, Logger, NodeArgs } from '../workflow'
+import type { Logger } from '../logger'
+import type { FILTER_FAILED, NodeArgs } from '../types'
+import type { AbstractNode } from '../workflow'
 import type { BuildResult, GraphBuilderOptions, GraphEdge, GraphNode, NodeRegistry, NodeTypeMap, TypedNodeRegistry, TypedWorkflowGraph, WorkflowGraph } from './graph.types'
+import { NullLogger } from '../logger'
+import { DEFAULT_ACTION } from '../types'
 import { generateMermaidGraph } from '../utils/mermaid'
-import { DEFAULT_ACTION, Flow, Node, NullLogger } from '../workflow'
+import { Flow, Node } from '../workflow'
 import { ParallelFlow } from './patterns'
 
 /**

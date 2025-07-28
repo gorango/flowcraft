@@ -1,6 +1,9 @@
-import type { AbstractNode, Logger, NodeArgs, RunOptions } from '../workflow'
+import type { Logger } from '../logger'
+import type { NodeArgs, RunOptions } from '../types'
+import type { AbstractNode } from '../workflow'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { contextKey, Flow, Node, TypedContext } from '../workflow'
+import { contextKey, TypedContext } from '../context'
+import { Flow, Node } from '../workflow'
 import {
 	BatchFlow,
 	filterCollection,

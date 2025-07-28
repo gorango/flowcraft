@@ -1,6 +1,8 @@
 import type { NodeFunction } from '../functions'
-import type { AbstractNode, NodeArgs } from '../workflow'
-import { AbortError, Flow } from '../workflow'
+import type { NodeArgs } from '../types'
+import type { AbstractNode } from '../workflow'
+import { AbortError } from '../errors'
+import { Flow } from '../workflow'
 
 /**
  * A `Flow` that creates a linear workflow from a sequence of nodes,

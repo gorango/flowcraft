@@ -1,7 +1,10 @@
-import type { AbstractNode, Logger, NodeArgs, RunOptions } from '../workflow'
+import type { Logger } from '../logger'
+import type { NodeArgs, RunOptions } from '../types'
+import type { AbstractNode } from '../workflow'
 import type { NodeConstructorOptions, NodeRegistry, NodeTypeMap, TypedNodeRegistry, TypedWorkflowGraph, WorkflowGraph } from './graph.types'
 import { describe, expect, it, vi } from 'vitest'
-import { contextKey, Node, TypedContext } from '../workflow'
+import { contextKey, TypedContext } from '../context'
+import { Node } from '../workflow'
 import { createNodeRegistry, GraphBuilder } from './graph'
 
 function createMockLogger(): Logger {

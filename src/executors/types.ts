@@ -1,4 +1,7 @@
-import type { Context, Flow, Logger, Params, RunOptions } from '../workflow'
+import type { Context } from '../context'
+import type { Logger } from '../logger'
+import type { Params, RunOptions } from '../types'
+import type { Flow } from '../workflow'
 
 /**
  * Defines the contract for a workflow execution engine.

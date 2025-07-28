@@ -1,7 +1,8 @@
 import type { AbstractNode } from '../workflow'
 import { describe, expect, it } from 'vitest'
 import { ParallelFlow } from '../builder'
-import { DEFAULT_ACTION, FILTER_FAILED, Flow, Node } from '../workflow'
+import { DEFAULT_ACTION, FILTER_FAILED } from '../types'
+import { Flow, Node } from '../workflow'
 import { generateMermaidGraph } from './mermaid'
 
 // Define simple, named node classes to make test assertions clearer.
