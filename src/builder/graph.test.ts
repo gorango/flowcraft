@@ -4,8 +4,10 @@ import type { AbstractNode } from '../workflow'
 import type { NodeConstructorOptions, NodeRegistry, NodeTypeMap, TypedNodeRegistry, TypedWorkflowGraph, WorkflowGraph } from './graph.types'
 import { describe, expect, it, vi } from 'vitest'
 import { contextKey, TypedContext } from '../context'
+import { DEFAULT_ACTION } from '../types'
 import { Node } from '../workflow'
 import { createNodeRegistry, GraphBuilder } from './graph'
+import { ParallelFlow } from './patterns'
 
 function createMockLogger(): Logger {
 	return {
@@ -408,5 +410,135 @@ describe('graphBuilder with parallel start nodes', () => {
 		await flow.run(ctx)
 
 		expect(ctx.get(RESULT)).toBe('Hello-World')
+	})
+})
+
+describe('graphBuilder fan-in logic', () => {
+	interface FanInNodeTypeMap extends NodeTypeMap {
+		'start': Record<string, never>
+		'branch-a': Record<string, never>
+		'branch-b': Record<string, never>
+		'mid-a': Record<string, never>
+		'mid-b': Record<string, never>
+		'converge': Record<string, never>
+		'end': Record<string, never>
+		'orphan-end': Record<string, never>
+	}
+
+	// Simple named nodes for clarity in test graphs
+	class StartNode extends Node { }
+	class BranchANode extends Node { }
+	class BranchBNode extends Node { }
+	class MidANode extends Node { }
+	class MidBNode extends Node { }
+	class ConvergeNode extends Node { }
+	class EndNode extends Node { }
+	class OrphanEndNode extends Node { }
+
+	const fanInRegistry = createNodeRegistry<FanInNodeTypeMap>({
+		'start': StartNode,
+		'branch-a': BranchANode,
+		'branch-b': BranchBNode,
+		'mid-a': MidANode,
+		'mid-b': MidBNode,
+		'converge': ConvergeNode,
+		'end': EndNode,
+		'orphan-end': OrphanEndNode,
+	})
+
+	it('should correctly wire a deep convergence from a mid-flow fan-out', async () => {
+		const graph: TypedWorkflowGraph<FanInNodeTypeMap> = {
+			nodes: [
+				{ id: 'start', type: 'start', data: {} },
+				{ id: 'branch-a', type: 'branch-a', data: {} },
+				{ id: 'branch-b', type: 'branch-b', data: {} },
+				{ id: 'mid-a', type: 'mid-a', data: {} },
+				{ id: 'mid-b', type: 'mid-b', data: {} },
+				{ id: 'converge', type: 'converge', data: {} },
+				{ id: 'end', type: 'end', data: {} },
+			],
+			edges: [
+				// start fans out to a and b
+				{ source: 'start', target: 'branch-a' },
+				{ source: 'start', target: 'branch-b' },
+				// each branch has an intermediate step
+				{ source: 'branch-a', target: 'mid-a' },
+				{ source: 'branch-b', target: 'mid-b' },
+				// both intermediate steps fan-in to converge
+				{ source: 'mid-a', target: 'converge' },
+				{ source: 'mid-b', target: 'converge' },
+				// converge proceeds to end
+				{ source: 'converge', target: 'end' },
+			],
+		}
+
+		const builder = new GraphBuilder(fanInRegistry)
+		const { nodeMap } = builder.build(graph)
+
+		const startNode = nodeMap.get('start')!
+		const parallelContainer = startNode.successors.get(DEFAULT_ACTION)
+		const convergeNode = nodeMap.get('converge')
+
+		// The ParallelFlow container should be the direct successor of the start node.
+		expect(parallelContainer).toBeInstanceOf(ParallelFlow)
+		// The container's successor should be the auto-detected convergence node.
+		expect(parallelContainer!.successors.get(DEFAULT_ACTION)).toBe(convergeNode)
+	})
+
+	it('should correctly wire a deep convergence from parallel start nodes', async () => {
+		const graph: TypedWorkflowGraph<FanInNodeTypeMap> = {
+			nodes: [
+				// Two start nodes
+				{ id: 'start-a', type: 'branch-a', data: {} },
+				{ id: 'start-b', type: 'branch-b', data: {} },
+				{ id: 'mid-a', type: 'mid-a', data: {} },
+				{ id: 'mid-b', type: 'mid-b', data: {} },
+				{ id: 'converge', type: 'converge', data: {} },
+			],
+			edges: [
+				{ source: 'start-a', target: 'mid-a' },
+				{ source: 'start-b', target: 'mid-b' },
+				{ source: 'mid-a', target: 'converge' },
+				{ source: 'mid-b', target: 'converge' },
+			],
+		}
+
+		const builder = new GraphBuilder(fanInRegistry)
+		const { flow, nodeMap } = builder.build(graph)
+
+		const parallelStartContainer = flow.startNode
+		const convergeNode = nodeMap.get('converge')
+
+		// The flow's start node should be a ParallelFlow container
+		expect(parallelStartContainer).toBeInstanceOf(ParallelFlow)
+		// The container should be wired to the convergence node
+		expect(parallelStartContainer!.successors.get(DEFAULT_ACTION)).toBe(convergeNode)
+	})
+
+	it('should not wire a fan-in if the parallel branches never converge', async () => {
+		const graph: TypedWorkflowGraph<FanInNodeTypeMap> = {
+			nodes: [
+				{ id: 'start', type: 'start', data: {} },
+				{ id: 'branch-a', type: 'branch-a', data: {} },
+				{ id: 'branch-b', type: 'branch-b', data: {} },
+				{ id: 'end-a', type: 'end', data: {} },
+				{ id: 'end-b', type: 'orphan-end', data: {} },
+			],
+			edges: [
+				{ source: 'start', target: 'branch-a' },
+				{ source: 'start', target: 'branch-b' },
+				{ source: 'branch-a', target: 'end-a' },
+				{ source: 'branch-b', target: 'end-b' },
+			],
+		}
+
+		const builder = new GraphBuilder(fanInRegistry)
+		const { nodeMap } = builder.build(graph)
+		const startNode = nodeMap.get('start')!
+		const parallelContainer = startNode.successors.get(DEFAULT_ACTION)
+
+		expect(parallelContainer).toBeInstanceOf(ParallelFlow)
+		// Since the branches don't converge, the container should have NO successors.
+		expect(parallelContainer!.successors.size).toBe(0)
 	})
 })

@@ -312,16 +312,9 @@ export class GraphBuilder<
 					sourceNode.next(parallelNode, action)
 					this.logger.debug(`[GraphBuilder] Detected fan-out from ${sourceId} on action "${actionDisplay}". Creating parallel block.`)
 
-					// Determine the single convergence point for this parallel block.
-					const firstBranchSuccessor = edgeGroups.get(successors[0].id!.toString())?.get(DEFAULT_ACTION)?.[0]
-					if (firstBranchSuccessor) {
-						const allConverge = successors.slice(1).every(
-							node => edgeGroups.get(node.id!.toString())?.get(DEFAULT_ACTION)?.[0] === firstBranchSuccessor,
-						)
-						// If all branches lead to the same next node, wire the container to it.
-						if (allConverge)
-							parallelNode.next(firstBranchSuccessor)
-					}
+					const convergenceNode = this._findConvergenceNode(successors, edgeGroups)
+					if (convergenceNode)
+						parallelNode.next(convergenceNode)
 				}
 			}
 		}
@@ -345,17 +338,65 @@ export class GraphBuilder<
 		const startNodes = startNodeIds.map(id => nodeMap.get(id)!)
 		const parallelStartNode = new ParallelBranchContainer(startNodes)
 
-		if (startNodes.length > 0) {
-			const firstSuccessor = edgeGroups.get(startNodes[0].id!.toString())?.get(DEFAULT_ACTION)?.[0]
-			if (firstSuccessor) {
-				const allConverge = startNodes.slice(1).every(node => edgeGroups.get(node.id!.toString())?.get(DEFAULT_ACTION)?.[0] === firstSuccessor)
-				if (allConverge)
-					parallelStartNode.next(firstSuccessor)
-			}
+		if (startNodes.length > 1) {
+			const convergenceNode = this._findConvergenceNode(startNodes, edgeGroups)
+			if (convergenceNode)
+				parallelStartNode.next(convergenceNode)
 		}
 
 		const flow = new Flow(parallelStartNode)
 		this._logMermaid(flow)
 		return { flow, nodeMap, predecessorCountMap }
+	}
+
+	/**
+	 * Finds the first node where all parallel branches converge.
+	 * Uses a Breadth-First Search to guarantee finding the nearest convergence point.
+	 * @param parallelNodes - The set of nodes running in parallel.
+	 * @param edgeGroups - The map of all graph edges.
+	 * @returns The convergence node, or undefined if they never converge.
+	 * @private
+	 */
+	private _findConvergenceNode(
+		parallelNodes: AbstractNode[],
+		edgeGroups: Map<string, Map<any, AbstractNode[]>>,
+	): AbstractNode | undefined {
+		if (parallelNodes.length <= 1)
+			return undefined
+
+		const queue: string[] = parallelNodes.map(n => String(n.id!))
+		// Map<nodeId, Set<parallelNodeId>>
+		const visitedBy = new Map<string, Set<string>>()
+		parallelNodes.forEach(n => visitedBy.set(String(n.id!), new Set([String(n.id!)])))
+
+		let head = 0
+		while (head < queue.length) {
+			const currentId = queue[head++]!
+			const successors = Array.from(edgeGroups.get(currentId)?.values() ?? []).flat()
+
+			for (const successor of successors) {
+				const successorId = String(successor.id!)
+				if (!visitedBy.has(successorId))
+					visitedBy.set(successorId, new Set())
+
+				const visitorSet = visitedBy.get(successorId)!
+				const startingPointsVistingThisNode = visitedBy.get(currentId)!
+
+				for (const startNodeId of startingPointsVistingThisNode)
+					visitorSet.add(startNodeId)
+
+				if (visitorSet.size === parallelNodes.length) {
+					// This is the first node visited by paths from ALL parallel branches.
+					this.logger.debug(`[GraphBuilder] Found convergence node: ${successorId}`)
+					return successor
+				}
+
+				if (!queue.includes(successorId))
+					queue.push(successorId)
+			}
+		}
+
+		this.logger.warn('[GraphBuilder] Parallel branches do not seem to converge.')
+		return undefined
 	}
 }

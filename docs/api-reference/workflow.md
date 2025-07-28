@@ -56,6 +56,7 @@ These methods are designed to be overridden in your custom `Node` subclasses.
 
 - `.next(node, action?)`: Connects this node to a successor. Returns the successor node for chaining.
 - `.withParams(params: Partial<TParams>)`: Sets or merges type-safe parameters for the node.
+- `.withId(id: string | number)`: Sets a unique identifier for this node instance.
 - `.run(ctx, options?)`: Runs the node as a standalone unit using an `IExecutor`.
 
 ## `Flow<PrepRes, ExecRes, TParams>`
@@ -66,7 +67,7 @@ A special `Node` that acts as a container for a graph of other nodes and their s
 
 ### Constructor
 
-`new Flow(startNode?: AbstractNode)`
+## `Flow<PrepRes, ExecRes, TParams>`
 
 - `startNode`: The node where the flow's execution should begin.
 
