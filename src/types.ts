@@ -1,5 +1,5 @@
 import type { Context } from './context'
-import type { IExecutor } from './executor'
+import type { IExecutor } from './executors/types'
 import type { Logger } from './logger'
 
 /** A generic type for key-value parameters. */

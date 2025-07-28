@@ -2,7 +2,7 @@ import type { AbstractNode, FILTER_FAILED, Logger, NodeArgs } from '../workflow'
 import type { BuildResult, GraphBuilderOptions, GraphEdge, GraphNode, NodeRegistry, NodeTypeMap, TypedNodeRegistry, TypedWorkflowGraph, WorkflowGraph } from './graph.types'
 import { generateMermaidGraph } from '../utils/mermaid'
 import { DEFAULT_ACTION, Flow, Node, NullLogger } from '../workflow'
-import { ParallelFlow } from './collection'
+import { ParallelFlow } from './patterns'
 
 /**
  * A type-safe helper function for creating a `TypedNodeRegistry`.

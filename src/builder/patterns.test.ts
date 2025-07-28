@@ -9,7 +9,7 @@ import {
 	ParallelFlow,
 	reduceCollection,
 	SequenceFlow,
-} from './collection'
+} from './patterns'
 
 function createMockLogger(): Logger {
 	return {

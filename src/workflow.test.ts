@@ -1,6 +1,6 @@
 import type { AbstractNode, ContextKey, Logger, NodeArgs, NodeOptions, RunOptions } from './workflow'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { BatchFlow, ParallelBatchFlow } from './builder/collection'
+import { BatchFlow, ParallelBatchFlow } from './builder/patterns'
 import { sleep } from './utils/index'
 import {
 	AbortError,

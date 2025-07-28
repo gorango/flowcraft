@@ -1,3 +1,3 @@
-export * from './graph'
+export * from './analysis'
 export * from './mermaid'
 export * from './sleep'

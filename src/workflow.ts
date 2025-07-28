@@ -1,7 +1,7 @@
 /* eslint-disable unused-imports/no-unused-vars */
 import type { GraphNode } from './builder/graph.types'
 import type { Context, ContextKey, ContextLens } from './context'
-import type { InternalRunOptions } from './executor'
+import type { InternalRunOptions } from './executors/types'
 import type { Middleware, NodeArgs, NodeOptions, NodeRunContext, Params, RunOptions } from './types'
 import { AbortError, WorkflowError } from './errors'
 import { InMemoryExecutor } from './executors/in-memory'
@@ -11,7 +11,7 @@ import { sleep } from './utils/index'
 
 export * from './context'
 export * from './errors'
-export * from './executor'
+export * from './executors/types'
 export * from './logger'
 export * from './types'
 

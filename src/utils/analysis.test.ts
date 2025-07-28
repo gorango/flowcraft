@@ -1,6 +1,6 @@
 import type { NodeTypeMap, TypedWorkflowGraph } from '../builder/graph.types'
 import { describe, expect, it } from 'vitest'
-import { analyzeGraph, checkForCycles, createNodeRule } from './graph'
+import { analyzeGraph, checkForCycles, createNodeRule } from './analysis'
 
 describe('testGraphAnalysis', () => {
 	describe('analyzeGraph', () => {

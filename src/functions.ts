@@ -1,6 +1,7 @@
-import type { ContextTransform } from './context'
-import type { Context, Flow, Node, NodeArgs } from './workflow'
-import { SequenceFlow } from './builder/collection'
+import type { Context, ContextTransform } from './context'
+import type { NodeArgs } from './types'
+import type { Flow, Node } from './workflow'
+import { SequenceFlow } from './builder/patterns'
 import { composeContext } from './context'
 import { Node as BaseNode } from './workflow'
 

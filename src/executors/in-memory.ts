@@ -1,5 +1,5 @@
-import type { IExecutor, InternalRunOptions } from '../executor'
 import type { AbstractNode, Context, Flow, Logger, Middleware, MiddlewareNext, NodeArgs, RunOptions } from '../workflow'
+import type { IExecutor, InternalRunOptions } from './types'
 import { AbortError, NullLogger } from '../workflow'
 
 /**
