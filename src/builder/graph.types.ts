@@ -61,6 +61,8 @@ export type TypedGraphNode<T extends { [K in keyof T]: Record<string, any> }> = 
 		type: K
 		/** A flexible data object that must match the schema defined in the `NodeTypeMap` for this type. */
 		data: T[K]
+		/** A config object to configure the node's behavior. */
+		config?: NodeOptions
 	}
 }[keyof T]
 
@@ -114,9 +116,14 @@ export interface BuildResult {
  * This is a simpler (UNTYPED) version of the `TypedGraphNode` type
  */
 export interface GraphNode {
+	/** A unique identifier for the node within the graph. */
 	id: string
+	/** The type of the node, used to look up the corresponding Node class in the registry. */
 	type: string
+	/** A flexible data object that must match the schema defined in the `NodeTypeMap` for this type. */
 	data?: Record<string, any>
+	/** A config object to configure the node's behavior. */
+	config?: NodeOptions
 }
 
 /**

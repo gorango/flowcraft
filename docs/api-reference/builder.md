@@ -193,7 +193,17 @@ The data structure that `GraphBuilder` consumes.
     -   `id: string`: A unique identifier for the node.
     -   `type: string`: The key to look up the node's class in the `NodeRegistry`.
     -   `data?: Record<string, any>`: A flexible data object passed as options to the node's constructor. For sub-workflow nodes, this must contain a `workflowId`.
+    -   `config?: NodeOptions`: An optional object to override the node's default retry behavior (`maxRetries`, `wait`).
 -   `edges: GraphEdge[]`: An array of edge definitions.
     -   `source: string`: The `id` of the source node.
     -   `target: string`: The `id` of the target node.
     -   `action?: string`: The action from the source node that triggers this edge. Defaults to `DEFAULT_ACTION`.
+
+```json
+{
+  "id": "api-call-node",
+  "type": "flaky-api-call",
+  "data": { "url": "/my/endpoint" },
+  "config": { "maxRetries": 5, "wait": 2000 }
+}
+```

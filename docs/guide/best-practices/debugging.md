@@ -112,6 +112,8 @@ This is the fastest way to verify that your graph is connected as you intend.
 
 You can pass a `Logger` instance to the `GraphBuilder`'s constructor. When you do, it will automatically generate and log a detailed Mermaid.js diagram of the final, "flattened" graph every time you call `.build()`. This diagram shows you the exact structure the `Executor` will run, including inlined sub-workflows and automatically generated parallel blocks.
 
+This is also a great way to verify that node-specific configurations (like `maxRetries` defined in your JSON) have been applied correctly.
+
 **Scenario**: You are building a complex workflow and want to see the final executable graph.
 
 ```typescript

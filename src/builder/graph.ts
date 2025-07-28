@@ -267,6 +267,16 @@ export class GraphBuilder<
 			const executableNode = new NodeClass(nodeOptions)
 				.withId(graphNode.id)
 				.withGraphData(graphNode)
+			if (graphNode.config) {
+				if (executableNode instanceof Node) {
+					executableNode.maxRetries = graphNode.config.maxRetries ?? executableNode.maxRetries
+					executableNode.wait = graphNode.config.wait ?? executableNode.wait
+					this.logger.debug(`[GraphBuilder] Applied custom config to node '${graphNode.id}'`, graphNode.config)
+				}
+				else {
+					this.logger.warn(`[GraphBuilder] Node '${graphNode.id}' has a 'config' block in its definition, but its class '${executableNode.constructor.name}' does not extend 'Node', so retry options cannot be applied.`)
+				}
+			}
 			nodeMap.set(graphNode.id, executableNode)
 			this.logger.debug(`[GraphBuilder] Instantiated node '${graphNode.id}' of type '${graphNode.type}'`)
 		}
