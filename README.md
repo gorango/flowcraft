@@ -39,12 +39,11 @@ npm install flowcraft
 Create and run a simple workflow in a few lines of code.
 
 ```typescript
-import { Flow, Node } from 'flowcraft'
+import { Flow, mapNode } from 'flowcraft' // Use mapNode for simple functions
 
-const greetNode = new Node()
-// The exec method contains the core logic of the node.
-	.exec(() => 'Hello, World!')
-// Functional helpers make common tasks easy.
+// Create a node from a simple function that takes params and returns a value.
+const greetNode = mapNode(() => 'Hello, World!')
+	// Functional helpers make common tasks easy.
 	.tap(console.log)
 
 const flow = new Flow(greetNode)
@@ -218,6 +217,7 @@ A chainable API on the `Node` class has a set of functional helpers:
 - `.filter(predicate)`: Conditionally proceed based on a node's output.
 - `.tap(fn)`: Perform a side-effect without changing the output.
 - `.toContext(key)`: Store a node's result in the context.
+- `.withLens(lens, value)`: Applies a context mutation before the node executes
 
 ### Flow
 
@@ -253,7 +253,7 @@ To simplify the creation of common and complex patterns, the framework provides 
 > For clear, focused examples of specific, individual features (like retries, middleware, cancellation, and composition), the unit tests are an excellent resource.
 
 - Core workflow tests: [`src/workflow.test.ts`](src/workflow.test.ts)
-- Collections tests: [`src/builder/collection.test.ts`](src/builder/collection.test.ts)
+- Patterns tests: [`src/builder/patterns.test.ts`](src/builder/patterns.test.ts)
 - Graph builder tests: [`src/builder/graph.test.ts`](src/builder/graph.test.ts)
 
 ## API Reference
@@ -272,14 +272,26 @@ A collection of functions for creating nodes and pipelines in a more functional 
 
 - `mapNode`: Creates a `Node` from a simple, pure function: `mapNode<TIn extends Params, TOut>(fn)`. The function receives the node's `params` as its input.
 - `contextNode`: Creates a `Node` from a function that requires access to the `Context`: `contextNode<TIn extends Params, TOut>(fn)`. The function receives the context and the node's `params`.
+- `transformNode`: Creates a `Node` that applies one or more `ContextTransform` functions (often created with a `lens`). This is ideal for declarative state management.
 - `pipeline`: A functional alias for creating a linear sequence of nodes.
+- `mapCollection`: Creates a `Flow` that applies a function to each item in a collection in parallel, returning an array of the results.
+- `filterCollection`: Creates a `Flow` that filters a collection in parallel based on a predicate function.
+- `reduceCollection`: Creates a `Flow` that reduces a collection to a single value by applying a reducer function sequentially.
 
 ### Builder Classes
 
 - `SequenceFlow`: A `Flow` that creates a linear flow from a sequence of nodes.
 - `BatchFlow`: A `Flow` that processes a collection of items sequentially.
 - `ParallelBatchFlow`: A `Flow` that processes a collection of items in parallel.
-- `GraphBuilder`: Constructs a `Flow` from a declarative graph definition.
+- `GraphBuilder`: Constructs a `Flow` from a declarative graph definition. Its `.build()` method returns a `BuildResult` object containing:
+  - `flow`: The executable `Flow` instance.
+  - `nodeMap`: A `Map` of all instantiated nodes, keyed by their ID.
+  - `predecessorCountMap`: A `Map` of node IDs to their total number of incoming connections.
+  - `predecessorIdMap`: A `Map` of node IDs to an array of their direct predecessor IDs, useful for advanced executors.
+
+## Documentation
+
+The complete [Flowcraft documentation](https://flowcraft-docs.netlify.app) is available on the website.
 
 ---
 Licensed under the [MIT License](./LICENSE).

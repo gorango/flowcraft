@@ -176,6 +176,7 @@ The `.build()` method returns an object containing:
 -   `flow: Flow`: The fully wired, executable `Flow` instance.
 -   `nodeMap: Map<string, AbstractNode>`: A map of all created node instances, keyed by their `id` from the graph definition.
 -   `predecessorCountMap: Map<string, number>`: A map of each node's `id` to the number of its direct predecessors. This is essential for implementing a reliable "fan-in" or "join" pattern in custom distributed executors.
+-   `predecessorIdMap: Map<string, string[]>`: A map of each node's `id` to an array of its direct predecessor `id`s.
 
 > [!TIP]
 > The `nodeMap` is the most efficient way to get a reference to a specific node instance within a built flow. It provides an instant, O(1) lookup, which is ideal for debugging, monitoring, or dynamic inspection.
@@ -201,9 +202,9 @@ The data structure that `GraphBuilder` consumes.
 
 ```json
 {
-  "id": "api-call-node",
-  "type": "flaky-api-call",
-  "data": { "url": "/my/endpoint" },
-  "config": { "maxRetries": 5, "wait": 2000 }
+	"id": "api-call-node",
+	"type": "flaky-api-call",
+	"data": { "url": "/my/endpoint" },
+	"config": { "maxRetries": 5, "wait": 2000 }
 }
 ```

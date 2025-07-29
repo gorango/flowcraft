@@ -67,9 +67,9 @@ A special `Node` that acts as a container for a graph of other nodes and their s
 
 ### Constructor
 
-## `Flow<PrepRes, ExecRes, TParams>`
+`new Flow(start?: AbstractNode)`
 
-- `startNode`: The node where the flow's execution should begin.
+- `startNode`: **(Optional)** The node where the flow's execution should begin.
 
 ### Methods
 

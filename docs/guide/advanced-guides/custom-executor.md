@@ -40,12 +40,14 @@ First, create the class and implement the `IExecutor` interface.
 import {
 	AbstractNode,
 	Context,
-	DEFAULT_ACTION,
 	Flow,
 	IExecutor,
+	InternalRunOptions,
 	Logger,
+	Node,
+	NodeArgs,
 	NullLogger,
-	RunOptions
+	RunOptions,
 } from 'flowcraft'
 
 export class DryRunExecutor implements IExecutor {
@@ -62,57 +64,68 @@ The `run` method will prepare the logger and initial parameters and then enter t
 ```typescript
 // Inside DryRunExecutor class...
 public async run(flow: Flow, context: Context, options?: RunOptions): Promise<any> {
-    const logger = options?.logger ?? new NullLogger()
-    const params = { ...flow.params, ...options?.params }
+	const logger = options?.logger ?? new NullLogger()
+	const internalOptions: InternalRunOptions = {
+		logger,
+		signal: options?.signal,
+		params: { ...flow.params, ...options?.params },
+		executor: this,
+	}
 
-    logger.info(`[DryRunExecutor] Starting dry run for flow: ${flow.constructor.name}`)
+	logger.info(`[DryRunExecutor] Starting dry run for flow: ${flow.constructor.name}`)
 
-    if (!flow.startNode) {
-        logger.warn('[DryRunExecutor] Flow has no start node.')
-        return
-    }
+	if (!flow.startNode) {
+		logger.warn('[DryRunExecutor] Flow has no start node.')
+		return
+	}
 
-    let currentNode: AbstractNode | undefined = flow.startNode
-    let lastAction: any
+	// Delegate to the private orchestrator method
+	const lastAction = await this._orch(flow.startNode, context, internalOptions)
 
-    // The executor's main orchestration loop.
-    while (currentNode) {
-        logger.info(`[DryRunExecutor] --> Visiting node: ${currentNode.constructor.name}`)
+	logger.info('[DryRunExecutor] Dry run complete.')
+	return lastAction
+}
 
-        // For a dry run, we simulate execution to get the next action.
-        // We run `prep` and `post` to see data flow and branching, but SKIP `exec`.
-        // This is a powerful debugging pattern.
-        const node = currentNode
-        let action
+/**
+ * The private orchestration loop that traverses the graph.
+ * @private
+ */
+private async _orch(startNode: AbstractNode, context: Context, options: InternalRunOptions): Promise<any> {
+	let currentNode: AbstractNode | undefined = startNode
+	let lastAction: any
 
-        if (node instanceof Flow) {
-            // If the node is a sub-flow, we must run it to get its final action.
-            // A real executor (like InMemoryExecutor) delegates this to a helper
-            // method, e.g., `_orchestrateGraph(subFlow.startNode, ...)`.
-            // For our dry run, we can recursively call ourself.
-            action = await new DryRunExecutor().run(node, context, { ...options, params })
-        } else {
-            // For a regular node, run prep and post, but not exec.
-            await node.prep({ ctx: context, params, logger } as any)
-            // We call post with a null `execRes` as exec was skipped.
-            action = await node.post({ ctx: context, params, logger, execRes: null } as any)
-        }
+	while (currentNode) {
+		options.logger.info(`[DryRunExecutor] --> Visiting node: ${currentNode.constructor.name}`)
 
-        lastAction = action
+		// We pass a reference to *this* executor in the NodeArgs.
+		// This is critical for sub-flows to continue the dry run.
+		const nodeArgs: NodeArgs = {
+			ctx: context,
+			params: { ...options.params, ...currentNode.params },
+			logger: options.logger,
+			signal: options.signal,
+			executor: this,
+		} as NodeArgs
 
-        // Display the action for logging.
-        const actionDisplay = (typeof lastAction === 'symbol' && lastAction === DEFAULT_ACTION)
-            ? 'default'
-            : String(lastAction)
+		// If the node is a sub-flow, we must call its `exec` method,
+		// which contains its own orchestration logic.
+		if (currentNode instanceof Flow) {
+			lastAction = await currentNode.exec(nodeArgs)
+		}
+		else if (currentNode instanceof Node) {
+			// For a regular node, we simulate the lifecycle but SKIP `exec`.
+			// This allows us to see how context changes and branching decisions are made.
+			const prepRes = await currentNode.prep(nodeArgs)
+			lastAction = await currentNode.post({ ...nodeArgs, prepRes, execRes: undefined })
+		}
 
-        logger.info(`[DryRunExecutor] <-- Node returned action: '${actionDisplay}'`)
+		const actionDisplay = typeof lastAction === 'symbol' ? lastAction.toString() : lastAction
+		options.logger.info(`[DryRunExecutor] <-- Node returned action: '${actionDisplay}'`)
 
-        // Find the next node based on the action.
-        currentNode = node.successors.get(lastAction)
-    }
-
-    logger.info('[DryRunExecutor] Dry run complete.')
-    return lastAction
+		// Find the next node based on the action.
+		currentNode = currentNode.successors.get(lastAction)
+	}
+	return lastAction
 }
 ```
 
