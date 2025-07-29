@@ -182,7 +182,8 @@ export class GraphBuilder<
 				finalNodes.push({ id: outputMapperId, type: '__internal_output_mapper__', data: subWorkflowData.outputs || {} })
 
 				const inlinedSubGraph = this._flattenGraph(subGraph, `${prefixedNodeId}:`)
-				finalNodes.push(...inlinedSubGraph.nodes)
+				const augmentedInlinedNodes = inlinedSubGraph.nodes.map(n => ({ ...n, data: { ...(n.data || {}), isSubWorkflow: true } }))
+				finalNodes.push(...augmentedInlinedNodes)
 				finalEdges.push(...inlinedSubGraph.edges)
 
 				const subGraphStartIds = inlinedSubGraph.nodes.map(n => n.id).filter(id => !inlinedSubGraph.edges.some(e => e.target === id))
@@ -330,8 +331,9 @@ export class GraphBuilder<
 		if (startNodeIds.length === 1) {
 			const startNode = nodeMap.get(startNodeIds[0])!
 			const flow = new Flow(startNode)
+			const predecessorIdMap = this._createPredecessorIdMap(flatGraph)
 			this._logMermaid(flow)
-			return { flow, nodeMap, predecessorCountMap }
+			return { flow, nodeMap, predecessorCountMap, predecessorIdMap }
 		}
 
 		// Handle parallel start nodes.
@@ -345,8 +347,26 @@ export class GraphBuilder<
 		}
 
 		const flow = new Flow(parallelStartNode)
+		const predecessorIdMap = this._createPredecessorIdMap(flatGraph)
 		this._logMermaid(flow)
-		return { flow, nodeMap, predecessorCountMap }
+		return { flow, nodeMap, predecessorCountMap, predecessorIdMap }
+	}
+
+	/**
+	 * Creates a map of each node ID to an array of its direct predecessor node IDs.
+	 * This is a helper for executors that need to know a node's direct inputs.
+	 * @param graph The flattened workflow graph.
+	 * @returns A map where each key is a node ID and the value is an array of its predecessor IDs.
+	 * @private
+	 */
+	private _createPredecessorIdMap(graph: WorkflowGraph): Map<string, string[]> {
+		const map = new Map<string, string[]>()
+		for (const edge of graph.edges) {
+			if (!map.has(edge.target))
+				map.set(edge.target, [])
+			map.get(edge.target)!.push(edge.source)
+		}
+		return map
 	}
 
 	/**

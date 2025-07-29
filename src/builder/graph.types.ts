@@ -109,6 +109,8 @@ export interface BuildResult {
 	nodeMap: Map<string, AbstractNode>
 	/** A map of all node `id`s to their predecessor count. */
 	predecessorCountMap: Map<string, number>
+	/** A map of all node `id`s to an array of their predecessor `id`s. */
+	predecessorIdMap: Map<string, string[]>
 }
 
 /**

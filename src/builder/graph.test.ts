@@ -125,6 +125,39 @@ describe('graphBuilder', () => {
 		expect(path).toHaveLength(2)
 		expect(path).toEqual(expect.arrayContaining(['path_A', 'path_B']))
 	})
+
+	it('should correctly generate the predecessorIdMap', () => {
+		const graph: TypedWorkflowGraph<TestNodeTypeMap> = {
+			nodes: [
+				{ id: 'start', type: 'set', data: { value: 10 } },
+				{ id: 'task-a', type: 'add', data: { value: 1 } },
+				{ id: 'task-b', type: 'add', data: { value: 2 } },
+				{ id: 'join', type: 'add', data: { value: 3 } },
+			],
+			edges: [
+				{ source: 'start', target: 'task-a' },
+				{ source: 'start', target: 'task-b' },
+				{ source: 'task-a', target: 'join' },
+				{ source: 'task-b', target: 'join' },
+			],
+		}
+
+		const builder = new GraphBuilder(testRegistry)
+		const { predecessorIdMap } = builder.build(graph)
+
+		// A start node should have no predecessors
+		expect(predecessorIdMap.get('start')).toBeUndefined()
+
+		// Nodes with one predecessor
+		expect(predecessorIdMap.get('task-a')).toEqual(['start'])
+		expect(predecessorIdMap.get('task-b')).toEqual(['start'])
+
+		// The join node should have two predecessors
+		const joinPredecessors = predecessorIdMap.get('join')
+		expect(joinPredecessors).toBeDefined()
+		expect(joinPredecessors).toHaveLength(2)
+		expect(joinPredecessors).toEqual(expect.arrayContaining(['task-a', 'task-b']))
+	})
 })
 
 describe('graphBuilder (no type safety)', () => {
@@ -292,8 +325,8 @@ describe('graphBuilder with sub-workflows', () => {
 					type: 'custom_sub_workflow',
 					data: {
 						workflowId: 200,
-						inputs: { sub_value: 'parent_value' }, // PARENT_VALUE
-						outputs: { parent_value: 'sub_value' }, // SUB_VALUE
+						inputs: { sub_value: 'parent_value' },
+						outputs: { parent_value: 'sub_value' },
 					},
 				},
 				{ id: 'step_c', type: 'final', data: {} },
@@ -308,13 +341,22 @@ describe('graphBuilder with sub-workflows', () => {
 			subWorkflowNodeTypes: ['custom_sub_workflow'],
 		})
 
-		const { flow } = builder.build(parentGraph)
+		const { flow, nodeMap } = builder.build(parentGraph)
 		const ctx = new TypedContext([
 			[PARENT_VALUE, 'start'],
 		])
 
 		await flow.run(ctx, runOptions)
 		expect(ctx.get(FINAL_VALUE)).toBe('final: start -> A -> D -> E')
+
+		// Verify the isSubWorkflow flag
+		const parentNodeA = nodeMap.get('step_a')
+		const subNodeD = nodeMap.get('the_sub:step_d')
+		const subNodeE = nodeMap.get('the_sub:step_e')
+
+		expect((parentNodeA?.graphData?.data as any)?.isSubWorkflow).toBeUndefined()
+		expect((subNodeD?.graphData?.data as any)?.isSubWorkflow).toBe(true)
+		expect((subNodeE?.graphData?.data as any)?.isSubWorkflow).toBe(true)
 	})
 
 	it('should throw an error if a node with workflowId is not a registered sub-workflow type', () => {
@@ -540,5 +582,53 @@ describe('graphBuilder fan-in logic', () => {
 		expect(parallelContainer).toBeInstanceOf(ParallelFlow)
 		// Since the branches don't converge, the container should have NO successors.
 		expect(parallelContainer!.successors.size).toBe(0)
+	})
+})
+
+describe('graphBuilder predecessor maps', () => {
+	interface TestNodeTypeMap {
+		set: { value: number }
+		add: { value: number }
+	}
+
+	class SetValueNode extends Node { }
+	class AddValueNode extends Node { }
+
+	const testRegistry = createNodeRegistry({
+		set: SetValueNode,
+		add: AddValueNode,
+	})
+
+	it('should correctly generate the predecessorIdMap', () => {
+		const graph: TypedWorkflowGraph<TestNodeTypeMap> = {
+			nodes: [
+				{ id: 'start', type: 'set', data: { value: 10 } },
+				{ id: 'task-a', type: 'add', data: { value: 1 } },
+				{ id: 'task-b', type: 'add', data: { value: 2 } },
+				{ id: 'join', type: 'add', data: { value: 3 } },
+			],
+			edges: [
+				{ source: 'start', target: 'task-a' },
+				{ source: 'start', target: 'task-b' },
+				{ source: 'task-a', target: 'join' },
+				{ source: 'task-b', target: 'join' },
+			],
+		}
+
+		const builder = new GraphBuilder(testRegistry)
+		const { predecessorIdMap } = builder.build(graph)
+
+		// A start node should have no predecessors
+		expect(predecessorIdMap.get('start')).toBeUndefined()
+
+		// Nodes with one predecessor
+		expect(predecessorIdMap.get('task-a')).toEqual(['start'])
+		expect(predecessorIdMap.get('task-b')).toEqual(['start'])
+
+		// The join node should have two predecessors
+		const joinPredecessors = predecessorIdMap.get('join')
+		expect(joinPredecessors).toBeDefined()
+		expect(joinPredecessors).toHaveLength(2)
+		expect(joinPredecessors).toEqual(expect.arrayContaining(['task-a', 'task-b']))
 	})
 })
