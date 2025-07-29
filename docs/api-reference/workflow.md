@@ -135,4 +135,5 @@ The mechanism for type-safe access to the `Context`.
 ## Error Types
 
 - `WorkflowError`: A custom error wrapper that provides context about a failure (`nodeName`, `phase`, `originalError`).
+- `FatalWorkflowError`: A subclass of `WorkflowError` that signals a non-recoverable failure, causing the entire workflow to halt immediately.
 - `AbortError`: The error thrown when a workflow is cancelled via an `AbortSignal`.

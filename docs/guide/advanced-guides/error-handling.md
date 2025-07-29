@@ -133,3 +133,65 @@ Final data in context: default fallback data
 ```
 
 The workflow completed successfully because the fallback provided a valid result, allowing the `post` phase and the rest of the flow to proceed.
+
+## Fatal Errors: Halting the Workflow
+
+While retries and fallbacks are great for transient or recoverable errors, some failures are critical and non-recoverable. In these cases, you want the entire workflow to stop immediately, without attempting further retries or executing any subsequent nodes.
+
+Flowcraft supports this with a special error type: `FatalWorkflowError`.
+
+When a `FatalWorkflowError` is thrown from any node, the executor will:
+
+1.  **Bypass Retries**: It will not attempt to re-run the `exec` phase.
+2.  **Bypass Fallbacks**: It will not call the `execFallback` method.
+3.  **Halt Execution**: It will immediately stop processing and propagate the fatal error to the top-level `flow.run()` caller.
+
+### Example: Validating Critical Data
+
+Imagine a workflow where the first step is to validate an input payload. If the payload is invalid, there is no point in continuing.
+
+```typescript
+import { FatalWorkflowError, Flow, Node } from 'flowcraft'
+
+class ValidatePayloadNode extends Node {
+	async exec({ params }) {
+		if (!params.userId || !params.data) {
+			// This is a non-recoverable error. Halt everything.
+			throw new FatalWorkflowError(
+				'Payload validation failed: Missing required fields.',
+				this.constructor.name,
+				'exec'
+			)
+		}
+		console.log('Payload is valid.')
+		return params
+	}
+}
+
+class ProcessDataNode extends Node {
+	async exec() {
+		// This should never run if validation fails.
+		console.log('Processing data...')
+	}
+}
+
+const flow = new Flow(new ValidatePayloadNode().next(new ProcessDataNode()))
+
+try {
+	// Run with an invalid payload
+	await flow.withParams({ data: 'some data' /* missing userId */ }).run(context)
+}
+catch (error) {
+	if (error instanceof FatalWorkflowError) {
+		console.error(`Workflow halted with fatal error: ${error.message}`)
+	}
+}
+```
+
+The output will be:
+
+```
+Workflow halted with fatal error: Payload validation failed: Missing required fields.
+```
+
+Notice that "Processing data..." was never logged. The `FatalWorkflowError` provided a clean, immediate, and explicit way to terminate the workflow when a critical precondition was not met.

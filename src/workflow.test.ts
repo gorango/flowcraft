@@ -5,7 +5,7 @@ import type { AbstractNode } from './workflow'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { BatchFlow, ParallelBatchFlow } from './builder/patterns'
 import { composeContext, contextKey, lens, TypedContext } from './context'
-import { AbortError, WorkflowError } from './errors'
+import { AbortError, FatalWorkflowError, WorkflowError } from './errors'
 import { DEFAULT_ACTION, FILTER_FAILED } from './types'
 import { sleep } from './utils/index'
 import { Flow, Node } from './workflow'
@@ -613,5 +613,64 @@ describe('testFlowMiddleware', () => {
 		const lastAction = await flow.run(ctx, runOptions)
 		expect(ctx.get(CURRENT)).toBe(0)
 		expect(lastAction).toBe('short-circuited')
+	})
+})
+
+describe('testFatalWorkflowError', () => {
+	const FATAL_ERROR_TRIGGERED = contextKey<boolean>('fatal_error_triggered')
+
+	class FatalNode extends Node {
+		public attemptCount = 0
+		public fallbackCalled = false
+
+		constructor() {
+			super({ maxRetries: 3 })
+		}
+
+		async exec(args: NodeArgs) {
+			this.attemptCount++
+			args.ctx.set(ATTEMPTS, this.attemptCount)
+			throw new FatalWorkflowError(
+				'Unrecoverable error',
+				this.constructor.name,
+				'exec',
+			)
+		}
+
+		async execFallback() {
+			this.fallbackCalled = true
+			return 'fallback should not be returned'
+		}
+	}
+
+	class SubsequentNode extends Node {
+		async exec(args: NodeArgs) {
+			// This should never be called
+			args.ctx.set(FATAL_ERROR_TRIGGERED, false)
+		}
+	}
+
+	it('should halt the entire flow immediately without retries or fallbacks', async () => {
+		const fatalNode = new FatalNode()
+		const subsequentNode = new SubsequentNode()
+		fatalNode.next(subsequentNode)
+		const flow = new Flow(fatalNode)
+		const ctx = new TypedContext()
+
+		const runPromise = flow.run(ctx, runOptions)
+
+		// Assert that the flow rejects with the specific fatal error
+		await expect(runPromise).rejects.toThrow(FatalWorkflowError)
+		await expect(runPromise).rejects.toMatchObject({
+			name: 'FatalWorkflowError',
+			nodeName: 'FatalNode',
+		})
+
+		// Assert that the node was only attempted once
+		expect(ctx.get(ATTEMPTS)).toBe(1)
+		// Assert that the fallback was never called
+		expect(fatalNode.fallbackCalled).toBe(false)
+		// Assert that the next node in the sequence was never executed
+		expect(ctx.get(FATAL_ERROR_TRIGGERED)).toBeUndefined()
 	})
 })

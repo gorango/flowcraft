@@ -3,7 +3,7 @@ import type { GraphNode } from './builder/graph.types'
 import type { Context, ContextKey, ContextLens } from './context'
 import type { InternalRunOptions } from './executors/types'
 import type { Middleware, NodeArgs, NodeOptions, NodeRunContext, Params, RunOptions } from './types'
-import { AbortError, WorkflowError } from './errors'
+import { AbortError, FatalWorkflowError, WorkflowError } from './errors'
 import { InMemoryExecutor } from './executors/in-memory'
 import { NullLogger } from './logger'
 import { DEFAULT_ACTION, FILTER_FAILED } from './types'
@@ -178,6 +178,10 @@ export class Node<
 			catch (e) {
 				const error = e as Error
 				lastError = error
+
+				if (error instanceof FatalWorkflowError)
+					throw error
+
 				if (error instanceof AbortError || error.name === 'AbortError')
 					throw error
 

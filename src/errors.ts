@@ -32,3 +32,22 @@ export class WorkflowError extends Error {
 			this.stack = `${this.stack}\nCaused by: ${originalError.stack}`
 	}
 }
+
+/**
+ * An error thrown by a node to indicate a non-recoverable failure.
+ *
+ * When an executor catches this error, it should immediately terminate the
+ * entire workflow run, bypassing any remaining retries, fallbacks, or
+ * subsequent nodes in the graph.
+ */
+export class FatalWorkflowError extends WorkflowError {
+	constructor(
+		message: string,
+		nodeName: string,
+		phase: 'prep' | 'exec' | 'post',
+		originalError?: Error,
+	) {
+		super(message, nodeName, phase, originalError)
+		this.name = 'FatalWorkflowError'
+	}
+}
