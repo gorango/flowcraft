@@ -30,6 +30,7 @@ describe('graphBuilder', () => {
 		add: { value: number }
 		branch: { threshold: number }
 		logPath: { id: string }
+		configurable: Record<string, never>
 	}
 
 	class SetValueNode extends Node {
@@ -83,11 +84,14 @@ describe('graphBuilder', () => {
 		}
 	}
 
+	class ConfigurableNode extends Node { }
+
 	const testRegistry = createNodeRegistry({
 		set: SetValueNode,
 		add: AddValueNode,
 		branch: ConditionalBranchNode,
 		logPath: LogPathNode,
+		configurable: ConfigurableNode,
 	})
 
 	it('should build and run a complex graph with parallel fan-out', async () => {
@@ -126,7 +130,7 @@ describe('graphBuilder', () => {
 		expect(path).toEqual(expect.arrayContaining(['path_A', 'path_B']))
 	})
 
-	it('should correctly generate the predecessorIdMap', () => {
+	it('should correctly generate the predecessorIdMap and predecessorCountMap', () => {
 		const graph: TypedWorkflowGraph<TestNodeTypeMap> = {
 			nodes: [
 				{ id: 'start', type: 'set', data: { value: 10 } },
@@ -143,20 +147,50 @@ describe('graphBuilder', () => {
 		}
 
 		const builder = new GraphBuilder(testRegistry)
-		const { predecessorIdMap } = builder.build(graph)
+		const { predecessorIdMap, predecessorCountMap } = builder.build(graph)
 
-		// A start node should have no predecessors
 		expect(predecessorIdMap.get('start')).toBeUndefined()
-
-		// Nodes with one predecessor
 		expect(predecessorIdMap.get('task-a')).toEqual(['start'])
 		expect(predecessorIdMap.get('task-b')).toEqual(['start'])
-
-		// The join node should have two predecessors
 		const joinPredecessors = predecessorIdMap.get('join')
 		expect(joinPredecessors).toBeDefined()
 		expect(joinPredecessors).toHaveLength(2)
 		expect(joinPredecessors).toEqual(expect.arrayContaining(['task-a', 'task-b']))
+
+		expect(predecessorCountMap.get('start')).toBe(0)
+		expect(predecessorCountMap.get('task-a')).toBe(1)
+		expect(predecessorCountMap.get('task-b')).toBe(1)
+		expect(predecessorCountMap.get('join')).toBe(2)
+	})
+
+	it('should apply retry options from the graph node config block', () => {
+		const graphWithConfig: TypedWorkflowGraph<TestNodeTypeMap> = {
+			nodes: [
+				{
+					id: 'node-with-config',
+					type: 'configurable',
+					data: {},
+					config: { maxRetries: 5, wait: 100 },
+				},
+				{ id: 'node-without-config', type: 'configurable', data: {} },
+			],
+			edges: [],
+		}
+
+		const builder = new GraphBuilder(testRegistry, {}, {}, mockLogger)
+		const { nodeMap } = builder.build(graphWithConfig)
+
+		const configuredNode = nodeMap.get('node-with-config') as Node
+		const unconfiguredNode = nodeMap.get('node-without-config') as Node
+
+		expect(configuredNode).toBeInstanceOf(Node)
+		expect(configuredNode.maxRetries).toBe(5)
+		expect(configuredNode.wait).toBe(100)
+
+		expect(unconfiguredNode).toBeInstanceOf(Node)
+		// Should have default values
+		expect(unconfiguredNode.maxRetries).toBe(1)
+		expect(unconfiguredNode.wait).toBe(0)
 	})
 })
 
