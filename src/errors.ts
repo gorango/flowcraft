@@ -26,7 +26,11 @@ export class WorkflowError extends Error {
 		public readonly phase: 'prep' | 'exec' | 'post',
 		public readonly originalError?: Error,
 	) {
-		super(message)
+		const combinedMessage = originalError
+			? `${message}: ${originalError.message}`
+			: message
+
+		super(combinedMessage)
 		this.name = 'WorkflowError'
 		if (originalError?.stack)
 			this.stack = `${this.stack}\nCaused by: ${originalError.stack}`

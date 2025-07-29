@@ -384,7 +384,7 @@ describe('testLoggingAndErrors', () => {
 		)
 	})
 
-	it('should wrap errors in WorkflowError with correct phase context', async () => {
+	it('should wrap errors in WorkflowError with correct phase context and message', async () => {
 		class FailingPrepNode extends Node {
 			async prep() { throw new Error('Prep failed') }
 		}
@@ -395,7 +395,8 @@ describe('testLoggingAndErrors', () => {
 			name: 'WorkflowError',
 			nodeName: 'FailingPrepNode',
 			phase: 'prep',
-			originalError: expect.any(Error),
+			message: 'Failed in prep phase for node FailingPrepNode: Prep failed',
+			originalError: expect.objectContaining({ message: 'Prep failed' }),
 		})
 	})
 })
