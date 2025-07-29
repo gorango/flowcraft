@@ -17,3 +17,4 @@ export * from './executors/types'
 // Functions & Utils
 export * from './functions'
 export * from './utils/index'
+export * from './utils/middleware'

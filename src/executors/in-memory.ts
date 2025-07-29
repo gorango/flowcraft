@@ -1,10 +1,11 @@
 import type { Context } from '../context'
 import type { Logger } from '../logger'
-import type { Middleware, MiddlewareNext, NodeArgs, RunOptions } from '../types'
+import type { Middleware, NodeArgs, RunOptions } from '../types'
 import type { AbstractNode, Flow } from '../workflow'
 import type { IExecutor, InternalRunOptions } from './types'
 import { AbortError } from '../errors'
 import { NullLogger } from '../logger'
+import { applyMiddleware } from '../utils/middleware'
 
 /**
  * The default executor that runs a workflow within a single, in-memory process.
@@ -49,7 +50,7 @@ export class InMemoryExecutor implements IExecutor {
 				executor: options.executor,
 			}
 
-			const chain = this.applyMiddleware(flowMiddleware, currentNode)
+			const chain = applyMiddleware(flowMiddleware, currentNode)
 			action = await chain(nodeArgs)
 			nextNode = this.getNextNode(currentNode, action, logger)
 
@@ -87,7 +88,7 @@ export class InMemoryExecutor implements IExecutor {
 		// Their logic is self-contained in their `exec` method.
 		if (!flow.startNode) {
 			logger.info(`Executor is running a logic-bearing flow: ${flow.constructor.name}`)
-			const chain = this.applyMiddleware(flow.middleware, flow)
+			const chain = applyMiddleware(flow.middleware, flow)
 			return await chain({
 				...internalOptions,
 				ctx: context,
@@ -118,31 +119,5 @@ export class InMemoryExecutor implements IExecutor {
 			logger.info(`Flow ends: Action '${actionDisplay}' from ${curr.constructor.name} has no configured successor.`)
 		}
 		return nextNode
-	}
-
-	/**
-	 * Composes a chain of middleware functions around a node's execution.
-	 * @internal
-	 */
-	public applyMiddleware<T = any>(middleware: Middleware<T>[], nodeToRun: AbstractNode): MiddlewareNext<T> {
-		// The final function in the chain is the actual execution of the node.
-		const runNode: MiddlewareNext<T> = (args: NodeArgs) => {
-			return nodeToRun._run({
-				ctx: args.ctx,
-				params: { ...args.params, ...nodeToRun.params },
-				signal: args.signal,
-				logger: args.logger,
-				executor: args.executor,
-			})
-		}
-
-		if (!middleware || middleware.length === 0)
-			return runNode
-
-		// Build the chain backwards, so the first middleware in the array is the outermost.
-		return middleware.reduceRight<MiddlewareNext<T>>(
-			(next, mw) => (args: NodeArgs) => mw(args, next),
-			runNode,
-		)
 	}
 }
