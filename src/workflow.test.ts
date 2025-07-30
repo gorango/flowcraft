@@ -348,7 +348,7 @@ describe('testLoggingAndErrors', () => {
 		expect(mockLogger.info).toHaveBeenCalledWith(
 			'Executor is running flow graph: Flow',
 		)
-		expect(mockLogger.info).toHaveBeenCalledWith(
+		expect(mockLogger.debug).toHaveBeenCalledWith(
 			'Running node: NumberNode',
 			expect.any(Object),
 		)

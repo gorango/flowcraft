@@ -126,9 +126,9 @@ export class GraphBuilder<
 
 	private _logMermaid(flow: Flow) {
 		if (!(this.logger instanceof NullLogger)) {
-			this.logger.info('[GraphBuilder] Flattened Graph')
+			this.logger.debug('[GraphBuilder] Flattened Graph')
 			const mermaid = generateMermaidGraph(flow)
-			mermaid.split('\n').forEach(line => this.logger.info(line))
+			mermaid.split('\n').forEach(line => this.logger.debug(line))
 		}
 	}
 
@@ -272,14 +272,12 @@ export class GraphBuilder<
 				if (executableNode instanceof Node) {
 					executableNode.maxRetries = graphNode.config.maxRetries ?? executableNode.maxRetries
 					executableNode.wait = graphNode.config.wait ?? executableNode.wait
-					this.logger.debug(`[GraphBuilder] Applied custom config to node '${graphNode.id}'`, graphNode.config)
 				}
 				else {
 					this.logger.warn(`[GraphBuilder] Node '${graphNode.id}' has a 'config' block in its definition, but its class '${executableNode.constructor.name}' does not extend 'Node', so retry options cannot be applied.`)
 				}
 			}
 			nodeMap.set(graphNode.id, executableNode)
-			this.logger.debug(`[GraphBuilder] Instantiated node '${graphNode.id}' of type '${graphNode.type}'`)
 		}
 
 		// Pass 2: Group all edges by their source and action. This map is the source of truth for wiring.
@@ -301,17 +299,14 @@ export class GraphBuilder<
 		for (const [sourceId, actions] of edgeGroups.entries()) {
 			const sourceNode = nodeMap.get(sourceId)!
 			for (const [action, successors] of actions.entries()) {
-				const actionDisplay = typeof action === 'symbol' ? action.toString() : action
 				if (successors.length === 1) {
 					// Simple 1-to-1 connection.
 					sourceNode.next(successors[0], action)
-					this.logger.debug(`[GraphBuilder] Wired edge: ${sourceId} --"${actionDisplay}"--> ${successors[0].id}`)
 				}
 				else if (successors.length > 1) {
 					// Fan-out detected. Use our named container.
 					const parallelNode = new ParallelBranchContainer(successors)
 					sourceNode.next(parallelNode, action)
-					this.logger.debug(`[GraphBuilder] Detected fan-out from ${sourceId} on action "${actionDisplay}". Creating parallel block.`)
 
 					const convergenceNode = this._findConvergenceNode(successors, edgeGroups)
 					if (convergenceNode)

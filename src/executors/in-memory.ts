@@ -116,7 +116,7 @@ export class InMemoryExecutor implements IExecutor {
 			logger.debug(`Action '${actionDisplay}' from ${curr.constructor.name} leads to ${nextNode.constructor.name}`, { action })
 		}
 		else if (curr.successors.size > 0 && action !== undefined && action !== null) {
-			logger.info(`Flow ends: Action '${actionDisplay}' from ${curr.constructor.name} has no configured successor.`)
+			logger.debug(`Flow ends: Action '${actionDisplay}' from ${curr.constructor.name} has no configured successor.`)
 		}
 		return nextNode
 	}

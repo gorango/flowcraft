@@ -204,11 +204,10 @@ export class Node<
 	 */
 	async _run({ ctx, params, signal, logger, executor }: NodeRunContext): Promise<PostRes> {
 		if (this instanceof Flow) {
-			logger.info(`Running flow: ${this.constructor.name}`, { params })
+			logger.debug(`Running flow: ${this.constructor.name}`, { params })
 		}
 		else {
-			logger.info(`Running node: ${this.constructor.name}`, { params })
-			logger.debug(`[${this.constructor.name}] Received params`, params)
+			logger.debug(`Running node: ${this.constructor.name}`, { params })
 		}
 
 		if (signal?.aborted)
@@ -358,7 +357,7 @@ export class Node<
 				const result = await originalNode.exec(args)
 				this.didPass = await predicate(result)
 				if (!this.didPass)
-					args.logger.info(`[Filter] Predicate failed for node ${this.constructor.name}.`)
+					args.logger.debug(`[Filter] Predicate failed for node ${this.constructor.name}.`)
 
 				return result
 			}
@@ -523,7 +522,7 @@ export class Flow<
 			return super.exec(args)
 		}
 
-		args.logger.info(`-- Entering sub-flow: ${this.constructor.name} --`)
+		args.logger.debug(`-- Entering sub-flow: ${this.constructor.name} --`)
 
 		const combinedParams = { ...args.params, ...this.params }
 		const internalOptions: InternalRunOptions = {
@@ -540,7 +539,7 @@ export class Flow<
 			internalOptions,
 		)
 
-		args.logger.info(`-- Exiting sub-flow: ${this.constructor.name} --`)
+		args.logger.debug(`-- Exiting sub-flow: ${this.constructor.name} --`)
 		return finalAction as ExecRes
 	}
 
