@@ -13,7 +13,10 @@ async function main() {
 	const outputDir = path.resolve(process.cwd(), 'translations')
 	await fs.mkdir(outputDir, { recursive: true })
 
-	const text = await fs.readFile(sourceReadmePath, 'utf-8')
+	const text = (await fs.readFile(sourceReadmePath, 'utf-8'))
+		.split('##')
+		.slice(0, 2)
+		.join('##')
 	const languages = [
 		'Chinese',
 		'Spanish',
