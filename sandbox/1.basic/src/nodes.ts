@@ -43,23 +43,27 @@ export class WriteContentNode extends BatchFlow {
 
 	async prep({ ctx }: NodeArgs) {
 		const sections = ctx.get(SECTIONS) || []
+		console.log(`\n[WriteContentNode] Preparing to write content for ${sections.length} sections.\n`)
 		return sections.map(section => ({ section }))
 	}
+}
 
-	async post({ ctx, execRes }: NodeArgs) {
+/**
+ * Assembles the content from each section into a single draft article.
+ * This runs after the WriteContentNode batch flow is complete.
+ */
+export class AssembleDraftNode extends Node {
+	async prep({ ctx }: NodeArgs) {
 		const sectionContents = ctx.get(SECTION_CONTENTS) || {}
 		const draft = (ctx.get(SECTIONS) || []).map(section =>
 			`## ${section}\n\n${sectionContents[section]}\n`,
 		).join('\n')
+
 		ctx.set(DRAFT, draft)
 
-		console.log('\n===== SECTION CONTENTS =====\n')
-		for (const section in sectionContents)
-			console.log(`--- ${section} ---\n${sectionContents[section]}\n`)
-
-		console.log('============================\n')
-
-		return execRes
+		console.log('\n===== DRAFT ASSEMBLED =====\n')
+		console.log(draft)
+		console.log('=============================\n')
 	}
 }
 
