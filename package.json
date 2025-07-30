@@ -30,10 +30,10 @@
 		"docs:preview": "vitepress preview docs"
 	},
 	"devDependencies": {
-		"@antfu/eslint-config": "^4.16.2",
-		"@types/node": "^24.0.13",
+		"@antfu/eslint-config": "^5.0.0",
+		"@types/node": "^24.1.0",
 		"@vitest/coverage-v8": "3.2.4",
-		"eslint": "^9.31.0",
+		"eslint": "^9.32.0",
 		"mermaid": "^11.9.0",
 		"tsup": "^8.5.0",
 		"typescript": "^5.8.3",
