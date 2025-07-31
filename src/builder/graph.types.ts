@@ -99,6 +99,9 @@ export type TypedNodeRegistry<TNodeMap extends NodeTypeMap, TContext = object> =
 	new (options: NodeConstructorOptions<TNodeMap[K], TContext> & TContext) => AbstractNode
 }
 
+export type PredecessorIdMap = Map<string, string[]>
+export type OriginalPredecessorIdMap = Map<string, string[]>
+
 /**
  * The result of a successful `GraphBuilder.build()` call.
  */
@@ -110,7 +113,9 @@ export interface BuildResult {
 	/** A map of all node `id`s to their predecessor count. */
 	predecessorCountMap: Map<string, number>
 	/** A map of all node `id`s to an array of their predecessor `id`s. */
-	predecessorIdMap: Map<string, string[]>
+	predecessorIdMap: PredecessorIdMap
+	/** A map of all node `id`s to an array of their original (un-namespaced) predecessor `id`s. */
+	originalPredecessorIdMap: OriginalPredecessorIdMap
 }
 
 /**

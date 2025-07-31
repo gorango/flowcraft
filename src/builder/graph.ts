@@ -1,7 +1,7 @@
 import type { Logger } from '../logger'
 import type { FILTER_FAILED, NodeArgs } from '../types'
 import type { AbstractNode } from '../workflow'
-import type { BuildResult, GraphBuilderOptions, GraphEdge, GraphNode, NodeRegistry, NodeTypeMap, TypedNodeRegistry, TypedWorkflowGraph, WorkflowGraph } from './graph.types'
+import type { BuildResult, GraphBuilderOptions, GraphEdge, GraphNode, NodeRegistry, NodeTypeMap, OriginalPredecessorIdMap, PredecessorIdMap, TypedNodeRegistry, TypedWorkflowGraph, WorkflowGraph } from './graph.types'
 import { NullLogger } from '../logger'
 import { DEFAULT_ACTION } from '../types'
 import { generateMermaidGraph } from '../utils/mermaid'
@@ -144,7 +144,6 @@ export class GraphBuilder<
 			const isRegisteredSubWorkflow = this.subWorkflowNodeTypes.includes(node.type)
 			const hasWorkflowId = node.data && 'workflowId' in node.data
 
-			// Create a mutable copy of node data to safely rewrite input paths.
 			const newNodeData = JSON.parse(JSON.stringify(node.data || {}))
 
 			if (newNodeData.inputs) {
@@ -152,11 +151,8 @@ export class GraphBuilder<
 				for (const [templateKey, sourcePathOrPaths] of Object.entries(inputs)) {
 					const sourcePaths = Array.isArray(sourcePathOrPaths) ? sourcePathOrPaths : [sourcePathOrPaths]
 					const newSourcePaths = sourcePaths.map((sourcePath) => {
-						// If the input source is another node within this same graph file, prefix its ID.
-						// Otherwise, leave it as is (it's from a parent context or an initial value).
 						if (localNodeIds.has(sourcePath))
 							return `${idPrefix}${sourcePath}`
-
 						return sourcePath
 					})
 					inputs[templateKey] = Array.isArray(sourcePathOrPaths) ? newSourcePaths : newSourcePaths[0]
@@ -176,13 +172,25 @@ export class GraphBuilder<
 					throw new Error(`Sub-workflow with ID ${subWorkflowId} not found in registry.`)
 
 				this.logger.debug(`[GraphBuilder]   -> Fetched graph for sub-workflow ID: ${subWorkflowId}`)
+
 				const inputMapperId = `${prefixedNodeId}_input_mapper`
 				const outputMapperId = `${prefixedNodeId}_output_mapper`
-				finalNodes.push({ id: inputMapperId, type: '__internal_input_mapper__', data: subWorkflowData.inputs || {} })
-				finalNodes.push({ id: outputMapperId, type: '__internal_output_mapper__', data: subWorkflowData.outputs || {} })
+				finalNodes.push({
+					id: inputMapperId,
+					type: '__internal_input_mapper__',
+					data: { ...(subWorkflowData.inputs || {}), originalId: node.id },
+				})
+				finalNodes.push({
+					id: outputMapperId,
+					type: '__internal_output_mapper__',
+					data: { ...(subWorkflowData.outputs || {}), originalId: node.id },
+				})
 
 				const inlinedSubGraph = this._flattenGraph(subGraph, `${prefixedNodeId}:`)
-				const augmentedInlinedNodes = inlinedSubGraph.nodes.map(n => ({ ...n, data: { ...(n.data || {}), isSubWorkflow: true } }))
+				const augmentedInlinedNodes = inlinedSubGraph.nodes.map(n => ({
+					...n,
+					data: { ...(n.data || {}), isSubWorkflow: true },
+				}))
 				finalNodes.push(...augmentedInlinedNodes)
 				finalEdges.push(...inlinedSubGraph.edges)
 
@@ -202,8 +210,8 @@ export class GraphBuilder<
 				)
 			}
 			else {
-				// Add the normal node with its newly resolved input paths.
-				finalNodes.push({ ...node, id: prefixedNodeId, data: newNodeData })
+				const finalNodeData = { ...newNodeData, originalId: node.id }
+				finalNodes.push({ ...node, id: prefixedNodeId, data: finalNodeData })
 			}
 		}
 
@@ -300,11 +308,9 @@ export class GraphBuilder<
 			const sourceNode = nodeMap.get(sourceId)!
 			for (const [action, successors] of actions.entries()) {
 				if (successors.length === 1) {
-					// Simple 1-to-1 connection.
 					sourceNode.next(successors[0], action)
 				}
 				else if (successors.length > 1) {
-					// Fan-out detected. Use our named container.
 					const parallelNode = new ParallelBranchContainer(successors)
 					sourceNode.next(parallelNode, action)
 
@@ -323,15 +329,15 @@ export class GraphBuilder<
 		if (startNodeIds.length === 0 && allNodeIds.length > 0)
 			throw new Error('GraphBuilder: This graph has a cycle and no clear start node.')
 
+		const { predecessorIdMap, originalPredecessorIdMap } = this._createPredecessorIdMaps(flatGraph, nodeMap)
+
 		if (startNodeIds.length === 1) {
 			const startNode = nodeMap.get(startNodeIds[0])!
 			const flow = new Flow(startNode)
-			const predecessorIdMap = this._createPredecessorIdMap(flatGraph)
 			this._logMermaid(flow)
-			return { flow, nodeMap, predecessorCountMap, predecessorIdMap }
+			return { flow, nodeMap, predecessorCountMap, predecessorIdMap, originalPredecessorIdMap }
 		}
 
-		// Handle parallel start nodes.
 		const startNodes = startNodeIds.map(id => nodeMap.get(id)!)
 		const parallelStartNode = new ParallelBranchContainer(startNodes)
 
@@ -342,9 +348,8 @@ export class GraphBuilder<
 		}
 
 		const flow = new Flow(parallelStartNode)
-		const predecessorIdMap = this._createPredecessorIdMap(flatGraph)
 		this._logMermaid(flow)
-		return { flow, nodeMap, predecessorCountMap, predecessorIdMap }
+		return { flow, nodeMap, predecessorCountMap, predecessorIdMap, originalPredecessorIdMap }
 	}
 
 	/**
@@ -354,14 +359,34 @@ export class GraphBuilder<
 	 * @returns A map where each key is a node ID and the value is an array of its predecessor IDs.
 	 * @private
 	 */
-	private _createPredecessorIdMap(graph: WorkflowGraph): Map<string, string[]> {
-		const map = new Map<string, string[]>()
+	private _createPredecessorIdMaps(
+		graph: WorkflowGraph,
+		nodeMap: Map<string, AbstractNode>,
+	): { predecessorIdMap: PredecessorIdMap, originalPredecessorIdMap: OriginalPredecessorIdMap } {
+		const predecessorIdMap: PredecessorIdMap = new Map()
+		const originalPredecessorIdMap: OriginalPredecessorIdMap = new Map()
+
 		for (const edge of graph.edges) {
-			if (!map.has(edge.target))
-				map.set(edge.target, [])
-			map.get(edge.target)!.push(edge.source)
+			if (!predecessorIdMap.has(edge.target))
+				predecessorIdMap.set(edge.target, [])
+			predecessorIdMap.get(edge.target)!.push(edge.source)
+
+			const sourceNode = nodeMap.get(edge.source)!
+			const targetNode = nodeMap.get(edge.target)!
+
+			const sourceOriginalId = sourceNode.graphData?.data?.originalId
+			const targetNamespacedId = targetNode.id as string
+
+			if (sourceOriginalId) {
+				if (!originalPredecessorIdMap.has(targetNamespacedId))
+					originalPredecessorIdMap.set(targetNamespacedId, [])
+
+				const originalPreds = originalPredecessorIdMap.get(targetNamespacedId)!
+				if (!originalPreds.includes(sourceOriginalId))
+					originalPreds.push(sourceOriginalId)
+			}
 		}
-		return map
+		return { predecessorIdMap, originalPredecessorIdMap }
 	}
 
 	/**
@@ -380,7 +405,6 @@ export class GraphBuilder<
 			return undefined
 
 		const queue: string[] = parallelNodes.map(n => String(n.id!))
-		// Map<nodeId, Set<parallelNodeId>>
 		const visitedBy = new Map<string, Set<string>>()
 		parallelNodes.forEach(n => visitedBy.set(String(n.id!), new Set([String(n.id!)])))
 
@@ -401,7 +425,6 @@ export class GraphBuilder<
 					visitorSet.add(startNodeId)
 
 				if (visitorSet.size === parallelNodes.length) {
-					// This is the first node visited by paths from ALL parallel branches.
 					this.logger.debug(`[GraphBuilder] Found convergence node: ${successorId}`)
 					return successor
 				}
