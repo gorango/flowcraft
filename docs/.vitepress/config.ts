@@ -3,6 +3,7 @@ import { MermaidMarkdown, MermaidPlugin } from 'vitepress-plugin-mermaid'
 
 export default defineConfig({
 	cleanUrls: true, // might need to change depending on deployment
+	base: '/flowcraft/',
 	title: 'Flowcraft',
 	description: 'A Workflow Framework',
 	vite: {

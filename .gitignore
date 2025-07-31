@@ -2,9 +2,5 @@ dist/
 coverage/
 node_modules/
 
-pnpm-lock.yaml
-yarn.lock
-package-lock.json
-
 docs/.vitepress/dist
 docs/.vitepress/cache
