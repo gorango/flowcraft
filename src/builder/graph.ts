@@ -75,6 +75,18 @@ class OutputMappingNode extends Node {
 	}
 }
 
+/**
+ * A private class used by the builder to represent the sub-workflow container itself.
+ * It's a structural node that preserves the original node ID in the flattened graph.
+ * @internal
+ */
+class SubWorkflowContainerNode extends Node {
+	async exec() {
+		// This node performs no work; it just acts as a stable entry point.
+		// The graph wiring ensures the InputMappingNode is executed next.
+	}
+}
+
 /** A private class used by the builder to represent parallel execution blocks. */
 class ParallelBranchContainer extends ParallelFlow {
 	/** A tag to reliably identify this node type in the visualizer. */
@@ -121,6 +133,7 @@ export class GraphBuilder<
 		}
 		this.registry.set('__internal_input_mapper__', InputMappingNode as any)
 		this.registry.set('__internal_output_mapper__', OutputMappingNode as any)
+		this.registry.set('__internal_sub_workflow_container__', SubWorkflowContainerNode as any)
 		this.subWorkflowNodeTypes = options.subWorkflowNodeTypes ?? []
 	}
 
@@ -138,12 +151,10 @@ export class GraphBuilder<
 
 		const localNodeIds = new Set(graph.nodes.map(n => n.id))
 
-		// Pass 1: Recursively add all nodes, inlining sub-workflows and rewriting input paths.
 		for (const node of graph.nodes) {
 			const prefixedNodeId = `${idPrefix}${node.id}`
 			const isRegisteredSubWorkflow = this.subWorkflowNodeTypes.includes(node.type)
 			const hasWorkflowId = node.data && 'workflowId' in node.data
-
 			const newNodeData = JSON.parse(JSON.stringify(node.data || {}))
 
 			if (newNodeData.inputs) {
@@ -166,12 +177,15 @@ export class GraphBuilder<
 				const registry = this.nodeOptionsContext.registry as any
 				if (!registry || typeof registry.getGraph !== 'function')
 					throw new Error('GraphBuilder needs a registry with a `getGraph` method in its context to resolve sub-workflows.')
-
 				const subGraph: WorkflowGraph | undefined = registry.getGraph(subWorkflowId)
 				if (!subGraph)
 					throw new Error(`Sub-workflow with ID ${subWorkflowId} not found in registry.`)
 
-				this.logger.debug(`[GraphBuilder]   -> Fetched graph for sub-workflow ID: ${subWorkflowId}`)
+				finalNodes.push({
+					id: prefixedNodeId,
+					type: '__internal_sub_workflow_container__',
+					data: { ...newNodeData, originalId: node.id },
+				})
 
 				const inputMapperId = `${prefixedNodeId}_input_mapper`
 				const outputMapperId = `${prefixedNodeId}_output_mapper`
@@ -193,6 +207,8 @@ export class GraphBuilder<
 				}))
 				finalNodes.push(...augmentedInlinedNodes)
 				finalEdges.push(...inlinedSubGraph.edges)
+
+				finalEdges.push({ source: prefixedNodeId, target: inputMapperId, action: DEFAULT_ACTION as any })
 
 				const subGraphStartIds = inlinedSubGraph.nodes.map(n => n.id).filter(id => !inlinedSubGraph.edges.some(e => e.target === id))
 				for (const startId of subGraphStartIds)
@@ -218,21 +234,19 @@ export class GraphBuilder<
 		// Pass 2: Re-wire all original edges to connect to the correct nodes in the flattened graph.
 		for (const edge of graph.edges) {
 			const sourceNode = graph.nodes.find(n => n.id === edge.source)!
-			const targetNode = graph.nodes.find(n => n.id === edge.target)!
 			const prefixedSourceId = `${idPrefix}${edge.source}`
 			const prefixedTargetId = `${idPrefix}${edge.target}`
 
 			const isSourceSub = this.subWorkflowNodeTypes.includes(sourceNode.type)
-			const isTargetSub = this.subWorkflowNodeTypes.includes(targetNode.type)
 
-			if (isSourceSub && isTargetSub)
-				finalEdges.push({ ...edge, source: `${prefixedSourceId}_output_mapper`, target: `${prefixedTargetId}_input_mapper` })
-			else if (isSourceSub)
+			if (isSourceSub) {
+				// An edge from a sub-workflow should originate from its output mapper.
 				finalEdges.push({ ...edge, source: `${prefixedSourceId}_output_mapper`, target: prefixedTargetId })
-			else if (isTargetSub)
-				finalEdges.push({ ...edge, source: prefixedSourceId, target: `${prefixedTargetId}_input_mapper` })
-			else
+			}
+			else {
+				// An edge to any node (including a sub-workflow container) goes directly to it.
 				finalEdges.push({ ...edge, source: prefixedSourceId, target: prefixedTargetId })
+			}
 		}
 		return { nodes: finalNodes, edges: finalEdges }
 	}
