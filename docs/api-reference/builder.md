@@ -171,12 +171,19 @@ const builder = new GraphBuilder(registry, {
 
 #### The `BuildResult` Object
 
-The `.build()` method returns an object containing:
+The `.build()` method returns an object containing the fully constructed flow and several metadata maps that are essential for advanced executors and debugging.
 
--   `flow: Flow`: The fully wired, executable `Flow` instance.
--   `nodeMap: Map<string, AbstractNode>`: A map of all created node instances, keyed by their `id` from the graph definition.
--   `predecessorCountMap: Map<string, number>`: A map of each node's `id` to the number of its direct predecessors. This is essential for implementing a reliable "fan-in" or "join" pattern in custom distributed executors.
--   `predecessorIdMap: Map<string, string[]>`: A map of each node's `id` to an array of its direct predecessor `id`s.
+-   `flow: Flow`: The fully wired, executable `Flow` instance. This graph is "flattened," meaning any sub-workflows have been inlined into a single, unified structure.
+-   `nodeMap: Map<string, AbstractNode>`: A map of all created node instances, keyed by their unique, **namespaced ID** from the flattened graph (e.g., `'sub-container:child-node'`). This is the most efficient way to get a reference to any specific node instance.
+-   `predecessorCountMap: Map<string, number>`: A map of each node's namespaced `id` to the number of its direct predecessors. This is essential for implementing a reliable "fan-in" or "join" pattern in custom distributed executors.
+-   `predecessorIdMap: Map<string, string[]>`: A map of each node's namespaced `id` to an array of its direct predecessors' **namespaced `id`s**.
+-   `originalPredecessorIdMap: Map<string, string[]>`: A map of each node's namespaced `id` to an array of its direct predecessors' **original, un-namespaced `id`s**. This is critical for distributed executors that coordinate joins using the original, stable node IDs.
+
+> [!TIP]
+> **Understanding Node IDs in `BuildResult`**
+>
+> - **Namespaced IDs** (e.g., `'my-sub:internal-node'`) are unique within the flattened graph and are used as keys in `nodeMap`, `predecessorCountMap`, and `predecessorIdMap`.
+> - **Original IDs** (e.g., `'internal-node'`) are the IDs from the source graph definition files. These are now available on each node instance via `node.graphData.data.originalId` and are used in `originalPredecessorIdMap` to simplify join logic in distributed systems.
 
 > [!TIP]
 > The `nodeMap` is the most efficient way to get a reference to a specific node instance within a built flow. It provides an instant, O(1) lookup, which is ideal for debugging, monitoring, or dynamic inspection.

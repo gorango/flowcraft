@@ -191,3 +191,47 @@ This `DryRunExecutor` is a simplified example. For a complete understanding, it'
 
 - **`InMemoryExecutor`**: The canonical implementation of a real executor. It shows the full orchestration logic, including how to correctly apply middleware. ([`src/executors/in-memory.ts`](https://github.com/gorango/flowcraft/tree/master/src/executors/in-memory.ts))
 - **`BullMQExecutor`**: A full-featured distributed executor. It demonstrates a completely different execution strategy, managing a job queue instead of an in-memory loop. ([`sandbox/5.distributed/src/executor.ts`](https://github.com/gorango/flowcraft/tree/master/sandbox/5.distributed/src/executor.ts))
+
+### Handling Fan-In with `GraphBuilder` Metadata
+
+While the `DryRunExecutor` example shows the basics of traversal, a real-world distributed executor (like the `BullMQExecutor` from the sandbox) needs to solve a much harder problem: how to handle a "fan-in" or "join" point where a node should only run after multiple parallel predecessors have completed.
+
+This is where the metadata from the `GraphBuilder` becomes essential. Your executor's logic for enqueuing the next job would look something like this:
+
+```typescript
+// A conceptual look at the logic inside a distributed executor's enqueueing step
+
+// 1. Get the build result once
+const { predecessorCountMap, originalPredecessorIdMap } = builder.build(graph)
+
+// 2. When a node (e.g., 'branch-a') finishes, find its successors
+for (const nextNode of successors) {
+	const nextNodeId = nextNode.id // e.g., 'join-node'
+	const predecessorCount = predecessorCountMap.get(nextNodeId)
+
+	// 3. Check if the successor is a fan-in point
+	if (predecessorCount <= 1) {
+		// Not a join, just enqueue it directly
+		queue.add({ nodeId: nextNodeId, ... })
+	}
+	else {
+		// This is a join node! Use Redis to coordinate.
+		const predecessorOriginalId = finishedNode.graphData.data.originalId // 'branch-a'
+
+		// The join key is based on the successor's original ID.
+		const joinKey = `run:${runId}:join:${nextNode.graphData.data.originalId}`
+
+		// Atomically add the completed predecessor's original ID to a set
+		const completedCount = await redis.sadd(joinKey, predecessorOriginalId)
+
+		// 4. Check if all predecessors are done
+		if (completedCount >= predecessorCount) {
+			// The join is complete! Enqueue the successor.
+			queue.add({ nodeId: nextNodeId, ... })
+			await redis.del(joinKey) // Clean up the set
+		}
+	}
+}
+```
+
+By providing `predecessorCountMap` and `originalPredecessorIdMap`, Flowcraft gives you the exact metadata you need to build this complex coordination logic reliably, without having to re-analyze the graph at runtime.
