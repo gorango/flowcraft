@@ -44,14 +44,14 @@ await parentFlow.withParams({ input: 20 }).run(new TypedContext()) // "Result wa
 For complex, declarative, and distributed workflows, Flowcraft uses a more powerful **"Graph Inlining"** pattern. This is the recommended approach for building scalable systems.
 
 > [!IMPORTANT]
-> **You must explicitly tell the builder which node types represent sub-workflows** by passing them in its constructor. This gives you the flexibility to use semantically rich names like `"search-workflow"` or `"process-document-pipeline"`.
+> **You must explicitly tell the builder which node types represent sub-workflows** and provide a `subWorkflowResolver` in its constructor options. This gives you the flexibility to use semantically rich names like `"search-workflow"` or `"process-document-pipeline"`.
 >
 > If the builder encounters a node with a `workflowId` property in its `data` payload whose `type` has not been registered as a sub-workflow, it will throw a configuration error.
 
 **How It Works:** This is a **build-time** process, not a runtime one. When the `GraphBuilder` encounters a node whose type is registered as a sub-workflow, it performs "graph surgery":
 
 1.  **Replaces the Node**: It removes the composite node from the graph.
-2.  **Inlines the Graph**: It fetches the sub-workflow's graph definition and injects all of its nodes and edges into the parent graph, prefixing their IDs to prevent collisions.
+2.  **Inlines the Graph**: It fetches the sub-workflow's graph definition (using the provided `subWorkflowResolver`) and injects all of its nodes and edges into the parent graph, prefixing their IDs to prevent collisions.
 3.  **Inserts Mapping Nodes**: It automatically creates two lightweight "gatekeeper" nodes:
     *   An **`InputMappingNode`** at the entry point, which copies data from the parent context to the keys expected by the sub-workflow (based on your `inputs` map).
     *   An **`OutputMappingNode`** at the exit point, which copies data from the sub-workflow's context back to the parent (based on your `outputs` map).

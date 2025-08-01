@@ -63,9 +63,7 @@ This sub-workflow itself runs tasks in parallel. It generates the data for a sup
 ```mermaid
 graph TD
     subgraph "Create Ticket & Reply (ID: 302)"
-        A[gen_ticket_data] --> B[output_ticket]
-        C[gen_customer_reply] --> D[output_reply]
+        A[gen_ticket_data]
+        B[gen_customer_reply]
     end
-```
-
 ```

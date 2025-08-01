@@ -111,13 +111,7 @@
 	"edges": [
 		{
 			"source": "check_for_pii",
-			"target": "triage_post",
-			"action": "true"
-		},
-		{
-			"source": "check_for_pii",
-			"target": "triage_post",
-			"action": "false"
+			"target": "triage_post"
 		},
 		{
 			"source": "check_for_hate_speech",
@@ -125,13 +119,7 @@
 		},
 		{
 			"source": "check_for_spam",
-			"target": "triage_post",
-			"action": "true"
-		},
-		{
-			"source": "check_for_spam",
-			"target": "triage_post",
-			"action": "false"
+			"target": "triage_post"
 		},
 		{
 			"source": "triage_post",

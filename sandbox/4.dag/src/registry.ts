@@ -1,7 +1,7 @@
-import type { Flow, NodeRegistry, WorkflowGraph } from 'flowcraft'
+import type { Flow, NodeRegistry, SubWorkflowResolver, WorkflowGraph } from 'flowcraft'
 import { promises as fs } from 'node:fs'
 import path from 'node:path'
-import { ConsoleLogger, GraphBuilder } from 'flowcraft'
+import { ConsoleLogger, GraphBuilder, Node } from 'flowcraft'
 import {
 	LLMConditionNode,
 	LLMProcessNode,
@@ -14,25 +14,27 @@ const registryObject = {
 	'llm-condition': LLMConditionNode,
 	'llm-router': LLMRouterNode,
 	'output': OutputNode,
+	// The sub-workflow node type is just a placeholder; its logic is handled by the builder.
+	'sub-workflow': Node,
 }
 
 export const nodeRegistry: NodeRegistry = new Map(Object.entries(registryObject))
 
-export class WorkflowRegistry {
+export class WorkflowRegistry implements SubWorkflowResolver {
 	private flowCache = new Map<number, Flow>()
-	// Use the non-generic WorkflowGraph type
-	private graphDatabase = new Map<number, WorkflowGraph>()
-	// Use the non-generic GraphBuilder
+	private graphDatabase = new Map<number | string, WorkflowGraph>()
 	private builder: GraphBuilder<any>
 	private isInitialized = false
 
 	private constructor() {
-		// Instantiate the non-generic GraphBuilder
 		this.builder = new GraphBuilder(
 			nodeRegistry,
-			{ registry: this }, // The untyped context is a simple Record<string, any>
-			{ subWorkflowNodeTypes: ['sub-workflow'] },
-			new ConsoleLogger(),
+			{}, // No shared context needed for node constructors
+			{
+				subWorkflowNodeTypes: ['sub-workflow'],
+				subWorkflowResolver: this,
+			},
+			new ConsoleLogger({ level: 'debug' }),
 		)
 	}
 
@@ -68,7 +70,9 @@ export class WorkflowRegistry {
 		}
 	}
 
-	public getGraph(workflowId: number): WorkflowGraph | undefined {
+	public getGraph(workflowId: number | string): WorkflowGraph | undefined {
+		if (typeof workflowId !== 'number')
+			return undefined
 		return this.graphDatabase.get(workflowId)
 	}
 

@@ -1,8 +1,8 @@
-import type { AbstractNode, Flow, TypedWorkflowGraph } from 'flowcraft'
+import type { AbstractNode, Flow, SubWorkflowResolver, TypedWorkflowGraph } from 'flowcraft'
 import type { AgentNodeTypeMap, DistributedContext } from './types'
 import { promises as fs } from 'node:fs'
 import path from 'node:path'
-import { ConsoleLogger, createNodeRegistry, GraphBuilder } from 'flowcraft'
+import { ConsoleLogger, createNodeRegistry, GraphBuilder, Node } from 'flowcraft'
 import {
 	LLMConditionNode,
 	LLMProcessNode,
@@ -15,9 +15,10 @@ export const nodeRegistry = createNodeRegistry<AgentNodeTypeMap, DistributedCont
 	'llm-condition': LLMConditionNode,
 	'llm-router': LLMRouterNode,
 	'output': OutputNode,
+	'sub-workflow': Node, // Placeholder for the builder
 })
 
-export class WorkflowRegistry {
+export class WorkflowRegistry implements SubWorkflowResolver {
 	private flowCache = new Map<number, Flow>()
 	private nodeMapCache = new Map<number, Map<string, AbstractNode>>()
 	private predecessorCountCache = new Map<number, Map<string, number>>()
@@ -28,16 +29,19 @@ export class WorkflowRegistry {
 		this.builder = new GraphBuilder<AgentNodeTypeMap, DistributedContext>(
 			nodeRegistry,
 			{ registry: this },
-			{ subWorkflowNodeTypes: ['sub-workflow'] },
+			{
+				subWorkflowNodeTypes: ['sub-workflow'],
+				subWorkflowResolver: this,
+			},
 			new ConsoleLogger(),
 		)
 	}
 
 	public static async create(useCaseDirectories: string[]): Promise<WorkflowRegistry> {
 		const registry = new WorkflowRegistry()
-		for (const dir of useCaseDirectories) {
+		for (const dir of useCaseDirectories)
 			await registry.initialize(dir)
-		}
+
 		return registry
 	}
 
@@ -63,7 +67,9 @@ export class WorkflowRegistry {
 		}
 	}
 
-	public getGraph(workflowId: number): TypedWorkflowGraph<AgentNodeTypeMap> | undefined {
+	public getGraph(workflowId: number | string): TypedWorkflowGraph<AgentNodeTypeMap> | undefined {
+		if (typeof workflowId !== 'number')
+			return undefined
 		return this.graphDatabase.get(workflowId)
 	}
 

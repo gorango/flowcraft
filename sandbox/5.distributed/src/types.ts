@@ -25,6 +25,11 @@ export interface AgentNodeTypeMap extends NodeTypeMap {
 		outputKey?: string // defaults to 'final_output'
 		returnAction?: string
 	}
+	'sub-workflow': {
+		workflowId: number
+		inputs?: NodeInputMap
+		outputs?: Record<string, string>
+	}
 }
 
 export interface DistributedContext { registry: WorkflowRegistry }

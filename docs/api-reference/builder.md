@@ -102,13 +102,13 @@ A powerful builder that constructs an executable `Flow` from a declarative `Work
 > [!IMPORTANT]
 > To leverage compile-time type safety, you must use the `createNodeRegistry` helper. By defining a `NodeTypeMap` (for your node `data` payloads) and a `TContext` type (for your shared dependencies), TypeScript can validate your entire graph and dependency usage at compile time, eliminating a whole category of runtime configuration errors.
 >
-> (See how the **[Rag Agent](https://github.com/gorango/flowcraft/tree/master/sandbox/6.rag/)** implements a simple node registry; the **[Dynamic AI Agent](https://github.com/gorango/flowcraft/tree/master/sandbox/5.distributed/)** even demonstrates type-safety despite using *dynamic graphs*.)
+> (See how the **[RAG Agent sandbox](../sandbox/6.rag/)** implements a simple node registry; the **[Dynamic AI Agent sandbox](../sandbox/4.dag/)** even demonstrates type-safety despite using *dynamic graphs*.)
 
 ### Sub-Workflow Composition (Graph Inlining)
 
 The `GraphBuilder` has built-in support for composing workflows. You must declare which node types should be treated as sub-workflows by passing them in the `options` parameter of the constructor. When the builder encounters a node of a registered sub-workflow type, it automatically performs **graph inlining**:
 
-1.  It fetches the sub-workflow's graph definition from a `WorkflowRegistry` (which must be provided in the `nodeOptionsContext`).
+1.  It fetches the sub-workflow's graph definition from the provided `subWorkflowResolver`.
 2.  It injects the sub-workflow's nodes and edges into the parent graph.
 3.  It automatically creates and wires lightweight mapping nodes to handle the data contract defined in the `inputs` and `outputs` properties of the node's `data` payload.
 
@@ -120,8 +120,9 @@ This powerful, build-time process creates a single, flattened graph, which simpl
 
 -   `registry: TypedNodeRegistry<TNodeMap, TContext> | NodeRegistry`: An object or `Map` where keys are `type` strings from the graph definition and values are the corresponding `Node` class constructors. For type-safety, use the `createNodeRegistry` helper.
 -   `nodeOptionsContext?: TContext`: An optional object passed to every node's constructor, merged with the node's `data`. This is the primary mechanism for **type-safe dependency injection**, allowing you to pass shared services like database clients or API handlers to all nodes.
--   `options?: { subWorkflowNodeTypes?: string[] }`: An optional configuration object.
-    -   `subWorkflowNodeTypes`: An array of node `type` strings that should be treated as composable sub-workflows. The builder will inline any node whose type is in this list.
+-   `options?: GraphBuilderOptions`: An optional configuration object.
+    -   `subWorkflowNodeTypes?: string[]`: An array of node `type` strings that should be treated as composable sub-workflows. The builder will inline any node whose type is in this list.
+    -   `subWorkflowResolver?: SubWorkflowResolver`: An object that implements the `{ getGraph(id: string | number): WorkflowGraph | undefined }` interface. This is **required** if you use `subWorkflowNodeTypes`.
 -   `logger?: Logger`: An optional `Logger` instance. If provided, the `GraphBuilder` will automatically generate and log a Mermaid.js diagram of the final, flattened graph every time `.build()` is called. This is an invaluable tool for debugging.
 
 ### Type-Safe Dependency Injection Example
