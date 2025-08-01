@@ -123,7 +123,7 @@ This powerful, build-time process creates a single, flattened graph, which simpl
 -   `options?: GraphBuilderOptions`: An optional configuration object.
     -   `subWorkflowNodeTypes?: string[]`: An array of node `type` strings that should be treated as composable sub-workflows. The builder will inline any node whose type is in this list.
     -   `subWorkflowResolver?: SubWorkflowResolver`: An object that implements the `{ getGraph(id: string | number): WorkflowGraph | undefined }` interface. This is **required** if you use `subWorkflowNodeTypes`.
--   `logger?: Logger`: An optional `Logger` instance. If provided, the `GraphBuilder` will automatically generate and log a Mermaid.js diagram of the final, flattened graph every time `.build()` is called. This is an invaluable tool for debugging.
+-   `logger?: Logger`: An optional `Logger` instance for receiving internal logs from the builder.
 
 ### Type-Safe Dependency Injection Example
 
@@ -168,7 +168,9 @@ const builder = new GraphBuilder(registry, {
 
 ### Methods
 
--   `.build(graph: WorkflowGraph): BuildResult`: The main method that takes a graph definition and returns a `BuildResult` object.
+-   `.build(graph: WorkflowGraph, log?: boolean): BuildResult`: The main method that takes a graph definition and returns a `BuildResult` object.
+    -   `graph`: The `WorkflowGraph` object to build from.
+    -   `log?: boolean`: If `true`, a Mermaid diagram of the final, flattened graph will be logged to the `info` level. This is an invaluable tool for debugging complex compositions. Defaults to `false`.
 
 #### The `BuildResult` Object
 

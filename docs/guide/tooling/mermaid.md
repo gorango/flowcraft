@@ -1,16 +1,16 @@
 # Visualizing Workflows with Mermaid.js
 
-Complex workflows with multiple branches, loops, and fan-outs can be difficult to reason about from code alone. To help with this, Flowcraft includes a `generateMermaidGraph` utility that can automatically create a visual diagram of any `Flow` instance.
+Complex workflows with multiple branches, loops, and fan-outs can be difficult to reason about from code alone. To help with this, Flowcraft includes utilities to automatically create visual diagrams of any `Flow` instance.
 
-This utility is an invaluable tool for:
+This is an invaluable tool for:
 
 - **Debugging**: Quickly verify that your nodes are wired together exactly as you intended.
 - **Documentation**: Embed diagrams directly into your project's `README.md` or technical documentation.
 - **Onboarding**: Help new team members understand the control flow of a complex business process at a glance.
 
-## Quick Start
+## Visualizing Programmatic Flows
 
-To use the utility, simply import `generateMermaidGraph`, create your `Flow` instance, and pass it to the function.
+For flows built programmatically (using `.next()`), use the `generateMermaidGraph` utility.
 
 Let's visualize the "Research Agent" from the sandbox examples, which contains a decision loop:
 
@@ -24,15 +24,13 @@ class DecideActionNode extends Node<void, void, 'search' | 'answer'> {
 class SearchWebNode extends Node {}
 class AnswerQuestionNode extends Node {}
 
-// Create instances
+// Create instances and wire the graph
 const decideNode = new DecideActionNode()
 const searchNode = new SearchWebNode()
 const answerNode = new AnswerQuestionNode()
-
-// Wire the graph
 decideNode.next(searchNode, 'search')
 decideNode.next(answerNode, 'answer')
-searchNode.next(decideNode, DEFAULT_ACTION) // Loop back to the decision node
+searchNode.next(decideNode, DEFAULT_ACTION) // Loop back
 
 const researchAgentFlow = new Flow(decideNode)
 
@@ -57,7 +55,7 @@ graph TD
 
 ### Rendered Graph
 
-When this syntax is rendered, it produces the following diagram:
+This prints the Mermaid syntax, which you can render in GitHub or the [Mermaid Editor](https://mermaid.live).
 
 ```mermaid
 graph TD
@@ -69,13 +67,27 @@ graph TD
     SearchWebNode_0 --> DecideActionNode_0
 ```
 
-## How to Render the Graph
+## Visualizing Declarative Graphs (`GraphBuilder`)
 
-You can render the generated syntax in several places:
+For flows built with `GraphBuilder` from declarative definitions (like JSON), the builder itself provides the best way to get a visualization. By passing `true` as the second argument to the `.build()` method, the builder will log a complete Mermaid diagram of the final, **flattened graph** to the `info` log level.
 
-- **GitHub**: Directly in markdown files (`.md`), issues, and pull requests.
-- **VS Code**: Using a markdown previewer with a Mermaid extension installed.
-- **Online Editors**: Paste the syntax into the [Mermaid Live Editor](https://mermaid.live).
+This is especially powerful as it shows the true structure the executor will run, including:
+- Inlined sub-workflows.
+- Automatically injected `InputMappingNode` and `OutputMappingNode`.
+- Generated `ParallelFlow` blocks for fan-out/fan-in patterns.
+
+```typescript
+const builder = new GraphBuilder(
+	registry,
+	{},
+	{},
+	new ConsoleLogger({ level: 'info' }) // Ensure 'info' logs are visible
+)
+
+// This will log the Mermaid diagram to the console.
+const { flow } = builder.build(myGraphDefinition, true)
+```
+This is the recommended way to visualize complex, composed workflows.
 
 ## Supported Features
 
@@ -84,16 +96,6 @@ The visualizer correctly represents all of Flowcraft's core branching and flow c
 ### Conditional Branching
 
 Custom action strings are rendered as labels on the connecting arrows.
-
-**Code**:
-
-```typescript
-const decision = new DecisionNode()
-decision.next(new PathANode(), 'path_a')
-decision.next(new PathBNode(), 'path_b')
-```
-
-**Graph**:
 
 ```mermaid
 graph TD
@@ -106,16 +108,6 @@ graph TD
 
 The special `FILTER_FAILED` action is given a descriptive label. The `DEFAULT_ACTION` has no label for clarity.
 
-**Code**:
-
-```typescript
-const filter = new FilterNode()
-filter.next(new SuccessNode(), DEFAULT_ACTION)
-filter.next(new FailureNode(), FILTER_FAILED)
-```
-
-**Graph**:
-
 ```mermaid
 graph TD
     FilterNode_0[FilterNode]
@@ -126,18 +118,6 @@ graph TD
 ### Fan-In / Convergence
 
 When multiple nodes connect to the same successor, the graph shows all arrows converging.
-
-**Code**:
-
-```typescript
-const branchA = new PathANode()
-const branchB = new PathBNode()
-const end = new EndNode()
-branchA.next(end)
-branchB.next(end)
-```
-
-**Graph**:
 
 ```mermaid
 graph TD
@@ -150,7 +130,3 @@ graph TD
         PathBNode --> EndNode
     end
 ```
-
-### Node Naming
-
-If your flow uses multiple instances of the same `Node` class, the generator will append a unique index to each one (e.g., `ProcessNode_0`, `ProcessNode_1`) to distinguish them in the graph.

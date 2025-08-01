@@ -143,9 +143,9 @@ export class GraphBuilder<
 
 	private _logMermaid(flow: Flow) {
 		if (!(this.logger instanceof NullLogger)) {
-			this.logger.debug('[GraphBuilder] Flattened Graph')
+			this.logger.info('[GraphBuilder] Flattened Graph')
 			const mermaid = generateMermaidGraph(flow)
-			mermaid.split('\n').forEach(line => this.logger.debug(line))
+			mermaid.split('\n').forEach(line => this.logger.info(line))
 		}
 	}
 
@@ -253,14 +253,15 @@ export class GraphBuilder<
 	/**
 	 * Builds a runnable `Flow` from a graph definition.
 	 * @param graph The `WorkflowGraph` object describing the flow.
+	 * @param log Whether to log the graph after flattening. Defaults to `false`.
 	 * @returns A `BuildResult` object containing the executable `flow` and a `nodeMap`.
 	 */
 	// type-safe overload
-	build(graph: TypedWorkflowGraph<TNodeMap>): BuildResult
+	build(graph: TypedWorkflowGraph<TNodeMap>, log?: boolean): BuildResult
 	// untyped overload
-	build(graph: WorkflowGraph): BuildResult
+	build(graph: WorkflowGraph, log?: boolean): BuildResult
 	// single implementation that handles both cases
-	build(graph: TypedWorkflowGraph<TNodeMap> | WorkflowGraph): BuildResult {
+	build(graph: TypedWorkflowGraph<TNodeMap> | WorkflowGraph, log?: boolean): BuildResult {
 		const flatGraph = this._flattenGraph(graph as WorkflowGraph)
 		const nodeMap = new Map<string, AbstractNode>()
 
@@ -360,7 +361,8 @@ export class GraphBuilder<
 		}
 
 		const flow = new Flow(startNode)
-		this._logMermaid(flow)
+		if (log)
+			this._logMermaid(flow)
 		return { flow, nodeMap, predecessorCountMap, predecessorIdMap, originalPredecessorIdMap }
 	}
 
@@ -438,7 +440,6 @@ export class GraphBuilder<
 					visitorSet.add(startNodeId)
 
 				if (visitorSet.size === parallelNodes.length) {
-					this.logger.debug(`[GraphBuilder] Found convergence node: ${successorId}`)
 					return successor
 				}
 

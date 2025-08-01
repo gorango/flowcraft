@@ -50,7 +50,7 @@ const logger = new ConsoleLogger({ level: 'debug' })
 await myFlow.run(context, { logger })
 ```
 
-The `debug` logger will show:
+The `debug` logger will show you:
 
 -   Which node is currently running.
 -   The exact `params` passed to the node.
@@ -74,11 +74,11 @@ The `debug` logger will show:
 
 This output makes it immediately clear what data the node received, what it produced, and why it took a specific branch. See the **[Logging Guide](../advanced-guides/logging.md)** for more details.
 
-## 3. Visualize Your Graph with `generateMermaidGraph`
+## 3. Visualize Your Graph
 
-Sometimes the problem isn't the logic inside your nodes, but the way you've wired them together. It's easy to make a mistake with `.next()`, creating a dead end or an incorrect branch.
+### Programmatic Flows with `generateMermaidGraph`
 
-Flowcraft includes a `generateMermaidGraph` utility that creates a visual representation of your `Flow`'s structure. You can paste the output into any Mermaid.js renderer (like the one in the GitHub or VS Code markdown preview) to see your workflow.
+If you've wired your nodes together programmatically with `.next()`, it's easy to make a mistake. The `generateMermaidGraph` utility creates a visual representation of your `Flow`'s structure. You can paste the output into any Mermaid.js renderer (like the one in the GitHub or VS Code markdown preview) to see your workflow.
 
 ```typescript
 import { generateMermaidGraph } from 'flowcraft'
@@ -88,31 +88,14 @@ const complexFlow = createMyComplexFlow()
 
 // Generate the Mermaid syntax
 const mermaidSyntax = generateMermaidGraph(complexFlow)
-
 console.log(mermaidSyntax)
-/*
-Outputs something like:
-graph TD
-  StartNode_0[StartNode]
-  DecisionNode_0[DecisionNode]
-  PathANode_0[PathANode]
-  PathBNode_0[PathBNode]
-  EndNode_0[EndNode]
-  StartNode_0 --> DecisionNode_0
-  DecisionNode_0 -- "go_a" --> PathANode_0
-  DecisionNode_0 -- "go_b" --> PathBNode_0
-  PathANode_0 --> EndNode_0
-  PathBNode_0 --> EndNode_0
-*/
 ```
 
-This is the fastest way to verify that your graph is connected as you intend.
+### Declarative Flows with `GraphBuilder`
 
-### Visualizing `GraphBuilder` Flows
+The `GraphBuilder` can automatically generate and log a detailed Mermaid.js diagram of the final, **flattened graph**. This is an invaluable tool for debugging, as it shows you the exact structure the `Executor` will run, including inlined sub-workflows, injected mapping nodes, and generated parallel blocks.
 
-You can pass a `Logger` instance to the `GraphBuilder`'s constructor. When you do, it will automatically generate and log a detailed Mermaid.js diagram of the final, **flattened graph** every time you call `.build()`. This diagram shows you the exact structure the `Executor` will run, including **inlined sub-workflows, injected mapping nodes, and automatically generated parallel blocks**. This is an invaluable tool for debugging the true, final structure of a composed workflow.
-
-This is also a great way to verify that node-specific configurations (like `maxRetries` defined in your JSON) have been applied correctly.
+To see the graph, simply pass `true` as the second argument to the `.build()` method. The diagram will be logged at the `info` level, so ensure your logger is configured to show it.
 
 **Scenario**: You are building a complex workflow and want to see the final executable graph.
 
@@ -121,21 +104,21 @@ import { ConsoleLogger, GraphBuilder } from 'flowcraft'
 
 // Assume `nodeRegistry` and `myComplexGraph` are defined
 
-// Instantiate the builder WITH a logger
+// Instantiate the builder WITH a logger to see the output
 const builder = new GraphBuilder(
 	nodeRegistry,
 	{ /* dependencies */ },
 	{ /* options */ },
-	new ConsoleLogger() // <-- This enables automatic logging
+	new ConsoleLogger({ level: 'info' }) // <-- Ensure 'info' level is visible
 )
 
-// When you call .build(), the Mermaid graph will be logged to the console.
-const { flow } = builder.build(myComplexGraph)
+// Pass `true` to log the final graph.
+const { flow } = builder.build(myComplexGraph, true)
 ```
 
 **Example Log Output**:
 
-The builder will log a complete Mermaid diagram, which you can paste into any compatible renderer (like GitHub's markdown preview) to see the visual graph. This is invaluable for verifying complex wiring, fan-outs, and sub-workflow logic.
+The builder will log a complete Mermaid diagram. You can paste this into any compatible renderer to see the visual graph.
 
 ```
 [INFO] [GraphBuilder] Flattened Graph
@@ -144,9 +127,6 @@ The builder will log a complete Mermaid diagram, which you can paste into any co
 [INFO]   check_sentiment_0["check_sentiment (llm-condition)"]
 [INFO]   ... and so on ...
 ```
-
-> [!TIP]
-> For programmatically built flows (using `.next()`), you can still use the standalone `generateMermaidGraph` utility. However, for declarative workflows, the `GraphBuilder`'s built-in logging is the recommended approach.
 
 ## 4. Isolate and Inspect Nodes
 
@@ -160,25 +140,14 @@ You can test a node's full lifecycle (`prep`, `exec`, `post`) by calling its own
 2. Call `node.run(context)`.
 3. Assert that the `Context` contains the expected values after the run.
 
-### Inspect with `getNodeById()`
+### Inspect with `getNodeById()` or `nodeMap`
 
-For flows built programmatically (with `.next()`), you can get a direct reference to any node instance using `flow.getNodeById()`. This is useful for inspecting its configuration before the flow runs.
-
-> [!TIP]
-> For flows built with `GraphBuilder`, always use the `nodeMap` returned by the `.build()` method for the most efficient lookup.
+- **Programmatic Flows**: Use `flow.getNodeById()` to get a direct reference to any node instance to inspect its configuration before the flow runs.
+- **`GraphBuilder` Flows**: Always use the `nodeMap` returned by the `.build()` method for the most efficient lookup.
 
 ```typescript
-const startNode = new Node().withId('start')
-const decisionNode = new Node().withId('decision')
-startNode.next(decisionNode)
-
-const myFlow = new Flow(startNode)
-
-// Get a reference to the node
-const nodeToInspect = myFlow.getNodeById('decision')
-
-// You can now inspect its properties, e.g., its successors
-console.log(nodeToInspect?.successors)
+const { flow, nodeMap } = builder.build(myGraph)
+const specificNode = nodeMap.get('my-node-id') // O(1) lookup
 ```
 
 ## Common Pitfalls
