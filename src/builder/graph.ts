@@ -33,6 +33,7 @@ class InputMappingNode extends Node {
 	private mappings: Record<string, string>
 	constructor(options: { data: Record<string, string> }) {
 		super()
+		// Exclude the injected nodeId from the mappings
 		const { nodeId, ...mappings } = options.data
 		this.mappings = mappings
 	}
@@ -59,6 +60,7 @@ class OutputMappingNode extends Node {
 	private mappings: Record<string, string>
 	constructor(options: { data: Record<string, string> }) {
 		super()
+		// Exclude the injected nodeId from the mappings
 		const { nodeId, ...mappings } = options.data
 		this.mappings = mappings
 	}

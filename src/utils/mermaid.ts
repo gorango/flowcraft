@@ -59,6 +59,9 @@ function getUniqueNodeId(node: AbstractNode, nameCounts: Map<string, number>, id
 	else if (node.graphData) {
 		baseName = node.graphData.id
 	}
+	else if (node.id) {
+		baseName = String(node.id)
+	}
 	else {
 		baseName = node.constructor.name
 	}

@@ -252,8 +252,7 @@ describe('testExecFallback', () => {
 		const ctx = new TypedContext()
 		const node = new FallbackNode(true, { maxRetries: 3 })
 		await node.run(ctx, runOptions)
-		// 3 attempts total: 1 initial + 2 retries. The attemptCount logic is inside exec, so it will be 3.
-		expect(ctx.get(ATTEMPTS)).toBe(3)
+		expect(ctx.get(ATTEMPTS)).toBe(3) // 1 initial attempt + 2 retries
 		expect(ctx.get(RESULT)).toBe('fallback')
 	})
 })
