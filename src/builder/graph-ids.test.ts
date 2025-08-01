@@ -1,7 +1,9 @@
-import type { BuildResult, NodeConstructorOptions, NodeTypeMap, TypedWorkflowGraph, WorkflowGraph } from './graph.types'
+import type { BuildResult, NodeConstructorOptions, NodeTypeMap, SubWorkflowResolver, TypedWorkflowGraph, WorkflowGraph } from './graph.types'
 import { beforeEach, describe, expect, it } from 'vitest'
+import { DEFAULT_ACTION } from '../types'
 import { Node } from '../workflow'
 import { createNodeRegistry, GraphBuilder } from './graph'
+import { ParallelFlow } from './patterns'
 
 class TestNode extends Node {
 	constructor(_options: NodeConstructorOptions<any, any>) {
@@ -9,18 +11,17 @@ class TestNode extends Node {
 	}
 }
 
-interface MockRegistry {
+interface MockRegistry extends SubWorkflowResolver {
 	graphs: Map<number, WorkflowGraph>
-	getGraph: (id: number) => WorkflowGraph | undefined
-}
-
-interface TestBuilderContext {
-	registry: MockRegistry
+	getGraph: (id: number | string) => WorkflowGraph | undefined
 }
 
 const mockRegistry: MockRegistry = {
 	graphs: new Map<number, WorkflowGraph>(),
-	getGraph(id: number): WorkflowGraph | undefined {
+	getGraph(id: number | string): WorkflowGraph | undefined {
+		if (typeof id !== 'number')
+			return undefined
+
 		return this.graphs.get(id)
 	},
 }
@@ -34,14 +35,14 @@ interface TestNodeTypeMap extends NodeTypeMap {
 	}
 }
 
-const testNodeRegistry = createNodeRegistry<TestNodeTypeMap, TestBuilderContext>({
+const testNodeRegistry = createNodeRegistry<TestNodeTypeMap>({
 	'step': TestNode,
 	'sub-workflow': TestNode,
 })
 
 describe('graphBuilder with Sub-Workflows: ID and Predecessor Mapping', () => {
 	let parentGraph: TypedWorkflowGraph<TestNodeTypeMap>
-	let builder: GraphBuilder<TestNodeTypeMap, TestBuilderContext>
+	let builder: GraphBuilder<TestNodeTypeMap>
 	let buildResult: BuildResult
 
 	beforeEach(() => {
@@ -81,8 +82,11 @@ describe('graphBuilder with Sub-Workflows: ID and Predecessor Mapping', () => {
 
 		builder = new GraphBuilder(
 			testNodeRegistry,
-			{ registry: mockRegistry },
-			{ subWorkflowNodeTypes: ['sub-workflow'] },
+			{},
+			{
+				subWorkflowNodeTypes: ['sub-workflow'],
+				subWorkflowResolver: mockRegistry,
+			},
 		)
 
 		buildResult = builder.build(parentGraph)
@@ -95,61 +99,40 @@ describe('graphBuilder with Sub-Workflows: ID and Predecessor Mapping', () => {
 			return nodeMap.get(namespacedId)?.graphData?.data?.originalId ?? undefined
 		}
 
-		// Test top-level nodes
 		expect(getOriginalId('start')).toBe('start')
 		expect(getOriginalId('parallel-branch')).toBe('parallel-branch')
 		expect(getOriginalId('end')).toBe('end')
-
-		// Test inlined sub-workflow nodes
 		expect(getOriginalId('sub-container:sub-step-1')).toBe('sub-step-1')
 		expect(getOriginalId('sub-container:sub-step-2')).toBe('sub-step-2')
-
-		//  Test the crucial mapper nodes
-		expect(getOriginalId('sub-container_input_mapper')).toBe('sub-container')
-		expect(getOriginalId('sub-container_output_mapper')).toBe('sub-container')
+		expect(getOriginalId('subcontainer_input_mapper')).toBe('sub-container')
+		expect(getOriginalId('subcontainer_output_mapper')).toBe('sub-container')
 	})
 
 	it('should generate a correct predecessorIdMap with fully namespaced IDs', () => {
 		const { predecessorIdMap } = buildResult
-
-		// Test a node with a single, simple predecessor
 		expect(predecessorIdMap.get('parallel-branch')).toEqual(['start'])
-
-		// Test the start of the sub-workflow
-		expect(predecessorIdMap.get('sub-container:sub-step-1')).toEqual(['sub-container_input_mapper'])
-
-		// Test a node inside the sub-workflow
+		expect(predecessorIdMap.get('sub-container:sub-step-1')).toEqual(['subcontainer_input_mapper'])
 		expect(predecessorIdMap.get('sub-container:sub-step-2')).toEqual(['sub-container:sub-step-1'])
+		expect(predecessorIdMap.get('subcontainer_output_mapper')).toEqual(['sub-container:sub-step-2'])
 
-		// Test the output mapper
-		expect(predecessorIdMap.get('sub-container_output_mapper')).toEqual(['sub-container:sub-step-2'])
-
-		// Test the fan-in node
 		const endPredecessors = predecessorIdMap.get('end')
 		expect(endPredecessors).toBeDefined()
 		expect(endPredecessors).toHaveLength(2)
 		expect(endPredecessors).toEqual(expect.arrayContaining([
-			'sub-container_output_mapper',
+			'subcontainer_output_mapper',
 			'parallel-branch',
 		]))
 	})
 
 	it('should generate a correct originalPredecessorIdMap with original IDs', () => {
 		const { originalPredecessorIdMap } = buildResult
-
-		// Test a node with a single, simple predecessor
 		expect(originalPredecessorIdMap.get('parallel-branch')).toEqual(['start'])
+		expect(originalPredecessorIdMap.get('sub-step-1')).toEqual(['sub-container'])
+		expect(originalPredecessorIdMap.get('sub-step-2')).toEqual(['sub-step-1'])
+		expect(originalPredecessorIdMap.get('sub-container')).toEqual(
+			expect.arrayContaining(['sub-step-2']),
+		)
 
-		// Test the start of the sub-workflow
-		expect(originalPredecessorIdMap.get('sub-container:sub-step-1')).toEqual(['sub-container'])
-
-		// Test a node inside the sub-workflow
-		expect(originalPredecessorIdMap.get('sub-container:sub-step-2')).toEqual(['sub-step-1'])
-
-		// Test the output mapper
-		expect(originalPredecessorIdMap.get('sub-container_output_mapper')).toEqual(['sub-step-2'])
-
-		// Test the fan-in node
 		const endOriginalPredecessors = originalPredecessorIdMap.get('end')
 		expect(endOriginalPredecessors).toBeDefined()
 		expect(endOriginalPredecessors).toHaveLength(2)
@@ -157,5 +140,19 @@ describe('graphBuilder with Sub-Workflows: ID and Predecessor Mapping', () => {
 			'sub-container',
 			'parallel-branch',
 		]))
+	})
+
+	it('should wire the parallel container to the convergence node', () => {
+		const { nodeMap } = buildResult
+
+		const startNode = nodeMap.get('start')!
+		const parallelContainer = startNode.successors.get(DEFAULT_ACTION)
+		const endNode = nodeMap.get('end')!
+
+		// 1. The direct successor of the fan-out node MUST be the ParallelFlow container.
+		expect(parallelContainer).toBeInstanceOf(ParallelFlow)
+
+		// 2. The direct successor of the ParallelFlow container MUST be the convergence node.
+		expect(parallelContainer!.successors.get(DEFAULT_ACTION)).toBe(endNode)
 	})
 })

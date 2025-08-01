@@ -114,7 +114,12 @@ export interface BuildResult {
 	predecessorCountMap: Map<string, number>
 	/** A map of all node `id`s to an array of their predecessor `id`s. */
 	predecessorIdMap: PredecessorIdMap
-	/** A map of all node `id`s to an array of their original (un-namespaced) predecessor `id`s. */
+	/**
+	 * A map of all node `id`s to an array of their original (un-namespaced) predecessor `id`s.
+	 * This represents the logical dependencies of the graph before flattening.
+	 * Note: For sub-workflow nodes, their direct predecessors will be the logical terminal nodes
+	 * from *within* that sub-workflow, reflecting the data flow.
+	 */
 	originalPredecessorIdMap: OriginalPredecessorIdMap
 }
 
@@ -148,6 +153,29 @@ export interface WorkflowGraph {
  */
 export type NodeRegistry = Map<string, new (...args: any[]) => AbstractNode>
 
+/**
+ * An interface for an object that can resolve a sub-workflow definition by its ID.
+ */
+export interface SubWorkflowResolver {
+	getGraph: (id: number | string) => WorkflowGraph | undefined
+}
+
+/**
+ * Options for configuring the behavior of the `GraphBuilder`.
+ */
 export interface GraphBuilderOptions {
+	/**
+	 * An array of node type names that should be treated as sub-workflows.
+	 * When the builder encounters a node whose type is in this list, it will
+	 * attempt to use the `subWorkflowResolver` to fetch and inline the corresponding graph.
+	 * @example ['sub-flow', 'reusable-task-group']
+	 */
 	subWorkflowNodeTypes?: string[]
+
+	/**
+	 * An object that provides the logic for retrieving a sub-workflow's graph definition.
+	 * This is required if the graph contains any nodes whose types are listed in `subWorkflowNodeTypes`.
+	 * The `getGraph` method will be called with the `workflowId` from the node's data payload.
+	 */
+	subWorkflowResolver?: SubWorkflowResolver
 }

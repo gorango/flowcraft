@@ -1,7 +1,7 @@
 import type { Logger } from '../logger'
 import type { NodeArgs, RunOptions } from '../types'
 import type { AbstractNode } from '../workflow'
-import type { NodeConstructorOptions, NodeRegistry, NodeTypeMap, TypedNodeRegistry, TypedWorkflowGraph, WorkflowGraph } from './graph.types'
+import type { NodeConstructorOptions, NodeRegistry, NodeTypeMap, SubWorkflowResolver, TypedNodeRegistry, TypedWorkflowGraph, WorkflowGraph } from './graph.types'
 import { describe, expect, it, vi } from 'vitest'
 import { contextKey, TypedContext } from '../context'
 import { DEFAULT_ACTION } from '../types'
@@ -331,11 +331,7 @@ describe('graphBuilder with sub-workflows', () => {
 		}
 	}
 
-	const mockRegistry = {
-		registry: createNodeRegistry({
-			append: AppendStringNode,
-			final: FinalOutputNode,
-		}),
+	const mockSubWorkflowResolver: SubWorkflowResolver & { graphs: Map<number, WorkflowGraph> } = {
 		graphs: new Map<number, WorkflowGraph>([
 			[200, {
 				nodes: [
@@ -345,10 +341,18 @@ describe('graphBuilder with sub-workflows', () => {
 				edges: [{ source: 'step_d', target: 'step_e' }],
 			}],
 		]),
-		getGraph(id: number) {
+		getGraph(id: number | string) {
+			if (typeof id !== 'number')
+				return undefined
+
 			return this.graphs.get(id)
 		},
 	}
+
+	const subWorkflowNodeRegistry = createNodeRegistry({
+		append: AppendStringNode,
+		final: FinalOutputNode,
+	})
 
 	it('should correctly inline a sub-workflow and run the flattened graph', async () => {
 		const parentGraph: TypedWorkflowGraph<TestSubWorkflowNodeTypeMap> = {
@@ -371,8 +375,9 @@ describe('graphBuilder with sub-workflows', () => {
 			],
 		}
 
-		const builder = new GraphBuilder(mockRegistry.registry, { registry: mockRegistry }, {
+		const builder = new GraphBuilder(subWorkflowNodeRegistry, {}, {
 			subWorkflowNodeTypes: ['custom_sub_workflow'],
+			subWorkflowResolver: mockSubWorkflowResolver,
 		})
 
 		const { flow, nodeMap } = builder.build(parentGraph)
@@ -406,12 +411,13 @@ describe('graphBuilder with sub-workflows', () => {
 			],
 		}
 
-		const builder = new GraphBuilder(mockRegistry.registry, { registry: mockRegistry }, {
+		const builder = new GraphBuilder(subWorkflowNodeRegistry, {}, {
 			subWorkflowNodeTypes: ['custom_sub_workflow'],
+			subWorkflowResolver: mockSubWorkflowResolver,
 		})
 
 		expect(() => builder.build(graphWithUndeclaredSub)).toThrow(
-			/Node with ID 'the_sub' and type 'some_other_type' contains a 'workflowId' property, but its type is not registered/,
+			/Node with ID 'the_sub' has a 'workflowId' but its type 'some_other_type' is not in 'subWorkflowNodeTypes'./,
 		)
 	})
 })
