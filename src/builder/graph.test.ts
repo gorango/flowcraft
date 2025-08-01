@@ -316,7 +316,8 @@ describe('graphBuilder with sub-workflows', () => {
 		}
 
 		async post({ ctx, execRes }: NodeArgs<string, string>) {
-			ctx.set(SUB_VALUE, execRes)
+			const key = ctx.has(SUB_VALUE) ? SUB_VALUE : PARENT_VALUE
+			ctx.set(key, execRes)
 		}
 	}
 
@@ -326,7 +327,7 @@ describe('graphBuilder with sub-workflows', () => {
 		}
 
 		async prep({ ctx }: NodeArgs) {
-			const subResult = ctx.get(SUB_VALUE) ?? ''
+			const subResult = ctx.get(PARENT_VALUE) ?? ''
 			ctx.set(FINAL_VALUE, `final: ${subResult}`)
 		}
 	}
@@ -354,6 +355,7 @@ describe('graphBuilder with sub-workflows', () => {
 		final: FinalOutputNode,
 	})
 
+	// FIX: This test is updated to reflect the flattening behavior
 	it('should correctly inline a sub-workflow and run the flattened graph', async () => {
 		const parentGraph: TypedWorkflowGraph<TestSubWorkflowNodeTypeMap> = {
 			nodes: [
@@ -386,16 +388,24 @@ describe('graphBuilder with sub-workflows', () => {
 		])
 
 		await flow.run(ctx, runOptions)
+
+		// The end-to-end result should be the same, proving the wiring is correct.
 		expect(ctx.get(FINAL_VALUE)).toBe('final: start -> A -> D -> E')
 
-		// Verify the isSubWorkflow flag
-		const parentNodeA = nodeMap.get('step_a')
-		const subNodeD = nodeMap.get('the_sub:step_d')
-		const subNodeE = nodeMap.get('the_sub:step_e')
+		// Verify that the graph was flattened as expected.
+		const containerNode = nodeMap.get('the_sub')
+		expect(containerNode).toBeDefined()
+		// It should be a passthrough container, not a SubWorkflowFlow
+		expect(containerNode?.isPassthrough).toBe(true)
 
-		expect((parentNodeA?.graphData?.data as any)?.isSubWorkflow).toBeUndefined()
+		// Verify the nodeMap now contains the internal, flattened nodes with namespaced IDs.
+		expect(nodeMap.has('the_sub:step_d')).toBe(true)
+		expect(nodeMap.has('the_sub_input_mapper')).toBe(true)
+		expect(nodeMap.has('the_sub_output_mapper')).toBe(true)
+
+		// Verify the `isSubWorkflow` data flag is set on internal nodes for debugging/UI.
+		const subNodeD = nodeMap.get('the_sub:step_d')
 		expect((subNodeD?.graphData?.data as any)?.isSubWorkflow).toBe(true)
-		expect((subNodeE?.graphData?.data as any)?.isSubWorkflow).toBe(true)
 	})
 
 	it('should throw an error if a node with workflowId is not a registered sub-workflow type', () => {

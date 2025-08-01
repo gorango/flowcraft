@@ -121,6 +121,7 @@ export interface BuildResult {
 	 * from *within* that sub-workflow, reflecting the data flow.
 	 */
 	originalPredecessorIdMap: OriginalPredecessorIdMap
+
 }
 
 /**

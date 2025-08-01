@@ -28,6 +28,8 @@ export abstract class AbstractNode<
 	public successors = new Map<TPostRes | string | typeof DEFAULT_ACTION | typeof FILTER_FAILED, AbstractNode<any, any>>()
 	/** The original graph definition for this node, if created by a GraphBuilder. */
 	public graphData?: GraphNode
+	/** A flag indicating that this node is a container and should be passed through by distributed executors. */
+	public isPassthrough = false
 
 	/**
 	 * Sets a unique identifier for this node instance.

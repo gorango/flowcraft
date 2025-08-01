@@ -1,8 +1,100 @@
 import type { NodeFunction } from '../functions'
 import type { NodeArgs } from '../types'
 import type { AbstractNode } from '../workflow'
+import type { GraphBuilder } from './graph'
+import type { WorkflowGraph } from './graph.types'
 import { AbortError } from '../errors'
-import { Flow } from '../workflow'
+import { Flow, Node } from '../workflow'
+
+/**
+ * An internal node used by the SubWorkflowFlow to handle the `inputs` mapping
+ * of an inlined sub-workflow. It copies data from the parent context scope
+ * to the sub-workflow's context scope.
+ * @internal
+ */
+class InputMappingNode extends Node {
+	private mappings: Record<string, string>
+	constructor(options: { data: Record<string, string> }) {
+		super()
+		this.mappings = options.data
+	}
+
+	async prep({ ctx, logger }: NodeArgs) {
+		for (const [subKey, parentKey] of Object.entries(this.mappings)) {
+			if (ctx.has(parentKey)) {
+				ctx.set(subKey, ctx.get(parentKey))
+			}
+			else {
+				logger.warn(`[InputMapper] Input mapping failed. Key '${parentKey}' not found in context.`)
+			}
+		}
+	}
+}
+
+/**
+ * An internal node used by the SubWorkflowFlow to handle the `outputs` mapping
+ * of an inlined sub-workflow. It copies data from the sub-workflow's
+ * context scope back to the parent's context scope.
+ * @internal
+ */
+class OutputMappingNode extends Node {
+	private mappings: Record<string, string>
+	constructor(options: { data: Record<string, string> }) {
+		super()
+		this.mappings = options.data
+	}
+
+	async prep({ ctx, logger }: NodeArgs) {
+		for (const [parentKey, subKey] of Object.entries(this.mappings)) {
+			if (ctx.has(subKey)) {
+				ctx.set(parentKey, ctx.get(subKey))
+			}
+			else {
+				logger.warn(`[OutputMapper] Output mapping failed. Key '${subKey}' not found in context.`)
+			}
+		}
+	}
+}
+
+/**
+ * A special Flow that encapsulates a sub-workflow, including its
+ * input and output data mappings, hiding the implementation details from the executor.
+ * @internal
+ */
+export class SubWorkflowFlow extends Flow {
+	constructor(
+		subGraph: WorkflowGraph,
+		inputs: Record<string, string>,
+		outputs: Record<string, string>,
+		builder: GraphBuilder<any, any>,
+	) {
+		super()
+
+		const inputMapper = new InputMappingNode({ data: inputs }).withId('__sub_input_mapper')
+		const outputMapper = new OutputMappingNode({ data: outputs }).withId('__sub_output_mapper')
+
+		// Use the provided builder to construct the core part of the sub-workflow.
+		const buildResult = builder.build(subGraph)
+
+		// The entry point to this encapsulated flow is the input mapper.
+		this.startNode = inputMapper
+
+		// Wire the input mapper to the start of the actual sub-workflow logic.
+		inputMapper.next(buildResult.flow)
+
+		// Find all terminal nodes in the sub-graph and connect them to the output mapper.
+		// A terminal node is one with no successors within the sub-graph's logical definition.
+		// Note: The `buildResult.flow` itself can be a terminal node (e.g., for an empty sub-graph).
+		if (buildResult.flow.successors.size === 0)
+			buildResult.flow.next(outputMapper)
+
+		for (const node of buildResult.nodeMap.values()) {
+			// Don't double-wire the flow itself if it was already handled
+			if (node.successors.size === 0 && node !== buildResult.flow)
+				node.next(outputMapper)
+		}
+	}
+}
 
 /**
  * A `Flow` that creates a linear workflow from a sequence of nodes,
@@ -35,6 +127,14 @@ export class ParallelFlow extends Flow<any, void> {
 	 */
 	constructor(protected nodesToRun: AbstractNode[]) {
 		super()
+	}
+
+	/**
+	 * A public getter to safely access the parallel branches.
+	 * This is used by distributed orchestrators to know which jobs to enqueue.
+	 */
+	public get branches(): readonly AbstractNode[] {
+		return this.nodesToRun
 	}
 
 	/**

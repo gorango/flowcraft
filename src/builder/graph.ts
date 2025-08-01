@@ -83,6 +83,11 @@ class OutputMappingNode extends Node {
  * @internal
  */
 class SubWorkflowContainerNode extends Node {
+	constructor() {
+		super()
+		this.isPassthrough = true
+	}
+
 	async exec() {
 		// This node performs no work; it just acts as a stable entry point.
 		// The graph wiring ensures the InputMappingNode is executed next.
@@ -93,7 +98,12 @@ class SubWorkflowContainerNode extends Node {
 class ParallelBranchContainer extends ParallelFlow {
 	/** A tag to reliably identify this node type in the visualizer. */
 	public readonly isParallelContainer = true
-	constructor(public readonly nodesToRun: AbstractNode[]) { super(nodesToRun) }
+
+	constructor(public readonly nodesToRun: AbstractNode[]) {
+		super(nodesToRun)
+		// semantic flag for distributed executors.
+		this.isPassthrough = true
+	}
 }
 
 /**
@@ -128,12 +138,7 @@ export class GraphBuilder<
 		logger: Logger = new NullLogger(),
 	) {
 		this.logger = logger
-		if (registry instanceof Map) {
-			this.registry = registry
-		}
-		else {
-			this.registry = new Map(Object.entries(registry))
-		}
+		this.registry = registry instanceof Map ? registry : new Map(Object.entries(registry))
 		this.registry.set('__internal_input_mapper__', InputMappingNode as any)
 		this.registry.set('__internal_output_mapper__', OutputMappingNode as any)
 		this.registry.set('__internal_sub_workflow_container__', SubWorkflowContainerNode as any)
