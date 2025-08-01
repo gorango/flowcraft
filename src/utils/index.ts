@@ -1,3 +1,5 @@
 export * from './analysis'
 export * from './mermaid'
+export * from './middleware'
+export * from './sanitize'
 export * from './sleep'

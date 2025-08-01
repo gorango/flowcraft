@@ -37,3 +37,13 @@ This module provides a set of functions for creating nodes and pipelines in a mo
   - `pipeline`: A functional alias for creating a linear `SequenceFlow`.
   - `transformNode`: Creates a `Node` for declaratively updating the `Context` using lenses.
   - `lens` and `composeContext`: Utilities for functional context manipulation.
+
+## Utilities API
+
+This module contains standalone helper functions for common tasks like sanitizing graph data, generating visualizations, and composing middleware.
+
+- **[Utilities API](./utils.md)**: Documentation for utility helpers:
+  - `sanitizeGraph`: For cleaning graph data from UI tools.
+  - `generateMermaidGraph`: For visualizing programmatically built flows.
+  - `applyMiddleware`: For composing middleware chains (primarily for custom executors).
+  - `sleep`: For creating cancellable delays.
