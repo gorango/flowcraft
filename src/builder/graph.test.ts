@@ -341,6 +341,10 @@ describe('graphBuilder with sub-workflows', () => {
 				],
 				edges: [{ source: 'step_d', target: 'step_e' }],
 			}],
+			[201, {
+				nodes: [{ id: 'step_f', type: 'append', data: { value: 'F' } }],
+				edges: [],
+			}],
 		]),
 		getGraph(id: number | string) {
 			if (typeof id !== 'number')
@@ -355,7 +359,6 @@ describe('graphBuilder with sub-workflows', () => {
 		final: FinalOutputNode,
 	})
 
-	// FIX: This test is updated to reflect the flattening behavior
 	it('should correctly inline a sub-workflow and run the flattened graph', async () => {
 		const parentGraph: TypedWorkflowGraph<TestSubWorkflowNodeTypeMap> = {
 			nodes: [
@@ -406,6 +409,53 @@ describe('graphBuilder with sub-workflows', () => {
 		// Verify the `isSubWorkflow` data flag is set on internal nodes for debugging/UI.
 		const subNodeD = nodeMap.get('the_sub:step_d')
 		expect((subNodeD?.graphData?.data as any)?.isSubWorkflow).toBe(true)
+	})
+
+	it('should correctly inline a chain of sub-workflows', async () => {
+		const parentGraph: TypedWorkflowGraph<TestSubWorkflowNodeTypeMap> = {
+			nodes: [
+				{ id: 'step_a', type: 'append', data: { value: 'A' } },
+				{
+					id: 'sub_1',
+					type: 'custom_sub_workflow',
+					data: {
+						workflowId: 200, // Contains D -> E
+						inputs: { sub_value: 'parent_value' },
+						outputs: { parent_value: 'sub_value' },
+					},
+				},
+				{
+					id: 'sub_2',
+					type: 'custom_sub_workflow',
+					data: {
+						workflowId: 201, // Contains F
+						inputs: { sub_value: 'parent_value' },
+						outputs: { parent_value: 'sub_value' },
+					},
+				},
+				{ id: 'step_c', type: 'final', data: {} },
+			],
+			edges: [
+				{ source: 'step_a', target: 'sub_1' },
+				{ source: 'sub_1', target: 'sub_2' },
+				{ source: 'sub_2', target: 'step_c' },
+			],
+		}
+
+		const builder = new GraphBuilder(subWorkflowNodeRegistry, {}, {
+			subWorkflowNodeTypes: ['custom_sub_workflow'],
+			subWorkflowResolver: mockSubWorkflowResolver,
+		})
+
+		const { flow } = builder.build(parentGraph)
+		const ctx = new TypedContext([
+			[PARENT_VALUE, 'start'],
+		])
+
+		await flow.run(ctx, runOptions)
+
+		// The end-to-end result should reflect the full chain: A -> (D->E) -> F -> C
+		expect(ctx.get(FINAL_VALUE)).toBe('final: start -> A -> D -> E -> F')
 	})
 
 	it('should throw an error if a node with workflowId is not a registered sub-workflow type', () => {
