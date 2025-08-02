@@ -131,6 +131,11 @@ Every `Node` has a well-defined, three-phase lifecycle:
 
 For many common tasks, like in our example, you can use the fluent API (`.map`, `.toContext`, `.filter`) to create processing pipelines without writing a custom class.
 
+> [!TIP]
+> **Simplified Node Classes**
+>
+> For common patterns, you can extend simplified base classes to reduce boilerplate. Use `ExecNode` for core logic, `PreNode` for context-only changes, or `PostNode` for branching decisions. See the [Core API Reference](/api-reference/workflow.md#simplified-base-classes) for details.
+
 ### 2. Flow
 
 A `Flow` is a special `Node` that acts as a **container for a graph of other nodes**. It holds the starting point of a workflow and orchestrates the execution.

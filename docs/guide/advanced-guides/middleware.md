@@ -10,11 +10,11 @@ This is conceptually similar to middleware in web frameworks like Express or Koa
 
 ## Common Use Cases
 
+- **Centralized Logging**: Implement structured logging for every node's entry and exit. See the [Logging Guide](./logging.md) for a complete example.
 - **Performance Monitoring**: Start a timer before `next()` and record the duration after it completes to measure how long each node takes.
 - **Authentication/Authorization**: Check if the current context has valid credentials before allowing a node to run.
 - **Transaction Management**: Start a database transaction before the first node in a flow and commit or roll it back after the flow completes.
 - **Input/Output Validation**: Validate a node's parameters before execution or its results after execution.
-- **Centralized Logging**: Implement structured logging for every node's entry and exit. See the [Logging Guide](./logging.md) for more on this topic.
 
 ## How to Use Middleware
 
@@ -29,7 +29,11 @@ type Middleware = (args: NodeArgs, next: MiddlewareNext) => Promise<any>
 type MiddlewareNext = (args: NodeArgs) => Promise<any>
 ```
 
-- `args`: The `NodeArgs` object, containing the `ctx`, `params`, `logger`, etc., for the node about to be executed.
+- `args`: The `NodeArgs` object for the node about to be executed. It contains:
+  - `ctx`: The shared `Context`.
+  - `params`: The node's static parameters.
+  - `logger`: The logger instance for the run.
+  - `node`: The `AbstractNode` instance itself. This is crucial for advanced middleware that needs to inspect the graph (e.g., `node.successors`).
 - `next`: A function that you must call to pass control to the next middleware in the chain, or to the node itself if it's the last one.
 
 ### Example: Database Transaction Middleware

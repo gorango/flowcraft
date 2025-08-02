@@ -33,24 +33,28 @@ const processUser = fetchUserNode
 // When this runs, the debug log will print the intermediate object.
 ```
 
-## 2. Trace Execution with the Logger
+## 2. Trace Execution with Logging Middleware
 
-When your problem is about *control flow* ("Why did my workflow take the wrong branch?") or *data flow* ("What was the exact data passed to this node?"), the logger is your best friend.
+When your problem is about *control flow* ("Why did my workflow take the wrong branch?") or *data flow* ("What was the exact data passed to this node?"), **applying a logging middleware is the best solution**.
 
-By passing a `ConsoleLogger` to your `flow.run()` call, you get a detailed, step-by-step trace of the entire execution. For maximum visibility, **set the log level to `'debug'`**.
+The Flowcraft core is silent by default. To get a detailed, step-by-step trace, you can apply a custom logging middleware to your `Flow`.
 
 ```typescript
 import { ConsoleLogger, Flow, TypedContext } from 'flowcraft'
+import { loggingMiddleware } from './my-app/middleware' // Your custom middleware
 
 const myFlow = createMyConditionalFlow()
 const context = new TypedContext()
 
-// Run the flow with verbose debug logging enabled
+// Apply the middleware to the flow
+myFlow.use(loggingMiddleware)
+
+// Run the flow with a debug-level logger to see the detailed output
 const logger = new ConsoleLogger({ level: 'debug' })
 await myFlow.run(context, { logger })
 ```
 
-The `debug` logger will show you:
+A good logging middleware can show you:
 
 -   Which node is currently running.
 -   The exact `params` passed to the node.
@@ -62,17 +66,13 @@ The `debug` logger will show you:
 **Example Debug Log Output**:
 
 ```
-[INFO] Running node: CheckConditionNode
-[DEBUG] [CheckConditionNode] Received params { userId: 123 }
-[DEBUG] [CheckConditionNode] prep() result { user: { name: 'Alice', role: 'admin' } }
-[DEBUG] [CheckConditionNode] exec() result true
-[DEBUG] [CheckConditionNode] post() returned action: 'action_approve'
-[DEBUG] Action 'action_approve' from CheckConditionNode leads to ApproveNode
-[INFO] Running node: ApproveNode
+[DEBUG] [Workflow] > Starting node 'CheckConditionNode'
+[DEBUG] [Workflow] < Node 'CheckConditionNode' completed with action 'action_approve', proceeding to 'ApproveNode'.
+[DEBUG] [Workflow] > Starting node 'ApproveNode'
 ...
 ```
 
-This output makes it immediately clear what data the node received, what it produced, and why it took a specific branch. See the **[Logging Guide](../advanced-guides/logging.md)** for more details.
+This output makes it immediately clear what data the node received and why it took a specific branch. See the **[Logging Guide](../advanced-guides/logging.md)** for a complete implementation of a logging middleware.
 
 ## 3. Visualize Your Graph
 
@@ -156,5 +156,5 @@ If your workflow isn't behaving as expected, check for these common issues:
 
 - **Forgetting `await flow.run()`**: Since workflows are asynchronous, forgetting to `await` the top-level `run()` call will cause your script to exit before the workflow can complete.
 - **Context Key Collisions**: In large, composed flows, different sub-flows might accidentally write to the same context key, overwriting each other's data. Using descriptive, unique `ContextKey`s helps prevent this.
-- **Infinite Loops**: If you create a cycle in your graph, make sure your "decider" node has a reliable exit condition. Use the logger to trace the loop and see if the context state is changing as expected on each iteration.
+- **Infinite Loops**: If you create a cycle in your graph, make sure your "decider" node has a reliable exit condition. Use a logging middleware to trace the loop and see if the context state is changing as expected on each iteration.
 - **Mutating Objects in Context**: If you place a mutable object (like `{}`, `[]`) in the context, any node can modify it. This can lead to unexpected behavior if one node changes an object that a later node relies on. It's often safer for nodes to create new objects/arrays rather than modifying existing ones in place.

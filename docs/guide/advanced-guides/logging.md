@@ -1,6 +1,8 @@
-# Pluggable Logging
+# Pluggable Logging & Detailed Tracing
 
-Effective logging is essential for debugging and monitoring any application. Flowcraft is designed to be completely unopinionated about your logging strategy. It provides a simple `Logger` interface and includes a few basic implementations, but makes it easy to plug in any logging library you prefer, such as **Pino**, **Winston**, or your company's standard logger.
+Effective logging is essential for debugging and monitoring any application. Flowcraft is designed to be completely unopinionated about your logging strategy. The core framework is **silent by default** and only logs critical warnings (like for retries) or errors.
+
+To get a detailed, step-by-step trace of a workflow's execution, you can use the powerful **middleware** system to "opt-in" to verbose logging. This guide shows you how.
 
 ## The `Logger` Interface
 
@@ -15,59 +17,109 @@ export interface Logger {
 }
 ```
 
-The `context` object is used to pass structured data, which is a best practice for modern logging. The Flowcraft engine will automatically pass contextual information here, such as retry attempts or error details.
+The `context` object is used to pass structured data, which is a best practice for modern logging.
 
 ## Using the Built-in `ConsoleLogger`
 
 Flowcraft comes with two pre-built loggers:
 
 - **`ConsoleLogger`**: A straightforward logger that prints messages to the `console`. It supports log levels to control verbosity.
-- **`NullLogger`**: A logger that does nothing.
+- **`NullLogger`**: A logger that does nothing. This is the framework's default, ensuring it doesn't clutter your application's output unless you explicitly enable logging.
 
-> [!NOTE]
-> **Flowcraft is silent by default.** The `NullLogger` is the framework's default if no logger is provided. This ensures that Flowcraft doesn't clutter your application's output unless you explicitly enable logging by passing a `logger` in the `RunOptions`.
-
-To use the `ConsoleLogger`, simply pass it in the `RunOptions` when you execute a flow. You can specify a minimum log level (`'debug'`, `'info'`, `'warn'`, `'error'`) in its constructor.
+To use the `ConsoleLogger`, simply pass it in the `RunOptions` when you execute a flow.
 
 ```typescript
 import { ConsoleLogger, Flow, Node, TypedContext } from 'flowcraft'
 
-const myFlow = new Flow(new Node().exec(() => 'done'))
+const myFlow = new Flow(new Node())
 const context = new TypedContext()
 
-// Default level is 'info'
+// Use a logger with the default 'info' level
 const logger = new ConsoleLogger()
 await myFlow.run(context, { logger })
 
-// Enable verbose debug logging for deep tracing
+// Enable verbose debug logging
 const debugLogger = new ConsoleLogger({ level: 'debug' })
-await myFlow.run(context, { logger: debugLogger })
 ```
 
-### Understanding Log Levels
+## How to Get Detailed Tracing with Middleware
 
--   **`info` (Default)**: Provides a high-level overview of the workflow's execution. It logs when flows and nodes start, when a flow ends because an action has no successor, and important warnings or errors.
--   **`debug` (Verbose)**: Provides a detailed, step-by-step trace of the entire process. This is invaluable for debugging. Enabling it will show you:
-    -   The exact `params` passed to each node.
-    -   The result of each lifecycle phase (`prep` and `exec`).
-    -   The specific `action` string returned by each node's `post()` method.
-    -   The precise branching decisions made by the executor.
-    -   Detailed steps of the `GraphBuilder`, including node instantiation and edge wiring.
-    -   The sub-workflow inlining process.
+To see the inner workings of your flow—which nodes are running, what data they receive, and which branches they take—you should apply a logging middleware. This gives you full control over the log format and content.
+
+### A Reusable Logging Middleware
+
+Here is an example of a comprehensive logging middleware that you can add to your own projects. It logs the entry and exit of each node and provides details about branching decisions.
+
+```typescript
+// src/middleware/logging.ts
+import { Middleware, MiddlewareNext, NodeArgs, DEFAULT_ACTION } from 'flowcraft'
+
+// Helper to get a clean display name for an action
+function getActionDisplay(action: any): string {
+    if (typeof action === 'symbol') {
+        return action.description ?? 'symbol';
+    }
+    return String(action);
+}
+
+// The Logging Middleware
+export const loggingMiddleware: Middleware = async (args: NodeArgs, next: MiddlewareNext) => {
+    const { logger, name: nodeName, params, node } = args;
+
+    // 1. Log node entry
+    logger.debug(`[Workflow] > Starting node '${nodeName}'`, { params });
+
+    // 2. Execute the node
+    const action = await next(args);
+
+    // 3. Log node exit and branching
+    if (node) {
+        const nextNode = node.successors.get(action);
+        const actionDisplay = getActionDisplay(action);
+
+        if (nextNode) {
+            logger.debug(
+                `[Workflow] < Node '${nodeName}' completed with action '${actionDisplay}', proceeding to '${nextNode.constructor.name}'.`
+            );
+        } else if (action !== undefined && action !== null) {
+            logger.debug(
+                `[Workflow] < Node '${nodeName}' completed with terminal action '${actionDisplay}'. Flow ends.`
+            );
+        } else {
+             logger.debug(`[Workflow] < Node '${nodeName}' completed.`);
+        }
+    }
+
+    return action;
+};
+```
+
+### Applying the Middleware
+
+To use it, import your middleware and apply it to your `Flow` instance with `.use()`.
+
+```typescript
+import { ConsoleLogger, Flow } from 'flowcraft'
+import { loggingMiddleware } from './middleware/logging'
+
+const myFlow = createComplexFlow()
+
+// Apply the middleware to the flow
+myFlow.use(loggingMiddleware)
+
+// Run the flow with a debug-level logger to see the detailed output
+await myFlow.run(context, { logger: new ConsoleLogger({ level: 'debug' }) })
+```
+
+This pattern provides the best of both worlds: a silent-by-default core and the ability to get rich, structured, and fully customizable diagnostic logs on demand.
 
 ## Integrating a Custom Logger (e.g., Pino)
 
 Plugging in a production-grade logger like [Pino](https://github.com/pinojs/pino) is easy. All you need is a simple adapter class that maps Pino's logging methods to Flowcraft's `Logger` interface.
 
-Because your Pino instance will have its own internal log level configuration, it will automatically filter messages from Flowcraft, giving you full control over the output in your production environment.
-
 ### Example: Pino Logger Adapter
 
-First, install pino:
-
-```bash
-npm install pino
-```
+First, install pino: `npm install pino`
 
 Then, create an adapter class:
 
@@ -112,7 +164,7 @@ import pino from 'pino'
 import { PinoFlowcraftLogger } from './loggers/pino-logger'
 
 // The user configures pino as they normally would.
-const pinoInstance = pino({ level: 'info' }) // or 'debug' for more verbosity
+const pinoInstance = pino({ level: 'info' })
 
 const pinoLogger = new PinoFlowcraftLogger(pinoInstance)
 

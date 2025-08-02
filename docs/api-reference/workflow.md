@@ -59,6 +59,28 @@ These methods are designed to be overridden in your custom `Node` subclasses.
 - `.withId(id: string | number)`: Sets a unique identifier for this node instance.
 - `.run(ctx, options?)`: Runs the node as a standalone unit using an `IExecutor`.
 
+## Simplified Base Classes
+
+To reduce boilerplate for common patterns, Flowcraft provides specialized abstract base classes that extend `Node`.
+
+### `ExecNode`
+
+A simplified base class for nodes that only need to perform a core action and return a value. This pattern is ideal for nodes that receive their inputs via `params` and produce an output, without needing `prep` or complex `post` branching logic.
+
+`extends Node<void, ExecRes, any, TParams>`
+
+### `PreNode`
+
+A simplified base class for nodes that only perform a side effect, such as modifying the `Context` or logging. These nodes do not produce an `exec` result, and their logic is typically placed in the `prep` phase.
+
+`extends Node<void, void, any, TParams>`
+
+### `PostNode`
+
+A simplified base class for nodes that make a branching decision by returning a custom action string from their `post` method. This pattern is ideal for routing the workflow based on data in the `Context`.
+
+`extends Node<void, void, PostRes, TParams>`
+
 ## `Flow<PrepRes, ExecRes, TParams>`
 
 A special `Node` that acts as a container for a graph of other nodes and their shared middleware.
@@ -124,7 +146,7 @@ The mechanism for type-safe access to the `Context`.
 
 - `Logger`: The interface that any logger passed to a flow must implement (`debug`, `info`, `warn`, `error`).
 - `ConsoleLogger`: A default implementation that logs messages to the `console`, with support for configurable log levels.
-- `NullLogger`: A default implementation that performs no action. This is the framework's default if no logger is provided, ensuring it is silent by default.
+- `NullLogger`: A default implementation that performs no action. **This is the framework's default logger if none is provided, ensuring Flowcraft is silent out-of-the-box.**
 
 ### `ConsoleLogger` Constructor
 
