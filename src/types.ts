@@ -1,6 +1,7 @@
 import type { Context } from './context'
 import type { IExecutor } from './executors/types'
 import type { Logger } from './logger'
+import type { AbstractNode } from './workflow'
 
 /** A generic type for key-value parameters. */
 export type Params = Record<string, any>
@@ -38,6 +39,8 @@ export interface NodeArgs<PrepRes = any, ExecRes = any, TParams extends Params =
 	name?: string
 	/** A reference to the current `IExecutor` running the flow. */
 	executor?: IExecutor
+	/** The actual node instance being executed. */
+	node?: AbstractNode
 }
 
 /**

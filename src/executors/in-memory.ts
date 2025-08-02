@@ -48,6 +48,7 @@ export class InMemoryExecutor implements IExecutor {
 				execRes: undefined,
 				name: currentNode.constructor.name,
 				executor: options.executor,
+				node: currentNode,
 			}
 
 			const chain = applyMiddleware(flowMiddleware, currentNode)
