@@ -53,7 +53,7 @@ export class InMemoryExecutor implements IExecutor {
 
 			const chain = applyMiddleware(flowMiddleware, currentNode)
 			action = await chain(nodeArgs)
-			nextNode = this.getNextNode(currentNode, action, logger)
+			nextNode = this.getNextNode(currentNode, action)
 
 			if (!nextNode)
 				return action as T
@@ -85,8 +85,6 @@ export class InMemoryExecutor implements IExecutor {
 			executor: this,
 		}
 
-		// Handle "logic-bearing" flows (e.g., BatchFlow) that don't have a graph.
-		// Their logic is self-contained in their `exec` method.
 		if (!flow.startNode) {
 			logger.info(`Executor is running a logic-bearing flow: ${flow.constructor.name}`)
 			const chain = applyMiddleware(flow.middleware, flow)
@@ -99,9 +97,6 @@ export class InMemoryExecutor implements IExecutor {
 			})
 		}
 
-		logger.info(`Executor is running flow graph: ${flow.constructor.name}`)
-		// Delegate the graph traversal to our new stateless helper.
-		// Pass the flow's own middleware to be applied to its nodes.
 		return this._orch<T>(flow.startNode, flow.middleware, context, internalOptions)
 	}
 
@@ -109,16 +104,8 @@ export class InMemoryExecutor implements IExecutor {
 	 * Determines the next node to execute based on the action returned by the current node.
 	 * @internal
 	 */
-	public getNextNode(curr: AbstractNode, action: any, logger: Logger): AbstractNode | undefined {
+	public getNextNode(curr: AbstractNode, action: any): AbstractNode | undefined {
 		const nextNode = curr.successors.get(action)
-		const actionDisplay = typeof action === 'symbol' ? action.toString() : action
-
-		if (nextNode) {
-			logger.debug(`Action '${actionDisplay}' from ${curr.constructor.name} leads to ${nextNode.constructor.name}`, { action })
-		}
-		else if (curr.successors.size > 0 && action !== undefined && action !== null) {
-			logger.debug(`Flow ends: Action '${actionDisplay}' from ${curr.constructor.name} has no configured successor.`)
-		}
 		return nextNode
 	}
 }

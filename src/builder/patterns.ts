@@ -147,7 +147,6 @@ export class ParallelFlow extends Flow<any, void> {
 			return
 		}
 
-		logger.info(`[ParallelFlow] Executing ${this.nodesToRun.length} branches in parallel...`)
 		const promises = this.nodesToRun.map(node =>
 			node._run({
 				ctx,
@@ -205,7 +204,6 @@ export abstract class BatchFlow<T = any> extends Flow<Iterable<T>, null> {
 		const combinedParams = { ...this.params, ...args.params }
 		const batchParamsIterable = (await this.prep(args)) || []
 		const batchParamsList = Array.from(batchParamsIterable)
-		args.logger.info(`[BatchFlow] Starting sequential processing of ${batchParamsList.length} items.`)
 
 		for (const batchParams of batchParamsList) {
 			if (args.signal?.aborted)
@@ -262,7 +260,6 @@ export abstract class ParallelBatchFlow<T = any> extends Flow<Iterable<T>, Promi
 		const combinedParams = { ...this.params, ...args.params }
 		const batchParamsIterable = (await this.prep(args)) || []
 		const batchParamsList = Array.from(batchParamsIterable)
-		args.logger.info(`[ParallelBatchFlow] Starting parallel processing of ${batchParamsList.length} items.`)
 
 		const promises = batchParamsList.map((batchParams) => {
 			return this.nodeToRun._run({

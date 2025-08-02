@@ -105,9 +105,6 @@ describe('batchFlow (Sequential)', () => {
 		await flow.run(ctx, runOptions)
 		expect(ctx.get(PROCESSED_IDS)).toBeUndefined()
 		expect(ctx.get(BATCH_RESULTS)).toBeUndefined()
-		expect(mockLogger.info).toHaveBeenCalledWith(
-			'[BatchFlow] Starting sequential processing of 0 items.',
-		)
 	})
 	it('should pass parent flow parameters to each batch item', async () => {
 		const ctx = new TypedContext()
@@ -162,9 +159,6 @@ describe('parallelBatchFlow', () => {
 		await flow.run(ctx, runOptions)
 		expect(ctx.get(PROCESSED_IDS)).toBeUndefined()
 		expect(ctx.get(BATCH_RESULTS)).toBeUndefined()
-		expect(mockLogger.info).toHaveBeenCalledWith(
-			'[ParallelBatchFlow] Starting parallel processing of 0 items.',
-		)
 	})
 })
 

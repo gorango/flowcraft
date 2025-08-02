@@ -341,30 +341,6 @@ describe('testLoggingAndErrors', () => {
 		consoleInfoSpy.mockRestore()
 	})
 
-	it('should use the provided custom logger', async () => {
-		const flow = new Flow(new NumberNode(1))
-		await flow.run(new TypedContext(), runOptions)
-		expect(mockLogger.info).toHaveBeenCalledWith(
-			'Executor is running flow graph: Flow',
-		)
-		expect(mockLogger.debug).toHaveBeenCalledWith(
-			'Running node: NumberNode',
-			expect.any(Object),
-		)
-	})
-
-	it('should log branching decisions', async () => {
-		const checkNode = new CheckPositiveNode()
-		const pathNode = new PathNode('A')
-		const flow = new Flow(checkNode)
-		checkNode.next(pathNode, 'positive')
-		await flow.run(new TypedContext([[CURRENT, 10]]), runOptions)
-		expect(mockLogger.debug).toHaveBeenCalledWith(
-			`Action 'positive' from CheckPositiveNode leads to PathNode`,
-			expect.any(Object),
-		)
-	})
-
 	it('should log retry attempts and fallback execution', async () => {
 		class FailingNode extends Node {
 			constructor() { super({ maxRetries: 2, wait: 0 }) }

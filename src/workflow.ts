@@ -205,19 +205,11 @@ export class Node<
 	 * @internal
 	 */
 	async _run({ ctx, params, signal, logger, executor }: NodeRunContext): Promise<PostRes> {
-		if (this instanceof Flow) {
-			logger.debug(`Running flow: ${this.constructor.name}`, { params })
-		}
-		else {
-			logger.debug(`Running node: ${this.constructor.name}`, { params })
-		}
-
 		if (signal?.aborted)
 			throw new AbortError()
 		let prepRes: PrepRes
 		try {
 			prepRes = await this.prep({ ctx, params: params as TParams, signal, logger, prepRes: undefined, execRes: undefined, executor })
-			logger.debug(`[${this.constructor.name}] prep() result`, { prepRes })
 		}
 		catch (e) {
 			throw this._wrapError(e, 'prep')
@@ -228,7 +220,6 @@ export class Node<
 		let execRes: ExecRes
 		try {
 			execRes = await this._exec({ ctx, params: params as TParams, signal, logger, prepRes, execRes: undefined, executor })
-			logger.debug(`[${this.constructor.name}] exec() result`, { execRes })
 		}
 		catch (e) {
 			throw this._wrapError(e, 'exec')
@@ -238,8 +229,6 @@ export class Node<
 			throw new AbortError()
 		try {
 			const action = await this.post({ ctx, params: params as TParams, signal, logger, prepRes, execRes, executor })
-			const actionDisplay = typeof action === 'symbol' ? action.toString() : action
-			logger.debug(`[${this.constructor.name}] post() returned action: '${actionDisplay}'`)
 			return action === undefined ? DEFAULT_ACTION as any : action
 		}
 		catch (e) {
@@ -325,7 +314,6 @@ export class Node<
 			async exec(args: NodeArgs<PrepRes, void, TParams>): Promise<ExecRes> { return originalNode.exec(args) }
 			async post(args: NodeArgs<PrepRes, ExecRes, TParams>): Promise<any> {
 				args.ctx.set(key, args.execRes)
-				args.logger.debug(`[toContext] Set context key '${String(key.description)}'`, { value: args.execRes })
 				return DEFAULT_ACTION
 			}
 		}()
@@ -524,8 +512,6 @@ export class Flow<
 			return super.exec(args)
 		}
 
-		args.logger.debug(`-- Entering sub-flow: ${this.constructor.name} --`)
-
 		const combinedParams = { ...args.params, ...this.params }
 		const internalOptions: InternalRunOptions = {
 			logger: args.logger,
@@ -541,7 +527,6 @@ export class Flow<
 			internalOptions,
 		)
 
-		args.logger.debug(`-- Exiting sub-flow: ${this.constructor.name} --`)
 		return finalAction as ExecRes
 	}
 
