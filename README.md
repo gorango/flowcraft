@@ -67,7 +67,7 @@ graph LR
 ```
 
 - **Demonstrates**: `Node` chaining, passing data via `Context`, and a simple `BatchFlow`.
-- **[Explore the Basic example &raquo;](./sandbox/1.basic/)**
+- **[Explore the Basic example &raquo;](https://github.com/gorango/flowcraft/tree/main/sandbox/1.basic/)**
 
 ### 2. Conditional Branching: Research Agent
 
@@ -81,7 +81,7 @@ graph TD
 ```
 
 - **Demonstrates**: Conditional branching with custom actions, creating loops, and building simple state machines.
-- **[Explore the Research Agent example &raquo;](./sandbox/2.research/)**
+- **[Explore the Research Agent example &raquo;](https://github.com/gorango/flowcraft/tree/main/sandbox/2.research/)**
 
 ### 3. Parallel Batch Processing: Document Translator
 
@@ -101,7 +101,7 @@ graph TD
 ```
 
 - **Demonstrates**: `ParallelBatchFlow` for high-throughput concurrent processing of I/O-bound tasks.
-- **[Explore the Parallel Translation example &raquo;](./sandbox/3.parallel/)**
+- **[Explore the Parallel Translation example &raquo;](https://github.com/gorango/flowcraft/tree/main/sandbox/3.parallel/)**
 
 ### 4. Dynamic Graph Engine: AI Agent Runtime
 
@@ -133,7 +133,7 @@ graph TD
   - Parallel fan-in and fan-out (mid-flow branching).
   - Reusable, data-driven nodes (e.g., an LLM-powered router).
   - Complex sub-workflow composition.
-- **[Explore the Dynamic AI Agent example &raquo;](./sandbox/4.dag/)**
+- **[Explore the Dynamic AI Agent example &raquo;](https://github.com/gorango/flowcraft/tree/main/sandbox/4.dag/)**
 
 ### 5. Distributed Execution: AI Agent with BullMQ
 
@@ -144,7 +144,7 @@ This example takes the same type-safe graph definition from the previous example
   - Client-worker architecture with state serialization.
   - Mid-flight, distributed cancellation of long-running jobs.
   - How business logic (the graph) remains unchanged when the execution environment changes.
-- **[Explore the Distributed AI Agent example &raquo;](./sandbox/5.distributed/)**
+- **[Explore the Distributed AI Agent example &raquo;](https://github.com/gorango/flowcraft/tree/main/sandbox/5.distributed/)**
 
 ### 6. Advanced RAG Agent: Complex Data & Serialization
 
@@ -163,7 +163,7 @@ graph TD
   - A mix of custom, single-responsibility nodes.
   - Handling complex data types (`Map`, `Date`, custom classes) in the `Context`.
   - The necessity of robust serialization (using `superjson`) for state management.
-- **[Explore the RAG Agent example &raquo;](./sandbox/6.rag/)**
+- **[Explore the RAG Agent example &raquo;](https://github.com/gorango/flowcraft/tree/main/sandbox/6.rag/)**
 
 ## Core Concepts
 
@@ -219,6 +219,68 @@ A chainable API on the `Node` class has a set of functional helpers:
 - `.toContext(key)`: Store a node's result in the context.
 - `.withLens(lens, value)`: Applies a context mutation before the node executes
 
+### Simplified Node Base Classes
+
+To reduce boilerplate for common patterns, Flowcraft provides specialized abstract base classes.
+
+#### `ExecNode`
+
+For nodes that only need to perform a core action and return a value. This is the most common pattern.
+
+```typescript
+// 1. Define params and the node, extending ExecNode<ExecRes, TParams>
+interface GreetParams { name: string }
+
+class GreetNode extends ExecNode<string, GreetParams> {
+	// 2. You only need to implement the 'exec' method.
+	async exec({ params }: NodeArgs<void, void, GreetParams>): Promise<string> {
+		return `Hello, ${params.name}!`
+	}
+}
+
+// Usage:
+const greetNode = new GreetNode().withParams({ name: 'World' })
+```
+
+#### `PreNode`
+
+For nodes that only modify state (e.g., in the `Context`) and don't produce an output. Their logic can be placed in the `prep` phase.
+
+```typescript
+const COUNTER = contextKey<number>('counter')
+
+class IncrementCounterNode extends PreNode {
+	// You only need to implement the 'prep' method for context mutations.
+	async prep({ ctx }: NodeArgs): Promise<void> {
+		const current = ctx.get(COUNTER) ?? 0
+		ctx.set(COUNTER, current + 1)
+	}
+}
+```
+
+#### `PostNode`
+
+For nodes that route the workflow by returning a custom action string from their `post` method.
+
+```typescript
+const USER_ROLE = contextKey<'admin' | 'guest'>('user_role')
+
+type UserAction = 'grant_access' | 'deny_access'
+
+class CheckAdminNode extends PostNode<UserAction> {
+	// You only need to implement the 'post' method for branching logic.
+	async post({ ctx }: NodeArgs): Promise<UserAction> {
+		const role = ctx.get(USER_ROLE)
+		return role === 'admin' ? 'grant_access' : 'deny_access'
+	}
+}
+
+// Usage in a flow:
+const checkAdmin = new CheckAdminNode()
+checkAdmin.next(new AdminPanelNode(), 'grant_access')
+checkAdmin.next(new GuestPageNode(), 'deny_access')
+```
+
 ### Flow
 
 A `Flow` is a special type of `Node` that orchestrates a sequence of other nodes. It is also generic (`Flow<PrepRes, ExecRes, TParams>`) and can be configured with its own parameters and middleware. It contains the logic for traversing its own graph of operations, making it a powerful, self-contained unit of work.
@@ -252,9 +314,9 @@ To simplify the creation of common and complex patterns, the framework provides 
 > [!TIP]
 > For clear, focused examples of specific, individual features (like retries, middleware, cancellation, and composition), the unit tests are an excellent resource.
 
-- Core workflow tests: [`src/workflow.test.ts`](src/workflow.test.ts)
-- Patterns tests: [`src/builder/patterns.test.ts`](src/builder/patterns.test.ts)
-- Graph builder tests: [`src/builder/graph.test.ts`](src/builder/graph.test.ts)
+- Core workflow tests: [`src/workflow.test.ts`](https://github.com/gorango/flowcraft/tree/main/workflow.test.ts)
+- Patterns tests: [`src/builder/patterns.test.ts`](https://github.com/gorango/flowcraft/tree/main/builder/patterns.test.ts)
+- Graph builder tests: [`src/builder/graph.test.ts`](https://github.com/gorango/flowcraft/tree/main/builder/graph.test.ts)
 
 ## API Reference
 
@@ -294,4 +356,4 @@ A collection of functions for creating nodes and pipelines in a more functional 
 The complete [Flowcraft documentation](https://flowcraft-docs.netlify.app) is available on the website.
 
 ---
-Licensed under the [MIT License](./LICENSE).
+Licensed under the [MIT License](https://github.com/gorango/flowcraft/tree/main/LICENSE).
