@@ -1,4 +1,4 @@
-import type { NodeTypeMap, TypedWorkflowGraph } from '../builder/graph.types'
+import type { NodeTypeMap, TypedGraphNode, TypedWorkflowGraph } from '../builder/graph.types'
 import { describe, expect, it } from 'vitest'
 import { analyzeGraph, checkForCycles, createNodeRule } from './analysis'
 
@@ -59,31 +59,107 @@ describe('testGraphAnalysis', () => {
 			edges: [
 				{ source: 'start', target: 'process' },
 				{ source: 'process', target: 'output' },
-				{ source: 'output', target: 'orphan' }, // Invalid edge
+				// This edge makes the 'output' node invalid according to the rule
+				{ source: 'output', target: 'orphan' },
 			],
 		}
 		const analysis = analyzeGraph(graph)
 
-		it('should create a rule that finds nodes with invalid out-degrees', () => {
+		it('should create a rule that returns a single error object', () => {
 			const rule = createNodeRule(
-				'Output must be terminal',
 				node => node.type === 'output',
-				node => ({
-					valid: node.outDegree === 0,
-					message: `Output node '${node.id}' cannot have outgoing connections.`,
-				}),
+				(node) => {
+					if (node.outDegree > 0) {
+						// This rule returns a single error object, which is a valid case.
+						return {
+							type: 'ConnectionRuleViolation',
+							nodeId: node.id,
+							message: `Output node '${node.id}' cannot have outgoing connections.`,
+						}
+					}
+					return null
+				},
 			)
 			const errors = rule(analysis, graph)
+
 			expect(errors).toHaveLength(1)
 			expect(errors[0].nodeId).toBe('output')
 			expect(errors[0].message).toContain('cannot have outgoing connections')
+			expect(errors[0].type).toBe('ConnectionRuleViolation')
+		})
+
+		it('should return no errors for a valid node', () => {
+			const validGraph: TypedWorkflowGraph<any> = {
+				nodes: [{ id: 'output', type: 'output', data: {} }],
+				edges: [], // No outgoing edges, so it's valid.
+			}
+			const validAnalysis = analyzeGraph(validGraph)
+
+			const rule = createNodeRule(
+				node => node.type === 'output',
+				(node) => {
+					if (node.outDegree > 0) {
+						return {
+							type: 'ConnectionRuleViolation',
+							nodeId: node.id,
+							message: `Output node '${node.id}' cannot have outgoing connections.`,
+						}
+					}
+					return null
+				},
+			)
+
+			const errors = rule(validAnalysis, validGraph)
+			expect(errors).toHaveLength(0)
+		})
+
+		it('should handle a rule that returns an array of errors for a single node', () => {
+			const multiErrorNodeGraph: TypedWorkflowGraph<any> = {
+				nodes: [
+					{ id: 'bad-process', type: 'process', data: { value: '' } }, // Invalid: empty value
+				],
+				edges: [], // Invalid: no outgoing edge
+			}
+			const multiErrorAnalysis = analyzeGraph(multiErrorNodeGraph)
+
+			const processRule = createNodeRule(
+				node => node.type === 'process',
+				(node) => {
+					const nodeErrors: any = []
+					if (node.outDegree === 0) {
+						nodeErrors.push({
+							type: 'ConnectionError',
+							nodeId: node.id,
+							message: 'Process node must have an output.',
+						})
+					}
+					if (!node.data.value) {
+						nodeErrors.push({
+							type: 'DataError',
+							nodeId: node.id,
+							message: 'Process node must have a value.',
+						})
+					}
+					return nodeErrors.length > 0 ? nodeErrors : null
+				},
+			)
+
+			const errors = processRule(multiErrorAnalysis, multiErrorNodeGraph)
+
+			expect(errors).toHaveLength(2)
+			expect(errors[0].type).toBe('ConnectionError')
+			expect(errors[1].type).toBe('DataError')
 		})
 	})
 
 	describe('checkForCycles validator', () => {
 		it('should return a validation error for each detected cycle', () => {
 			const graph: TypedWorkflowGraph<any> = {
-				nodes: [{ id: 'a', type: 'step', data: {} }, { id: 'b', type: 'step', data: {} }, { id: 'c', type: 'step', data: {} }],
+				nodes: [
+					{ id: 'a', type: 'step', data: {} },
+					{ id: 'b', type: 'step', data: {} },
+					{ id: 'c', type: 'step', data: {} },
+				],
 				edges: [
 					{ source: 'a', target: 'b' },
 					{ source: 'b', target: 'c' },
@@ -116,19 +192,24 @@ describe('testGraphAnalysis', () => {
 		}
 
 		it('should allow type-safe access to the data property in a rule', () => {
-			// 3. Create a type-safe rule that inspects the `data` property.
 			const rule = createNodeRule<TestNodeTypeMap>(
-				'API calls must have retries',
-				// The `node` is correctly typed here as a union of our specific node types
 				node => node.type === 'api-call',
-				// The `node` here is narrowed to just the 'api-call' type!
 				(node) => {
-					// `node.data.retries` is fully typed as `number` and autocompletes.
-					const valid = node.data.retries > 0
-					return {
-						valid,
-						message: `API call node '${node.id}' must have at least 1 retry.`,
+					// Type assertion is needed due to a known TS limitation with inferring
+					// types between filter and check function parameters.
+					const apiNode = node as TypedGraphNode<TestNodeTypeMap> & {
+						type: 'api-call'
 					}
+
+					if (apiNode.data.retries < 1) {
+						return {
+							type: 'DataValidation',
+							nodeId: node.id,
+							message: `API call node '${node.id}' must have at least 1 retry.`,
+						}
+					}
+					// The check function must always have a return path for the valid case.
+					return null
 				},
 			)
 
@@ -139,6 +220,7 @@ describe('testGraphAnalysis', () => {
 			expect(errors).toHaveLength(1)
 			expect(errors[0].nodeId).toBe('fetch-products')
 			expect(errors[0].message).toContain('must have at least 1 retry')
+			expect(errors[0].type).toBe('DataValidation')
 		})
 	})
 })

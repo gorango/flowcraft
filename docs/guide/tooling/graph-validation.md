@@ -27,11 +27,12 @@ The real power comes from creating declarative validation rules that operate on 
 
 ### `createNodeRule` Factory
 
-This factory function is the primary tool for building custom validators. It takes three arguments:
+This factory function is the primary tool for building custom validators. It empowers you to define a specific rule by providing two functions:
 
-1.  `description`: A string describing the rule for clear error messages.
-2.  `filter`: A function that selects which nodes the rule should apply to (e.g., `node => node.type === 'output'`).
-3.  `check`: A function that receives a selected node and returns whether it's valid.
+1.  `filter`: A function that selects which nodes the rule should apply to (e.g., `node => node.type === 'output'`).
+2.  `check`: A function that receives a selected node and performs the validation. It now has full control over the error object.
+    -   On failure, it must return a complete `ValidationError` object, or an array of them.
+    -   On success, it must return `null` or `undefined`.
 
 ### Built-in Validators
 
@@ -65,22 +66,32 @@ const myRules = [
 
 	// Rule: 'output' nodes must be terminal.
 	createNodeRule<MyAppNodeTypeMap>(
-		'Output must be terminal',
 		node => node.type === 'output',
-		node => ({
-			valid: node.outDegree === 0,
-			message: `Output node '${node.id}' cannot have outgoing connections.`
-		})
+		(node) => {
+			if (node.outDegree > 0) {
+				return {
+					type: 'ConnectionRuleViolation',
+					nodeId: node.id,
+					message: `Output node '${node.id}' cannot have outgoing connections.`
+				};
+			}
+			return null;
+		}
 	),
 
 	// Rule: 'condition' nodes must have exactly one input.
 	createNodeRule<MyAppNodeTypeMap>(
-		'Condition needs one input',
 		node => node.type === 'condition',
-		node => ({
-			valid: node.inDegree === 1,
-			message: `Condition node '${node.id}' must have exactly one input, but has ${node.inDegree}.`
-		})
+		(node) => {
+			if (node.inDegree !== 1) {
+				return {
+					type: 'ConnectionRuleViolation',
+					nodeId: node.id,
+					message: `Condition node '${node.id}' must have exactly one input, but has ${node.inDegree}.`
+				};
+			}
+			return null;
+		}
 	),
 ]
 
@@ -113,29 +124,36 @@ This is the most powerful way to use the library. By defining a `NodeTypeMap` an
 **Example**: Let's ensure all our `api-call` nodes have a valid `retries` property.
 
 ```typescript
-import { createNodeRule, isNodeType, TypedWorkflowGraph } from 'flowcraft'
+import { createNodeRule, TypedGraphNode, TypedWorkflowGraph } from 'flowcraft'
 
 // 1. Define your application's specific node types
-interface MyAppNodeTypeMap {
-	'api-call': { url: string, retries: number }
+interface MyAppNodeTypeMap extends NodeTypeMap {
+	'api-call': { url: string; retries: number }
 	'output': { destination: string }
 }
 
 // Your graph is strongly typed
 const myGraph: TypedWorkflowGraph<MyAppNodeTypeMap> = { /* ... */ }
 
-// 2. Use the `isNodeType` helper for a clean, readable filter
+// 2. Create a rule that inspects the typed `data` property
 const rule_apiRetries = createNodeRule<MyAppNodeTypeMap>(
-	'API calls must have retries',
-	// The helper creates the type guard for you!
-	isNodeType('api-call'),
+	node => node.type === 'api-call',
 	(node) => {
-		// Because of the type guard, `node` is correctly narrowed.
-		// `node.data.retries` is fully typed and autocompletes in your IDE!
-		const valid = node.data.retries > 0
-		return { valid, message: `API call '${node.id}' must have at least 1 retry.` }
+		// Because `createNodeRule` is generic, we can safely access typed properties.
+		// Note: A type assertion is needed here due to a current TypeScript limitation.
+		const apiNode = node as TypedGraphNode<MyAppNodeTypeMap> & { type: 'api-call' };
+
+		if (apiNode.data.retries < 1) {
+			// You have full control over the error object, including the `type`.
+			return {
+				type: 'DataValidation',
+				nodeId: node.id,
+				message: `API call node '${node.id}' must have at least 1 retry.`
+			};
+		}
+		return null; // The node is valid
 	}
-)
+);
 ```
 
 ### 2. Untyped Validation (Flexible)
@@ -149,12 +167,17 @@ import { createNodeRule, WorkflowGraph } from 'flowcraft'
 const myGraph: WorkflowGraph = { /* ... */ }
 
 const rule_noOrphans = createNodeRule(
-	'No orphaned nodes',
 	// The `node` parameter is of the base `GraphNode` type
 	_node => true, // Apply to all nodes
-	node => ({
-		valid: node.inDegree > 0 || node.outDegree > 0,
-		message: `Node '${node.id}' has no connections.`
-	})
+	(node) => {
+		if (node.inDegree === 0 && node.outDegree === 0) {
+			return {
+				type: 'ConnectionError',
+				nodeId: node.id,
+				message: `Node '${node.id}' is an orphan with no connections.`
+			};
+		}
+		return null;
+	}
 )
 ```

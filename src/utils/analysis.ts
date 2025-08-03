@@ -124,41 +124,44 @@ export function analyzeGraph<T extends NodeTypeMap>(graph: TypedWorkflowGraph<T>
 
 /**
  * Factory for creating a generic, reusable validator that checks node properties.
+ * A single rule can now return multiple errors for a single node.
  *
- * @param description A human-readable description of the rule for error messages.
  * @param filter A predicate to select which nodes this rule applies to.
- * @param check A function that validates the properties of a selected node.
+ * @param check A function that validates a selected node. It can return a single
+ *   ValidationError, an array of them, or null if the node is valid.
  * @returns A Validator function.
  */
 // (Type-Safe Overload) Creates a validator with strong types based on a NodeTypeMap.
 export function createNodeRule<T extends NodeTypeMap>(
-	description: string,
 	filter: (node: TypedGraphNode<T>) => boolean,
-	check: (node: TypedGraphNode<T> & { inDegree: number, outDegree: number }) => { valid: boolean, message?: string },
+	check: (
+		node: TypedGraphNode<T> & { inDegree: number, outDegree: number },
+	) => ValidationError | ValidationError[] | null | undefined,
 ): Validator<T>
 // (Untyped Overload) Creates a validator with basic types.
 export function createNodeRule(
-	description: string,
 	filter: (node: GraphNode) => boolean,
-	check: (node: GraphNode & { inDegree: number, outDegree: number }) => { valid: boolean, message?: string },
+	check: (
+		node: GraphNode & { inDegree: number, outDegree: number },
+	) => ValidationError | ValidationError[] | null | undefined,
 ): Validator
 // (Implementation) Factory for creating a generic, reusable validator.
 export function createNodeRule(
-	description: string,
 	filter: (node: any) => boolean,
-	check: (node: any) => { valid: boolean, message?: string },
+	check: (
+		node: any,
+	) => ValidationError | ValidationError[] | null | undefined,
 ): Validator {
 	return (analysis: GraphAnalysis, _graph: WorkflowGraph): ValidationError[] => {
 		const errors: ValidationError[] = []
 		for (const node of analysis.nodes.values()) {
 			if (filter(node)) {
 				const result = check(node)
-				if (!result.valid) {
-					errors.push({
-						nodeId: node.id,
-						type: 'ConnectionRuleViolation',
-						message: result.message || `Node ${node.id} failed rule: ${description}`,
-					})
+				if (result) {
+					if (Array.isArray(result))
+						errors.push(...result)
+					else
+						errors.push(result)
 				}
 			}
 		}
