@@ -107,6 +107,19 @@ class ParallelBranchContainer extends ParallelFlow {
 }
 
 /**
+ * A private class used by the builder to unify conditional branches
+ * before they connect to a common successor. This ensures the successor
+ * only has one predecessor, preventing false fan-in detection.
+ * @internal
+ */
+class ConditionalJoinNode extends Node {
+	constructor() {
+		super()
+		this.isPassthrough = true // It performs no logic, just structural
+	}
+}
+
+/**
  * Constructs an executable `Flow` from a declarative `WorkflowGraph` definition.
  * @template TNodeMap A `NodeTypeMap` for validating type-safe graph definitions.
  * @template TContext The shape of the dependency injection context object.
@@ -117,6 +130,7 @@ export class GraphBuilder<
 > {
 	private registry: Map<string, new (...args: any[]) => AbstractNode>
 	private subWorkflowNodeTypes: string[]
+	private conditionalNodeTypes: string[]
 	private subWorkflowResolver?: SubWorkflowResolver
 	private logger: Logger
 
@@ -142,7 +156,9 @@ export class GraphBuilder<
 		this.registry.set('__internal_input_mapper__', InputMappingNode as any)
 		this.registry.set('__internal_output_mapper__', OutputMappingNode as any)
 		this.registry.set('__internal_sub_workflow_container__', SubWorkflowContainerNode as any)
+		this.registry.set('__internal_conditional_join__', ConditionalJoinNode as any)
 		this.subWorkflowNodeTypes = options.subWorkflowNodeTypes ?? []
+		this.conditionalNodeTypes = options.conditionalNodeTypes ?? []
 		this.subWorkflowResolver = options.subWorkflowResolver
 	}
 
@@ -288,7 +304,52 @@ export class GraphBuilder<
 			nodeMap.set(graphNode.id, executableNode)
 		}
 
-		// Pass 2: Group edges by source to identify fan-outs.
+		// --- NEW PRE-PROCESSING PASS ---
+		const edgeGroupsForConvergence = flatGraph.edges.reduce((acc, edge) => {
+			if (!acc.has(edge.source))
+				acc.set(edge.source, new Map())
+			const sourceActions = acc.get(edge.source)!
+			const action = edge.action || DEFAULT_ACTION
+			if (!sourceActions.has(action))
+				sourceActions.set(action, [])
+			sourceActions.get(action)!.push(nodeMap.get(edge.target)!)
+			return acc
+		}, new Map<string, Map<any, AbstractNode[]>>())
+
+		const conditionalNodes = flatGraph.nodes.filter(n => this.conditionalNodeTypes.includes(n.type))
+		for (const conditionalNode of conditionalNodes) {
+			const branches = flatGraph.edges
+				.filter(e => e.source === conditionalNode.id)
+				.map(e => nodeMap.get(e.target)!)
+				.filter(Boolean)
+
+			if (branches.length > 1) {
+				const convergenceNode = this._findConvergenceNode(branches, edgeGroupsForConvergence)
+
+				if (convergenceNode) {
+					const joinNodeId = `${conditionalNode.id}__conditional_join`
+					if (!nodeMap.has(joinNodeId)) {
+						this.logger.debug(`[GraphBuilder] Inserting conditional join node for '${conditionalNode.id}' converging at '${convergenceNode.id}'`)
+
+						const joinNode = new ConditionalJoinNode().withId(joinNodeId)
+						nodeMap.set(joinNodeId, joinNode)
+						flatGraph.nodes.push({ id: joinNodeId, type: '__internal_conditional_join__', data: {} })
+
+						const branchTerminalNodes = this._findBranchTerminals(branches, String(convergenceNode.id), edgeGroupsForConvergence)
+
+						for (const terminalId of branchTerminalNodes) {
+							const edgeIndex = flatGraph.edges.findIndex(e => e.source === terminalId && e.target === convergenceNode.id)
+							if (edgeIndex > -1) {
+								flatGraph.edges[edgeIndex].target = joinNodeId
+							}
+						}
+						flatGraph.edges.push({ source: joinNodeId, target: String(convergenceNode.id!) })
+					}
+				}
+			}
+		}
+
+		// Pass 2: Group edges by source to identify parallel fan-outs.
 		const edgeGroups = new Map<string, Map<string | typeof DEFAULT_ACTION | typeof FILTER_FAILED, AbstractNode[]>>()
 		for (const edge of flatGraph.edges) {
 			const sourceId = edge.source
@@ -311,46 +372,56 @@ export class GraphBuilder<
 					sourceNode.next(successors[0], action)
 				}
 				else if (successors.length > 1) {
-					const parallelNode = new ParallelBranchContainer(successors).withId(`${sourceId}__parallel_container`)
-					nodeMap.set(String(parallelNode.id), parallelNode) // Add to map
-					sourceNode.next(parallelNode, action)
-
-					// Wire the individual branches to their own successors.
-					for (const branchNode of successors) {
-						const branchSuccessors = edgeGroups.get(String(branchNode.id!))
-						if (branchSuccessors) {
-							for (const [branchAction, branchTargets] of branchSuccessors.entries()) {
-								for (const target of branchTargets)
-									branchNode.next(target, branchAction)
-							}
+					// Check if the source is conditional. If so, wire directly.
+					if (this.conditionalNodeTypes.includes(sourceNode.graphData!.type)) {
+						for (const successor of successors) {
+							sourceNode.next(successor, action)
 						}
 					}
-
-					// Find the convergence point and wire the container to it.
-					const convergenceNode = this._findConvergenceNode(successors, edgeGroups)
-					if (convergenceNode)
-						parallelNode.next(convergenceNode)
+					else { // Otherwise, it's a parallel fan-out
+						const parallelNode = new ParallelBranchContainer(successors).withId(`${sourceId}__parallel_container`)
+						nodeMap.set(String(parallelNode.id), parallelNode)
+						sourceNode.next(parallelNode, action)
+						for (const branchNode of successors) {
+							const branchSuccessors = edgeGroups.get(String(branchNode.id!))
+							if (branchSuccessors) {
+								for (const [branchAction, branchTargets] of branchSuccessors.entries()) {
+									for (const target of branchTargets)
+										branchNode.next(target, branchAction)
+								}
+							}
+						}
+						const convergenceNode = this._findConvergenceNode(successors, edgeGroups)
+						if (convergenceNode)
+							parallelNode.next(convergenceNode)
+					}
 				}
 			}
 		}
 
-		// Final Step: Determine start nodes and build final result.
+		// Final Step: (Unchanged from original source)
 		const allNodeIds = new Set(flatGraph.nodes.map(n => n.id))
 		const allTargetIds = new Set(flatGraph.edges.map(e => e.target))
 		const startNodeIds = [...allNodeIds].filter(id => !allTargetIds.has(id))
-
 		if (startNodeIds.length === 0 && allNodeIds.size > 0)
 			throw new Error('GraphBuilder: This graph has a cycle and no clear start node.')
-
 		const { predecessorIdMap, originalPredecessorIdMap } = this._createPredecessorIdMaps(flatGraph, nodeMap)
 		const predecessorCountMap = new Map<string, number>()
 		for (const [key, val] of predecessorIdMap.entries())
 			predecessorCountMap.set(key, val.length)
+
+		// Correct the predecessor count for special conditional join nodes.
+		// These nodes structurally have multiple inputs, but logically only one will ever
+		// execute in a given run. Forcing the count to 1 prevents a false fan-in stall.
+		for (const [nodeId, nodeInstance] of nodeMap.entries()) {
+			if (nodeInstance instanceof ConditionalJoinNode)
+				predecessorCountMap.set(nodeId, 1)
+		}
+
 		for (const id of allNodeIds) {
 			if (!predecessorCountMap.has(id))
 				predecessorCountMap.set(id, 0)
 		}
-
 		let startNode: AbstractNode
 		if (startNodeIds.length === 1) {
 			startNode = nodeMap.get(startNodeIds[0])!
@@ -364,11 +435,43 @@ export class GraphBuilder<
 				parallelStartNode.next(convergenceNode)
 			startNode = parallelStartNode
 		}
-
 		const flow = new Flow(startNode)
 		if (log)
 			this._logMermaid(flow)
 		return { flow, nodeMap, predecessorCountMap, predecessorIdMap, originalPredecessorIdMap }
+	}
+
+	/**
+	 * Finds the terminal nodes of a set of branches before they hit a specific target.
+	 * @private
+	 */
+	private _findBranchTerminals(branches: AbstractNode[], targetId: string, edgeGroups: Map<string, Map<any, AbstractNode[]>>): string[] {
+		const terminals: string[] = []
+		const queue: string[] = branches.map(n => String(n.id))
+		const visited = new Set<string>()
+
+		while (queue.length > 0) {
+			const currentId = queue.shift()!
+			if (visited.has(currentId))
+				continue
+			visited.add(currentId)
+
+			const successors = Array.from(edgeGroups.get(currentId)?.values() ?? []).flat().map(n => String(n.id))
+
+			if (successors.includes(targetId)) {
+				if (!terminals.includes(currentId)) {
+					terminals.push(currentId)
+				}
+			}
+			else {
+				for (const successorId of successors) {
+					if (!visited.has(successorId)) {
+						queue.push(successorId)
+					}
+				}
+			}
+		}
+		return terminals
 	}
 
 	/**

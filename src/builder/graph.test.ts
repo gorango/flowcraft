@@ -732,3 +732,282 @@ describe('graphBuilder predecessor maps', () => {
 		expect(joinPredecessors).toEqual(expect.arrayContaining(['task-a', 'task-b']))
 	})
 })
+
+describe('graphBuilder with conditional nodes', () => {
+	const VALUE = contextKey<number>('value')
+	const PATH = contextKey<string[]>('path')
+
+	interface ConditionalNodeTypeMap {
+		set: { value: number }
+		branch: { threshold: number }
+		logPath: { id: string }
+	}
+
+	class SetValueNode extends Node {
+		private value: number
+		constructor(options: NodeConstructorOptions<ConditionalNodeTypeMap['set']>) {
+			super()
+			this.value = options.data.value
+		}
+
+		async prep({ ctx }: NodeArgs) {
+			ctx.set(VALUE, this.value)
+		}
+	}
+
+	class ConditionalBranchNode extends Node<void, void, 'over' | 'under'> {
+		private threshold: number
+		constructor(options: NodeConstructorOptions<ConditionalNodeTypeMap['branch']>) {
+			super()
+			this.threshold = options.data.threshold
+		}
+
+		async post({ ctx }: NodeArgs) {
+			const current = ctx.get(VALUE) ?? 0
+			return current > this.threshold ? 'over' : 'under'
+		}
+	}
+
+	class LogPathNode extends Node {
+		private pathId: string
+		constructor(options: NodeConstructorOptions<ConditionalNodeTypeMap['logPath']>) {
+			super()
+			this.pathId = options.data.id
+		}
+
+		async prep({ ctx }: NodeArgs) {
+			const currentPath = ctx.get(PATH) ?? []
+			ctx.set(PATH, [...currentPath, this.pathId])
+		}
+	}
+
+	const conditionalRegistry = createNodeRegistry({
+		set: SetValueNode,
+		branch: ConditionalBranchNode,
+		logPath: LogPathNode,
+	})
+
+	it('should wire conditional nodes directly without a parallel container', async () => {
+		const graph: TypedWorkflowGraph<ConditionalNodeTypeMap> = {
+			nodes: [
+				{ id: 'start', type: 'set', data: { value: 10 } },
+				{ id: 'brancher', type: 'branch', data: { threshold: 15 } },
+				{ id: 'path-over', type: 'logPath', data: { id: 'over' } },
+				{ id: 'path-under', type: 'logPath', data: { id: 'under' } },
+			],
+			edges: [
+				{ source: 'start', target: 'brancher' },
+				{ source: 'brancher', target: 'path-over', action: 'over' },
+				{ source: 'brancher', target: 'path-under', action: 'under' },
+			],
+		}
+
+		// --- Build WITH the conditionalNodeTypes option ---
+		const builder = new GraphBuilder(conditionalRegistry, {}, {
+			conditionalNodeTypes: ['branch'], // Tell the builder 'branch' is conditional
+		})
+
+		const { flow, nodeMap } = builder.build(graph)
+		const ctx = new TypedContext()
+
+		// --- Run the flow and assert the correct path was taken ---
+		await flow.run(ctx, runOptions)
+		expect(ctx.get(PATH)).toEqual(['under'])
+
+		// --- Assert the graph structure is correct ---
+		const brancherNode = nodeMap.get('brancher')!
+		const pathOverNode = nodeMap.get('path-over')!
+		const pathUnderNode = nodeMap.get('path-under')!
+
+		// The successors should be the actual nodes, NOT a ParallelFlow container
+		expect(brancherNode.successors.get('over')).toBe(pathOverNode)
+		expect(brancherNode.successors.get('under')).toBe(pathUnderNode)
+		expect(brancherNode.successors.get(DEFAULT_ACTION)).toBeUndefined()
+		expect(brancherNode).not.toBeInstanceOf(ParallelFlow)
+
+		// Verify no parallel container was created for 'brancher'
+		expect(nodeMap.has('brancher__parallel_container')).toBe(false)
+	})
+
+	it('should create a parallel container when a non-conditional node has multiple successors', async () => {
+		const graph: TypedWorkflowGraph<ConditionalNodeTypeMap> = {
+			nodes: [
+				{ id: 'start', type: 'set', data: { value: 20 } }, // This will go 'over'
+				{ id: 'brancher', type: 'branch', data: { threshold: 15 } },
+				{ id: 'path-over', type: 'logPath', data: { id: 'over' } },
+				{ id: 'parallel-a', type: 'logPath', data: { id: 'A' } },
+				{ id: 'parallel-b', type: 'logPath', data: { id: 'B' } },
+			],
+			edges: [
+				{ source: 'start', target: 'brancher' },
+				{ source: 'brancher', target: 'path-over', action: 'over' },
+				// Fan out from 'path-over'
+				{ source: 'path-over', target: 'parallel-a' },
+				{ source: 'path-over', target: 'parallel-b' },
+			],
+		}
+
+		// --- Build WITHOUT the conditionalNodeTypes option for 'logPath' ---
+		const builder = new GraphBuilder(conditionalRegistry, {}, {
+			conditionalNodeTypes: ['branch'],
+		})
+
+		const { flow, nodeMap } = builder.build(graph)
+		const ctx = new TypedContext()
+		await flow.run(ctx, runOptions)
+
+		// Assert the final path contains all expected logs
+		expect(ctx.get(PATH)).toEqual(expect.arrayContaining(['over', 'A', 'B']))
+
+		// --- Assert the graph structure ---
+		const pathOverNode = nodeMap.get('path-over')!
+		const parallelContainer = nodeMap.get('path-over__parallel_container')!
+
+		// The successor of path-over SHOULD be a parallel container
+		expect(pathOverNode.successors.get(DEFAULT_ACTION)).toBe(parallelContainer)
+		expect(parallelContainer).toBeInstanceOf(ParallelFlow)
+	})
+})
+
+describe('graphBuilder with conditional path convergence', () => {
+	const VALUE = contextKey<number>('value')
+
+	interface ConditionalNodeTypeMap {
+		'set': { value: number }
+		'branch': { threshold: number }
+		'path-action': Record<string, never>
+		'converge': Record<string, never>
+	}
+
+	class SetValueNode extends Node {
+		private value: number
+		constructor(options: NodeConstructorOptions<ConditionalNodeTypeMap['set']>) {
+			super()
+			this.value = options.data.value
+		}
+
+		async prep({ ctx }: NodeArgs) {
+			ctx.set(VALUE, this.value)
+		}
+	}
+
+	class ConditionalBranchNode extends Node<void, void, 'over' | 'under'> {
+		private threshold: number
+		constructor(options: NodeConstructorOptions<ConditionalNodeTypeMap['branch']>) {
+			super()
+			this.threshold = options.data.threshold
+		}
+
+		async post({ ctx }: NodeArgs) {
+			const current = ctx.get(VALUE) ?? 0
+			return current > this.threshold ? 'over' : 'under'
+		}
+	}
+
+	class PathActionNode extends Node { }
+	class ConvergeNode extends Node { }
+
+	const conditionalRegistry = createNodeRegistry({
+		'set': SetValueNode,
+		'branch': ConditionalBranchNode,
+		'path-action': PathActionNode,
+		'converge': ConvergeNode,
+	})
+
+	const converganceGraph: TypedWorkflowGraph<ConditionalNodeTypeMap> = {
+		nodes: [
+			{ id: 'start', type: 'set', data: { value: 10 } },
+			{ id: 'brancher', type: 'branch', data: { threshold: 15 } },
+			{ id: 'over-action', type: 'path-action', data: {} },
+			{ id: 'under-action', type: 'path-action', data: {} },
+			{ id: 'converge-point', type: 'converge', data: {} },
+		],
+		edges: [
+			{ source: 'start', target: 'brancher' },
+			// Conditional split
+			{ source: 'brancher', target: 'over-action', action: 'over' },
+			{ source: 'brancher', target: 'under-action', action: 'under' },
+			// Paths reconverge
+			{ source: 'over-action', target: 'converge-point' },
+			{ source: 'under-action', target: 'converge-point' },
+		],
+	}
+
+	it('should NOT create a fan-in for a node where conditional paths reconverge', () => {
+		const builder = new GraphBuilder(conditionalRegistry, {}, {
+			conditionalNodeTypes: ['branch'],
+		})
+
+		const { predecessorCountMap, predecessorIdMap, nodeMap } = builder.build(converganceGraph)
+
+		const joinNodeId = 'brancher__conditional_join'
+		const convergencePredecessors = predecessorIdMap.get('converge-point')
+
+		expect(nodeMap.has(joinNodeId)).toBe(true)
+		expect(convergencePredecessors).toEqual([joinNodeId])
+
+		const joinNodePredecessors = predecessorIdMap.get(joinNodeId)
+		expect(joinNodePredecessors).toEqual(expect.arrayContaining(['over-action', 'under-action']))
+		expect(predecessorCountMap.get('converge-point')).toBe(1)
+	})
+
+	it('should correctly rewire the graph so the final convergence point has only one predecessor', () => {
+		const builder = new GraphBuilder(conditionalRegistry, {}, {
+			conditionalNodeTypes: ['branch'],
+		})
+
+		const { predecessorCountMap } = builder.build(converganceGraph)
+		expect(predecessorCountMap.get('converge-point')).toBe(1)
+	})
+
+	it('should assign a predecessor count of 1 to the internal join node to prevent fan-in stalls', () => {
+		const builder = new GraphBuilder(conditionalRegistry, {}, {
+			conditionalNodeTypes: ['branch'],
+		})
+
+		const { predecessorCountMap } = builder.build(converganceGraph)
+		const internalJoinNodeId = 'brancher__conditional_join'
+		expect(predecessorCountMap.get(internalJoinNodeId)).toBe(1)
+	})
+
+	it('should correctly handle convergence from deeper, asymmetrical conditional paths', () => {
+		const graph: TypedWorkflowGraph<ConditionalNodeTypeMap> = {
+			nodes: [
+				{ id: 'start', type: 'set', data: { value: 10 } },
+				{ id: 'brancher', type: 'branch', data: { threshold: 5 } }, // Will take 'over' path
+				{ id: 'over-action-1', type: 'path-action', data: {} },
+				{ id: 'over-action-2', type: 'path-action', data: {} }, // Deeper path
+				{ id: 'under-action-1', type: 'path-action', data: {} }, // Shallower path
+				{ id: 'converge-point', type: 'converge', data: {} },
+			],
+			edges: [
+				{ source: 'start', target: 'brancher' },
+				// Conditional split
+				{ source: 'brancher', target: 'over-action-1', action: 'over' },
+				{ source: 'brancher', target: 'under-action-1', action: 'under' },
+				// 'over' path is one step longer
+				{ source: 'over-action-1', target: 'over-action-2' },
+				// Paths reconverge from different depths
+				{ source: 'over-action-2', target: 'converge-point' },
+				{ source: 'under-action-1', target: 'converge-point' },
+			],
+		}
+
+		const builder = new GraphBuilder(conditionalRegistry, {}, {
+			conditionalNodeTypes: ['branch'],
+		})
+
+		const { predecessorCountMap, predecessorIdMap, nodeMap } = builder.build(graph)
+
+		const joinNodeId = 'brancher__conditional_join'
+
+		expect(nodeMap.has(joinNodeId)).toBe(true)
+		expect(predecessorIdMap.get('converge-point')).toEqual([joinNodeId])
+		expect(predecessorIdMap.get(joinNodeId)).toEqual(expect.arrayContaining([
+			'over-action-2', // The end of the deep path
+			'under-action-1', // The end of the shallow path
+		]))
+
+		expect(predecessorCountMap.get('converge-point')).toBe(1)
+	})
+})

@@ -121,7 +121,6 @@ export interface BuildResult {
 	 * from *within* that sub-workflow, reflecting the data flow.
 	 */
 	originalPredecessorIdMap: OriginalPredecessorIdMap
-
 }
 
 /**
@@ -179,4 +178,9 @@ export interface GraphBuilderOptions {
 	 * The `getGraph` method will be called with the `workflowId` from the node's data payload.
 	 */
 	subWorkflowResolver?: SubWorkflowResolver
+	/**
+	 * An array of node `type` strings whose outgoing edges represent mutually
+	 * exclusive conditional paths, not parallel branches.
+	 */
+	conditionalNodeTypes?: string[]
 }
