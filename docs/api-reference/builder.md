@@ -123,7 +123,15 @@ This powerful, build-time process creates a single, flattened graph, which simpl
 -   `options?: GraphBuilderOptions`: An optional configuration object.
     -   `subWorkflowNodeTypes?: string[]`: An array of node `type` strings that should be treated as composable sub-workflows. The builder will inline any node whose type is in this list.
     -   `subWorkflowResolver?: SubWorkflowResolver`: An object that implements the `{ getGraph(id: string | number): WorkflowGraph | undefined }` interface. This is **required** if you use `subWorkflowNodeTypes`.
+    -   `conditionalNodeTypes?: string[]`: An array of node `type` strings whose outgoing edges represent mutually exclusive conditional paths, not parallel branches.
 -   `logger?: Logger`: An optional `Logger` instance for receiving internal logs from the builder.
+
+> [!NOTE]
+> **Advanced: Overriding Internal Nodes**
+>
+> The `GraphBuilder` uses several internal node types (e.g., `__internal_input_mapper__`, `__internal_conditional_join__`) for structural purposes. For advanced use cases, you can provide your own `Node` implementation for these types.
+>
+> To do this, simply add an entry to your `NodeRegistry` with the corresponding internal key (e.g., `'__internal_input_mapper__'`). The `GraphBuilder` will detect your custom implementation and use it instead of its built-in default. This allows you to inject custom logic, logging, or metrics directly into the graph's structural scaffolding.
 
 ### Type-Safe Dependency Injection Example
 

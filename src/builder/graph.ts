@@ -153,10 +153,14 @@ export class GraphBuilder<
 	) {
 		this.logger = logger
 		this.registry = registry instanceof Map ? registry : new Map(Object.entries(registry))
-		this.registry.set('__internal_input_mapper__', InputMappingNode as any)
-		this.registry.set('__internal_output_mapper__', OutputMappingNode as any)
-		this.registry.set('__internal_sub_workflow_container__', SubWorkflowContainerNode as any)
-		this.registry.set('__internal_conditional_join__', ConditionalJoinNode as any)
+		if (!this.registry.has('__internal_input_mapper__'))
+			this.registry.set('__internal_input_mapper__', InputMappingNode as any)
+		if (!this.registry.has('__internal_output_mapper__'))
+			this.registry.set('__internal_output_mapper__', OutputMappingNode as any)
+		if (!this.registry.has('__internal_sub_workflow_container__'))
+			this.registry.set('__internal_sub_workflow_container__', SubWorkflowContainerNode as any)
+		if (!this.registry.has('__internal_conditional_join__'))
+			this.registry.set('__internal_conditional_join__', ConditionalJoinNode as any)
 		this.subWorkflowNodeTypes = options.subWorkflowNodeTypes ?? []
 		this.conditionalNodeTypes = options.conditionalNodeTypes ?? []
 		this.subWorkflowResolver = options.subWorkflowResolver

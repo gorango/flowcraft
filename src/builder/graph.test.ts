@@ -1011,3 +1011,133 @@ describe('graphBuilder with conditional path convergence', () => {
 		expect(predecessorCountMap.get('converge-point')).toBe(1)
 	})
 })
+
+describe('graphBuilder with custom internal nodes', () => {
+	const PARENT_VALUE = contextKey<string>('parent_value')
+	const SUB_VALUE = contextKey<string>('sub_value')
+	const FINAL_VALUE = contextKey<string>('final_value')
+	const CUSTOM_MAPPER_FLAG = contextKey<boolean>('custom_mapper_ran')
+
+	// A custom implementation of one of the builder's internal nodes.
+	// It has a unique, testable side-effect.
+	class CustomInputMapper extends Node {
+		private mappings: Record<string, string>
+		constructor(options: { data: Record<string, string> }) {
+			super()
+			const { nodeId, ...mappings } = options.data
+			this.mappings = mappings
+		}
+
+		async prep({ ctx }: NodeArgs) {
+			// Perform the standard input mapping logic
+			for (const [subKey, parentKey] of Object.entries(this.mappings)) {
+				if (ctx.has(parentKey))
+					ctx.set(subKey, ctx.get(parentKey))
+			}
+			// Add the custom, testable side-effect
+			ctx.set(CUSTOM_MAPPER_FLAG, true)
+		}
+	}
+
+	// --- Re-using setup from the sub-workflow tests for consistency ---
+	class AppendStringNode extends Node {
+		private str: string
+		constructor(options: { data: { value: string } }) {
+			super()
+			this.str = options.data.value
+		}
+
+		async exec({ prepRes }: NodeArgs<string>): Promise<string> {
+			return `${prepRes} -> ${this.str}`
+		}
+
+		async prep({ ctx }: NodeArgs): Promise<string> {
+			return ctx.get(SUB_VALUE) ?? ctx.get(PARENT_VALUE) ?? 'start'
+		}
+
+		async post({ ctx, execRes }: NodeArgs<string, string>) {
+			const key = ctx.has(SUB_VALUE) ? SUB_VALUE : PARENT_VALUE
+			ctx.set(key, execRes)
+		}
+	}
+
+	class FinalOutputNode extends Node {
+		async prep({ ctx }: NodeArgs) {
+			const subResult = ctx.get(PARENT_VALUE) ?? ''
+			ctx.set(FINAL_VALUE, `final: ${subResult}`)
+		}
+	}
+
+	const mockSubWorkflowResolver: SubWorkflowResolver & { graphs: Map<number, WorkflowGraph> } = {
+		graphs: new Map<number, WorkflowGraph>([
+			[300, {
+				nodes: [
+					{ id: 'step_d', type: 'append', data: { value: 'D' } },
+				],
+				edges: [],
+			}],
+		]),
+		getGraph(id: number | string) {
+			return typeof id === 'number' ? this.graphs.get(id) : undefined
+		},
+	}
+	// --- End of re-used setup ---
+
+	it('should use a user-provided implementation for an internal node type', async () => {
+		// Create a registry where we override an internal node type
+		const customInternalRegistry: NodeRegistry = new Map<string, new (...args: any[]) => AbstractNode>([
+			['append', AppendStringNode],
+			['final', FinalOutputNode],
+			['custom_sub_workflow', Node], // Just a placeholder type
+			// --- THIS IS THE KEY PART OF THE TEST ---
+			// Provide our own class for an internal node name.
+			['__internal_input_mapper__', CustomInputMapper],
+		])
+
+		const parentGraph: WorkflowGraph = {
+			nodes: [
+				{ id: 'step_a', type: 'append', data: { value: 'A' } },
+				{
+					id: 'the_sub',
+					type: 'custom_sub_workflow',
+					data: {
+						workflowId: 300,
+						inputs: { sub_value: 'parent_value' },
+						outputs: { parent_value: 'sub_value' },
+					},
+				},
+				{ id: 'step_c', type: 'final', data: {} },
+			],
+			edges: [
+				{ source: 'step_a', target: 'the_sub' },
+				{ source: 'the_sub', target: 'step_c' },
+			],
+		}
+
+		// Instantiate the builder with our custom registry
+		const builder = new GraphBuilder(customInternalRegistry, {}, {
+			subWorkflowNodeTypes: ['custom_sub_workflow'],
+			subWorkflowResolver: mockSubWorkflowResolver,
+		})
+
+		const { flow, nodeMap } = builder.build(parentGraph)
+		const ctx = new TypedContext()
+
+		// Run the flow
+		await flow.run(ctx, runOptions)
+
+		// 1. Verify that the flow ran correctly, meaning our custom node didn't break anything.
+		expect(ctx.get(FINAL_VALUE)).toBe('final: start -> A -> D')
+
+		// 2. Verify that our custom node's side-effect occurred.
+		// This proves the builder used our implementation.
+		expect(ctx.get(CUSTOM_MAPPER_FLAG)).toBe(true)
+
+		// 3. (Optional) Verify that an instance of our custom class exists in the final node map.
+		const inputMapperInstance = Array.from(nodeMap.values()).find(
+			node => node instanceof CustomInputMapper,
+		)
+		expect(inputMapperInstance).toBeDefined()
+		expect(inputMapperInstance).toBeInstanceOf(CustomInputMapper)
+	})
+})

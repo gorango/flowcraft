@@ -27,6 +27,10 @@ export interface Context {
 	has: ((key: ContextKey<any>) => boolean) & ((key: string) => boolean)
 	/** Returns an iterator of all [key, value] pairs in the context. */
 	entries: () => IterableIterator<[any, any]>
+	/** Returns an iterator of all keys in the context. */
+	keys: () => IterableIterator<any>
+	/** Returns an iterator of all values in the context. */
+	values: () => IterableIterator<any>
 }
 
 /**
@@ -58,6 +62,14 @@ export class TypedContext implements Context {
 
 	entries(): IterableIterator<[any, any]> {
 		return this.data.entries()
+	}
+
+	keys(): IterableIterator<any> {
+		return this.data.keys()
+	}
+
+	values(): IterableIterator<any> {
+		return this.data.values()
 	}
 }
 
