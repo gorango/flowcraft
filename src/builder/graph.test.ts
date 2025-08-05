@@ -1141,3 +1141,146 @@ describe('graphBuilder with custom internal nodes', () => {
 		expect(inputMapperInstance).toBeInstanceOf(CustomInputMapper)
 	})
 })
+
+describe('graphBuilder with complex fan-in', () => {
+	interface BuggyNodeTypeMap extends NodeTypeMap {
+		process: Record<string, never>
+		output: Record<string, never>
+		workflow: { workflowId: number }
+	}
+
+	class MyTestNode extends Node { }
+
+	const buggyRegistry = createNodeRegistry<BuggyNodeTypeMap>({
+		process: MyTestNode,
+		output: MyTestNode,
+		workflow: Node as any,
+	})
+
+	it('should correctly calculate predecessors and wire a graph where a parallel start node is also a fan-in point', () => {
+		const childGraph: TypedWorkflowGraph<BuggyNodeTypeMap> = {
+			nodes: [
+				{ id: 'pa835', type: 'process', data: {} },
+				{ id: 'pe5cf', type: 'process', data: {} },
+				{ id: 'o62f7', type: 'output', data: {} },
+				{ id: 'p25d6', type: 'process', data: {} },
+			],
+			edges: [
+				{ source: 'pa835', target: 'o62f7' },
+				{ source: 'pe5cf', target: 'p25d6' },
+				{ source: 'p25d6', target: 'o62f7' },
+			],
+		}
+
+		const parentGraph: TypedWorkflowGraph<BuggyNodeTypeMap> = {
+			nodes: [
+				{ id: 'w808d', type: 'workflow', data: { workflowId: 808 } },
+				{ id: 'p9a2c', type: 'process', data: {} },
+			],
+			edges: [
+				{ source: 'w808d', target: 'p9a2c' },
+			],
+		}
+
+		const mockSubWorkflowResolver: SubWorkflowResolver = {
+			getGraph(id: number | string) {
+				if (id === 808)
+					return childGraph
+				return undefined
+			},
+		}
+
+		const mockLogger = {
+			debug: vi.fn(),
+			info: vi.fn(),
+			warn: vi.fn(),
+			error: vi.fn(),
+		}
+
+		const builder = new GraphBuilder(buggyRegistry, {}, {
+			subWorkflowNodeTypes: ['workflow'],
+			subWorkflowResolver: mockSubWorkflowResolver,
+		}, mockLogger)
+
+		const { predecessorCountMap, nodeMap } = builder.build(parentGraph)
+		const fanInNodeId = 'w808d:o62f7'
+		const fanInNode = nodeMap.get(fanInNodeId)!
+		const inputMapper = nodeMap.get('w808d_input_mapper')!
+		const parallelContainer = inputMapper.successors.get(DEFAULT_ACTION)!
+		expect(parallelContainer.successors.size).toBe(1)
+		expect(parallelContainer.successors.get(DEFAULT_ACTION)).toBe(fanInNode)
+		expect(predecessorCountMap.get(fanInNodeId)).toBe(2)
+	})
+})
+
+describe('graphBuilder with sub-workflows and context passing', () => {
+	interface SubWorkflowContextMap extends NodeTypeMap {
+		'start-task': Record<string, never>
+		'end-task': Record<string, never>
+		'sub-workflow-node': { workflowId: number, inputs: Record<string, string>, outputs: Record<string, string> }
+		'process': Record<string, never>
+	}
+
+	class TestNode extends Node { }
+
+	const subWorkflowRegistry = createNodeRegistry<SubWorkflowContextMap>({
+		'start-task': TestNode,
+		'end-task': TestNode,
+		'sub-workflow-node': TestNode,
+		'process': TestNode,
+	})
+
+	it('should correctly generate originalPredecessorIdMap for sub-workflows', () => {
+		const childGraph: TypedWorkflowGraph<SubWorkflowContextMap> = {
+			nodes: [
+				{ id: 'child-process', type: 'process', data: {} },
+			],
+			edges: [],
+		}
+
+		const parentGraph: TypedWorkflowGraph<SubWorkflowContextMap> = {
+			nodes: [
+				{ id: 'start', type: 'start-task', data: {} },
+				{
+					id: 'my-sub',
+					type: 'sub-workflow-node',
+					data: {
+						workflowId: 101,
+						inputs: {},
+						outputs: {},
+					},
+				},
+				{ id: 'end', type: 'end-task', data: {} },
+			],
+			edges: [
+				{ source: 'start', target: 'my-sub' },
+				{ source: 'my-sub', target: 'end' },
+			],
+		}
+
+		const mockSubWorkflowResolver: SubWorkflowResolver = {
+			getGraph(id) {
+				if (id === 101)
+					return childGraph
+				return undefined
+			},
+		}
+
+		const builder = new GraphBuilder(subWorkflowRegistry, {}, {
+			subWorkflowNodeTypes: ['sub-workflow-node'],
+			subWorkflowResolver: mockSubWorkflowResolver,
+		})
+
+		const { originalPredecessorIdMap, nodeMap } = builder.build(parentGraph)
+
+		const endNodePredecessors = originalPredecessorIdMap.get('end')
+		expect(endNodePredecessors).toBeDefined()
+		expect(endNodePredecessors).toEqual(['my-sub'])
+
+		const outputMapperId = Array.from(nodeMap.keys()).find(k => k.includes('output_mapper'))!
+		const outputMapper = nodeMap.get(outputMapperId)!
+		const endNode = nodeMap.get('end')!
+		expect(outputMapper.successors.get(DEFAULT_ACTION)).toBe(endNode)
+		expect(originalPredecessorIdMap.has(outputMapperId)).toBe(false)
+	})
+})

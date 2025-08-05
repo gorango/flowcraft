@@ -1,7 +1,7 @@
 import type { Context } from '../context'
 import type { Logger } from '../logger'
 import type { Params, RunOptions } from '../types'
-import type { Flow } from '../workflow'
+import type { AbstractNode, Flow } from '../workflow'
 
 /**
  * Defines the contract for a workflow execution engine.
@@ -18,6 +18,13 @@ export interface IExecutor {
 	 * depending on the executor's implementation (e.g., a job ID for a distributed executor).
 	 */
 	run: <T>(flow: Flow<any, T>, context: Context, options?: RunOptions) => Promise<T>
+	/**
+	 * Determines the next node to execute based on the action returned by the current node.
+	 * @param curr The current node.
+	 * @param action The action returned by the current node.
+	 * @returns The next node to execute, or undefined if no further action is required.
+	 */
+	getNextNode: (curr: AbstractNode, action: any) => AbstractNode | undefined
 }
 
 /**

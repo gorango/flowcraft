@@ -4,6 +4,7 @@ import type { AbstractNode } from '../workflow'
 import type { GraphBuilder } from './graph'
 import type { WorkflowGraph } from './graph.types'
 import { AbortError } from '../errors'
+import { DEFAULT_ACTION } from '../types'
 import { Flow, Node } from '../workflow'
 
 /**
@@ -147,16 +148,35 @@ export class ParallelFlow extends Flow<any, void> {
 			return
 		}
 
-		const promises = this.nodesToRun.map(node =>
-			node._run({
-				ctx,
-				params: { ...params, ...node.params },
-				signal,
-				logger,
-				executor,
-			}),
-		)
+		// The convergence node is the designated successor of this ParallelFlow. The GraphBuilder wires this.
+		const convergenceNode = this.successors.get(DEFAULT_ACTION)
+		const visitedInParallel = new Set<AbstractNode>()
 
+		const runBranch = async (startNode: AbstractNode) => {
+			let currentNode: AbstractNode | undefined = startNode
+
+			while (currentNode && currentNode !== convergenceNode) {
+				if (signal?.aborted)
+					throw new AbortError()
+
+				if (visitedInParallel.has(currentNode))
+					break
+
+				visitedInParallel.add(currentNode)
+
+				const action = await currentNode._run({
+					ctx,
+					params: { ...params, ...currentNode.params },
+					signal,
+					logger,
+					executor,
+				})
+
+				currentNode = executor?.getNextNode(currentNode, action)
+			}
+		}
+
+		const promises = this.nodesToRun.map(runBranch)
 		const results = await Promise.allSettled(promises)
 
 		results.forEach((result) => {
@@ -300,7 +320,6 @@ export abstract class ParallelBatchFlow<T = any> extends Flow<Iterable<T>, Promi
 export function mapCollection<T, U>(items: T[], fn: NodeFunction<T, U>): Flow<void, U[]> {
 	return new class extends Flow {
 		async exec(): Promise<U[]> {
-			// Using Promise.all to run the mapping function on all items concurrently.
 			const promises = items.map(item => fn(item))
 			return Promise.all(promises)
 		}

@@ -287,10 +287,11 @@ export class GraphBuilder<
 	build(graph: WorkflowGraph, log?: boolean): BuildResult
 	// single implementation that handles both cases
 	build(graph: TypedWorkflowGraph<TNodeMap> | WorkflowGraph, log?: boolean): BuildResult {
+		// Step 1: Flatten the graph to resolve all sub-workflows.
 		const flatGraph = this._flattenGraph(graph as WorkflowGraph)
-		const nodeMap = new Map<string, AbstractNode>()
 
-		// Pass 1: Instantiate all nodes.
+		// Step 2: Instantiate all node objects. We need these for the convergence logic.
+		const nodeMap = new Map<string, AbstractNode>()
 		for (const graphNode of flatGraph.nodes) {
 			const NodeClass = this.registry.get(graphNode.type.toString())
 			if (!NodeClass)
@@ -308,7 +309,8 @@ export class GraphBuilder<
 			nodeMap.set(graphNode.id, executableNode)
 		}
 
-		// --- NEW PRE-PROCESSING PASS ---
+		// Step 3: Handle conditional branch convergence. This is a logical transformation
+		// that modifies the `flatGraph` by inserting join nodes and rewiring edges.
 		const edgeGroupsForConvergence = flatGraph.edges.reduce((acc, edge) => {
 			if (!acc.has(edge.source))
 				acc.set(edge.source, new Map())
@@ -353,7 +355,24 @@ export class GraphBuilder<
 			}
 		}
 
-		// Pass 2: Group edges by source to identify parallel fan-outs.
+		// Step 4: Perform logical analysis AFTER conditional rewiring.
+		// This builds the predecessor maps from the now-modified `flatGraph`.
+		const { predecessorIdMap, originalPredecessorIdMap } = this._createPredecessorIdMaps(flatGraph, nodeMap)
+		const predecessorCountMap = new Map<string, number>()
+		for (const [key, val] of predecessorIdMap.entries()) {
+			predecessorCountMap.set(key, val.length)
+		}
+
+		// Special case: The inserted conditional join node should always have a predecessor count of 1
+		// to prevent it from stalling a distributed executor.
+		for (const [nodeId, nodeInstance] of nodeMap.entries()) {
+			if (nodeInstance instanceof ConditionalJoinNode) {
+				predecessorCountMap.set(nodeId, 1)
+			}
+		}
+
+		// Step 5: Wire the final object graph, introducing implementation-specific containers
+		// like ParallelBranchContainer and their shortcuts for the InMemoryExecutor.
 		const edgeGroups = new Map<string, Map<string | typeof DEFAULT_ACTION | typeof FILTER_FAILED, AbstractNode[]>>()
 		for (const edge of flatGraph.edges) {
 			const sourceId = edge.source
@@ -368,7 +387,6 @@ export class GraphBuilder<
 			sourceActions.get(action)!.push(targetNode)
 		}
 
-		// Pass 3: Wire the graph.
 		for (const [sourceId, actions] of edgeGroups.entries()) {
 			const sourceNode = nodeMap.get(sourceId)!
 			for (const [action, successors] of actions.entries()) {
@@ -376,25 +394,17 @@ export class GraphBuilder<
 					sourceNode.next(successors[0], action)
 				}
 				else if (successors.length > 1) {
-					// Check if the source is conditional. If so, wire directly.
 					if (this.conditionalNodeTypes.includes(sourceNode.graphData!.type)) {
 						for (const successor of successors) {
 							sourceNode.next(successor, action)
 						}
 					}
-					else { // Otherwise, it's a parallel fan-out
+					else {
 						const parallelNode = new ParallelBranchContainer(successors).withId(`${sourceId}__parallel_container`)
 						nodeMap.set(String(parallelNode.id), parallelNode)
 						sourceNode.next(parallelNode, action)
-						for (const branchNode of successors) {
-							const branchSuccessors = edgeGroups.get(String(branchNode.id!))
-							if (branchSuccessors) {
-								for (const [branchAction, branchTargets] of branchSuccessors.entries()) {
-									for (const target of branchTargets)
-										branchNode.next(target, branchAction)
-								}
-							}
-						}
+
+						// This shortcut is for the InMemoryExecutor and does not affect the logical maps.
 						const convergenceNode = this._findConvergenceNode(successors, edgeGroups)
 						if (convergenceNode)
 							parallelNode.next(convergenceNode)
@@ -403,29 +413,20 @@ export class GraphBuilder<
 			}
 		}
 
-		// Final Step: (Unchanged from original source)
+		// Step 6: Determine the final start node for the flow.
 		const allNodeIds = new Set(flatGraph.nodes.map(n => n.id))
 		const allTargetIds = new Set(flatGraph.edges.map(e => e.target))
 		const startNodeIds = [...allNodeIds].filter(id => !allTargetIds.has(id))
+
 		if (startNodeIds.length === 0 && allNodeIds.size > 0)
 			throw new Error('GraphBuilder: This graph has a cycle and no clear start node.')
-		const { predecessorIdMap, originalPredecessorIdMap } = this._createPredecessorIdMaps(flatGraph, nodeMap)
-		const predecessorCountMap = new Map<string, number>()
-		for (const [key, val] of predecessorIdMap.entries())
-			predecessorCountMap.set(key, val.length)
 
-		// Correct the predecessor count for special conditional join nodes.
-		// These nodes structurally have multiple inputs, but logically only one will ever
-		// execute in a given run. Forcing the count to 1 prevents a false fan-in stall.
-		for (const [nodeId, nodeInstance] of nodeMap.entries()) {
-			if (nodeInstance instanceof ConditionalJoinNode)
-				predecessorCountMap.set(nodeId, 1)
-		}
-
+		// Finalize predecessor counts for any nodes that had no predecessors.
 		for (const id of allNodeIds) {
 			if (!predecessorCountMap.has(id))
 				predecessorCountMap.set(id, 0)
 		}
+
 		let startNode: AbstractNode
 		if (startNodeIds.length === 1) {
 			startNode = nodeMap.get(startNodeIds[0])!
@@ -439,6 +440,8 @@ export class GraphBuilder<
 				parallelStartNode.next(convergenceNode)
 			startNode = parallelStartNode
 		}
+
+		// Step 7: Return the executable flow and the now-correct logical analysis results.
 		const flow = new Flow(startNode)
 		if (log)
 			this._logMermaid(flow)
@@ -487,22 +490,32 @@ export class GraphBuilder<
 	 */
 	private _createPredecessorIdMaps(
 		graph: WorkflowGraph,
-		nodeMap: Map<string, AbstractNode>,
+		nodeMap: Map<string, AbstractNode>, // The nodeMap is required here
 	): { predecessorIdMap: PredecessorIdMap, originalPredecessorIdMap: OriginalPredecessorIdMap } {
 		const predecessorIdMap: PredecessorIdMap = new Map()
 		const originalPredecessorIdMap: OriginalPredecessorIdMap = new Map()
 
 		for (const edge of graph.edges) {
+			// --- Build the standard predecessorIdMap ---
 			if (!predecessorIdMap.has(edge.target))
 				predecessorIdMap.set(edge.target, [])
 			predecessorIdMap.get(edge.target)!.push(edge.source)
 
-			const sourceNode = nodeMap.get(edge.source)!
-			const targetNode = nodeMap.get(edge.target)!
+			// --- Build the originalPredecessorIdMap (for sub-workflows) ---
+			// This is the crucial logic that was removed and is now restored.
+			const sourceNode = nodeMap.get(edge.source)
+			const targetNode = nodeMap.get(edge.target)
 
-			const sourceOriginalId = sourceNode?.graphData?.data?.originalId
-			const targetOriginalId = targetNode?.graphData?.data?.originalId
-			const mapKey = targetOriginalId ?? targetNode?.id as string
+			// The nodeMap is guaranteed to have these nodes at this stage of the build process.
+			if (!sourceNode || !targetNode)
+				continue
+
+			const sourceOriginalId = sourceNode.graphData?.data?.originalId
+			const targetOriginalId = targetNode.graphData?.data?.originalId
+
+			// The mapKey is the original ID of the target node, which allows the orchestrator
+			// to correctly associate outputs from a sub-workflow to the next step in the parent.
+			const mapKey = targetOriginalId ?? targetNode.id as string
 
 			if (sourceOriginalId && mapKey) {
 				if (!originalPredecessorIdMap.has(mapKey))
