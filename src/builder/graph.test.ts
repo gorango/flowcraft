@@ -480,6 +480,75 @@ describe('graphBuilder with sub-workflows', () => {
 			/Node with ID 'the_sub' has a 'workflowId' but its type 'some_other_type' is not in 'subWorkflowNodeTypes'./,
 		)
 	})
+
+	it('should correctly inline a deeply nested sub-workflow', async () => {
+		const grandchildGraph: TypedWorkflowGraph<TestSubWorkflowNodeTypeMap> = {
+			nodes: [{ id: 'step_g', type: 'append', data: { value: 'G' } }],
+			edges: [],
+		}
+
+		const childGraph: TypedWorkflowGraph<TestSubWorkflowNodeTypeMap> = {
+			nodes: [
+				{ id: 'step_c1', type: 'append', data: { value: 'C1' } },
+				{
+					id: 'the_grandchild',
+					type: 'custom_sub_workflow',
+					data: {
+						workflowId: 900,
+						inputs: { sub_value: 'sub_value' },
+						outputs: { sub_value: 'sub_value' },
+					},
+				},
+				{ id: 'step_c2', type: 'append', data: { value: 'C2' } },
+			],
+			edges: [
+				{ source: 'step_c1', target: 'the_grandchild' },
+				{ source: 'the_grandchild', target: 'step_c2' },
+			],
+		}
+
+		const parentGraph: TypedWorkflowGraph<TestSubWorkflowNodeTypeMap> = {
+			nodes: [
+				{ id: 'step_p1', type: 'append', data: { value: 'P1' } },
+				{
+					id: 'the_child',
+					type: 'custom_sub_workflow',
+					data: {
+						workflowId: 800,
+						inputs: { sub_value: 'parent_value' },
+						outputs: { parent_value: 'sub_value' },
+					},
+				},
+				{ id: 'step_p2', type: 'final', data: {} },
+			],
+			edges: [
+				{ source: 'step_p1', target: 'the_child' },
+				{ source: 'the_child', target: 'step_p2' },
+			],
+		}
+
+		mockSubWorkflowResolver.graphs.set(800, childGraph)
+		mockSubWorkflowResolver.graphs.set(900, grandchildGraph)
+
+		const builder = new GraphBuilder(subWorkflowNodeRegistry, {}, {
+			subWorkflowNodeTypes: ['custom_sub_workflow'],
+			subWorkflowResolver: mockSubWorkflowResolver,
+		})
+
+		const { flow, nodeMap } = builder.build(parentGraph)
+		const ctx = new TypedContext([
+			[PARENT_VALUE, 'start'],
+		])
+
+		await flow.run(ctx, runOptions)
+
+		expect(ctx.get(FINAL_VALUE)).toBe('final: start -> P1 -> C1 -> G -> C2')
+		expect(nodeMap.has('the_child:step_c1')).toBe(true)
+		expect(nodeMap.has('the_child:the_grandchild')).toBe(true)
+		expect(nodeMap.has('the_child:the_grandchild:step_g')).toBe(true)
+		expect(nodeMap.has('the_child_input_mapper')).toBe(true)
+		expect(nodeMap.has('the_child_the_grandchild_input_mapper')).toBe(true)
+	})
 })
 
 describe('graphBuilder with parallel start nodes', () => {
