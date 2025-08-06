@@ -337,9 +337,10 @@ export class GraphBuilder<
 					if (!nodeMap.has(joinNodeId)) {
 						this.logger.debug(`[GraphBuilder] Inserting conditional join node for '${conditionalNode.id}' converging at '${convergenceNode.id}'`)
 
-						const joinNode = new ConditionalJoinNode().withId(joinNodeId)
+						const joinGraphNode: GraphNode = { id: joinNodeId, type: '__internal_conditional_join__', data: {} }
+						const joinNode = new ConditionalJoinNode().withId(joinNodeId).withGraphData(joinGraphNode)
 						nodeMap.set(joinNodeId, joinNode)
-						flatGraph.nodes.push({ id: joinNodeId, type: '__internal_conditional_join__', data: {} })
+						flatGraph.nodes.push(joinGraphNode)
 
 						const branchTerminalNodes = this._findBranchTerminals(branches, String(convergenceNode.id), edgeGroupsForConvergence)
 
@@ -390,24 +391,26 @@ export class GraphBuilder<
 		for (const [sourceId, actions] of edgeGroups.entries()) {
 			const sourceNode = nodeMap.get(sourceId)!
 			for (const [action, successors] of actions.entries()) {
-				if (successors.length === 1) {
-					sourceNode.next(successors[0], action)
-				}
-				else if (successors.length > 1) {
+				if (successors.length > 0) {
 					if (this.conditionalNodeTypes.includes(sourceNode.graphData!.type)) {
 						for (const successor of successors) {
 							sourceNode.next(successor, action)
 						}
 					}
-					else {
-						const parallelNode = new ParallelBranchContainer(successors).withId(`${sourceId}__parallel_container`)
-						nodeMap.set(String(parallelNode.id), parallelNode)
+					else if (successors.length > 1) {
+						const parallelNodeId = `${sourceId}__parallel_container`
+						const parallelGraphNode: GraphNode = { id: parallelNodeId, type: '__internal_parallel_container__', data: {} }
+						const parallelNode = new ParallelBranchContainer(successors).withId(parallelNodeId).withGraphData(parallelGraphNode)
+						nodeMap.set(parallelNodeId, parallelNode)
 						sourceNode.next(parallelNode, action)
 
 						// This shortcut is for the InMemoryExecutor and does not affect the logical maps.
 						const convergenceNode = this._findConvergenceNode(successors, edgeGroups)
 						if (convergenceNode)
 							parallelNode.next(convergenceNode)
+					}
+					else {
+						sourceNode.next(successors[0], action)
 					}
 				}
 			}

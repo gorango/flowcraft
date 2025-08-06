@@ -17,7 +17,7 @@ const traversalLoggingMiddleware: Middleware = async (args: NodeArgs, next: Midd
 	const action = await next(args)
 
 	if (node) {
-		const nextNode = node.successors.get(action)
+		const nextNode = node.successors.get(action)?.[0]
 		const actionDisplay = getActionDisplay(action)
 
 		if (nextNode) {

@@ -111,17 +111,19 @@ export function generateMermaidGraph(flow: Flow): string {
 			}
 		}
 
-		for (const [action, successorNode] of currentNode.successors.entries()) {
-			const targetId = getUniqueNodeId(successorNode, nameCounts, idMap)
-			const label = getActionLabel(action)
-			const edge = label
-				? `  ${sourceId} -- ${label} --> ${targetId}`
-				: `  ${sourceId} --> ${targetId}`
-			edges.add(edge)
+		for (const [action, successorNodes] of currentNode.successors.entries()) {
+			for (const successorNode of successorNodes) {
+				const targetId = getUniqueNodeId(successorNode, nameCounts, idMap)
+				const label = getActionLabel(action)
+				const edge = label
+					? `  ${sourceId} -- ${label} --> ${targetId}`
+					: `  ${sourceId} --> ${targetId}`
+				edges.add(edge)
 
-			if (!visited.has(successorNode)) {
-				visited.add(successorNode)
-				queue.push(successorNode)
+				if (!visited.has(successorNode)) {
+					visited.add(successorNode)
+					queue.push(successorNode)
+				}
 			}
 		}
 	}

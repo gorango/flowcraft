@@ -149,7 +149,7 @@ export class ParallelFlow extends Flow<any, void> {
 		}
 
 		// The convergence node is the designated successor of this ParallelFlow. The GraphBuilder wires this.
-		const convergenceNode = this.successors.get(DEFAULT_ACTION)
+		const convergenceNode = this.successors.get(DEFAULT_ACTION)?.[0]
 		const visitedInParallel = new Set<AbstractNode>()
 
 		const runBranch = async (startNode: AbstractNode) => {

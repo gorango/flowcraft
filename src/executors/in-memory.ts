@@ -105,7 +105,9 @@ export class InMemoryExecutor implements IExecutor {
 	 * @internal
 	 */
 	public getNextNode(curr: AbstractNode, action: any): AbstractNode | undefined {
-		const nextNode = curr.successors.get(action)
-		return nextNode
+		const nextNodes = curr.successors.get(action)
+		// For the in-memory executor, we take the first successor for a given action.
+		// Parallelism is handled by specific container nodes like ParallelFlow.
+		return nextNodes?.[0]
 	}
 }

@@ -618,13 +618,13 @@ describe('graphBuilder fan-in logic', () => {
 		const { nodeMap } = builder.build(graph)
 
 		const startNode = nodeMap.get('start')!
-		const parallelContainer = startNode.successors.get(DEFAULT_ACTION)
+		const parallelContainer = startNode.successors.get(DEFAULT_ACTION)?.[0]
 		const convergeNode = nodeMap.get('converge')
 
 		// The ParallelFlow container should be the direct successor of the start node.
 		expect(parallelContainer).toBeInstanceOf(ParallelFlow)
 		// The container's successor should be the auto-detected convergence node.
-		expect(parallelContainer!.successors.get(DEFAULT_ACTION)).toBe(convergeNode)
+		expect(parallelContainer!.successors.get(DEFAULT_ACTION)?.[0]).toBe(convergeNode)
 	})
 
 	it('should correctly wire a deep convergence from parallel start nodes', async () => {
@@ -654,7 +654,7 @@ describe('graphBuilder fan-in logic', () => {
 		// The flow's start node should be a ParallelFlow container
 		expect(parallelStartContainer).toBeInstanceOf(ParallelFlow)
 		// The container should be wired to the convergence node
-		expect(parallelStartContainer!.successors.get(DEFAULT_ACTION)).toBe(convergeNode)
+		expect(parallelStartContainer!.successors.get(DEFAULT_ACTION)?.[0]).toBe(convergeNode)
 	})
 
 	it('should not wire a fan-in if the parallel branches never converge', async () => {
@@ -677,7 +677,7 @@ describe('graphBuilder fan-in logic', () => {
 		const builder = new GraphBuilder(fanInRegistry)
 		const { nodeMap } = builder.build(graph)
 		const startNode = nodeMap.get('start')!
-		const parallelContainer = startNode.successors.get(DEFAULT_ACTION)
+		const parallelContainer = startNode.successors.get(DEFAULT_ACTION)?.[0]
 
 		expect(parallelContainer).toBeInstanceOf(ParallelFlow)
 		// Since the branches don't converge, the container should have NO successors.
@@ -820,10 +820,13 @@ describe('graphBuilder with conditional nodes', () => {
 		const pathUnderNode = nodeMap.get('path-under')!
 
 		// The successors should be the actual nodes, NOT a ParallelFlow container
-		expect(brancherNode.successors.get('over')).toBe(pathOverNode)
-		expect(brancherNode.successors.get('under')).toBe(pathUnderNode)
+		expect(brancherNode.successors.get('over')?.[0]).toBe(pathOverNode)
+		expect(brancherNode.successors.get('under')?.[0]).toBe(pathUnderNode)
 		expect(brancherNode.successors.get(DEFAULT_ACTION)).toBeUndefined()
 		expect(brancherNode).not.toBeInstanceOf(ParallelFlow)
+
+		// Verify no parallel container was created for 'brancher'
+		expect(nodeMap.has('brancher__parallel_container')).toBe(false)
 
 		// Verify no parallel container was created for 'brancher'
 		expect(nodeMap.has('brancher__parallel_container')).toBe(false)
@@ -864,7 +867,7 @@ describe('graphBuilder with conditional nodes', () => {
 		const parallelContainer = nodeMap.get('path-over__parallel_container')!
 
 		// The successor of path-over SHOULD be a parallel container
-		expect(pathOverNode.successors.get(DEFAULT_ACTION)).toBe(parallelContainer)
+		expect(pathOverNode.successors.get(DEFAULT_ACTION)?.[0]).toBe(parallelContainer)
 		expect(parallelContainer).toBeInstanceOf(ParallelFlow)
 	})
 })
@@ -1206,9 +1209,9 @@ describe('graphBuilder with complex fan-in', () => {
 		const fanInNodeId = 'w808d:o62f7'
 		const fanInNode = nodeMap.get(fanInNodeId)!
 		const inputMapper = nodeMap.get('w808d_input_mapper')!
-		const parallelContainer = inputMapper.successors.get(DEFAULT_ACTION)!
-		expect(parallelContainer.successors.size).toBe(1)
-		expect(parallelContainer.successors.get(DEFAULT_ACTION)).toBe(fanInNode)
+		const parallelContainer = inputMapper.successors.get(DEFAULT_ACTION)?.[0]
+		expect(parallelContainer!.successors.size).toBe(1)
+		expect(parallelContainer!.successors.get(DEFAULT_ACTION)?.[0]).toBe(fanInNode)
 		expect(predecessorCountMap.get(fanInNodeId)).toBe(2)
 	})
 })
@@ -1280,7 +1283,7 @@ describe('graphBuilder with sub-workflows and context passing', () => {
 		const outputMapperId = Array.from(nodeMap.keys()).find(k => k.includes('output_mapper'))!
 		const outputMapper = nodeMap.get(outputMapperId)!
 		const endNode = nodeMap.get('end')!
-		expect(outputMapper.successors.get(DEFAULT_ACTION)).toBe(endNode)
+		expect(outputMapper.successors.get(DEFAULT_ACTION)?.[0]).toBe(endNode)
 		expect(originalPredecessorIdMap.has(outputMapperId)).toBe(false)
 	})
 })

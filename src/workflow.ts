@@ -25,7 +25,7 @@ export abstract class AbstractNode<
 	/** A key-value store for static parameters that configure the node's behavior. */
 	public params: TParams = {} as TParams
 	/** A map of successor nodes, keyed by the action that triggers the transition. */
-	public successors = new Map<TPostRes | string | typeof DEFAULT_ACTION | typeof FILTER_FAILED, AbstractNode<any, any>>()
+	public successors = new Map<TPostRes | string | typeof DEFAULT_ACTION | typeof FILTER_FAILED, AbstractNode<any, any>[]>()
 	/** The original graph definition for this node, if created by a GraphBuilder. */
 	public graphData?: GraphNode
 	/** A flag indicating that this node is a container and should be passed through by distributed executors. */
@@ -68,17 +68,26 @@ export abstract class AbstractNode<
 	 * Defines the next node in the sequence for a given action.
 	 * This is the primary method for constructing a workflow graph.
 	 *
-	 * @param node The successor node to execute next.
+	 * @param node The successor node or nodes to execute next.
 	 * @param action The action from this node's `post` method that triggers
 	 * the transition. Defaults to `DEFAULT_ACTION` for linear flows.
-	 * @returns The successor node instance, allowing for further chaining.
+	 * @returns The successor node instance, allowing for further chaining. If multiple nodes are provided, it returns the first one.
 	 */
 	next<NextNode extends AbstractNode<any, any>>(
-		node: NextNode,
+		node: NextNode | NextNode[],
 		action: TPostRes | string | typeof DEFAULT_ACTION | typeof FILTER_FAILED = DEFAULT_ACTION as any,
 	): NextNode {
-		this.successors.set(action, node)
-		return node
+		const existing = this.successors.get(action) ?? []
+		const newSuccessors = Array.isArray(node) ? node : [node]
+
+		for (const successor of newSuccessors) {
+			if (!existing.includes(successor)) {
+				existing.push(successor)
+			}
+		}
+
+		this.successors.set(action, existing)
+		return Array.isArray(node) ? node[0] : node
 	}
 
 	/**
@@ -638,10 +647,12 @@ export class Flow<
 			if (currentNode.id === id)
 				return currentNode
 
-			for (const successor of currentNode.successors.values()) {
-				if (!visited.has(successor)) {
-					visited.add(successor)
-					queue.push(successor)
+			for (const successorArray of currentNode.successors.values()) {
+				for (const successor of successorArray) {
+					if (!visited.has(successor)) {
+						visited.add(successor)
+						queue.push(successor)
+					}
 				}
 			}
 		}
