@@ -1,3 +1,4 @@
+import type { ContextKey } from '../context'
 import type { NodeOptions } from '../types'
 import type { AbstractNode, Flow } from '../workflow'
 
@@ -160,6 +161,9 @@ export interface SubWorkflowResolver {
 	getGraph: (id: number | string) => WorkflowGraph | undefined
 }
 
+/** A map to resolve string-based keys from a graph definition to runtime ContextKey symbols. */
+export type ContextKeyResolver = Map<string, ContextKey<any>>
+
 /**
  * Options for configuring the behavior of the `GraphBuilder`.
  */
@@ -183,4 +187,10 @@ export interface GraphBuilderOptions {
 	 * exclusive conditional paths, not parallel branches.
 	 */
 	conditionalNodeTypes?: string[]
+	/**
+	 * A map that resolves string keys from the declarative graph's `inputs`/`outputs`
+	 * blocks to their corresponding runtime `ContextKey` symbols. This is essential
+	 * for bridging the declarative and runtime worlds.
+	 */
+	contextKeyResolver?: ContextKeyResolver
 }

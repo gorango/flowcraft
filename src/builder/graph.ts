@@ -1,7 +1,9 @@
+import type { ContextKey } from '../context'
 import type { Logger } from '../logger'
 import type { FILTER_FAILED, NodeArgs } from '../types'
 import type { AbstractNode } from '../workflow'
-import type { BuildResult, GraphBuilderOptions, GraphEdge, GraphNode, NodeRegistry, NodeTypeMap, OriginalPredecessorIdMap, PredecessorIdMap, SubWorkflowResolver, TypedNodeRegistry, TypedWorkflowGraph, WorkflowGraph } from './graph.types'
+import type { BuildResult, ContextKeyResolver, GraphBuilderOptions, GraphEdge, GraphNode, NodeRegistry, NodeTypeMap, OriginalPredecessorIdMap, PredecessorIdMap, SubWorkflowResolver, TypedNodeRegistry, TypedWorkflowGraph, WorkflowGraph } from './graph.types'
+import { contextKey } from '../context'
 import { NullLogger } from '../logger'
 import { DEFAULT_ACTION } from '../types'
 import { generateMermaidGraph } from '../utils/mermaid'
@@ -31,22 +33,42 @@ export function createNodeRegistry<
  */
 class InputMappingNode extends Node {
 	private mappings: Record<string, string>
-	constructor(options: { data: Record<string, string> }) {
+	private resolver: ContextKeyResolver
+	private uniqueMapperKey: ContextKey<ContextKey<any>[]>
+
+	constructor(options: { data: Record<string, any> }) {
 		super()
-		// Exclude the injected nodeId from the mappings
-		const { nodeId, ...mappings } = options.data
-		this.mappings = mappings
+		const { nodeId, originalId, resolver, uniqueMapperKey, ...mappings } = options.data
+		this.mappings = mappings as Record<string, string>
+		this.resolver = resolver || new Map()
+		this.uniqueMapperKey = uniqueMapperKey
 	}
 
 	async prep({ ctx, logger }: NodeArgs) {
-		for (const [subKey, parentKey] of Object.entries(this.mappings)) {
+		const newlyCreatedKeys: ContextKey<any>[] = []
+		for (const [subKeyStr, parentKeyStr] of Object.entries(this.mappings)) {
+			const parentKey = this.resolver.get(parentKeyStr)
+			const subKey = this.resolver.get(subKeyStr)
+
+			if (!parentKey || !subKey) {
+				logger.warn(`[InputMapper] Could not resolve keys '${parentKeyStr}' or '${subKeyStr}'. Skipping.`)
+				continue
+			}
+
 			if (ctx.has(parentKey)) {
+				// The key is being passed from a parent. If the target subKey doesn't exist yet,
+				// it's "owned" by this sub-workflow and should be cleaned up later.
+				if (!ctx.has(subKey)) {
+					newlyCreatedKeys.push(subKey)
+				}
 				ctx.set(subKey, ctx.get(parentKey))
 			}
 			else {
-				logger.warn(`[InputMapper] Input mapping failed. Key '${parentKey}' not found in context.`)
+				logger.warn(`[InputMapper] Input mapping failed. Key '${parentKeyStr}' not found in context.`)
 			}
 		}
+		// Use the unique key to store only the keys created at this level.
+		ctx.set(this.uniqueMapperKey, newlyCreatedKeys)
 	}
 }
 
@@ -58,22 +80,40 @@ class InputMappingNode extends Node {
  */
 class OutputMappingNode extends Node {
 	private mappings: Record<string, string>
-	constructor(options: { data: Record<string, string> }) {
+	private resolver: ContextKeyResolver
+	private uniqueMapperKey: ContextKey<ContextKey<any>[]>
+
+	constructor(options: { data: Record<string, any> }) {
 		super()
-		// Exclude the injected nodeId from the mappings
-		const { nodeId, ...mappings } = options.data
-		this.mappings = mappings
+		const { nodeId, originalId, resolver, uniqueMapperKey, ...mappings } = options.data
+		this.mappings = mappings as Record<string, string>
+		this.resolver = resolver || new Map()
+		this.uniqueMapperKey = uniqueMapperKey
 	}
 
 	async prep({ ctx, logger }: NodeArgs) {
-		for (const [parentKey, subKey] of Object.entries(this.mappings)) {
+		for (const [parentKeyStr, subKeyStr] of Object.entries(this.mappings)) {
+			const parentKey = this.resolver.get(parentKeyStr)
+			const subKey = this.resolver.get(subKeyStr)
+
+			if (!parentKey || !subKey) {
+				logger.warn(`[OutputMapper] Could not resolve keys '${parentKeyStr}' or '${subKeyStr}'. Skipping.`)
+				continue
+			}
+
 			if (ctx.has(subKey)) {
 				ctx.set(parentKey, ctx.get(subKey))
 			}
 			else {
-				logger.warn(`[OutputMapper] Output mapping failed. Key '${subKey}' not found in context.`)
+				logger.warn(`[OutputMapper] Output mapping failed. Key '${subKeyStr}' not found in context.`)
 			}
 		}
+
+		const keysToDelete = ctx.get(this.uniqueMapperKey) || []
+		for (const key of keysToDelete) {
+			ctx.delete(key)
+		}
+		ctx.delete(this.uniqueMapperKey)
 	}
 }
 
@@ -85,7 +125,7 @@ class OutputMappingNode extends Node {
 class SubWorkflowContainerNode extends Node {
 	constructor() {
 		super()
-		this.isPassthrough = true
+		// this.isPassthrough = true
 	}
 
 	async exec() {
@@ -133,6 +173,7 @@ export class GraphBuilder<
 	private conditionalNodeTypes: string[]
 	private subWorkflowResolver?: SubWorkflowResolver
 	private logger: Logger
+	private contextKeyResolver?: ContextKeyResolver
 
 	/**
 	 * @param registry A type-safe object or a `Map` where keys are node `type` strings and
@@ -164,6 +205,7 @@ export class GraphBuilder<
 		this.subWorkflowNodeTypes = options.subWorkflowNodeTypes ?? []
 		this.conditionalNodeTypes = options.conditionalNodeTypes ?? []
 		this.subWorkflowResolver = options.subWorkflowResolver
+		this.contextKeyResolver = options.contextKeyResolver
 	}
 
 	private _logMermaid(flow: Flow) {
@@ -178,58 +220,47 @@ export class GraphBuilder<
 		const finalNodes: GraphNode[] = []
 		const finalEdges: GraphEdge[] = []
 
-		const localNodeIds = new Set(graph.nodes.map(n => n.id))
-
 		for (const node of graph.nodes) {
 			const prefixedNodeId = `${idPrefix}${node.id}`
 			const sanitizedId = prefixedNodeId.replace(/:/g, '_').replace(/\W/g, '')
 
 			const isRegisteredSubWorkflow = this.subWorkflowNodeTypes.includes(node.type)
 			const hasWorkflowId = node.data && 'workflowId' in node.data
-			const newNodeData = JSON.parse(JSON.stringify(node.data || {}))
-
-			if (newNodeData.inputs) {
-				const inputs = newNodeData.inputs as Record<string, string | string[]>
-				for (const [templateKey, sourcePathOrPaths] of Object.entries(inputs)) {
-					const sourcePaths = Array.isArray(sourcePathOrPaths) ? sourcePathOrPaths : [sourcePathOrPaths]
-					const newSourcePaths = sourcePaths.map((sourcePath) => {
-						if (localNodeIds.has(sourcePath))
-							return `${idPrefix}${sourcePath}`
-						return sourcePath
-					})
-					inputs[templateKey] = Array.isArray(sourcePathOrPaths) ? newSourcePaths : newSourcePaths[0]
-				}
-			}
+			// Use the original node.data, not a clone, to ensure we have the real thing.
+			const subWorkflowData = node.data as any
 
 			if (isRegisteredSubWorkflow) {
 				if (!this.subWorkflowResolver)
 					throw new Error('GraphBuilder: `subWorkflowResolver` must be provided in options to handle sub-workflows.')
 
-				const subWorkflowData = node.data as any
 				const subWorkflowId = subWorkflowData.workflowId
 				const subGraph: WorkflowGraph | undefined = this.subWorkflowResolver.getGraph(subWorkflowId)
 				if (!subGraph)
 					throw new Error(`Sub-workflow with ID ${subWorkflowId} not found in resolver.`)
 
+				// Create the container and mapper nodes
 				finalNodes.push({
 					id: prefixedNodeId,
 					type: '__internal_sub_workflow_container__',
-					data: { ...newNodeData, originalId: node.id },
+					data: { ...subWorkflowData, originalId: node.id },
 				})
 
 				const inputMapperId = `${sanitizedId}_input_mapper`
 				const outputMapperId = `${sanitizedId}_output_mapper`
+				const uniqueMapperKey = contextKey<ContextKey<any>[]>(`${sanitizedId}_mapped_keys`)
+
 				finalNodes.push({
 					id: inputMapperId,
 					type: '__internal_input_mapper__',
-					data: { ...(subWorkflowData.inputs || {}), originalId: node.id },
+					data: { ...(subWorkflowData.inputs || {}), originalId: node.id, resolver: this.contextKeyResolver, uniqueMapperKey },
 				})
 				finalNodes.push({
 					id: outputMapperId,
 					type: '__internal_output_mapper__',
-					data: { ...(subWorkflowData.outputs || {}), originalId: node.id },
+					data: { ...(subWorkflowData.outputs || {}), originalId: node.id, resolver: this.contextKeyResolver, uniqueMapperKey },
 				})
 
+				// Recursively flatten the sub-graph
 				const inlinedSubGraph = this._flattenGraph(subGraph, `${prefixedNodeId}:`)
 				const augmentedInlinedNodes = inlinedSubGraph.nodes.map(n => ({
 					...n,
@@ -238,25 +269,27 @@ export class GraphBuilder<
 				finalNodes.push(...augmentedInlinedNodes)
 				finalEdges.push(...inlinedSubGraph.edges)
 
-				finalEdges.push({ source: prefixedNodeId, target: inputMapperId })
+				// Add the INTERNAL wiring for the sub-workflow
+				finalEdges.push({ source: prefixedNodeId, target: inputMapperId }) // container -> input_mapper
 
 				const subGraphStartIds = inlinedSubGraph.nodes.map(n => n.id).filter(id => !inlinedSubGraph.edges.some(e => e.target === id))
 				for (const startId of subGraphStartIds)
-					finalEdges.push({ source: inputMapperId, target: startId })
+					finalEdges.push({ source: inputMapperId, target: startId }) // input_mapper -> sub-graph start nodes
 
 				const subGraphTerminalIds = inlinedSubGraph.nodes.map(n => n.id).filter(id => !inlinedSubGraph.edges.some(e => e.source === id))
 				for (const terminalId of subGraphTerminalIds)
-					finalEdges.push({ source: terminalId, target: outputMapperId })
+					finalEdges.push({ source: terminalId, target: outputMapperId }) // sub-graph terminal nodes -> output_mapper
 			}
 			else if (hasWorkflowId) {
 				throw new Error(`Node with ID '${node.id}' has a 'workflowId' but its type '${node.type}' is not in 'subWorkflowNodeTypes'.`)
 			}
 			else {
-				finalNodes.push({ ...node, id: prefixedNodeId, data: { ...newNodeData, originalId: node.id } })
+				// The data payload was being unnecessarily cloned and losing properties. Use original.
+				finalNodes.push({ ...node, id: prefixedNodeId, data: { ...node.data, originalId: node.id } })
 			}
 		}
 
-		// Pass 2: Re-wire all original edges to connect to the correct nodes in the flattened graph.
+		// Pass 2: Re-wire all original EXTERNAL edges to connect to the correct points
 		for (const edge of graph.edges) {
 			const sourceNode = graph.nodes.find(n => n.id === edge.source)!
 			const prefixedSourceId = `${idPrefix}${edge.source}`
@@ -266,9 +299,11 @@ export class GraphBuilder<
 			const sanitizedSourceId = prefixedSourceId.replace(/:/g, '_').replace(/\W/g, '')
 
 			if (isSourceSub) {
+				// If the source is a sub-workflow, its exit point is the output mapper.
 				finalEdges.push({ ...edge, source: `${sanitizedSourceId}_output_mapper`, target: prefixedTargetId })
 			}
 			else {
+				// Otherwise, the connection is from the node itself. The target is the container of the next node.
 				finalEdges.push({ ...edge, source: prefixedSourceId, target: prefixedTargetId })
 			}
 		}

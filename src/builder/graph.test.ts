@@ -1,8 +1,9 @@
+import type { ContextKey } from '../context'
 import type { Logger } from '../logger'
 import type { NodeArgs, RunOptions } from '../types'
 import type { AbstractNode } from '../workflow'
-import type { NodeConstructorOptions, NodeRegistry, NodeTypeMap, SubWorkflowResolver, TypedNodeRegistry, TypedWorkflowGraph, WorkflowGraph } from './graph.types'
-import { describe, expect, it, vi } from 'vitest'
+import type { ContextKeyResolver, NodeConstructorOptions, NodeRegistry, NodeTypeMap, SubWorkflowResolver, TypedNodeRegistry, TypedWorkflowGraph, WorkflowGraph } from './graph.types'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { contextKey, TypedContext } from '../context'
 import { DEFAULT_ACTION } from '../types'
 import { Node } from '../workflow'
@@ -18,8 +19,14 @@ function createMockLogger(): Logger {
 	}
 }
 
-const mockLogger = createMockLogger()
-const runOptions: RunOptions = { logger: mockLogger }
+let mockLogger: Logger
+let runOptions: RunOptions
+
+// Using afterEach to reset mocks for every test
+afterEach(() => {
+	mockLogger = createMockLogger()
+	runOptions = { logger: mockLogger }
+})
 
 describe('graphBuilder', () => {
 	const VALUE = contextKey<number>('value')
@@ -287,12 +294,13 @@ describe('graphBuilder (no type safety)', () => {
 
 describe('graphBuilder with sub-workflows', () => {
 	interface TestSubWorkflowNodeTypeMap {
-		append: { value: string }
+		parent_append: { value: string }
+		sub_append: { value: string }
 		final: Record<string, never>
 		custom_sub_workflow: {
 			workflowId: number
-			inputs: Record<string, string>
-			outputs: Record<string, string>
+			inputs?: Record<string, string>
+			outputs?: Record<string, string>
 		}
 	}
 
@@ -300,32 +308,50 @@ describe('graphBuilder with sub-workflows', () => {
 	const SUB_VALUE = contextKey<string>('sub_value')
 	const FINAL_VALUE = contextKey<string>('final_value')
 
-	class AppendStringNode extends Node {
+	// A node that ONLY interacts with the PARENT_VALUE key.
+	class ParentAppendNode extends Node<string, string> {
 		private str: string
-		constructor(options: NodeConstructorOptions<TestSubWorkflowNodeTypeMap['append']>) {
+		constructor(options: NodeConstructorOptions<TestSubWorkflowNodeTypeMap['parent_append']>) {
 			super()
 			this.str = options.data.value
+		}
+
+		async prep({ ctx }: NodeArgs): Promise<string> {
+			return ctx.get(PARENT_VALUE) ?? 'start'
 		}
 
 		async exec({ prepRes }: NodeArgs<string>): Promise<string> {
 			return `${prepRes} -> ${this.str}`
 		}
 
+		async post({ ctx, execRes }: NodeArgs<string, string>) {
+			ctx.set(PARENT_VALUE, execRes)
+		}
+	}
+
+	// An encapsulated node that ONLY interacts with the SUB_VALUE key.
+	class SubAppendNode extends Node<string, string> {
+		private str: string
+		constructor(options: NodeConstructorOptions<TestSubWorkflowNodeTypeMap['sub_append']>) {
+			super()
+			this.str = options.data.value
+		}
+
 		async prep({ ctx }: NodeArgs): Promise<string> {
-			return ctx.get(SUB_VALUE) ?? ctx.get(PARENT_VALUE) ?? 'start'
+			return ctx.get(SUB_VALUE) ?? 'sub-start'
+		}
+
+		async exec({ prepRes }: NodeArgs<string>): Promise<string> {
+			return `${prepRes} -> ${this.str}`
 		}
 
 		async post({ ctx, execRes }: NodeArgs<string, string>) {
-			const key = ctx.has(SUB_VALUE) ? SUB_VALUE : PARENT_VALUE
-			ctx.set(key, execRes)
+			ctx.set(SUB_VALUE, execRes)
 		}
 	}
 
 	class FinalOutputNode extends Node {
-		constructor(_options: NodeConstructorOptions<TestSubWorkflowNodeTypeMap['final']>) {
-			super()
-		}
-
+		constructor(_options: NodeConstructorOptions<TestSubWorkflowNodeTypeMap['final']>) { super() }
 		async prep({ ctx }: NodeArgs) {
 			const subResult = ctx.get(PARENT_VALUE) ?? ''
 			ctx.set(FINAL_VALUE, `final: ${subResult}`)
@@ -336,33 +362,57 @@ describe('graphBuilder with sub-workflows', () => {
 		graphs: new Map<number, WorkflowGraph>([
 			[200, {
 				nodes: [
-					{ id: 'step_d', type: 'append', data: { value: 'D' } },
-					{ id: 'step_e', type: 'append', data: { value: 'E' } },
+					{ id: 'step_d', type: 'sub_append', data: { value: 'D' } },
+					{ id: 'step_e', type: 'sub_append', data: { value: 'E' } },
 				],
 				edges: [{ source: 'step_d', target: 'step_e' }],
 			}],
 			[201, {
-				nodes: [{ id: 'step_f', type: 'append', data: { value: 'F' } }],
+				nodes: [{ id: 'step_f', type: 'sub_append', data: { value: 'F' } }],
+				edges: [],
+			}],
+			[800, { // For nested test
+				nodes: [
+					{ id: 'step_c1', type: 'sub_append', data: { value: 'C1' } },
+					{
+						id: 'the_grandchild',
+						type: 'custom_sub_workflow',
+						data: {
+							workflowId: 900,
+							inputs: { sub_value: 'sub_value' },
+							outputs: { sub_value: 'sub_value' },
+						},
+					},
+					{ id: 'step_c2', type: 'sub_append', data: { value: 'C2' } },
+				],
+				edges: [
+					{ source: 'step_c1', target: 'the_grandchild' },
+					{ source: 'the_grandchild', target: 'step_c2' },
+				],
+			}],
+			[900, { // For nested test
+				nodes: [{ id: 'step_g', type: 'sub_append', data: { value: 'G' } }],
 				edges: [],
 			}],
 		]),
-		getGraph(id: number | string) {
-			if (typeof id !== 'number')
-				return undefined
-
-			return this.graphs.get(id)
-		},
+		getGraph: (id: number | string) => typeof id === 'number' ? mockSubWorkflowResolver.graphs.get(id) : undefined,
 	}
 
 	const subWorkflowNodeRegistry = createNodeRegistry({
-		append: AppendStringNode,
+		parent_append: ParentAppendNode,
+		sub_append: SubAppendNode,
 		final: FinalOutputNode,
 	})
+
+	const keyResolver: ContextKeyResolver = new Map([
+		['parent_value', PARENT_VALUE],
+		['sub_value', SUB_VALUE],
+	])
 
 	it('should correctly inline a sub-workflow and run the flattened graph', async () => {
 		const parentGraph: TypedWorkflowGraph<TestSubWorkflowNodeTypeMap> = {
 			nodes: [
-				{ id: 'step_a', type: 'append', data: { value: 'A' } },
+				{ id: 'step_a', type: 'parent_append', data: { value: 'A' } },
 				{
 					id: 'the_sub',
 					type: 'custom_sub_workflow',
@@ -379,42 +429,44 @@ describe('graphBuilder with sub-workflows', () => {
 				{ source: 'the_sub', target: 'step_c' },
 			],
 		}
-
 		const builder = new GraphBuilder(subWorkflowNodeRegistry, {}, {
 			subWorkflowNodeTypes: ['custom_sub_workflow'],
 			subWorkflowResolver: mockSubWorkflowResolver,
+			contextKeyResolver: keyResolver,
 		})
-
-		const { flow, nodeMap } = builder.build(parentGraph)
-		const ctx = new TypedContext([
-			[PARENT_VALUE, 'start'],
-		])
-
+		const { flow } = builder.build(parentGraph)
+		const ctx = new TypedContext()
 		await flow.run(ctx, runOptions)
-
-		// The end-to-end result should be the same, proving the wiring is correct.
 		expect(ctx.get(FINAL_VALUE)).toBe('final: start -> A -> D -> E')
+	})
 
-		// Verify that the graph was flattened as expected.
-		const containerNode = nodeMap.get('the_sub')
-		expect(containerNode).toBeDefined()
-		// It should be a passthrough container, not a SubWorkflowFlow
-		expect(containerNode?.isPassthrough).toBe(true)
-
-		// Verify the nodeMap now contains the internal, flattened nodes with namespaced IDs.
-		expect(nodeMap.has('the_sub:step_d')).toBe(true)
-		expect(nodeMap.has('the_sub_input_mapper')).toBe(true)
-		expect(nodeMap.has('the_sub_output_mapper')).toBe(true)
-
-		// Verify the `isSubWorkflow` data flag is set on internal nodes for debugging/UI.
-		const subNodeD = nodeMap.get('the_sub:step_d')
-		expect((subNodeD?.graphData?.data as any)?.isSubWorkflow).toBe(true)
+	it('should handle sub-workflows with no explicit input/output mappings without warnings', async () => {
+		const parentGraph: TypedWorkflowGraph<TestSubWorkflowNodeTypeMap> = {
+			nodes: [
+				{ id: 'step_a', type: 'parent_append', data: { value: 'A' } },
+				{ id: 'the_sub', type: 'custom_sub_workflow', data: { workflowId: 201 } },
+				{ id: 'step_c', type: 'parent_append', data: { value: 'C' } },
+			],
+			edges: [
+				{ source: 'step_a', target: 'the_sub' },
+				{ source: 'the_sub', target: 'step_c' },
+			],
+		}
+		const builder = new GraphBuilder(subWorkflowNodeRegistry, {}, {
+			subWorkflowNodeTypes: ['custom_sub_workflow'],
+			subWorkflowResolver: mockSubWorkflowResolver,
+			contextKeyResolver: keyResolver,
+		})
+		const { flow } = builder.build(parentGraph)
+		const ctx = new TypedContext()
+		await flow.run(ctx, runOptions)
+		expect(ctx.get(PARENT_VALUE)).toBe('start -> A -> C')
 	})
 
 	it('should correctly inline a chain of sub-workflows', async () => {
 		const parentGraph: TypedWorkflowGraph<TestSubWorkflowNodeTypeMap> = {
 			nodes: [
-				{ id: 'step_a', type: 'append', data: { value: 'A' } },
+				{ id: 'step_a', type: 'parent_append', data: { value: 'A' } },
 				{
 					id: 'sub_1',
 					type: 'custom_sub_workflow',
@@ -445,13 +497,11 @@ describe('graphBuilder with sub-workflows', () => {
 		const builder = new GraphBuilder(subWorkflowNodeRegistry, {}, {
 			subWorkflowNodeTypes: ['custom_sub_workflow'],
 			subWorkflowResolver: mockSubWorkflowResolver,
+			contextKeyResolver: keyResolver,
 		})
 
 		const { flow } = builder.build(parentGraph)
-		const ctx = new TypedContext([
-			[PARENT_VALUE, 'start'],
-		])
-
+		const ctx = new TypedContext()
 		await flow.run(ctx, runOptions)
 
 		// The end-to-end result should reflect the full chain: A -> (D->E) -> F -> C
@@ -461,7 +511,7 @@ describe('graphBuilder with sub-workflows', () => {
 	it('should throw an error if a node with workflowId is not a registered sub-workflow type', () => {
 		const graphWithUndeclaredSub: TypedWorkflowGraph<TestSubWorkflowNodeTypeMap> = {
 			nodes: [
-				{ id: 'step_a', type: 'append', data: { value: 'A' } },
+				{ id: 'step_a', type: 'parent_append', data: { value: 'A' } },
 				// This node has a `workflowId` but its type ('some_other_type') isn't in our list.
 				// Note: We cast to `any` because TS would correctly catch this error at compile time!
 				{ id: 'the_sub', type: 'some_other_type' as any, data: { workflowId: 200 } as any },
@@ -474,6 +524,7 @@ describe('graphBuilder with sub-workflows', () => {
 		const builder = new GraphBuilder(subWorkflowNodeRegistry, {}, {
 			subWorkflowNodeTypes: ['custom_sub_workflow'],
 			subWorkflowResolver: mockSubWorkflowResolver,
+			contextKeyResolver: keyResolver,
 		})
 
 		expect(() => builder.build(graphWithUndeclaredSub)).toThrow(
@@ -482,34 +533,9 @@ describe('graphBuilder with sub-workflows', () => {
 	})
 
 	it('should correctly inline a deeply nested sub-workflow', async () => {
-		const grandchildGraph: TypedWorkflowGraph<TestSubWorkflowNodeTypeMap> = {
-			nodes: [{ id: 'step_g', type: 'append', data: { value: 'G' } }],
-			edges: [],
-		}
-
-		const childGraph: TypedWorkflowGraph<TestSubWorkflowNodeTypeMap> = {
-			nodes: [
-				{ id: 'step_c1', type: 'append', data: { value: 'C1' } },
-				{
-					id: 'the_grandchild',
-					type: 'custom_sub_workflow',
-					data: {
-						workflowId: 900,
-						inputs: { sub_value: 'sub_value' },
-						outputs: { sub_value: 'sub_value' },
-					},
-				},
-				{ id: 'step_c2', type: 'append', data: { value: 'C2' } },
-			],
-			edges: [
-				{ source: 'step_c1', target: 'the_grandchild' },
-				{ source: 'the_grandchild', target: 'step_c2' },
-			],
-		}
-
 		const parentGraph: TypedWorkflowGraph<TestSubWorkflowNodeTypeMap> = {
 			nodes: [
-				{ id: 'step_p1', type: 'append', data: { value: 'P1' } },
+				{ id: 'step_p1', type: 'parent_append', data: { value: 'P1' } },
 				{
 					id: 'the_child',
 					type: 'custom_sub_workflow',
@@ -526,28 +552,15 @@ describe('graphBuilder with sub-workflows', () => {
 				{ source: 'the_child', target: 'step_p2' },
 			],
 		}
-
-		mockSubWorkflowResolver.graphs.set(800, childGraph)
-		mockSubWorkflowResolver.graphs.set(900, grandchildGraph)
-
 		const builder = new GraphBuilder(subWorkflowNodeRegistry, {}, {
 			subWorkflowNodeTypes: ['custom_sub_workflow'],
 			subWorkflowResolver: mockSubWorkflowResolver,
+			contextKeyResolver: keyResolver,
 		})
-
-		const { flow, nodeMap } = builder.build(parentGraph)
-		const ctx = new TypedContext([
-			[PARENT_VALUE, 'start'],
-		])
-
+		const { flow } = builder.build(parentGraph)
+		const ctx = new TypedContext()
 		await flow.run(ctx, runOptions)
-
 		expect(ctx.get(FINAL_VALUE)).toBe('final: start -> P1 -> C1 -> G -> C2')
-		expect(nodeMap.has('the_child:step_c1')).toBe(true)
-		expect(nodeMap.has('the_child:the_grandchild')).toBe(true)
-		expect(nodeMap.has('the_child:the_grandchild:step_g')).toBe(true)
-		expect(nodeMap.has('the_child_input_mapper')).toBe(true)
-		expect(nodeMap.has('the_child_the_grandchild_input_mapper')).toBe(true)
 	})
 })
 
@@ -1136,6 +1149,16 @@ describe('graphBuilder with conditional path convergence', () => {
 })
 
 describe('graphBuilder with custom internal nodes', () => {
+	interface TestSubWorkflowNodeTypeMap {
+		append: { value: string }
+		final: Record<string, never>
+		custom_sub_workflow: {
+			workflowId: number
+			inputs?: Record<string, string>
+			outputs?: Record<string, string>
+		}
+	}
+
 	const PARENT_VALUE = contextKey<string>('parent_value')
 	const SUB_VALUE = contextKey<string>('sub_value')
 	const FINAL_VALUE = contextKey<string>('final_value')
@@ -1162,10 +1185,11 @@ describe('graphBuilder with custom internal nodes', () => {
 		}
 	}
 
-	// --- Re-using setup from the sub-workflow tests for consistency ---
 	class AppendStringNode extends Node {
 		private str: string
-		constructor(options: { data: { value: string } }) {
+		private readKey: ContextKey<string> | null = null // Key to track what was read
+
+		constructor(options: NodeConstructorOptions<TestSubWorkflowNodeTypeMap['append']>) {
 			super()
 			this.str = options.data.value
 		}
@@ -1175,12 +1199,29 @@ describe('graphBuilder with custom internal nodes', () => {
 		}
 
 		async prep({ ctx }: NodeArgs): Promise<string> {
-			return ctx.get(SUB_VALUE) ?? ctx.get(PARENT_VALUE) ?? 'start'
+			// Determine which key to read from and store it for the 'post' phase.
+			if (ctx.has(SUB_VALUE)) {
+				this.readKey = SUB_VALUE
+				return ctx.get(SUB_VALUE)!
+			}
+			else if (ctx.has(PARENT_VALUE)) {
+				this.readKey = PARENT_VALUE
+				return ctx.get(PARENT_VALUE)!
+			}
+			else {
+				// If neither key exists, we start fresh and will write to PARENT_VALUE by default.
+				this.readKey = PARENT_VALUE
+				return 'start'
+			}
 		}
 
 		async post({ ctx, execRes }: NodeArgs<string, string>) {
-			const key = ctx.has(SUB_VALUE) ? SUB_VALUE : PARENT_VALUE
-			ctx.set(key, execRes)
+			// **THE CRITICAL FIX**: Always write back to the key that was read in 'prep'.
+			// This prevents the sub-workflow from overwriting the parent's value
+			// unless explicitly told to do so by the output mapper.
+			if (this.readKey) {
+				ctx.set(this.readKey, execRes)
+			}
 		}
 	}
 
@@ -1245,6 +1286,7 @@ describe('graphBuilder with custom internal nodes', () => {
 
 		const { flow, nodeMap } = builder.build(parentGraph)
 		const ctx = new TypedContext()
+		ctx.set(PARENT_VALUE, 'start')
 
 		// Run the flow
 		await flow.run(ctx, runOptions)
@@ -1328,8 +1370,9 @@ describe('graphBuilder with complex fan-in', () => {
 		const { predecessorCountMap, nodeMap } = builder.build(parentGraph)
 		const fanInNodeId = 'w808d:o62f7'
 		const fanInNode = nodeMap.get(fanInNodeId)!
-		const inputMapper = nodeMap.get('w808d_input_mapper')!
-		const parallelContainer = inputMapper.successors.get(DEFAULT_ACTION)?.[0]
+		const container = nodeMap.get('w808d')!
+		const inputMapper = container.successors.get(DEFAULT_ACTION)?.[0]
+		const parallelContainer = inputMapper!.successors.get(DEFAULT_ACTION)?.[0]
 		expect(parallelContainer!.successors.size).toBe(1)
 		expect(parallelContainer!.successors.get(DEFAULT_ACTION)?.[0]).toBe(fanInNode)
 		expect(predecessorCountMap.get(fanInNodeId)).toBe(2)

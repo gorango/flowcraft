@@ -1,3 +1,5 @@
+/* eslint-disable style/lines-between-class-members, style/max-statements-per-line */
+
 /**
  * A type-safe, opaque key for storing and retrieving values from the Context.
  * Using a `ContextKey` provides compile-time safety for your workflow's state.
@@ -25,6 +27,8 @@ export interface Context {
 	set: (<T>(key: ContextKey<T>, value: T) => this) & ((key: string, value: any) => this)
 	/** Checks if a key exists in the context. */
 	has: ((key: ContextKey<any>) => boolean) & ((key: string) => boolean)
+	/** Deletes a key from the context. */
+	delete: ((key: ContextKey<any>) => boolean) & ((key: string) => boolean)
 	/** Returns an iterator of all [key, value] pairs in the context. */
 	entries: () => IterableIterator<[any, any]>
 	/** Returns an iterator of all keys in the context. */
@@ -38,7 +42,6 @@ export interface Context {
  */
 export class TypedContext implements Context {
 	private data: Map<any, any>
-
 	/**
 	 * @param initialData An optional iterable (like an array of `[key, value]` pairs)
 	 * to initialize the context with.
@@ -46,31 +49,13 @@ export class TypedContext implements Context {
 	constructor(initialData?: Iterable<readonly [ContextKey<any> | string, any]> | null) {
 		this.data = new Map<any, any>(initialData)
 	}
-
-	get(key: ContextKey<any> | string): any {
-		return this.data.get(key)
-	}
-
-	set(key: ContextKey<any> | string, value: any): this {
-		this.data.set(key, value)
-		return this
-	}
-
-	has(key: ContextKey<any> | string): boolean {
-		return this.data.has(key)
-	}
-
-	entries(): IterableIterator<[any, any]> {
-		return this.data.entries()
-	}
-
-	keys(): IterableIterator<any> {
-		return this.data.keys()
-	}
-
-	values(): IterableIterator<any> {
-		return this.data.values()
-	}
+	get(key: ContextKey<any> | string): any { return this.data.get(key) }
+	set(key: ContextKey<any> | string, value: any): this { this.data.set(key, value); return this }
+	has(key: ContextKey<any> | string): boolean { return this.data.has(key) }
+	delete(key: ContextKey<any> | string): boolean { return this.data.delete(key) }
+	entries(): IterableIterator<[any, any]> { return this.data.entries() }
+	keys(): IterableIterator<any> { return this.data.keys() }
+	values(): IterableIterator<any> { return this.data.values() }
 }
 
 /** A function that takes a `Context` and returns a (potentially new) `Context`. */

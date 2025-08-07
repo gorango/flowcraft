@@ -3,6 +3,7 @@ import type { GraphNode } from './builder/graph.types'
 import type { Context, ContextKey, ContextLens } from './context'
 import type { InternalRunOptions } from './executors/types'
 import type { Middleware, NodeArgs, NodeOptions, NodeRunContext, Params, RunOptions } from './types'
+import { TypedContext } from './context'
 import { AbortError, FatalWorkflowError, WorkflowError } from './errors'
 import { InMemoryExecutor } from './executors/in-memory'
 import { NullLogger } from './logger'
@@ -658,5 +659,33 @@ export class Flow<
 		}
 
 		return undefined
+	}
+
+	/**
+	 * Retrieves all unique nodes within the flow's graph.
+	 * @internal
+	 */
+	public getAllNodes(): Set<AbstractNode> {
+		const allNodes = new Set<AbstractNode>()
+		if (!this.startNode)
+			return allNodes
+
+		const queue: AbstractNode[] = [this.startNode]
+		const visited = new Set<AbstractNode>([this.startNode])
+		allNodes.add(this.startNode)
+
+		while (queue.length > 0) {
+			const currentNode = queue.shift()!
+			for (const successorArray of currentNode.successors.values()) {
+				for (const successor of successorArray) {
+					if (!visited.has(successor)) {
+						visited.add(successor)
+						queue.push(successor)
+						allNodes.add(successor)
+					}
+				}
+			}
+		}
+		return allNodes
 	}
 }
