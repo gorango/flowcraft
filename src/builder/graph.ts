@@ -485,50 +485,85 @@ export class GraphBuilder<
 	}
 
 	/**
-	 * Creates a map of each node ID to an array of its direct predecessor node IDs.
-	 * This is a helper for executors that need to know a node's direct inputs.
+	 * Creates a map of each node ID to its logical, data-producing predecessors.
+	 * This is the core logic for enabling distributed context passing. It traces
+	 * backwards through the flattened graph, skipping over internal structural
+	 * nodes (like mappers and joins) to find the original user-defined nodes
+	 * or sub-workflow containers that produce output.
+	 *
 	 * @param graph The flattened workflow graph.
-	 * @returns A map where each key is a node ID and the value is an array of its predecessor IDs.
+	 * @param nodeMap A map of all instantiated node objects.
+	 * @returns A tuple containing the direct predecessor map and the logical, original predecessor map.
 	 * @private
 	 */
 	private _createPredecessorIdMaps(
 		graph: WorkflowGraph,
-		nodeMap: Map<string, AbstractNode>, // The nodeMap is required here
+		nodeMap: Map<string, AbstractNode>,
 	): { predecessorIdMap: PredecessorIdMap, originalPredecessorIdMap: OriginalPredecessorIdMap } {
 		const predecessorIdMap: PredecessorIdMap = new Map()
-		const originalPredecessorIdMap: OriginalPredecessorIdMap = new Map()
-
 		for (const edge of graph.edges) {
-			// --- Build the standard predecessorIdMap ---
 			if (!predecessorIdMap.has(edge.target))
 				predecessorIdMap.set(edge.target, [])
+
 			predecessorIdMap.get(edge.target)!.push(edge.source)
-
-			// --- Build the originalPredecessorIdMap (for sub-workflows) ---
-			// This is the crucial logic that was removed and is now restored.
-			const sourceNode = nodeMap.get(edge.source)
-			const targetNode = nodeMap.get(edge.target)
-
-			// The nodeMap is guaranteed to have these nodes at this stage of the build process.
-			if (!sourceNode || !targetNode)
-				continue
-
-			const sourceOriginalId = sourceNode.graphData?.data?.originalId
-			const targetOriginalId = targetNode.graphData?.data?.originalId
-
-			// The mapKey is the original ID of the target node, which allows the orchestrator
-			// to correctly associate outputs from a sub-workflow to the next step in the parent.
-			const mapKey = targetOriginalId ?? targetNode.id as string
-
-			if (sourceOriginalId && mapKey) {
-				if (!originalPredecessorIdMap.has(mapKey))
-					originalPredecessorIdMap.set(mapKey, [])
-
-				const originalPreds = originalPredecessorIdMap.get(mapKey)!
-				if (!originalPreds.includes(sourceOriginalId))
-					originalPreds.push(sourceOriginalId)
-			}
 		}
+
+		const originalPredecessorIdMap: OriginalPredecessorIdMap = new Map()
+		const memo = new Map<string, string[]>()
+
+		const findOriginalProducers = (nodeId: string): string[] => {
+			if (memo.has(nodeId))
+				return memo.get(nodeId)!
+
+			const node = nodeMap.get(nodeId)!
+			const originalId = node.graphData?.data?.originalId
+			const type = node.graphData?.type
+
+			// Case 1: A user-defined node. It is a data producer, and its output is
+			// keyed by its originalId. This is a terminal point for the trace.
+			if (originalId && !type?.startsWith('__internal_')) {
+				const result = [originalId]
+				memo.set(nodeId, result)
+				return result
+			}
+
+			// Case 2: An output mapper. This is a special internal node that represents
+			// the collected output of an entire sub-workflow. Its originalId (which is the
+			// sub-workflow container's originalId) is the key for the data. This is a terminal point.
+			if (originalId && type === '__internal_output_mapper__') {
+				const result = [originalId]
+				memo.set(nodeId, result)
+				return result
+			}
+
+			// Case 3: Any other internal node (e.g., input mapper, join node). It does not
+			// produce data itself, so we must recurse on its predecessors to find the
+			// real producers that feed into it.
+			const directPredecessors = predecessorIdMap.get(nodeId) || []
+			const producers = new Set<string>()
+			for (const predId of directPredecessors)
+				findOriginalProducers(predId).forEach(p => producers.add(p))
+
+			const result = Array.from(producers)
+			memo.set(nodeId, result)
+			return result
+		}
+
+		// Once the direct predecessorIdMap is built, we can trace backwards from every node
+		// to find its true data-producing predecessors.
+		for (const targetId of nodeMap.keys()) {
+			const targetNode = nodeMap.get(targetId)!
+			const mapKey = targetNode.graphData?.data?.originalId ?? targetId
+
+			const directPredecessors = predecessorIdMap.get(targetId) || []
+			const producers = new Set<string>()
+			for (const predId of directPredecessors)
+				findOriginalProducers(predId).forEach(p => producers.add(p))
+
+			if (producers.size > 0)
+				originalPredecessorIdMap.set(mapKey, Array.from(producers))
+		}
+
 		return { predecessorIdMap, originalPredecessorIdMap }
 	}
 

@@ -949,6 +949,7 @@ describe('graphBuilder with conditional path convergence', () => {
 		'branch': { threshold: number }
 		'path-action': Record<string, never>
 		'converge': Record<string, never>
+		'sub-workflow': { workflowId: number }
 	}
 
 	class SetValueNode extends Node {
@@ -978,12 +979,14 @@ describe('graphBuilder with conditional path convergence', () => {
 
 	class PathActionNode extends Node { }
 	class ConvergeNode extends Node { }
+	class SubWorkflowNode extends Node { } // Placeholder
 
 	const conditionalRegistry = createNodeRegistry({
 		'set': SetValueNode,
 		'branch': ConditionalBranchNode,
 		'path-action': PathActionNode,
 		'converge': ConvergeNode,
+		'sub-workflow': SubWorkflowNode,
 	})
 
 	const converganceGraph: TypedWorkflowGraph<ConditionalNodeTypeMap> = {
@@ -1081,6 +1084,54 @@ describe('graphBuilder with conditional path convergence', () => {
 		]))
 
 		expect(predecessorCountMap.get('converge-point')).toBe(1)
+	})
+
+	it('should trace original predecessors through conditional joins and sub-workflows', () => {
+		const subGraphA: WorkflowGraph = { nodes: [{ id: 'sub-node-a', type: 'path-action', data: {} }], edges: [] }
+		const subGraphB: WorkflowGraph = { nodes: [{ id: 'sub-node-b', type: 'path-action', data: {} }], edges: [] }
+
+		const mockResolver: SubWorkflowResolver = {
+			getGraph(id) {
+				if (id === 1)
+					return subGraphA
+				if (id === 2)
+					return subGraphB
+				return undefined
+			},
+		}
+
+		const parentGraph: TypedWorkflowGraph<ConditionalNodeTypeMap> = {
+			nodes: [
+				{ id: 'start', type: 'set', data: { value: 5 } },
+				{ id: 'parallel-branch', type: 'path-action', data: {} },
+				{ id: 'brancher', type: 'branch', data: { threshold: 10 } }, // takes 'under'
+				{ id: 'sub-A', type: 'sub-workflow', data: { workflowId: 1 } },
+				{ id: 'sub-B', type: 'sub-workflow', data: { workflowId: 2 } },
+				{ id: 'final-converge', type: 'converge', data: {} },
+			],
+			edges: [
+				{ source: 'start', target: 'parallel-branch' },
+				{ source: 'start', target: 'brancher' },
+				{ source: 'brancher', target: 'sub-A', action: 'over' },
+				{ source: 'brancher', target: 'sub-B', action: 'under' },
+				{ source: 'sub-A', target: 'final-converge' },
+				{ source: 'sub-B', target: 'final-converge' },
+				{ source: 'parallel-branch', target: 'final-converge' },
+			],
+		}
+
+		const builder = new GraphBuilder(conditionalRegistry, {}, {
+			conditionalNodeTypes: ['branch'],
+			subWorkflowNodeTypes: ['sub-workflow'],
+			subWorkflowResolver: mockResolver,
+		})
+
+		const { originalPredecessorIdMap } = builder.build(parentGraph)
+		const finalPreds = originalPredecessorIdMap.get('final-converge')
+
+		expect(finalPreds).toBeDefined()
+		expect(finalPreds).toHaveLength(3)
+		expect(finalPreds).toEqual(expect.arrayContaining(['parallel-branch', 'sub-A', 'sub-B']))
 	})
 })
 
