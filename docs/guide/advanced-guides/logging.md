@@ -52,46 +52,48 @@ Here is an example of a comprehensive logging middleware that you can add to you
 
 ```typescript
 // src/middleware/logging.ts
-import { Middleware, MiddlewareNext, NodeArgs, DEFAULT_ACTION } from 'flowcraft'
+import { DEFAULT_ACTION, Middleware, MiddlewareNext, NodeArgs } from 'flowcraft'
 
 // Helper to get a clean display name for an action
 function getActionDisplay(action: any): string {
-    if (typeof action === 'symbol') {
-        return action.description ?? 'symbol';
-    }
-    return String(action);
+	if (typeof action === 'symbol') {
+		return action.description ?? 'symbol'
+	}
+	return String(action)
 }
 
 // The Logging Middleware
 export const loggingMiddleware: Middleware = async (args: NodeArgs, next: MiddlewareNext) => {
-    const { logger, name: nodeName, params, node } = args;
+	const { logger, name: nodeName, params, node } = args
 
-    // 1. Log node entry
-    logger.debug(`[Workflow] > Starting node '${nodeName}'`, { params });
+	// 1. Log node entry
+	logger.debug(`[Workflow] > Starting node '${nodeName}'`, { params })
 
-    // 2. Execute the node
-    const action = await next(args);
+	// 2. Execute the node
+	const action = await next(args)
 
-    // 3. Log node exit and branching
-    if (node) {
-        const nextNode = node.successors.get(action);
-        const actionDisplay = getActionDisplay(action);
+	// 3. Log node exit and branching
+	if (node) {
+		const nextNode = node.successors.get(action)
+		const actionDisplay = getActionDisplay(action)
 
-        if (nextNode) {
-            logger.debug(
-                `[Workflow] < Node '${nodeName}' completed with action '${actionDisplay}', proceeding to '${nextNode.constructor.name}'.`
-            );
-        } else if (action !== undefined && action !== null) {
-            logger.debug(
-                `[Workflow] < Node '${nodeName}' completed with terminal action '${actionDisplay}'. Flow ends.`
-            );
-        } else {
-             logger.debug(`[Workflow] < Node '${nodeName}' completed.`);
-        }
-    }
+		if (nextNode) {
+			logger.debug(
+				`[Workflow] < Node '${nodeName}' completed with action '${actionDisplay}', proceeding to '${nextNode.constructor.name}'.`
+			)
+		}
+		else if (action !== undefined && action !== null) {
+			logger.debug(
+				`[Workflow] < Node '${nodeName}' completed with terminal action '${actionDisplay}'. Flow ends.`
+			)
+		}
+		else {
+			logger.debug(`[Workflow] < Node '${nodeName}' completed.`)
+		}
+	}
 
-    return action;
-};
+	return action
+}
 ```
 
 ### Applying the Middleware

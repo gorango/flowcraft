@@ -1,5 +1,4 @@
 import type { Context } from '../context'
-import type { Logger } from '../logger'
 import type { Middleware, NodeArgs, RunOptions } from '../types'
 import type { AbstractNode, Flow } from '../workflow'
 import type { IExecutor, InternalRunOptions } from './types'

@@ -73,9 +73,9 @@ const myRules = [
 					type: 'ConnectionRuleViolation',
 					nodeId: node.id,
 					message: `Output node '${node.id}' cannot have outgoing connections.`
-				};
+				}
 			}
-			return null;
+			return null
 		}
 	),
 
@@ -88,9 +88,9 @@ const myRules = [
 					type: 'ConnectionRuleViolation',
 					nodeId: node.id,
 					message: `Condition node '${node.id}' must have exactly one input, but has ${node.inDegree}.`
-				};
+				}
 			}
-			return null;
+			return null
 		}
 	),
 ]
@@ -128,7 +128,7 @@ import { createNodeRule, TypedGraphNode, TypedWorkflowGraph } from 'flowcraft'
 
 // 1. Define your application's specific node types
 interface MyAppNodeTypeMap extends NodeTypeMap {
-	'api-call': { url: string; retries: number }
+	'api-call': { url: string, retries: number }
 	'output': { destination: string }
 }
 
@@ -141,7 +141,7 @@ const rule_apiRetries = createNodeRule<MyAppNodeTypeMap>(
 	(node) => {
 		// Because `createNodeRule` is generic, we can safely access typed properties.
 		// Note: A type assertion is needed here due to a current TypeScript limitation.
-		const apiNode = node as TypedGraphNode<MyAppNodeTypeMap> & { type: 'api-call' };
+		const apiNode = node as TypedGraphNode<MyAppNodeTypeMap> & { type: 'api-call' }
 
 		if (apiNode.data.retries < 1) {
 			// You have full control over the error object, including the `type`.
@@ -149,11 +149,11 @@ const rule_apiRetries = createNodeRule<MyAppNodeTypeMap>(
 				type: 'DataValidation',
 				nodeId: node.id,
 				message: `API call node '${node.id}' must have at least 1 retry.`
-			};
+			}
 		}
-		return null; // The node is valid
+		return null // The node is valid
 	}
-);
+)
 ```
 
 ### 2. Untyped Validation (Flexible)
@@ -175,9 +175,9 @@ const rule_noOrphans = createNodeRule(
 				type: 'ConnectionError',
 				nodeId: node.id,
 				message: `Node '${node.id}' is an orphan with no connections.`
-			};
+			}
 		}
-		return null;
+		return null
 	}
 )
 ```
