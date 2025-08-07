@@ -4,7 +4,6 @@ import type { AbstractNode } from '../workflow'
 import type { GraphBuilder } from './graph'
 import type { WorkflowGraph } from './graph.types'
 import { AbortError } from '../errors'
-import { DEFAULT_ACTION } from '../types'
 import { Flow, Node } from '../workflow'
 
 /**
@@ -126,42 +125,37 @@ export class ParallelFlow extends Flow<any, void> {
 	/**
 	 * @param nodesToRun The array of nodes to execute concurrently.
 	 */
-	constructor(protected nodesToRun: AbstractNode[]) {
+	constructor(protected nodesToRun: AbstractNode[] = []) {
 		super()
-	}
-
-	/**
-	 * A public getter to safely access the parallel branches.
-	 * This is used by distributed orchestrators to know which jobs to enqueue.
-	 */
-	public get branches(): readonly AbstractNode[] {
-		return this.nodesToRun
 	}
 
 	/**
 	 * Orchestrates the parallel execution of all nodes.
 	 * @internal
 	 */
-	async exec({ ctx, params, signal, logger, executor }: NodeArgs): Promise<void> {
-		if (this.nodesToRun.length === 0) {
-			logger.debug('[ParallelFlow] No branches to execute in parallel.')
+	async exec({ ctx, params, signal, logger, executor, visitedInParallel }: NodeArgs): Promise<void> {
+		// The executor is now responsible for providing the set.
+		if (!visitedInParallel)
+			throw new Error('ParallelFlow requires a visitedInParallel set from its executor.')
+
+		const branches = this.nodesToRun.length > 0
+			? this.nodesToRun
+			: Array.from(this.successors.values()).flat()
+
+		if (branches.length === 0) {
+			logger.debug('[ParallelFlow] No branches to execute.')
 			return
 		}
 
-		// The convergence node is the designated successor of this ParallelFlow. The GraphBuilder wires this.
-		const convergenceNode = this.successors.get(DEFAULT_ACTION)?.[0]
-		const visitedInParallel = new Set<AbstractNode>()
-
 		const runBranch = async (startNode: AbstractNode) => {
 			let currentNode: AbstractNode | undefined = startNode
-
-			while (currentNode && currentNode !== convergenceNode) {
+			while (currentNode) {
 				if (signal?.aborted)
 					throw new AbortError()
 
+				// The core synchronization logic.
 				if (visitedInParallel.has(currentNode))
 					break
-
 				visitedInParallel.add(currentNode)
 
 				const action = await currentNode._run({
@@ -170,19 +164,16 @@ export class ParallelFlow extends Flow<any, void> {
 					signal,
 					logger,
 					executor,
+					// Ensure the set is passed down through the branch's execution.
+					visitedInParallel,
 				})
 
 				currentNode = executor?.getNextNode(currentNode, action)
 			}
 		}
 
-		const promises = this.nodesToRun.map(runBranch)
-		const results = await Promise.allSettled(promises)
-
-		results.forEach((result) => {
-			if (result.status === 'rejected')
-				logger.error('[ParallelFlow] A parallel branch failed.', { error: result.reason })
-		})
+		const promises = branches.map(runBranch)
+		await Promise.allSettled(promises)
 	}
 }
 

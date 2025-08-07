@@ -214,12 +214,12 @@ export class Node<
 	 * The internal method that executes the node's full lifecycle.
 	 * @internal
 	 */
-	async _run({ ctx, params, signal, logger, executor }: NodeRunContext): Promise<PostRes> {
+	async _run({ ctx, params, signal, logger, executor, visitedInParallel }: NodeRunContext): Promise<PostRes> {
 		if (signal?.aborted)
 			throw new AbortError()
 		let prepRes: PrepRes
 		try {
-			prepRes = await this.prep({ ctx, params: params as TParams, signal, logger, prepRes: undefined, execRes: undefined, executor })
+			prepRes = await this.prep({ ctx, params: params as TParams, signal, logger, prepRes: undefined, execRes: undefined, executor, visitedInParallel })
 		}
 		catch (e) {
 			throw this._wrapError(e, 'prep')
@@ -229,7 +229,7 @@ export class Node<
 			throw new AbortError()
 		let execRes: ExecRes
 		try {
-			execRes = await this._exec({ ctx, params: params as TParams, signal, logger, prepRes, execRes: undefined, executor })
+			execRes = await this._exec({ ctx, params: params as TParams, signal, logger, prepRes, execRes: undefined, executor, visitedInParallel })
 		}
 		catch (e) {
 			throw this._wrapError(e, 'exec')
@@ -238,7 +238,7 @@ export class Node<
 		if (signal?.aborted)
 			throw new AbortError()
 		try {
-			const action = await this.post({ ctx, params: params as TParams, signal, logger, prepRes, execRes, executor })
+			const action = await this.post({ ctx, params: params as TParams, signal, logger, prepRes, execRes, executor, visitedInParallel })
 			return action === undefined ? DEFAULT_ACTION as any : action
 		}
 		catch (e) {

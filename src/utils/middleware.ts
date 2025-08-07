@@ -6,14 +6,10 @@ import type { AbstractNode } from '../workflow'
  * @internal
  */
 export function applyMiddleware<T = any>(middleware: Middleware<T>[], nodeToRun: AbstractNode): MiddlewareNext<T> {
-	// The final function in the chain is the actual execution of the node.
 	const runNode: MiddlewareNext<T> = (args: NodeArgs) => {
 		return nodeToRun._run({
-			ctx: args.ctx,
+			...args,
 			params: { ...args.params, ...nodeToRun.params },
-			signal: args.signal,
-			logger: args.logger,
-			executor: args.executor,
 		})
 	}
 

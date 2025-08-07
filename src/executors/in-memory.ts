@@ -34,10 +34,16 @@ export class InMemoryExecutor implements IExecutor {
 		let action: any
 
 		const { logger, signal } = options
+		const visitedInParallel = new Set<AbstractNode>()
 
 		while (currentNode) {
 			if (signal?.aborted)
 				throw new AbortError()
+
+			if (visitedInParallel.has(currentNode)) {
+				currentNode = this.getNextNode(currentNode, undefined)
+				continue
+			}
 
 			const nodeArgs: NodeArgs = {
 				ctx: context,
@@ -49,6 +55,7 @@ export class InMemoryExecutor implements IExecutor {
 				name: currentNode.constructor.name,
 				executor: options.executor,
 				node: currentNode,
+				visitedInParallel,
 			}
 
 			const chain = applyMiddleware(flowMiddleware, currentNode)

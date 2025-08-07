@@ -1,14 +1,11 @@
-import type { ContextKey } from '../context'
 import type { Logger } from '../logger'
-import type { FILTER_FAILED, NodeArgs } from '../types'
-import type { AbstractNode } from '../workflow'
-import type { BuildResult, ContextKeyResolver, GraphBuilderOptions, GraphEdge, GraphNode, NodeRegistry, NodeTypeMap, OriginalPredecessorIdMap, PredecessorIdMap, SubWorkflowResolver, TypedNodeRegistry, TypedWorkflowGraph, WorkflowGraph } from './graph.types'
-import { contextKey } from '../context'
+import type { AbstractNode, Flow } from '../workflow'
+import type { BlueprintBuildResult, BuildResult, GraphBuilderOptions, GraphEdge, GraphNode, NodeRegistry, NodeTypeMap, OriginalPredecessorIdMap, PredecessorIdMap, SubWorkflowResolver, TypedNodeRegistry, TypedWorkflowGraph, WorkflowBlueprint, WorkflowGraph } from './graph.types'
 import { NullLogger } from '../logger'
 import { DEFAULT_ACTION } from '../types'
 import { generateMermaidGraph } from '../utils/mermaid'
-import { Flow, Node } from '../workflow'
-import { ParallelFlow } from './patterns'
+import { ConditionalJoinNode, InputMappingNode, OutputMappingNode, ParallelBranchContainer, SubWorkflowContainerNode } from './internal-nodes'
+import { BlueprintExecutor } from './runner'
 
 /**
  * A type-safe helper function for creating a `TypedNodeRegistry`.
@@ -26,141 +23,8 @@ export function createNodeRegistry<
 }
 
 /**
- * An internal node used by the GraphBuilder to handle the `inputs` mapping
- * of an inlined sub-workflow. It copies data from the parent context scope
- * to the sub-workflow's context scope.
- * @internal
- */
-class InputMappingNode extends Node {
-	private mappings: Record<string, string>
-	private resolver: ContextKeyResolver
-	private uniqueMapperKey: ContextKey<ContextKey<any>[]>
-
-	constructor(options: { data: Record<string, any> }) {
-		super()
-		const { nodeId, originalId, resolver, uniqueMapperKey, ...mappings } = options.data
-		this.mappings = mappings as Record<string, string>
-		this.resolver = resolver || new Map()
-		this.uniqueMapperKey = uniqueMapperKey
-	}
-
-	async prep({ ctx, logger }: NodeArgs) {
-		const newlyCreatedKeys: ContextKey<any>[] = []
-		for (const [subKeyStr, parentKeyStr] of Object.entries(this.mappings)) {
-			const parentKey = this.resolver.get(parentKeyStr)
-			const subKey = this.resolver.get(subKeyStr)
-
-			if (!parentKey || !subKey) {
-				logger.warn(`[InputMapper] Could not resolve keys '${parentKeyStr}' or '${subKeyStr}'. Skipping.`)
-				continue
-			}
-
-			if (ctx.has(parentKey)) {
-				// The key is being passed from a parent. If the target subKey doesn't exist yet,
-				// it's "owned" by this sub-workflow and should be cleaned up later.
-				if (!ctx.has(subKey)) {
-					newlyCreatedKeys.push(subKey)
-				}
-				ctx.set(subKey, ctx.get(parentKey))
-			}
-			else {
-				logger.warn(`[InputMapper] Input mapping failed. Key '${parentKeyStr}' not found in context.`)
-			}
-		}
-		// Use the unique key to store only the keys created at this level.
-		ctx.set(this.uniqueMapperKey, newlyCreatedKeys)
-	}
-}
-
-/**
- * An internal node used by the GraphBuilder to handle the `outputs` mapping
- * of an inlined sub-workflow. It copies data from the sub-workflow's
- * context scope back to the parent's context scope.
- * @internal
- */
-class OutputMappingNode extends Node {
-	private mappings: Record<string, string>
-	private resolver: ContextKeyResolver
-	private uniqueMapperKey: ContextKey<ContextKey<any>[]>
-
-	constructor(options: { data: Record<string, any> }) {
-		super()
-		const { nodeId, originalId, resolver, uniqueMapperKey, ...mappings } = options.data
-		this.mappings = mappings as Record<string, string>
-		this.resolver = resolver || new Map()
-		this.uniqueMapperKey = uniqueMapperKey
-	}
-
-	async prep({ ctx, logger }: NodeArgs) {
-		for (const [parentKeyStr, subKeyStr] of Object.entries(this.mappings)) {
-			const parentKey = this.resolver.get(parentKeyStr)
-			const subKey = this.resolver.get(subKeyStr)
-
-			if (!parentKey || !subKey) {
-				logger.warn(`[OutputMapper] Could not resolve keys '${parentKeyStr}' or '${subKeyStr}'. Skipping.`)
-				continue
-			}
-
-			if (ctx.has(subKey)) {
-				ctx.set(parentKey, ctx.get(subKey))
-			}
-			else {
-				logger.warn(`[OutputMapper] Output mapping failed. Key '${subKeyStr}' not found in context.`)
-			}
-		}
-
-		const keysToDelete = ctx.get(this.uniqueMapperKey) || []
-		for (const key of keysToDelete) {
-			ctx.delete(key)
-		}
-		ctx.delete(this.uniqueMapperKey)
-	}
-}
-
-/**
- * A private class used by the builder to represent the sub-workflow container itself.
- * It's a structural node that preserves the original node ID in the flattened graph.
- * @internal
- */
-class SubWorkflowContainerNode extends Node {
-	constructor() {
-		super()
-		// this.isPassthrough = true
-	}
-
-	async exec() {
-		// This node performs no work; it just acts as a stable entry point.
-		// The graph wiring ensures the InputMappingNode is executed next.
-	}
-}
-
-/** A private class used by the builder to represent parallel execution blocks. */
-class ParallelBranchContainer extends ParallelFlow {
-	/** A tag to reliably identify this node type in the visualizer. */
-	public readonly isParallelContainer = true
-
-	constructor(public readonly nodesToRun: AbstractNode[]) {
-		super(nodesToRun)
-		// semantic flag for distributed executors.
-		this.isPassthrough = true
-	}
-}
-
-/**
- * A private class used by the builder to unify conditional branches
- * before they connect to a common successor. This ensures the successor
- * only has one predecessor, preventing false fan-in detection.
- * @internal
- */
-class ConditionalJoinNode extends Node {
-	constructor() {
-		super()
-		this.isPassthrough = true // It performs no logic, just structural
-	}
-}
-
-/**
- * Constructs an executable `Flow` from a declarative `WorkflowGraph` definition.
+ * Constructs a serializable `WorkflowBlueprint` from a declarative `WorkflowGraph` definition.
+ * The blueprint is a static, storable artifact that can be executed by a `BlueprintExecutor`.
  * @template TNodeMap A `NodeTypeMap` for validating type-safe graph definitions.
  * @template TContext The shape of the dependency injection context object.
  */
@@ -173,7 +37,6 @@ export class GraphBuilder<
 	private conditionalNodeTypes: string[]
 	private subWorkflowResolver?: SubWorkflowResolver
 	private logger: Logger
-	private contextKeyResolver?: ContextKeyResolver
 
 	/**
 	 * @param registry A type-safe object or a `Map` where keys are node `type` strings and
@@ -202,10 +65,12 @@ export class GraphBuilder<
 			this.registry.set('__internal_sub_workflow_container__', SubWorkflowContainerNode as any)
 		if (!this.registry.has('__internal_conditional_join__'))
 			this.registry.set('__internal_conditional_join__', ConditionalJoinNode as any)
+		if (!this.registry.has('__internal_parallel_container__'))
+			this.registry.set('__internal_parallel_container__', ParallelBranchContainer as any)
+
 		this.subWorkflowNodeTypes = options.subWorkflowNodeTypes ?? []
 		this.conditionalNodeTypes = options.conditionalNodeTypes ?? []
 		this.subWorkflowResolver = options.subWorkflowResolver
-		this.contextKeyResolver = options.contextKeyResolver
 	}
 
 	private _logMermaid(flow: Flow) {
@@ -220,47 +85,58 @@ export class GraphBuilder<
 		const finalNodes: GraphNode[] = []
 		const finalEdges: GraphEdge[] = []
 
+		const localNodeIds = new Set(graph.nodes.map(n => n.id))
+
 		for (const node of graph.nodes) {
 			const prefixedNodeId = `${idPrefix}${node.id}`
 			const sanitizedId = prefixedNodeId.replace(/:/g, '_').replace(/\W/g, '')
 
 			const isRegisteredSubWorkflow = this.subWorkflowNodeTypes.includes(node.type)
 			const hasWorkflowId = node.data && 'workflowId' in node.data
-			// Use the original node.data, not a clone, to ensure we have the real thing.
-			const subWorkflowData = node.data as any
+			const newNodeData = JSON.parse(JSON.stringify(node.data || {}))
+
+			if (newNodeData.inputs) {
+				const inputs = newNodeData.inputs as Record<string, string | string[]>
+				for (const [templateKey, sourcePathOrPaths] of Object.entries(inputs)) {
+					const sourcePaths = Array.isArray(sourcePathOrPaths) ? sourcePathOrPaths : [sourcePathOrPaths]
+					const newSourcePaths = sourcePaths.map((sourcePath) => {
+						if (localNodeIds.has(sourcePath))
+							return `${idPrefix}${sourcePath}`
+						return sourcePath
+					})
+					inputs[templateKey] = Array.isArray(sourcePathOrPaths) ? newSourcePaths : newSourcePaths[0]
+				}
+			}
 
 			if (isRegisteredSubWorkflow) {
 				if (!this.subWorkflowResolver)
 					throw new Error('GraphBuilder: `subWorkflowResolver` must be provided in options to handle sub-workflows.')
 
+				const subWorkflowData = node.data as any
 				const subWorkflowId = subWorkflowData.workflowId
 				const subGraph: WorkflowGraph | undefined = this.subWorkflowResolver.getGraph(subWorkflowId)
 				if (!subGraph)
 					throw new Error(`Sub-workflow with ID ${subWorkflowId} not found in resolver.`)
 
-				// Create the container and mapper nodes
 				finalNodes.push({
 					id: prefixedNodeId,
 					type: '__internal_sub_workflow_container__',
-					data: { ...subWorkflowData, originalId: node.id },
+					data: { ...newNodeData, originalId: node.id },
 				})
 
 				const inputMapperId = `${sanitizedId}_input_mapper`
 				const outputMapperId = `${sanitizedId}_output_mapper`
-				const uniqueMapperKey = contextKey<ContextKey<any>[]>(`${sanitizedId}_mapped_keys`)
-
 				finalNodes.push({
 					id: inputMapperId,
 					type: '__internal_input_mapper__',
-					data: { ...(subWorkflowData.inputs || {}), originalId: node.id, resolver: this.contextKeyResolver, uniqueMapperKey },
+					data: { ...(subWorkflowData.inputs || {}), originalId: node.id },
 				})
 				finalNodes.push({
 					id: outputMapperId,
 					type: '__internal_output_mapper__',
-					data: { ...(subWorkflowData.outputs || {}), originalId: node.id, resolver: this.contextKeyResolver, uniqueMapperKey },
+					data: { ...(subWorkflowData.outputs || {}), originalId: node.id },
 				})
 
-				// Recursively flatten the sub-graph
 				const inlinedSubGraph = this._flattenGraph(subGraph, `${prefixedNodeId}:`)
 				const augmentedInlinedNodes = inlinedSubGraph.nodes.map(n => ({
 					...n,
@@ -269,27 +145,25 @@ export class GraphBuilder<
 				finalNodes.push(...augmentedInlinedNodes)
 				finalEdges.push(...inlinedSubGraph.edges)
 
-				// Add the INTERNAL wiring for the sub-workflow
-				finalEdges.push({ source: prefixedNodeId, target: inputMapperId }) // container -> input_mapper
+				finalEdges.push({ source: prefixedNodeId, target: inputMapperId })
 
 				const subGraphStartIds = inlinedSubGraph.nodes.map(n => n.id).filter(id => !inlinedSubGraph.edges.some(e => e.target === id))
 				for (const startId of subGraphStartIds)
-					finalEdges.push({ source: inputMapperId, target: startId }) // input_mapper -> sub-graph start nodes
+					finalEdges.push({ source: inputMapperId, target: startId })
 
 				const subGraphTerminalIds = inlinedSubGraph.nodes.map(n => n.id).filter(id => !inlinedSubGraph.edges.some(e => e.source === id))
 				for (const terminalId of subGraphTerminalIds)
-					finalEdges.push({ source: terminalId, target: outputMapperId }) // sub-graph terminal nodes -> output_mapper
+					finalEdges.push({ source: terminalId, target: outputMapperId })
 			}
 			else if (hasWorkflowId) {
 				throw new Error(`Node with ID '${node.id}' has a 'workflowId' but its type '${node.type}' is not in 'subWorkflowNodeTypes'.`)
 			}
 			else {
-				// The data payload was being unnecessarily cloned and losing properties. Use original.
-				finalNodes.push({ ...node, id: prefixedNodeId, data: { ...node.data, originalId: node.id } })
+				finalNodes.push({ ...node, id: prefixedNodeId, data: { ...newNodeData, originalId: node.id } })
 			}
 		}
 
-		// Pass 2: Re-wire all original EXTERNAL edges to connect to the correct points
+		// Pass 2: Re-wire all original edges to connect to the correct nodes in the flattened graph.
 		for (const edge of graph.edges) {
 			const sourceNode = graph.nodes.find(n => n.id === edge.source)!
 			const prefixedSourceId = `${idPrefix}${edge.source}`
@@ -298,282 +172,190 @@ export class GraphBuilder<
 			const isSourceSub = this.subWorkflowNodeTypes.includes(sourceNode.type)
 			const sanitizedSourceId = prefixedSourceId.replace(/:/g, '_').replace(/\W/g, '')
 
-			if (isSourceSub) {
-				// If the source is a sub-workflow, its exit point is the output mapper.
+			if (isSourceSub)
 				finalEdges.push({ ...edge, source: `${sanitizedSourceId}_output_mapper`, target: prefixedTargetId })
-			}
-			else {
-				// Otherwise, the connection is from the node itself. The target is the container of the next node.
+			else
 				finalEdges.push({ ...edge, source: prefixedSourceId, target: prefixedTargetId })
-			}
 		}
 		return { nodes: finalNodes, edges: finalEdges }
 	}
 
 	/**
-	 * Builds a runnable `Flow` from a graph definition.
+	 * Builds a runnable `Flow` from a graph definition for immediate in-memory execution.
 	 * @param graph The `WorkflowGraph` object describing the flow.
 	 * @param log Whether to log the graph after flattening. Defaults to `false`.
 	 * @returns A `BuildResult` object containing the executable `flow` and a `nodeMap`.
 	 */
+	public build(graph: TypedWorkflowGraph<TNodeMap>, log?: boolean): BuildResult
+	public build(graph: WorkflowGraph, log?: boolean): BuildResult
+	public build(graph: TypedWorkflowGraph<TNodeMap> | WorkflowGraph, log?: boolean): BuildResult {
+		const { blueprint } = this.buildBlueprint(graph as WorkflowGraph)
+		const executor = new BlueprintExecutor(blueprint, this.registry, this.nodeOptionsContext)
+
+		if (log)
+			this._logMermaid(executor.flow)
+
+		return {
+			flow: executor.flow,
+			nodeMap: executor.nodeMap,
+			predecessorCountMap: new Map(Object.entries(blueprint.predecessorCountMap)),
+			predecessorIdMap: new Map(Object.entries(blueprint.originalPredecessorIdMap).map(([k, v]) => [k, v])),
+			originalPredecessorIdMap: new Map(Object.entries(blueprint.originalPredecessorIdMap).map(([k, v]) => [k, v])),
+		}
+	}
+
+	/**
+	 * Builds a serializable `WorkflowBlueprint` from a graph definition.
+	 * This is the recommended method for preparing a workflow for a distributed environment.
+	 * @param graph The `WorkflowGraph` object describing the flow.
+	 * @returns A `BlueprintBuildResult` object containing the serializable `blueprint`.
+	 */
 	// type-safe overload
-	build(graph: TypedWorkflowGraph<TNodeMap>, log?: boolean): BuildResult
+	public buildBlueprint(graph: TypedWorkflowGraph<TNodeMap>): BlueprintBuildResult
 	// untyped overload
-	build(graph: WorkflowGraph, log?: boolean): BuildResult
+	public buildBlueprint(graph: WorkflowGraph): BlueprintBuildResult
 	// single implementation that handles both cases
-	build(graph: TypedWorkflowGraph<TNodeMap> | WorkflowGraph, log?: boolean): BuildResult {
-		// Step 1: Flatten the graph to resolve all sub-workflows.
+	public buildBlueprint(graph: TypedWorkflowGraph<TNodeMap> | WorkflowGraph): BlueprintBuildResult {
 		const flatGraph = this._flattenGraph(graph as WorkflowGraph)
 
-		// Step 2: Instantiate all node objects. We need these for the convergence logic.
-		const nodeMap = new Map<string, AbstractNode>()
-		for (const graphNode of flatGraph.nodes) {
-			const NodeClass = this.registry.get(graphNode.type.toString())
-			if (!NodeClass)
-				throw new Error(`GraphBuilder: Node type '${graphNode.type.toString()}' not found in registry.`)
+		const conditionalNodes = flatGraph.nodes.filter(n => this.conditionalNodeTypes.includes(n.type))
+		for (const conditionalNode of conditionalNodes) {
+			const branches = flatGraph.edges
+				.filter(e => e.source === conditionalNode.id)
+				.map(e => e.target)
 
-			const nodeOptions = {
-				...this.nodeOptionsContext,
-				data: { ...graphNode.data, nodeId: graphNode.id },
+			if (branches.length > 1) {
+				const convergenceTargetId = this._findConditionalConvergence(branches, flatGraph)
+				if (convergenceTargetId) {
+					const joinNodeId = `${conditionalNode.id}__conditional_join`
+					if (!flatGraph.nodes.some(n => n.id === joinNodeId)) {
+						this.logger.debug(`[GraphBuilder] Inserting conditional join node for '${conditionalNode.id}' converging at '${convergenceTargetId}'`)
+						flatGraph.nodes.push({ id: joinNodeId, type: '__internal_conditional_join__', data: {} })
+						const branchTerminalIds = this._findBranchTerminals(branches, convergenceTargetId, flatGraph)
+						for (const terminalId of branchTerminalIds) {
+							const edgeIndex = flatGraph.edges.findIndex(e => e.source === terminalId && e.target === convergenceTargetId)
+							if (edgeIndex > -1) {
+								flatGraph.edges[edgeIndex].target = joinNodeId
+							}
+						}
+						flatGraph.edges.push({ source: joinNodeId, target: convergenceTargetId })
+					}
+				}
 			}
-			const executableNode = new NodeClass(nodeOptions).withId(graphNode.id).withGraphData(graphNode)
-			if (graphNode.config && executableNode instanceof Node) {
-				executableNode.maxRetries = graphNode.config.maxRetries ?? executableNode.maxRetries
-				executableNode.wait = graphNode.config.wait ?? executableNode.wait
-			}
-			nodeMap.set(graphNode.id, executableNode)
 		}
 
-		// Step 3: Handle conditional branch convergence. This is a logical transformation
-		// that modifies the `flatGraph` by inserting join nodes and rewiring edges.
-		const edgeGroupsForConvergence = flatGraph.edges.reduce((acc, edge) => {
+		const edgeGroups = flatGraph.edges.reduce((acc, edge) => {
 			if (!acc.has(edge.source))
 				acc.set(edge.source, new Map())
 			const sourceActions = acc.get(edge.source)!
 			const action = edge.action || DEFAULT_ACTION
 			if (!sourceActions.has(action))
 				sourceActions.set(action, [])
-			sourceActions.get(action)!.push(nodeMap.get(edge.target)!)
+			sourceActions.get(action)!.push(edge.target)
 			return acc
-		}, new Map<string, Map<any, AbstractNode[]>>())
+		}, new Map<string, Map<any, string[]>>())
 
-		const conditionalNodes = flatGraph.nodes.filter(n => this.conditionalNodeTypes.includes(n.type))
-		for (const conditionalNode of conditionalNodes) {
-			const branches = flatGraph.edges
-				.filter(e => e.source === conditionalNode.id)
-				.map(e => nodeMap.get(e.target)!)
-				.filter(Boolean)
+		const nodesToProcess = [...flatGraph.nodes]
+		for (const sourceNode of nodesToProcess) {
+			const actions = edgeGroups.get(sourceNode.id)
+			if (!actions)
+				continue
 
-			if (branches.length > 1) {
-				const convergenceNode = this._findConvergenceNode(branches, edgeGroupsForConvergence)
-
-				if (convergenceNode) {
-					const joinNodeId = `${conditionalNode.id}__conditional_join`
-					if (!nodeMap.has(joinNodeId)) {
-						this.logger.debug(`[GraphBuilder] Inserting conditional join node for '${conditionalNode.id}' converging at '${convergenceNode.id}'`)
-
-						const joinGraphNode: GraphNode = { id: joinNodeId, type: '__internal_conditional_join__', data: {} }
-						const joinNode = new ConditionalJoinNode().withId(joinNodeId).withGraphData(joinGraphNode)
-						nodeMap.set(joinNodeId, joinNode)
-						flatGraph.nodes.push(joinGraphNode)
-
-						const branchTerminalNodes = this._findBranchTerminals(branches, String(convergenceNode.id), edgeGroupsForConvergence)
-
-						for (const terminalId of branchTerminalNodes) {
-							const edgeIndex = flatGraph.edges.findIndex(e => e.source === terminalId && e.target === convergenceNode.id)
-							if (edgeIndex > -1) {
-								flatGraph.edges[edgeIndex].target = joinNodeId
-							}
-						}
-						flatGraph.edges.push({ source: joinNodeId, target: String(convergenceNode.id!) })
+			for (const [action, successors] of actions.entries()) {
+				if (successors.length > 1 && !this.conditionalNodeTypes.includes(sourceNode.type)) {
+					const parallelNodeId = `${sourceNode.id}__parallel_container`
+					if (!flatGraph.nodes.some(n => n.id === parallelNodeId)) {
+						flatGraph.nodes.push({ id: parallelNodeId, type: '__internal_parallel_container__', data: {} })
+						const edgesToReplace = flatGraph.edges.filter(e => e.source === sourceNode.id && (e.action || DEFAULT_ACTION) === action)
+						flatGraph.edges = flatGraph.edges.filter(e => !edgesToReplace.includes(e))
+						flatGraph.edges.push({ source: sourceNode.id, target: parallelNodeId, action: action === DEFAULT_ACTION ? undefined : String(action) })
+						successors.forEach(succId => flatGraph.edges.push({ source: parallelNodeId, target: succId }))
 					}
 				}
 			}
 		}
 
-		// Step 4: Perform logical analysis AFTER conditional rewiring.
-		// This builds the predecessor maps from the now-modified `flatGraph`.
-		const { predecessorIdMap, originalPredecessorIdMap } = this._createPredecessorIdMaps(flatGraph, nodeMap)
+		const { predecessorIdMap, originalPredecessorIdMap } = this._createPredecessorIdMaps(flatGraph)
 		const predecessorCountMap = new Map<string, number>()
 		for (const [key, val] of predecessorIdMap.entries()) {
 			predecessorCountMap.set(key, val.length)
 		}
 
-		// Special case: The inserted conditional join node should always have a predecessor count of 1
-		// to prevent it from stalling a distributed executor.
-		for (const [nodeId, nodeInstance] of nodeMap.entries()) {
-			if (nodeInstance instanceof ConditionalJoinNode) {
-				predecessorCountMap.set(nodeId, 1)
-			}
-		}
-
-		// Step 5: Wire the final object graph, introducing implementation-specific containers
-		// like ParallelBranchContainer and their shortcuts for the InMemoryExecutor.
-		const edgeGroups = new Map<string, Map<string | typeof DEFAULT_ACTION | typeof FILTER_FAILED, AbstractNode[]>>()
-		for (const edge of flatGraph.edges) {
-			const sourceId = edge.source
-			const action = edge.action || DEFAULT_ACTION
-			const targetNode = nodeMap.get(edge.target)!
-
-			if (!edgeGroups.has(sourceId))
-				edgeGroups.set(sourceId, new Map())
-			const sourceActions = edgeGroups.get(sourceId)!
-			if (!sourceActions.has(action))
-				sourceActions.set(action, [])
-			sourceActions.get(action)!.push(targetNode)
-		}
-
-		for (const [sourceId, actions] of edgeGroups.entries()) {
-			const sourceNode = nodeMap.get(sourceId)!
-			for (const [action, successors] of actions.entries()) {
-				if (successors.length > 0) {
-					if (this.conditionalNodeTypes.includes(sourceNode.graphData!.type)) {
-						for (const successor of successors) {
-							sourceNode.next(successor, action)
-						}
-					}
-					else if (successors.length > 1) {
-						const parallelNodeId = `${sourceId}__parallel_container`
-						const parallelGraphNode: GraphNode = { id: parallelNodeId, type: '__internal_parallel_container__', data: {} }
-						const parallelNode = new ParallelBranchContainer(successors).withId(parallelNodeId).withGraphData(parallelGraphNode)
-						nodeMap.set(parallelNodeId, parallelNode)
-						sourceNode.next(parallelNode, action)
-
-						// This shortcut is for the InMemoryExecutor and does not affect the logical maps.
-						const convergenceNode = this._findConvergenceNode(successors, edgeGroups)
-						if (convergenceNode)
-							parallelNode.next(convergenceNode)
-					}
-					else {
-						sourceNode.next(successors[0], action)
-					}
-				}
-			}
-		}
-
-		// Step 6: Determine the final start node for the flow.
 		const allNodeIds = new Set(flatGraph.nodes.map(n => n.id))
-		const allTargetIds = new Set(flatGraph.edges.map(e => e.target))
-		const startNodeIds = [...allNodeIds].filter(id => !allTargetIds.has(id))
-
-		if (startNodeIds.length === 0 && allNodeIds.size > 0)
-			throw new Error('GraphBuilder: This graph has a cycle and no clear start node.')
-
-		// Finalize predecessor counts for any nodes that had no predecessors.
 		for (const id of allNodeIds) {
 			if (!predecessorCountMap.has(id))
 				predecessorCountMap.set(id, 0)
 		}
 
-		let startNode: AbstractNode
+		const allTargetIds = new Set(flatGraph.edges.map(e => e.target))
+		const startNodeIds = [...allNodeIds].filter(id => !allTargetIds.has(id))
+		let startNodeId: string
+
+		if (startNodeIds.length === 0 && allNodeIds.size > 0)
+			throw new Error('GraphBuilder: This graph has a cycle and no clear start node.')
+
 		if (startNodeIds.length === 1) {
-			startNode = nodeMap.get(startNodeIds[0])!
+			startNodeId = startNodeIds[0]
 		}
 		else {
-			const startNodes = startNodeIds.map(id => nodeMap.get(id)!)
-			const parallelStartNode = new ParallelBranchContainer(startNodes).withId('__root_parallel_start')
-			nodeMap.set(String(parallelStartNode.id), parallelStartNode)
-			const convergenceNode = this._findConvergenceNode(startNodes, edgeGroups)
-			if (convergenceNode)
-				parallelStartNode.next(convergenceNode)
-			startNode = parallelStartNode
-		}
-
-		// Step 7: Return the executable flow and the now-correct logical analysis results.
-		const flow = new Flow(startNode)
-		if (log)
-			this._logMermaid(flow)
-		return { flow, nodeMap, predecessorCountMap, predecessorIdMap, originalPredecessorIdMap }
-	}
-
-	/**
-	 * Finds the terminal nodes of a set of branches before they hit a specific target.
-	 * @private
-	 */
-	private _findBranchTerminals(branches: AbstractNode[], targetId: string, edgeGroups: Map<string, Map<any, AbstractNode[]>>): string[] {
-		const terminals: string[] = []
-		const queue: string[] = branches.map(n => String(n.id))
-		const visited = new Set<string>()
-
-		while (queue.length > 0) {
-			const currentId = queue.shift()!
-			if (visited.has(currentId))
-				continue
-			visited.add(currentId)
-
-			const successors = Array.from(edgeGroups.get(currentId)?.values() ?? []).flat().map(n => String(n.id))
-
-			if (successors.includes(targetId)) {
-				if (!terminals.includes(currentId)) {
-					terminals.push(currentId)
-				}
-			}
-			else {
-				for (const successorId of successors) {
-					if (!visited.has(successorId)) {
-						queue.push(successorId)
-					}
-				}
+			startNodeId = '__root_parallel_start'
+			if (!flatGraph.nodes.some(n => n.id === startNodeId)) {
+				flatGraph.nodes.push({ id: startNodeId, type: '__internal_parallel_container__', data: {} })
+				for (const id of startNodeIds)
+					flatGraph.edges.push({ source: startNodeId, target: id })
 			}
 		}
-		return terminals
+
+		const blueprint: WorkflowBlueprint = {
+			nodes: flatGraph.nodes,
+			edges: flatGraph.edges,
+			startNodeId,
+			predecessorCountMap: Object.fromEntries(predecessorCountMap.entries()),
+			originalPredecessorIdMap: Object.fromEntries(originalPredecessorIdMap.entries()),
+		}
+
+		return { blueprint }
 	}
 
-	/**
-	 * Creates a map of each node ID to its logical, data-producing predecessors.
-	 * This is the core logic for enabling distributed context passing. It traces
-	 * backwards through the flattened graph, skipping over internal structural
-	 * nodes (like mappers and joins) to find the original user-defined nodes
-	 * or sub-workflow containers that produce output.
-	 *
-	 * @param graph The flattened workflow graph.
-	 * @param nodeMap A map of all instantiated node objects.
-	 * @returns A tuple containing the direct predecessor map and the logical, original predecessor map.
-	 * @private
-	 */
 	private _createPredecessorIdMaps(
 		graph: WorkflowGraph,
-		nodeMap: Map<string, AbstractNode>,
 	): { predecessorIdMap: PredecessorIdMap, originalPredecessorIdMap: OriginalPredecessorIdMap } {
 		const predecessorIdMap: PredecessorIdMap = new Map()
 		for (const edge of graph.edges) {
 			if (!predecessorIdMap.has(edge.target))
 				predecessorIdMap.set(edge.target, [])
-
 			predecessorIdMap.get(edge.target)!.push(edge.source)
 		}
 
 		const originalPredecessorIdMap: OriginalPredecessorIdMap = new Map()
+		const nodeDataMap = new Map(graph.nodes.map(n => [n.id, n]))
 		const memo = new Map<string, string[]>()
 
 		const findOriginalProducers = (nodeId: string): string[] => {
 			if (memo.has(nodeId))
 				return memo.get(nodeId)!
 
-			const node = nodeMap.get(nodeId)!
-			const originalId = node.graphData?.data?.originalId
-			const type = node.graphData?.type
+			const nodeData = nodeDataMap.get(nodeId)
+			if (!nodeData)
+				return []
 
-			// Case 1: A user-defined node. It is a data producer, and its output is
-			// keyed by its originalId. This is a terminal point for the trace.
-			if (originalId && !type?.startsWith('__internal_')) {
-				const result = [originalId]
+			const selfType = nodeData.type
+			const selfOriginalId = nodeData.data?.originalId ?? nodeId
+
+			// Base Case: If a node is a "producer", it terminates the search.
+			// Producers are user-defined nodes or special containers that represent a logical unit.
+			const isProducer = !selfType.startsWith('__internal_')
+				|| selfType === '__internal_sub_workflow_container__'
+				|| selfType === '__internal_output_mapper__'
+				|| selfType === '__internal_conditional_join__'
+
+			if (isProducer) {
+				const result = [selfOriginalId]
 				memo.set(nodeId, result)
 				return result
 			}
 
-			// Case 2: An output mapper. This is a special internal node that represents
-			// the collected output of an entire sub-workflow. Its originalId (which is the
-			// sub-workflow container's originalId) is the key for the data. This is a terminal point.
-			if (originalId && type === '__internal_output_mapper__') {
-				const result = [originalId]
-				memo.set(nodeId, result)
-				return result
-			}
-
-			// Case 3: Any other internal node (e.g., input mapper, join node). It does not
-			// produce data itself, so we must recurse on its predecessors to find the
-			// real producers that feed into it.
+			// Recursive Step: If the node is transparent wiring, look past it to its predecessors.
 			const directPredecessors = predecessorIdMap.get(nodeId) || []
 			const producers = new Set<string>()
 			for (const predId of directPredecessors)
@@ -584,11 +366,9 @@ export class GraphBuilder<
 			return result
 		}
 
-		// Once the direct predecessorIdMap is built, we can trace backwards from every node
-		// to find its true data-producing predecessors.
-		for (const targetId of nodeMap.keys()) {
-			const targetNode = nodeMap.get(targetId)!
-			const mapKey = targetNode.graphData?.data?.originalId ?? targetId
+		for (const targetId of nodeDataMap.keys()) {
+			const targetNodeData = nodeDataMap.get(targetId)!
+			const mapKey = targetNodeData.data?.originalId ?? targetId
 
 			const directPredecessors = predecessorIdMap.get(targetId) || []
 			const producers = new Set<string>()
@@ -602,32 +382,52 @@ export class GraphBuilder<
 		return { predecessorIdMap, originalPredecessorIdMap }
 	}
 
-	/**
-	 * Finds the first node where all parallel branches converge.
-	 * Uses a Breadth-First Search to guarantee finding the nearest convergence point.
-	 * @param parallelNodes - The set of nodes running in parallel.
-	 * @param edgeGroups - The map of all graph edges.
-	 * @returns The convergence node, or undefined if they never converge.
-	 * @private
-	 */
-	private _findConvergenceNode(
-		parallelNodes: AbstractNode[],
-		edgeGroups: Map<string, Map<any, AbstractNode[]>>,
-	): AbstractNode | undefined {
-		if (parallelNodes.length <= 1)
+	private _findBranchTerminals(branchStarts: string[], targetId: string, graph: WorkflowGraph): string[] {
+		const terminals: string[] = []
+		for (const start of branchStarts) {
+			const queue: string[] = [start]
+			const visitedInBranch = new Set<string>()
+
+			while (queue.length > 0) {
+				const currentId = queue.shift()!
+				if (visitedInBranch.has(currentId))
+					continue
+				visitedInBranch.add(currentId)
+
+				const successors = graph.edges.filter(e => e.source === currentId).map(e => e.target)
+
+				if (successors.includes(targetId)) {
+					if (!terminals.includes(currentId)) {
+						terminals.push(currentId)
+					}
+				}
+				else {
+					for (const successorId of successors) {
+						if (!visitedInBranch.has(successorId)) {
+							queue.push(successorId)
+						}
+					}
+				}
+			}
+		}
+		return terminals
+	}
+
+	private _findConditionalConvergence(branchStarts: string[], graph: WorkflowGraph): string | undefined {
+		if (branchStarts.length <= 1)
 			return undefined
 
-		const queue: string[] = parallelNodes.map(n => String(n.id!))
+		const queue: string[] = [...branchStarts]
+		// Map<nodeId, Set<startNodeId>>
 		const visitedBy = new Map<string, Set<string>>()
-		parallelNodes.forEach(n => visitedBy.set(String(n.id!), new Set([String(n.id!)])))
+		branchStarts.forEach(startId => visitedBy.set(startId, new Set([startId])))
 
 		let head = 0
 		while (head < queue.length) {
 			const currentId = queue[head++]!
-			const successors = Array.from(edgeGroups.get(currentId)?.values() ?? []).flat()
+			const successors = graph.edges.filter(e => e.source === currentId).map(e => e.target)
 
-			for (const successor of successors) {
-				const successorId = String(successor.id!)
+			for (const successorId of successors) {
 				if (!visitedBy.has(successorId))
 					visitedBy.set(successorId, new Set())
 
@@ -637,16 +437,15 @@ export class GraphBuilder<
 				for (const startNodeId of startingPointsVistingThisNode)
 					visitorSet.add(startNodeId)
 
-				if (visitorSet.size === parallelNodes.length) {
-					return successor
-				}
+				// If this node has been visited by paths originating from ALL unique branches, it's the one.
+				if (visitorSet.size === branchStarts.length)
+					return successorId
 
 				if (!queue.includes(successorId))
 					queue.push(successorId)
 			}
 		}
 
-		this.logger.warn('[GraphBuilder] Parallel branches do not seem to converge.')
 		return undefined
 	}
 }

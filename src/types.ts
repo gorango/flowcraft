@@ -41,6 +41,8 @@ export interface NodeArgs<PrepRes = any, ExecRes = any, TParams extends Params =
 	executor?: IExecutor
 	/** The actual node instance being executed. */
 	node?: AbstractNode
+	/** A shared set to track visited nodes within a parallel block, preventing race conditions. @internal */
+	visitedInParallel?: Set<AbstractNode>
 }
 
 /**
@@ -53,6 +55,8 @@ export interface NodeRunContext {
 	signal?: AbortSignal
 	logger: Logger
 	executor?: IExecutor
+	/** A shared set to track visited nodes within a parallel block. @internal */
+	visitedInParallel?: Set<AbstractNode>
 }
 
 /** Options for configuring a `Node` instance. */

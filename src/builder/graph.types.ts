@@ -1,4 +1,3 @@
-import type { ContextKey } from '../context'
 import type { NodeOptions } from '../types'
 import type { AbstractNode, Flow } from '../workflow'
 
@@ -104,6 +103,31 @@ export type PredecessorIdMap = Map<string, string[]>
 export type OriginalPredecessorIdMap = Map<string, string[]>
 
 /**
+ * A serializable, static representation of a compiled workflow graph.
+ * This is the "blueprint" that can be stored and shared across distributed workers.
+ */
+export interface WorkflowBlueprint {
+	/** The final, flattened list of node definitions. */
+	nodes: GraphNode[]
+	/** The final, flattened list of edge definitions. */
+	edges: GraphEdge[]
+	/** A map of all node IDs to their direct predecessor count. */
+	predecessorCountMap: Record<string, number>
+	/** A map of all node IDs to their logical data-producing predecessors. */
+	originalPredecessorIdMap: Record<string, string[]>
+	/** The ID of the node where the flow should start. */
+	startNodeId: string
+}
+
+/**
+ * The result of a `GraphBuilder.buildBlueprint()` call, containing the serializable blueprint.
+ */
+export interface BlueprintBuildResult {
+	/** The serializable blueprint of the workflow. */
+	blueprint: WorkflowBlueprint
+}
+
+/**
  * The result of a successful `GraphBuilder.build()` call.
  */
 export interface BuildResult {
@@ -161,11 +185,8 @@ export interface SubWorkflowResolver {
 	getGraph: (id: number | string) => WorkflowGraph | undefined
 }
 
-/** A map to resolve string-based keys from a graph definition to runtime ContextKey symbols. */
-export type ContextKeyResolver = Map<string, ContextKey<any>>
-
 /**
- * Options for configuring the behavior of the `GraphBuilder`.
+ * Options for configuring the `GraphBuilder`.
  */
 export interface GraphBuilderOptions {
 	/**
@@ -187,10 +208,4 @@ export interface GraphBuilderOptions {
 	 * exclusive conditional paths, not parallel branches.
 	 */
 	conditionalNodeTypes?: string[]
-	/**
-	 * A map that resolves string keys from the declarative graph's `inputs`/`outputs`
-	 * blocks to their corresponding runtime `ContextKey` symbols. This is essential
-	 * for bridging the declarative and runtime worlds.
-	 */
-	contextKeyResolver?: ContextKeyResolver
 }
