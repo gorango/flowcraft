@@ -1,4 +1,4 @@
-import type { WorkflowGraph } from '../builder/graph.types'
+import type { WorkflowGraph } from '../builder/graph/types'
 
 /**
  * Sanitizes a raw workflow graph object by removing properties that are not

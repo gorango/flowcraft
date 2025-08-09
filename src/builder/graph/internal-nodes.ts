@@ -1,7 +1,7 @@
-import type { NodeArgs } from '../types'
-import type { AbstractNode } from '../workflow'
-import { Node } from '../workflow'
-import { ParallelFlow } from './patterns'
+import type { NodeArgs } from '../../types'
+import type { AbstractNode } from '../../workflow'
+import { Node } from '../../workflow'
+import { ParallelFlow } from '../patterns'
 
 /**
  * An internal node used by the GraphBuilder to handle the `inputs` mapping

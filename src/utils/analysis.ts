@@ -1,4 +1,4 @@
-import type { GraphNode, NodeTypeMap, TypedGraphNode, TypedWorkflowGraph, WorkflowGraph } from '../builder/graph.types'
+import type { GraphNode, NodeTypeMap, TypedGraphNode, TypedWorkflowGraph, WorkflowGraph } from '../builder/graph/types'
 
 /** The rich metadata object returned by the analyzeGraph function. */
 export interface GraphAnalysis<T extends NodeTypeMap = any> {

@@ -1,4 +1,4 @@
-import type { NodeTypeMap, TypedGraphNode, TypedWorkflowGraph } from '../builder/graph.types'
+import type { NodeTypeMap, TypedGraphNode, TypedWorkflowGraph } from '../builder/graph/types'
 import { describe, expect, it } from 'vitest'
 import { analyzeGraph, checkForCycles, createNodeRule } from './analysis'
 

@@ -1,5 +1,5 @@
 /* eslint-disable unused-imports/no-unused-vars */
-import type { GraphNode } from './builder/graph.types'
+import type { GraphNode } from './builder/graph/types'
 import type { Context, ContextKey, ContextLens } from './context'
 import type { InternalRunOptions } from './executors/types'
 import type { Middleware, NodeArgs, NodeOptions, NodeRunContext, Params, RunOptions } from './types'

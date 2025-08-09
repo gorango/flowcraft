@@ -1,8 +1,8 @@
-import type { NodeArgs } from '../types'
-import type { TypedWorkflowGraph, WorkflowBlueprint } from './graph.types'
+import type { NodeArgs } from '../../types'
+import type { TypedWorkflowGraph, WorkflowBlueprint } from './types'
 import { describe, expect, it } from 'vitest'
-import { contextKey, TypedContext } from '../context'
-import { Node } from '../workflow'
+import { contextKey, TypedContext } from '../../context'
+import { Node } from '../../workflow'
 import { createNodeRegistry, GraphBuilder } from './graph'
 import { ParallelBranchContainer } from './internal-nodes'
 import { BlueprintExecutor } from './runner'
@@ -10,7 +10,6 @@ import { BlueprintExecutor } from './runner'
 const VALUE = contextKey<number>('value')
 const PATH = contextKey<string[]>('path')
 
-// --- Reusable Test Nodes for all suites ---
 class SetNode extends Node {
 	constructor(private opts: { data: { value: number } }) { super() }
 	async exec({ ctx }: NodeArgs) {
@@ -50,7 +49,6 @@ const testRegistry = createNodeRegistry({
 	branch: BranchNode,
 })
 
-// --- ORIGINAL TEST SUITE ---
 describe('BlueprintExecutor', () => {
 	it('should correctly hydrate a blueprint and execute the resulting flow', async () => {
 		const blueprint: WorkflowBlueprint = {
@@ -73,7 +71,6 @@ describe('BlueprintExecutor', () => {
 
 		const executor = new BlueprintExecutor(blueprint, testRegistry)
 
-		// Verify the internal state
 		expect(executor.nodeMap.has('start')).toBe(true)
 		expect(executor.nodeMap.has('add-5')).toBe(true)
 		expect(executor.flow.startNode).toBe(executor.nodeMap.get('start'))
@@ -81,11 +78,9 @@ describe('BlueprintExecutor', () => {
 		const addNode = executor.nodeMap.get('add-5')!
 		expect(Array.from(startNode.successors.values())[0][0]).toBe(addNode)
 
-		// Execute the flow
 		const ctx = new TypedContext()
 		await executor.run(executor.flow, ctx)
 
-		// Verify the result
 		expect(ctx.get(VALUE)).toBe(15)
 		expect(ctx.get(PATH)).toEqual(['set', 'add'])
 	})
@@ -136,11 +131,8 @@ describe('BlueprintExecutor', () => {
 	})
 })
 
-// --- NEW TEST SUITES FOR REGRESSION AND EDGE CASES ---
-
 describe('BlueprintExecutor parallel container hydration', () => {
 	it('should correctly populate the nodesToRun property on ParallelBranchContainer instances', () => {
-		// This test directly replicates the production bug.
 		const graph: TypedWorkflowGraph<any> = {
 			nodes: [
 				{ id: 'start', type: 'set', data: { value: 0 } },
@@ -162,7 +154,6 @@ describe('BlueprintExecutor parallel container hydration', () => {
 		expect(containerNode).toBeDefined()
 		expect(containerNode).toBeInstanceOf(ParallelBranchContainer)
 
-		// The critical test: The worker needs this property to be populated.
 		const parallelContainer = containerNode as ParallelBranchContainer
 		expect(parallelContainer.nodesToRun).toBeInstanceOf(Array)
 		expect(parallelContainer.nodesToRun).toHaveLength(2)
@@ -174,7 +165,6 @@ describe('BlueprintExecutor parallel container hydration', () => {
 
 describe('BlueprintExecutor with conditional convergence', () => {
 	it('should insert a join node so the convergence point has a predecessor count of 1', () => {
-		// This test validates the fix for the critical conditional path bug.
 		const graph: TypedWorkflowGraph<any> = {
 			nodes: [
 				{ id: 'start', type: 'branch', data: { path: 'a' } },
@@ -193,11 +183,8 @@ describe('BlueprintExecutor with conditional convergence', () => {
 			conditionalNodeTypes: ['branch'],
 		})
 		const { blueprint } = builder.buildBlueprint(graph)
-
-		// A distributed executor would stall if this count was 2.
 		expect(blueprint.predecessorCountMap.converge).toBe(1)
 
-		// Verify the join node exists and is the true predecessor.
 		const joinNodeId = 'start__conditional_join'
 		expect(blueprint.nodes.some(n => n.id === joinNodeId)).toBe(true)
 		expect(blueprint.originalPredecessorIdMap.converge).toEqual([joinNodeId])
@@ -206,7 +193,6 @@ describe('BlueprintExecutor with conditional convergence', () => {
 
 describe('BlueprintExecutor with parallel start nodes', () => {
 	it('should create a root parallel container for graphs with multiple start nodes', () => {
-		// This test validates the gap for multiple roots.
 		const graph: TypedWorkflowGraph<any> = {
 			nodes: [
 				{ id: 'start-a', type: 'log', data: { id: 'A' } },
