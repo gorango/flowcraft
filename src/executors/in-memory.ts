@@ -92,7 +92,7 @@ export class InMemoryExecutor implements IExecutor {
 		}
 
 		if (!flow.startNode) {
-			logger.info(`Executor is running a logic-bearing flow: ${flow.constructor.name}`)
+			logger.debug(`Executor is running a logic-bearing flow: ${flow.constructor.name}`)
 			const chain = applyMiddleware(flow.middleware, flow)
 			return await chain({
 				...internalOptions,

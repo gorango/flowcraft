@@ -1,3 +1,4 @@
+import type { ContextKey } from '../../context'
 import type { Logger } from '../../logger'
 import type { AbstractNode, Flow } from '../../workflow'
 import type {
@@ -57,6 +58,7 @@ export class GraphBuilder<
 	private subWorkflowNodeTypes: string[]
 	private conditionalNodeTypes: string[]
 	private subWorkflowResolver?: SubWorkflowResolver
+	private contextKeyMap: Map<string, ContextKey<any>>
 	private logger: Logger
 
 	/**
@@ -92,6 +94,7 @@ export class GraphBuilder<
 		this.subWorkflowNodeTypes = options.subWorkflowNodeTypes ?? []
 		this.conditionalNodeTypes = options.conditionalNodeTypes ?? []
 		this.subWorkflowResolver = options.subWorkflowResolver
+		this.contextKeyMap = options.contextKeyMap ?? new Map()
 	}
 
 	private _logMermaid(flow: Flow) {
@@ -129,6 +132,16 @@ export class GraphBuilder<
 				}
 			}
 
+			const resolveMappings = (mappings: Record<string, string>): Record<string, any> => {
+				const resolved: Record<string, any> = {}
+				for (const [target, source] of Object.entries(mappings)) {
+					const targetKey = this.contextKeyMap.get(target) ?? target
+					const sourceKey = this.contextKeyMap.get(source) ?? source
+					resolved[targetKey as any] = sourceKey
+				}
+				return resolved
+			}
+
 			if (isRegisteredSubWorkflow) {
 				if (!this.subWorkflowResolver)
 					throw new Error('GraphBuilder: `subWorkflowResolver` must be provided in options to handle sub-workflows.')
@@ -138,6 +151,13 @@ export class GraphBuilder<
 				const subGraph: WorkflowGraph | undefined = this.subWorkflowResolver.getGraph(subWorkflowId)
 				if (!subGraph)
 					throw new Error(`Sub-workflow with ID ${subWorkflowId} not found in resolver.`)
+
+				const resolvedInputs = subWorkflowData.inputs
+					? resolveMappings(subWorkflowData.inputs)
+					: {}
+				const resolvedOutputs = subWorkflowData.outputs
+					? resolveMappings(subWorkflowData.outputs)
+					: {}
 
 				finalNodes.push({
 					id: prefixedNodeId,
@@ -150,12 +170,12 @@ export class GraphBuilder<
 				finalNodes.push({
 					id: inputMapperId,
 					type: '__internal_input_mapper__',
-					data: { ...(subWorkflowData.inputs || {}), originalId: node.id },
+					data: { ...resolvedInputs, originalId: node.id },
 				})
 				finalNodes.push({
 					id: outputMapperId,
 					type: '__internal_output_mapper__',
-					data: { ...(subWorkflowData.outputs || {}), originalId: node.id },
+					data: { ...resolvedOutputs, originalId: node.id },
 				})
 
 				const inlinedSubGraph = this._flattenGraph(subGraph, `${prefixedNodeId}:`)

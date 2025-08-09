@@ -274,6 +274,10 @@ describe('graphBuilder with sub-workflows', () => {
 		const builder = new GraphBuilder(subWorkflowNodeRegistry, {}, {
 			subWorkflowNodeTypes: ['custom_sub_workflow'],
 			subWorkflowResolver: mockSubWorkflowResolver,
+			contextKeyMap: new Map([
+				['parent_value', PARENT_VALUE],
+				['sub_value', SUB_VALUE],
+			]),
 		})
 
 		const { blueprint } = builder.buildBlueprint(parentGraph)

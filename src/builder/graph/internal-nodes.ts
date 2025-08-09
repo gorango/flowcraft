@@ -14,7 +14,7 @@ export class InputMappingNode extends Node {
 	constructor(options: { data: Record<string, string> }) {
 		super()
 		// Exclude the injected nodeId from the mappings
-		const { nodeId, ...mappings } = options.data
+		const { nodeId, originalId, isSubWorkflow, ...mappings } = options.data
 		this.mappings = mappings
 	}
 
@@ -41,7 +41,7 @@ export class OutputMappingNode extends Node {
 	constructor(options: { data: Record<string, string> }) {
 		super()
 		// Exclude the injected nodeId from the mappings
-		const { nodeId, ...mappings } = options.data
+		const { nodeId, originalId, isSubWorkflow, ...mappings } = options.data
 		this.mappings = mappings
 	}
 
