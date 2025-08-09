@@ -35,15 +35,6 @@ const traversalLoggingMiddleware: Middleware = async (args: NodeArgs, next: Midd
 	return action
 }
 
-function createMockLogger(): Logger {
-	return {
-		debug: vi.fn(),
-		info: vi.fn(),
-		warn: vi.fn(),
-		error: vi.fn(),
-	}
-}
-
 const VALUE = contextKey<number>('value')
 class StartNode extends Node {
 	async exec({ ctx }: NodeArgs) { ctx.set(VALUE, 15) }
@@ -58,6 +49,15 @@ class FinalNode extends Node<void, void, 'finished'> {
 }
 
 describe('traversalLoggingMiddleware', () => {
+	function createMockLogger(): Logger {
+		return {
+			debug: vi.fn(),
+			info: vi.fn(),
+			warn: vi.fn(),
+			error: vi.fn(),
+		}
+	}
+
 	it('should log the path taken through a branching workflow', async () => {
 		const mockLogger = createMockLogger()
 		const ctx = new TypedContext()

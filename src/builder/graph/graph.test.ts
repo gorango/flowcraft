@@ -1,23 +1,14 @@
-import type { Logger } from '../../logger'
-import type { NodeArgs, RunOptions } from '../../types'
+import type { NodeArgs } from '../../types'
 import type { NodeConstructorOptions, SubWorkflowResolver, TypedWorkflowGraph, WorkflowGraph } from './types'
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import { contextKey, TypedContext } from '../../context'
+import { globalRunOptions } from '../../test-utils'
+import { DebugLogger } from '../../test-utils/debug-logger'
 import { Node } from '../../workflow'
 import { createNodeRegistry, GraphBuilder } from './graph'
 import { BlueprintExecutor } from './runner'
 
-function createMockLogger(): Logger {
-	return {
-		debug: vi.fn(),
-		info: vi.fn(),
-		warn: vi.fn(),
-		error: vi.fn(),
-	}
-}
-
-const mockLogger = createMockLogger()
-const runOptions: RunOptions = { logger: mockLogger }
+const debugLogger = new DebugLogger()
 
 describe('graphBuilder', () => {
 	const VALUE = contextKey<number>('value')
@@ -123,7 +114,7 @@ describe('graphBuilder', () => {
 		// Now, hydrate and run
 		const executor = new BlueprintExecutor(blueprint, testRegistry)
 		const ctx = new TypedContext()
-		await executor.run(executor.flow, ctx, runOptions)
+		await executor.run(executor.flow, ctx, globalRunOptions)
 
 		// Assert correct execution
 		expect(ctx.get(VALUE)).toBe(1020)
@@ -181,7 +172,7 @@ describe('graphBuilder', () => {
 			edges: [],
 		}
 
-		const builder = new GraphBuilder(testRegistry, {}, {}, mockLogger)
+		const builder = new GraphBuilder(testRegistry, {}, {}, debugLogger)
 		const { blueprint } = builder.buildBlueprint(graphWithConfig)
 
 		const configuredBlueprintNode = blueprint.nodes.find(n => n.id === 'node-with-config')
@@ -298,7 +289,7 @@ describe('graphBuilder with sub-workflows', () => {
 		const ctx = new TypedContext([
 			[PARENT_VALUE, 'start'],
 		])
-		await executor.run(executor.flow, ctx, runOptions)
+		await executor.run(executor.flow, ctx, globalRunOptions)
 
 		// The end-to-end result should be the same, proving the wiring is correct.
 		expect(ctx.get(FINAL_VALUE)).toBe('final: start -> A -> D -> E')

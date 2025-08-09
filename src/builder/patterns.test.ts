@@ -1,8 +1,8 @@
-import type { Logger } from '../logger'
-import type { NodeArgs, RunOptions } from '../types'
+import type { NodeArgs } from '../types'
 import type { AbstractNode } from '../workflow'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import { contextKey, TypedContext } from '../context'
+import { globalRunOptions } from '../test-utils'
 import { Flow, Node } from '../workflow'
 import {
 	BatchFlow,
@@ -13,23 +13,6 @@ import {
 	reduceCollection,
 	SequenceFlow,
 } from './patterns'
-
-function createMockLogger(): Logger {
-	return {
-		debug: vi.fn(),
-		info: vi.fn(),
-		warn: vi.fn(),
-		error: vi.fn(),
-	}
-}
-
-let mockLogger = createMockLogger()
-let runOptions: RunOptions = { logger: mockLogger }
-
-afterEach(() => {
-	mockLogger = createMockLogger()
-	runOptions = { logger: mockLogger }
-})
 
 const PROCESSED_IDS = contextKey<number[]>('processed_ids')
 const BATCH_RESULTS = contextKey<string[]>('batch_results')
@@ -67,7 +50,7 @@ describe('sequenceFlow', () => {
 			new AddNode(5), // 1 + 5 = 6
 			new AddNode(10), // 6 + 10 = 16
 		)
-		await flow.run(ctx, runOptions)
+		await flow.run(ctx, globalRunOptions)
 		expect(ctx.get(VALUE)).toBe(16)
 	})
 })
@@ -91,7 +74,7 @@ describe('batchFlow (Sequential)', () => {
 			{ id: 2, value: 'B' },
 			{ id: 3, value: 'C' },
 		])
-		await flow.run(ctx, runOptions)
+		await flow.run(ctx, globalRunOptions)
 		expect(ctx.get(PROCESSED_IDS)).toEqual([1, 2, 3])
 		expect(ctx.get(BATCH_RESULTS)).toEqual([
 			'Item 1: Processed A',
@@ -102,7 +85,7 @@ describe('batchFlow (Sequential)', () => {
 	it('should complete successfully with an empty batch', async () => {
 		const ctx = new TypedContext()
 		const flow = new TestSequentialBatchFlow([])
-		await flow.run(ctx, runOptions)
+		await flow.run(ctx, globalRunOptions)
 		expect(ctx.get(PROCESSED_IDS)).toBeUndefined()
 		expect(ctx.get(BATCH_RESULTS)).toBeUndefined()
 	})
@@ -113,7 +96,7 @@ describe('batchFlow (Sequential)', () => {
 			{ id: 2 },
 		])
 		flow.withParams({ value: 'shared' })
-		await flow.run(ctx, runOptions)
+		await flow.run(ctx, globalRunOptions)
 		expect(ctx.get(BATCH_RESULTS)).toEqual([
 			'Item 1: Processed shared',
 			'Item 2: Processed shared',
@@ -140,7 +123,7 @@ describe('parallelBatchFlow', () => {
 			{ id: 2, value: 'B' },
 			{ id: 3, value: 'C' },
 		])
-		await flow.run(ctx, runOptions)
+		await flow.run(ctx, globalRunOptions)
 		// In parallel, order is not guaranteed, so we check for presence and size.
 		const processedIds = ctx.get(PROCESSED_IDS)
 		expect(processedIds).toHaveLength(3)
@@ -156,7 +139,7 @@ describe('parallelBatchFlow', () => {
 	it('should complete successfully with an empty batch', async () => {
 		const ctx = new TypedContext()
 		const flow = new TestParallelBatchFlow([])
-		await flow.run(ctx, runOptions)
+		await flow.run(ctx, globalRunOptions)
 		expect(ctx.get(PROCESSED_IDS)).toBeUndefined()
 		expect(ctx.get(BATCH_RESULTS)).toBeUndefined()
 	})
@@ -173,7 +156,7 @@ describe('parallelFlow', () => {
 		const finalNode = new AddNode(1000)
 		pFlow.next(finalNode)
 
-		await new Flow(pFlow).run(ctx, runOptions)
+		await new Flow(pFlow).run(ctx, globalRunOptions)
 
 		// The parallel AddNodes will race. The final value depends on execution order,
 		// but the path should be correct. Let's verify the final step.
@@ -195,7 +178,7 @@ describe('parallelFlow', () => {
 		const finalNode = new AddNode(5)
 		pFlow.next(finalNode)
 
-		await new Flow(pFlow).run(ctx, runOptions)
+		await new Flow(pFlow).run(ctx, globalRunOptions)
 		expect(ctx.get(VALUE)).toBe(5)
 	})
 })
@@ -206,7 +189,7 @@ describe('functionalHelpers', () => {
 			const items = [1, 2, 3]
 			const double = (n: number) => n * 2
 			const flow = mapCollection(items, double)
-			const result = await flow.run(new TypedContext(), runOptions)
+			const result = await flow.run(new TypedContext(), globalRunOptions)
 			expect(result).toEqual([2, 4, 6])
 		})
 		it('should map items using an asynchronous function', async () => {
@@ -216,14 +199,14 @@ describe('functionalHelpers', () => {
 				return s.toUpperCase()
 			}
 			const flow = mapCollection(items, toUpper)
-			const result = await flow.run(new TypedContext(), runOptions)
+			const result = await flow.run(new TypedContext(), globalRunOptions)
 			expect(result).toEqual(['A', 'B', 'C'])
 		})
 		it('should handle an empty collection', async () => {
 			const items: number[] = []
 			const double = (n: number) => n * 2
 			const flow = mapCollection(items, double)
-			const result = await flow.run(new TypedContext(), runOptions)
+			const result = await flow.run(new TypedContext(), globalRunOptions)
 			expect(result).toEqual([])
 		})
 	})
@@ -233,7 +216,7 @@ describe('functionalHelpers', () => {
 			const items = [1, 2, 3, 4, 5]
 			const isEven = (n: number) => n % 2 === 0
 			const flow = filterCollection(items, isEven)
-			const result = await flow.run(new TypedContext(), runOptions)
+			const result = await flow.run(new TypedContext(), globalRunOptions)
 			expect(result).toEqual([2, 4])
 		})
 		it('should filter items using an asynchronous predicate', async () => {
@@ -243,14 +226,14 @@ describe('functionalHelpers', () => {
 				return s.length > 5
 			}
 			const flow = filterCollection(items, isLong)
-			const result = await flow.run(new TypedContext(), runOptions)
+			const result = await flow.run(new TypedContext(), globalRunOptions)
 			expect(result).toEqual(['long-word', 'another-long-word'])
 		})
 		it('should handle an empty collection', async () => {
 			const items: string[] = []
 			const isLong = (s: string) => s.length > 5
 			const flow = filterCollection(items, isLong)
-			const result = await flow.run(new TypedContext(), runOptions)
+			const result = await flow.run(new TypedContext(), globalRunOptions)
 			expect(result).toEqual([])
 		})
 	})
@@ -260,7 +243,7 @@ describe('functionalHelpers', () => {
 			const items = [1, 2, 3, 4]
 			const sum = (acc: number, val: number) => acc + val
 			const flow = reduceCollection(items, sum, 0)
-			const result = await flow.run(new TypedContext(), runOptions)
+			const result = await flow.run(new TypedContext(), globalRunOptions)
 			expect(result).toBe(10)
 		})
 		it('should reduce a collection using an asynchronous reducer', async () => {
@@ -270,14 +253,14 @@ describe('functionalHelpers', () => {
 				return acc + val.toUpperCase()
 			}
 			const flow = reduceCollection(items, concatUpper, 'start:')
-			const result = await flow.run(new TypedContext(), runOptions)
+			const result = await flow.run(new TypedContext(), globalRunOptions)
 			expect(result).toBe('start:ABC')
 		})
 		it('should return the initial value for an empty collection', async () => {
 			const items: number[] = []
 			const sum = (acc: number, val: number) => acc + val
 			const flow = reduceCollection(items, sum, 100)
-			const result = await flow.run(new TypedContext(), runOptions)
+			const result = await flow.run(new TypedContext(), globalRunOptions)
 			expect(result).toBe(100)
 		})
 	})

@@ -1,11 +1,11 @@
 import type { ContextKey } from './context'
-import type { Logger } from './logger'
 import type { NodeArgs, NodeOptions, RunOptions } from './types'
 import type { AbstractNode } from './workflow'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { BatchFlow, ParallelBatchFlow } from './builder/patterns'
 import { composeContext, contextKey, lens, TypedContext } from './context'
 import { AbortError, FatalWorkflowError, WorkflowError } from './errors'
+import { globalRunOptions } from './test-utils'
 import { DEFAULT_ACTION, FILTER_FAILED } from './types'
 import { sleep } from './utils/index'
 import { Flow, Node } from './workflow'
@@ -21,24 +21,6 @@ const COUNTER = contextKey<number>('counter')
 const FINAL_RESULT = contextKey<string>('final_result')
 const LENS_VALUE = contextKey<number>('lens_value')
 const MIDDLEWARE_PATH = contextKey<string[]>('middleware_path')
-
-// Mock logger for testing
-function createMockLogger(): Logger {
-	return {
-		debug: vi.fn(),
-		info: vi.fn(),
-		warn: vi.fn(),
-		error: vi.fn(),
-	}
-}
-
-let mockLogger = createMockLogger()
-let runOptions: RunOptions = { logger: mockLogger }
-
-afterEach(() => {
-	mockLogger = createMockLogger()
-	runOptions = { logger: mockLogger }
-})
 
 class NumberNode extends Node {
 	constructor(private number: number) { super() }
@@ -99,7 +81,7 @@ describe('testFlowBasic', () => {
 		const n3 = new MultiplyNode(2)
 		const flow = new Flow()
 		flow.start(n1).next(n2).next(n3)
-		const lastAction = await flow.run(ctx, runOptions)
+		const lastAction = await flow.run(ctx, globalRunOptions)
 		expect(ctx.get(CURRENT)).toBe(16)
 		expect(lastAction).toBe(DEFAULT_ACTION)
 	})
@@ -114,7 +96,7 @@ describe('testFlowBasic', () => {
 		startNode.next(checkNode)
 		checkNode.next(addIfPositive, 'positive')
 		checkNode.next(addIfNegative, 'negative')
-		await flow.run(ctx, runOptions)
+		await flow.run(ctx, globalRunOptions)
 		expect(ctx.get(CURRENT)).toBe(15)
 	})
 
@@ -128,7 +110,7 @@ describe('testFlowBasic', () => {
 		startNode.next(checkNode)
 		checkNode.next(addIfPositive, 'positive')
 		checkNode.next(addIfNegative, 'negative')
-		await flow.run(ctx, runOptions)
+		await flow.run(ctx, globalRunOptions)
 		expect(ctx.get(CURRENT)).toBe(-25)
 	})
 
@@ -143,7 +125,7 @@ describe('testFlowBasic', () => {
 		checkNode.next(subtractNode, 'positive')
 		checkNode.next(endNode, 'negative')
 		subtractNode.next(checkNode)
-		const lastAction = await flow.run(ctx, runOptions)
+		const lastAction = await flow.run(ctx, globalRunOptions)
 		expect(ctx.get(CURRENT)).toBe(-2)
 		expect(lastAction).toBe('cycle_done')
 	})
@@ -155,7 +137,7 @@ describe('testFlowComposition', () => {
 		const innerFlow = new Flow(new NumberNode(5))
 		innerFlow.startNode!.next(new AddNode(10)).next(new MultiplyNode(2))
 		const outerFlow = new Flow(innerFlow)
-		await outerFlow.run(ctx, runOptions)
+		await outerFlow.run(ctx, globalRunOptions)
 		expect(ctx.get(CURRENT)).toBe(30)
 	})
 
@@ -170,7 +152,7 @@ describe('testFlowComposition', () => {
 		const outerFlow = new Flow(innerFlow)
 		innerFlow.next(pathA, 'other_action')
 		innerFlow.next(pathB, 'inner_done')
-		await outerFlow.run(ctx, runOptions)
+		await outerFlow.run(ctx, globalRunOptions)
 		expect(ctx.get(CURRENT)).toBe(100)
 		expect(ctx.get(PATH_TAKEN)).toBe('B')
 	})
@@ -251,7 +233,7 @@ describe('testExecFallback', () => {
 	it('should call execFallback after all retries are exhausted', async () => {
 		const ctx = new TypedContext()
 		const node = new FallbackNode(true, { maxRetries: 3 })
-		await node.run(ctx, runOptions)
+		await node.run(ctx, globalRunOptions)
 		expect(ctx.get(ATTEMPTS)).toBe(3) // 1 initial attempt + 2 retries
 		expect(ctx.get(RESULT)).toBe('fallback')
 	})
@@ -291,7 +273,7 @@ describe('testAbortController', () => {
 		const flow = new Flow()
 		flow.start(n1).next(n2).next(n3)
 		const controller = new AbortController()
-		const runPromise = flow.run(ctx, { controller, logger: mockLogger })
+		const runPromise = flow.run(ctx, { ...globalRunOptions, controller })
 		setTimeout(() => controller.abort(), 30) // Abort during n2's execution
 		await expect(runPromise).rejects.toThrow(AbortError)
 		expect(ctx.get(STARTED)).toEqual([1, 2])
@@ -306,7 +288,7 @@ describe('testAbortController', () => {
 		}
 		const batchFlow = new TestBatchFlow()
 		const controller = new AbortController()
-		const runPromise = batchFlow.run(ctx, { controller, logger: mockLogger })
+		const runPromise = batchFlow.run(ctx, { ...globalRunOptions, controller })
 		setTimeout(() => controller.abort(), 30) // Abort during the 2nd item's execution
 		await expect(runPromise).rejects.toThrow(AbortError)
 		expect(ctx.get(STARTED)).toEqual([1, 2])
@@ -321,7 +303,7 @@ describe('testAbortController', () => {
 		}
 		const parallelFlow = new TestParallelFlow()
 		const controller = new AbortController()
-		const runPromise = parallelFlow.run(ctx, { controller, logger: mockLogger })
+		const runPromise = parallelFlow.run(ctx, { ...globalRunOptions, controller })
 		setTimeout(() => controller.abort(), 20) // Abort while all are running
 		await expect(runPromise).rejects.toThrow(AbortError)
 		// All should have started in parallel
@@ -333,6 +315,18 @@ describe('testAbortController', () => {
 })
 
 describe('testLoggingAndErrors', () => {
+	const mockLogger = {
+		debug: vi.fn(),
+		info: vi.fn(),
+		warn: vi.fn(),
+		error: vi.fn(),
+	}
+	const localRunOptions: RunOptions = { logger: mockLogger }
+
+	beforeEach(() => {
+		vi.clearAllMocks()
+	})
+
 	it('should be silent by default if no logger is provided', async () => {
 		const consoleInfoSpy = vi.spyOn(console, 'info').mockImplementation(() => { })
 		const flow = new Flow(new NumberNode(1))
@@ -348,7 +342,7 @@ describe('testLoggingAndErrors', () => {
 			async execFallback() { return 'fallback' }
 		}
 		const flow = new Flow(new FailingNode())
-		await flow.run(new TypedContext(), runOptions)
+		await flow.run(new TypedContext(), localRunOptions)
 		expect(mockLogger.warn).toHaveBeenCalledWith(
 			'Attempt 1/2 failed for FailingNode. Retrying...',
 			expect.any(Object),
@@ -364,7 +358,7 @@ describe('testLoggingAndErrors', () => {
 			async prep() { throw new Error('Prep failed') }
 		}
 		const flow = new Flow(new FailingPrepNode())
-		const runPromise = flow.run(new TypedContext(), runOptions)
+		const runPromise = flow.run(new TypedContext(), localRunOptions)
 		await expect(runPromise).rejects.toThrow(WorkflowError)
 		await expect(runPromise).rejects.toMatchObject({
 			name: 'WorkflowError',
@@ -417,7 +411,7 @@ describe('testFunctionalMethods', () => {
 		const node = new ValueNode({ value: 10 }).map(res => `Value is ${res.value}`)
 		const resultNode = node.toContext(FINAL_RESULT) // Use toContext to easily inspect the result
 		const ctx = new TypedContext()
-		await resultNode.run(ctx, runOptions)
+		await resultNode.run(ctx, globalRunOptions)
 		expect(ctx.get(FINAL_RESULT)).toBe('Value is 10')
 	})
 
@@ -428,14 +422,14 @@ describe('testFunctionalMethods', () => {
 		})
 		const resultNode = node.toContext(FINAL_RESULT)
 		const ctx = new TypedContext()
-		await resultNode.run(ctx, runOptions)
+		await resultNode.run(ctx, globalRunOptions)
 		expect(ctx.get(FINAL_RESULT)).toBe('HELLO')
 	})
 
 	it('toContext() should set the execution result in the context', async () => {
 		const node = new ValueNode('success').toContext(FINAL_RESULT)
 		const ctx = new TypedContext()
-		await node.run(ctx, runOptions)
+		await node.run(ctx, globalRunOptions)
 		expect(ctx.get(FINAL_RESULT)).toBe('success')
 	})
 
@@ -446,20 +440,20 @@ describe('testFunctionalMethods', () => {
 			.map(res => res + 1)
 			.toContext(COUNTER)
 		const ctx = new TypedContext()
-		await node.run(ctx, runOptions)
+		await node.run(ctx, globalRunOptions)
 		expect(sideEffect).toHaveBeenCalledWith(42)
 		expect(ctx.get(COUNTER)).toBe(43)
 	})
 
 	it('filter() should route to DEFAULT_ACTION when predicate is true', async () => {
 		const node = new ValueNode(100).filter(res => res > 50)
-		const action = await node.run(new TypedContext(), runOptions)
+		const action = await node.run(new TypedContext(), globalRunOptions)
 		expect(action).toBe(DEFAULT_ACTION)
 	})
 
 	it('filter() should route to FILTER_FAILED when predicate is false', async () => {
 		const node = new ValueNode(10).filter(res => res > 50)
-		const action = await node.run(new TypedContext(), runOptions)
+		const action = await node.run(new TypedContext(), globalRunOptions)
 		expect(action).toBe(FILTER_FAILED)
 	})
 
@@ -471,7 +465,7 @@ describe('testFunctionalMethods', () => {
 			.map(res => (res ?? -1) + 1)
 			.toContext(COUNTER)
 		const ctx = new TypedContext()
-		await node.run(ctx, runOptions)
+		await node.run(ctx, globalRunOptions)
 		expect(ctx.get(COUNTER)).toBe(100)
 	})
 
@@ -487,7 +481,7 @@ describe('testFunctionalMethods', () => {
 			.filter(str => str.includes('50')) // 4. Predicate passes
 			.toContext(FINAL_RESULT) // 5. Store "The number is 50" in FINAL_RESULT
 		const ctx = new TypedContext()
-		const action = await node.run(ctx, runOptions)
+		const action = await node.run(ctx, globalRunOptions)
 		expect(sideEffect).toHaveBeenCalledWith(50)
 		expect(ctx.get(FINAL_RESULT)).toBe('The number is 50')
 		expect(action).toBe(DEFAULT_ACTION)
@@ -495,7 +489,7 @@ describe('testFunctionalMethods', () => {
 		const failingNode = new ReadContextNode(LENS_VALUE)
 			.withLens(valueLens, 99)
 			.filter(val => val! < 90)
-		const failingAction = await failingNode.run(new TypedContext(), runOptions)
+		const failingAction = await failingNode.run(new TypedContext(), globalRunOptions)
 		expect(failingAction).toBe(FILTER_FAILED)
 	})
 })
@@ -511,7 +505,7 @@ describe('testFlowMiddleware', () => {
 			args.ctx.set(MIDDLEWARE_PATH, [...args.ctx.get(MIDDLEWARE_PATH)!, 'mw-exit'])
 			return result
 		})
-		await flow.run(ctx, runOptions)
+		await flow.run(ctx, globalRunOptions)
 		expect(ctx.get(CURRENT)).toBe(10) // Node logic ran
 		expect(ctx.get(MIDDLEWARE_PATH)).toEqual(['mw-enter', 'mw-exit'])
 	})
@@ -529,7 +523,7 @@ describe('testFlowMiddleware', () => {
 		}
 		flow.use(createTracer('mw1'))
 		flow.use(createTracer('mw2'))
-		await flow.run(ctx, runOptions)
+		await flow.run(ctx, globalRunOptions)
 		expect(ctx.get(MIDDLEWARE_PATH)).toEqual([
 			'enter-mw1',
 			'enter-mw2',
@@ -550,7 +544,7 @@ describe('testFlowMiddleware', () => {
 			args.ctx.set(CURRENT, 50)
 			return next(args)
 		})
-		await flow.run(ctx, runOptions)
+		await flow.run(ctx, globalRunOptions)
 		expect(ctx.get(CURRENT)).toBe(50)
 	})
 
@@ -570,7 +564,7 @@ describe('testFlowMiddleware', () => {
 		}
 		flow.use(goodMiddleware)
 		flow.use(badMiddleware)
-		await expect(flow.run(ctx, runOptions)).rejects.toThrow('Middleware failure')
+		await expect(flow.run(ctx, globalRunOptions)).rejects.toThrow('Middleware failure')
 		expect(ctx.get(MIDDLEWARE_PATH)).toEqual(['enter-good'])
 		expect(ctx.get(CURRENT)).toBeUndefined()
 	})
@@ -586,7 +580,7 @@ describe('testFlowMiddleware', () => {
 			}
 			return 'short-circuited'
 		})
-		const lastAction = await flow.run(ctx, runOptions)
+		const lastAction = await flow.run(ctx, globalRunOptions)
 		expect(ctx.get(CURRENT)).toBe(0)
 		expect(lastAction).toBe('short-circuited')
 	})
@@ -633,7 +627,7 @@ describe('testFatalWorkflowError', () => {
 		const flow = new Flow(fatalNode)
 		const ctx = new TypedContext()
 
-		const runPromise = flow.run(ctx, runOptions)
+		const runPromise = flow.run(ctx, globalRunOptions)
 
 		// Assert that the flow rejects with the specific fatal error
 		await expect(runPromise).rejects.toThrow(FatalWorkflowError)

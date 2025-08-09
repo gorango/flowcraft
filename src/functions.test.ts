@@ -1,6 +1,4 @@
-import type { Logger } from './logger'
-import type { RunOptions } from './types'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { contextKey, lens, TypedContext } from './context'
 import {
 	compose,
@@ -9,27 +7,9 @@ import {
 	pipeline,
 	transformNode,
 } from './functions'
+import { globalRunOptions } from './test-utils'
 import { DEFAULT_ACTION } from './types'
 
-// Mock logger for testing
-function createMockLogger(): Logger {
-	return {
-		debug: vi.fn(),
-		info: vi.fn(),
-		warn: vi.fn(),
-		error: vi.fn(),
-	}
-}
-
-let mockLogger = createMockLogger()
-let runOptions: RunOptions = { logger: mockLogger }
-
-afterEach(() => {
-	mockLogger = createMockLogger()
-	runOptions = { logger: mockLogger }
-})
-
-// Context Keys for testing
 const NAME = contextKey<string>('name')
 const COUNTER = contextKey<number>('counter')
 const RESULT = contextKey<any>('result')
@@ -40,7 +20,7 @@ describe('mapNode', () => {
 		const ctx = new TypedContext()
 		const doubleNode = mapNode<{ value: number }, number>(params => params.value * 2)
 			.toContext(RESULT)
-		await doubleNode.withParams({ value: 10 }).run(ctx, runOptions)
+		await doubleNode.withParams({ value: 10 }).run(ctx, globalRunOptions)
 		expect(ctx.get(RESULT)).toBe(20)
 	})
 
@@ -48,7 +28,7 @@ describe('mapNode', () => {
 		const ctx = new TypedContext()
 		const upperNode = mapNode<{ value: string }, string>(async params => params.value.toUpperCase())
 			.toContext(RESULT)
-		await upperNode.withParams({ value: 'hello' }).run(ctx, runOptions)
+		await upperNode.withParams({ value: 'hello' }).run(ctx, globalRunOptions)
 		expect(ctx.get(RESULT)).toBe('HELLO')
 	})
 
@@ -56,9 +36,9 @@ describe('mapNode', () => {
 		const ctx = new TypedContext()
 		const sideEffectFn = vi.fn()
 		const tapNode = mapNode<any, void>(params => sideEffectFn(params.value))
-		await tapNode.withParams({ value: 123 }).run(ctx, runOptions)
+		await tapNode.withParams({ value: 123 }).run(ctx, globalRunOptions)
 		expect(sideEffectFn).toHaveBeenCalledWith(123)
-		const action = await tapNode.withParams({ value: 456 }).run(ctx, runOptions)
+		const action = await tapNode.withParams({ value: 456 }).run(ctx, globalRunOptions)
 		expect(Array.from(ctx.entries())).toHaveLength(0)
 		expect(action).toBe(DEFAULT_ACTION)
 	})
@@ -71,7 +51,7 @@ describe('contextNode', () => {
 			const prefix = ctx.get(PREFIX) ?? 'Default'
 			return `${prefix}, ${params.name}!`
 		}).toContext(RESULT)
-		await greeterNode.withParams({ name: 'World' }).run(ctx, runOptions)
+		await greeterNode.withParams({ name: 'World' }).run(ctx, globalRunOptions)
 		expect(ctx.get(RESULT)).toBe('Hello, World!')
 	})
 
@@ -82,7 +62,7 @@ describe('contextNode', () => {
 			await new Promise(resolve => setTimeout(resolve, 1))
 			return `${prefix}, ${params.name}!`
 		}).toContext(RESULT)
-		await greeterNode.withParams({ name: 'Mundo' }).run(ctx, runOptions)
+		await greeterNode.withParams({ name: 'Mundo' }).run(ctx, globalRunOptions)
 		expect(ctx.get(RESULT)).toBe('Hola, Mundo!')
 	})
 })
@@ -92,7 +72,7 @@ describe('transformNode', () => {
 		const ctx = new TypedContext()
 		const nameLens = lens(NAME)
 		const setNode = transformNode(nameLens.set('Alice'))
-		await setNode.run(ctx, runOptions)
+		await setNode.run(ctx, globalRunOptions)
 		expect(ctx.get(NAME)).toBe('Alice')
 	})
 
@@ -104,7 +84,7 @@ describe('transformNode', () => {
 			nameLens.set('Bob'),
 			counterLens.update(c => (c ?? 0) + 5),
 		)
-		await setupNode.run(ctx, runOptions)
+		await setupNode.run(ctx, globalRunOptions)
 		expect(ctx.get(NAME)).toBe('Bob')
 		expect(ctx.get(COUNTER)).toBe(15)
 	})
@@ -124,7 +104,7 @@ describe('transformNode', () => {
 			),
 			readNode,
 		)
-		await flow.run(ctx, runOptions)
+		await flow.run(ctx, globalRunOptions)
 		expect(ctx.get(RESULT)).toBe('Carol has 100 points')
 	})
 })
@@ -135,14 +115,14 @@ describe('pipeline', () => {
 		const add10 = mapNode(() => 10).toContext(COUNTER)
 		const multiplyBy3 = contextNode(ctx => (ctx.get(COUNTER) ?? 0) * 3).toContext(COUNTER)
 		const flow = pipeline(add10, multiplyBy3)
-		await flow.run(ctx, runOptions)
+		await flow.run(ctx, globalRunOptions)
 		expect(ctx.get(COUNTER)).toBe(30)
 	})
 
 	it('should run successfully with an empty sequence', async () => {
 		const ctx = new TypedContext()
 		const emptyFlow = pipeline()
-		const action = await emptyFlow.run(ctx, runOptions)
+		const action = await emptyFlow.run(ctx, globalRunOptions)
 		expect(Array.from(ctx.entries())).toHaveLength(0)
 		expect(action).toBe(DEFAULT_ACTION)
 	})
@@ -187,7 +167,7 @@ describe('compose', () => {
 		const processNode = mapNode(composedFn)
 			.map(res => res.val)
 			.toContext(RESULT)
-		await processNode.withParams({ val: 10 }).run(ctx, runOptions)
+		await processNode.withParams({ val: 10 }).run(ctx, globalRunOptions)
 		expect(ctx.get(RESULT)).toBe(30) // (10 + 5) * 2
 	})
 })
