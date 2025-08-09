@@ -4,6 +4,7 @@ import type { Middleware, NodeArgs, RunOptions } from '../types'
 import type { AbstractNode } from '../workflow'
 import type { GraphNode, NodeRegistry, TypedNodeRegistry, WorkflowBlueprint } from './graph.types'
 import { AbortError } from '../errors'
+import { InMemoryExecutor } from '../executors/in-memory'
 import { NullLogger } from '../logger'
 import { DEFAULT_ACTION } from '../types'
 import { applyMiddleware } from '../utils/middleware'
@@ -117,58 +118,6 @@ export class BlueprintExecutor implements IExecutor {
 	}
 
 	/**
-	 * Orchestrates the traversal of the hydrated graph.
-	 * @internal
-	 */
-	public async _orch<T = any>(
-		startNode: AbstractNode,
-		flowMiddleware: Middleware[],
-		context: Context,
-		options: InternalRunOptions,
-	): Promise<T> {
-		let currentNode: AbstractNode | undefined = startNode
-		let nextNode: AbstractNode | undefined
-		let action: any
-
-		const { logger, signal } = options
-		const visitedInParallel = new Set<AbstractNode>()
-
-		while (currentNode) {
-			if (signal?.aborted)
-				throw new AbortError()
-
-			if (visitedInParallel.has(currentNode)) {
-				currentNode = this.getNextNode(currentNode, undefined)
-				continue
-			}
-
-			const nodeArgs: NodeArgs = {
-				ctx: context,
-				params: { ...options.params, ...currentNode.params },
-				signal,
-				logger,
-				prepRes: undefined,
-				execRes: undefined,
-				name: currentNode.constructor.name,
-				executor: options.executor,
-				node: currentNode,
-				visitedInParallel,
-			}
-
-			const chain = applyMiddleware(flowMiddleware, currentNode)
-			action = await chain(nodeArgs)
-			nextNode = this.getNextNode(currentNode, action)
-
-			if (!nextNode)
-				return action as T
-
-			currentNode = nextNode
-		}
-
-		return undefined as T
-	}
-
-	/**
 	 * Executes the flow defined by the blueprint.
 	 * @param flow The flow to execute.
 	 * @param context The shared context for the workflow.
@@ -176,22 +125,16 @@ export class BlueprintExecutor implements IExecutor {
 	 * @returns A promise that resolves with the final action of the workflow.
 	 */
 	public async run<T>(flow: Flow<any, T>, context: Context, options?: RunOptions): Promise<T> {
-		const logger = options?.logger ?? new NullLogger()
-		const combinedParams = { ...flow.params, ...options?.params }
-
-		const internalOptions: InternalRunOptions = {
-			logger,
-			signal: options?.signal ?? options?.controller?.signal,
-			params: combinedParams,
-			executor: this,
+		if (flow !== this.flow) {
+			throw new Error(
+				'BlueprintExecutor is specialized and can only run the flow instance it was constructed with. '
+				+ 'To run an arbitrary flow, use an InMemoryExecutor instance.',
+			)
 		}
 
-		if (!this.flow.startNode) {
-			logger.warn('BlueprintExecutor running a flow with no start node.')
-			return undefined as T
-		}
-
-		return this._orch<T>(this.flow.startNode, this.flow.middleware, context, internalOptions)
+		const inMemoryExecutor = new InMemoryExecutor()
+		const finalOptions = { ...options, executor: this }
+		return inMemoryExecutor.run(this.flow, context, finalOptions)
 	}
 
 	/**
