@@ -24,7 +24,7 @@
 		"test": "vitest run --config config/vitest.config.ts",
 		"test:watch": "vitest --config config/vitest.config.ts",
 		"coverage": "vitest run --coverage --config config/vitest.config.ts",
-		"lint": "eslint --fix . --ext .ts --config eslint.config.js",
+		"lint": "eslint --fix . --ext .ts",
 		"docs:dev": "vitepress dev docs",
 		"docs:build": "vitepress build docs",
 		"docs:preview": "vitepress preview docs"
@@ -34,6 +34,7 @@
 		"@types/node": "^24.1.0",
 		"@vitest/coverage-v8": "3.2.4",
 		"eslint": "^9.32.0",
+		"jiti": "^2.5.1",
 		"mermaid": "^11.9.0",
 		"tsup": "^8.5.0",
 		"typescript": "^5.8.3",

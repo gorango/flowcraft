@@ -9,7 +9,6 @@ export default antfu({
 }, {
 	rules: {
 		'no-console': 'off',
-		'ts/no-this-alias': 'off',
 		'test/prefer-lowercase-title': 'off',
 	},
 })
