@@ -1,3 +1,4 @@
+import type { WorkflowBlueprint } from '../builder/graph/types'
 import type { AbstractNode, Flow } from '../workflow'
 import { DEFAULT_ACTION, FILTER_FAILED } from '../types'
 
@@ -77,7 +78,32 @@ function getUniqueNodeId(node: AbstractNode, nameCounts: Map<string, number>, id
 
 /**
  * Generates a Mermaid graph definition from a `Flow` instance.
- * ...
+ *
+ * This utility traverses the workflow's node structure and outputs a string
+ * that can be rendered by Mermaid.js to visualize the flow's logic,
+ * including branching and cycles.
+ *
+ * @param flow The `Flow` instance to visualize.
+ * @returns A string containing the Mermaid `graph TD` definition.
+ *
+ * @example
+ * const startNode = new Node('start')
+ * const processNode = new Node('process')
+ * const endNode = new Node('end')
+ *
+ * startNode.next(processNode)
+ * processNode.next(endNode)
+ *
+ * const myFlow = new Flow(startNode)
+ * const mermaidSyntax = generateMermaidGraph(myFlow)
+ * console.log(mermaidSyntax)
+ * // Outputs:
+ * // graph TD
+ * //   Node_0[Node]
+ * //   Node_1[Node]
+ * //   Node_2[Node]
+ * //   Node_0 --> Node_1
+ * //   Node_1 --> Node_2
  */
 export function generateMermaidGraph(flow: Flow): string {
 	if (!flow.startNode)
@@ -135,4 +161,37 @@ export function generateMermaidGraph(flow: Flow): string {
 	]
 
 	return mermaidLines.join('\n')
+}
+
+/**
+ * Generates a Mermaid graph definition from a static `WorkflowBlueprint`.
+ *
+ * This utility iterates over the blueprint's nodes and edges to output a string
+ * that can be rendered by Mermaid.js to visualize the entire workflow structure.
+ *
+ * @param blueprint The `WorkflowBlueprint` instance to visualize.
+ * @returns A string containing the Mermaid `graph TD` definition.
+ */
+export function generateMermaidFromBlueprint(blueprint: WorkflowBlueprint): string {
+	let mermaidString = 'graph TD\n'
+
+	// Define nodes, quoting the ID to handle special characters and adding the type as a label
+	for (const node of blueprint.nodes) {
+		const label = `${node.id.replace(/"/g, '#quot;')} (${node.type})`
+		mermaidString += `    ${node.id}["${label}"]\n`
+	}
+
+	mermaidString += '\n'
+
+	// Define edges, adding the action as a label if it exists
+	for (const edge of blueprint.edges) {
+		if (edge.action) {
+			mermaidString += `    ${edge.source} -->|${String(edge.action)}| ${edge.target}\n`
+		}
+		else {
+			mermaidString += `    ${edge.source} --> ${edge.target}\n`
+		}
+	}
+
+	return mermaidString
 }
