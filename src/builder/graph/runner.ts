@@ -1,11 +1,11 @@
 import type { Context } from '../../context'
 import type { IExecutor } from '../../executors/types'
 import type { RunOptions } from '../../types'
-import type { AbstractNode } from '../../workflow'
+import type { AbstractNode } from '../../workflow/index'
 import type { GraphNode, NodeRegistry, TypedNodeRegistry, WorkflowBlueprint } from './types'
 import { InMemoryExecutor } from '../../executors/in-memory'
 import { DEFAULT_ACTION } from '../../types'
-import { Flow } from '../../workflow'
+import { Flow } from '../../workflow/index'
 import { ConditionalJoinNode, InputMappingNode, OutputMappingNode, ParallelBranchContainer, SubWorkflowContainerNode } from './internal-nodes'
 
 /**

@@ -1,7 +1,7 @@
 import type { MiddlewareNext, NodeArgs } from '../types'
 import { describe, expect, it } from 'vitest'
 import { contextKey, TypedContext } from '../context'
-import { Flow, Node } from '../workflow'
+import { Flow, Node } from '../workflow/index'
 import { InMemoryExecutor } from './in-memory'
 
 const VALUE = contextKey<number>('value')

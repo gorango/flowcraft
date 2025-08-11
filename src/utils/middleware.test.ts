@@ -2,7 +2,7 @@ import type { Logger } from '../logger'
 import type { Middleware, MiddlewareNext, NodeArgs } from '../types'
 import { describe, expect, it, vi } from 'vitest'
 import { contextKey, TypedContext } from '../context'
-import { Flow, Node } from '../workflow'
+import { Flow, Node } from '../workflow/index'
 
 function getActionDisplay(action: any): string {
 	if (typeof action === 'symbol')

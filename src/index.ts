@@ -1,7 +1,7 @@
 /* eslint-disable perfectionist/sort-exports */
 
 // Core Workflow
-export * from './workflow'
+export * from './workflow/index'
 export * from './context'
 export * from './errors'
 export * from './logger'

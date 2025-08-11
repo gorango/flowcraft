@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest'
 import { contextKey, TypedContext } from '../../context'
 import { globalRunOptions } from '../../test-utils'
 import { DebugLogger } from '../../test-utils/debug-logger'
-import { Node } from '../../workflow'
+import { Node } from '../../workflow/index'
 import { createNodeRegistry, GraphBuilder } from './graph'
 import { BlueprintExecutor } from './runner'
 

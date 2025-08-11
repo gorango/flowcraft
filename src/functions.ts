@@ -1,9 +1,9 @@
 import type { Context, ContextTransform } from './context'
 import type { NodeArgs, Params } from './types'
-import type { Flow, Node } from './workflow'
+import type { Flow, Node } from './workflow/index'
 import { SequenceFlow } from './builder/patterns'
 import { composeContext } from './context'
-import { Node as BaseNode } from './workflow'
+import { Node as BaseNode } from './workflow/index'
 
 /**
  * A type for a pure function that can be executed within a `Node`,

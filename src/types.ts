@@ -1,7 +1,7 @@
 import type { Context } from './context'
 import type { IExecutor } from './executors/types'
 import type { Logger } from './logger'
-import type { AbstractNode } from './workflow'
+import type { AbstractNode } from './workflow/index'
 
 /** A generic type for key-value parameters. */
 export type Params = Record<string, any>

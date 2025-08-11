@@ -1,10 +1,10 @@
 import type { ContextKey } from '../context'
 import type { NodeArgs } from '../types'
-import type { AbstractNode } from '../workflow'
+import type { AbstractNode } from '../workflow/index'
 import { describe, expect, it } from 'vitest'
 import { contextKey, TypedContext } from '../context'
 import { globalRunOptions } from '../test-utils'
-import { Flow, Node } from '../workflow'
+import { Flow, Node } from '../workflow/index'
 import {
 	BatchFlow,
 	filterCollection,

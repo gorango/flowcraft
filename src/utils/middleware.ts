@@ -1,5 +1,5 @@
 import type { Middleware, MiddlewareNext, NodeArgs } from '../types'
-import type { AbstractNode } from '../workflow'
+import type { AbstractNode } from '../workflow/index'
 
 /**
  * Composes a chain of middleware functions around a node's execution.

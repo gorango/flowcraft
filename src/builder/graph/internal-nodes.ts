@@ -1,7 +1,7 @@
 import type { Context } from '../../context'
 import type { NodeArgs } from '../../types'
-import type { AbstractNode } from '../../workflow'
-import { Node } from '../../workflow'
+import type { AbstractNode } from '../../workflow/index'
+import { Node } from '../../workflow/index'
 import { ParallelFlow } from '../patterns'
 
 /**

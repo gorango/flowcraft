@@ -1,9 +1,9 @@
 import type { Context } from '../context'
 import type { NodeFunction } from '../functions'
 import type { NodeArgs, Params } from '../types'
-import type { AbstractNode } from '../workflow'
+import type { AbstractNode } from '../workflow/index'
 import { AbortError } from '../errors'
-import { Flow } from '../workflow'
+import { Flow } from '../workflow/index'
 
 /**
  * A `Flow` that creates a linear workflow from a sequence of nodes,

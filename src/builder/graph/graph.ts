@@ -1,5 +1,5 @@
 import type { Logger } from '../../logger'
-import type { AbstractNode, Flow } from '../../workflow'
+import type { AbstractNode, Flow } from '../../workflow/index'
 import type {
 	BlueprintBuildResult,
 	BuildResult,

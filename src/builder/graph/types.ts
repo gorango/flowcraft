@@ -1,5 +1,5 @@
 import type { NodeOptions } from '../../types'
-import type { AbstractNode, Flow } from '../../workflow'
+import type { AbstractNode, Flow } from '../../workflow/index'
 
 /**
  * Defines the schema for all custom node types within a specific workflow application.

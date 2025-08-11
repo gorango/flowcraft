@@ -1,7 +1,7 @@
 import type { Context } from '../context'
 import type { Logger } from '../logger'
 import type { Params, RunOptions } from '../types'
-import type { AbstractNode, Flow } from '../workflow'
+import type { AbstractNode, Flow } from '../workflow/index'
 
 /**
  * Defines the contract for a workflow execution engine.

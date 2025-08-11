@@ -1,6 +1,6 @@
 import type { Context } from '../context'
 import type { Middleware, NodeArgs, RunOptions } from '../types'
-import type { AbstractNode, Flow } from '../workflow'
+import type { AbstractNode, Flow } from '../workflow/index'
 import type { IExecutor, InternalRunOptions } from './types'
 import { AbortError } from '../errors'
 import { NullLogger } from '../logger'

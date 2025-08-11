@@ -1,5 +1,5 @@
 import type { WorkflowBlueprint } from '../builder/graph/types'
-import type { AbstractNode, Flow } from '../workflow'
+import type { AbstractNode, Flow } from '../workflow/index'
 import { DEFAULT_ACTION, FILTER_FAILED } from '../types'
 
 /**
