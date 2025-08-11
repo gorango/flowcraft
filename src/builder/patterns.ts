@@ -1,5 +1,6 @@
+import type { Context } from '../context'
 import type { NodeFunction } from '../functions'
-import type { NodeArgs } from '../types'
+import type { NodeArgs, Params } from '../types'
 import type { AbstractNode } from '../workflow'
 import { AbortError } from '../errors'
 import { Flow } from '../workflow'
@@ -8,11 +9,16 @@ import { Flow } from '../workflow'
  * A `Flow` that creates a linear workflow from a sequence of nodes,
  * automatically chaining them in order.
  */
-export class SequenceFlow<PrepRes = any, ExecRes = any> extends Flow<PrepRes, ExecRes> {
+export class SequenceFlow<
+	PrepRes = any,
+	ExecRes = any,
+	TParams extends Params = Params,
+	TContext extends Context = Context,
+> extends Flow<PrepRes, ExecRes, TParams, TContext> {
 	/**
 	 * @param nodes A sequence of `Node` or `Flow` instances to be executed in order.
 	 */
-	constructor(...nodes: AbstractNode[]) {
+	constructor(...nodes: AbstractNode<any, any, TContext>[]) {
 		if (nodes.length === 0) {
 			super()
 			return
@@ -29,11 +35,13 @@ export class SequenceFlow<PrepRes = any, ExecRes = any> extends Flow<PrepRes, Ex
  * This is the core of the "fan-out, fan-in" pattern for structural parallelism.
  * After all parallel branches complete, the flow can proceed to a single successor.
  */
-export class ParallelFlow extends Flow<any, void> {
+export class ParallelFlow<
+	TContext extends Context = Context,
+> extends Flow<void, void, Params, TContext> {
 	/**
 	 * @param nodesToRun The array of nodes to execute concurrently.
 	 */
-	constructor(protected nodesToRun: AbstractNode[] = []) {
+	constructor(protected nodesToRun: AbstractNode<any, any, TContext>[] = []) {
 		super()
 	}
 
@@ -41,7 +49,7 @@ export class ParallelFlow extends Flow<any, void> {
 	 * Orchestrates the parallel execution of all nodes.
 	 * @internal
 	 */
-	async exec({ ctx, params, signal, logger, executor, visitedInParallel }: NodeArgs): Promise<void> {
+	async exec({ ctx, params, signal, logger, executor, visitedInParallel }: NodeArgs<void, void, Params, TContext>): Promise<void> {
 		if (!visitedInParallel)
 			throw new Error('ParallelFlow requires a visitedInParallel set from its executor.')
 
@@ -54,8 +62,8 @@ export class ParallelFlow extends Flow<any, void> {
 			return
 		}
 
-		const runBranch = async (startNode: AbstractNode) => {
-			let currentNode: AbstractNode | undefined = startNode
+		const runBranch = async (startNode: AbstractNode<any, any, TContext>) => {
+			let currentNode: AbstractNode<any, any, TContext> | undefined = startNode
 			while (currentNode) {
 				if (signal?.aborted)
 					throw new AbortError()
@@ -87,12 +95,15 @@ export class ParallelFlow extends Flow<any, void> {
  * Subclasses must implement the `prep` method to provide the items and the
  * `nodeToRun` property to define the processing logic for each item.
  */
-export abstract class BatchFlow<T = any> extends Flow<Iterable<T>, null> {
+export abstract class BatchFlow<
+	T = any,
+	TContext extends Context = Context,
+> extends Flow<Iterable<T>, null, Params, TContext> {
 	/**
 	 * The `Node` instance that will be executed for each item in the batch.
 	 * This must be implemented by any subclass.
 	 */
-	protected abstract nodeToRun: AbstractNode
+	protected abstract nodeToRun: AbstractNode<any, any, TContext>
 
 	constructor() {
 		super()
@@ -105,7 +116,7 @@ export abstract class BatchFlow<T = any> extends Flow<Iterable<T>, null> {
 	 * @returns An array or iterable of parameter objects, one for each item.
 	 * The `nodeToRun` will be executed once for each of these objects.
 	 */
-	async prep(_args: NodeArgs): Promise<Iterable<any>> {
+	async prep(_args: NodeArgs<void, void, Params, TContext>): Promise<Iterable<any>> {
 		return []
 	}
 
@@ -113,7 +124,7 @@ export abstract class BatchFlow<T = any> extends Flow<Iterable<T>, null> {
 	 * Orchestrates the sequential execution of `nodeToRun` for each item.
 	 * @internal
 	 */
-	async exec(args: NodeArgs): Promise<null> {
+	async exec(args: NodeArgs<void, void, Params, TContext>): Promise<null> {
 		if (!this.nodeToRun)
 			return null
 
@@ -143,12 +154,15 @@ export abstract class BatchFlow<T = any> extends Flow<Iterable<T>, null> {
  * `nodeToRun` property to define the processing logic for each item.
  * This provides a significant performance boost for I/O-bound tasks.
  */
-export abstract class ParallelBatchFlow<T = any> extends Flow<Iterable<T>, PromiseSettledResult<any>[]> {
+export abstract class ParallelBatchFlow<
+	T = any,
+	TContext extends Context = Context,
+> extends Flow<Iterable<T>, PromiseSettledResult<any>[], Params, TContext> {
 	/**
 	 * The `Node` instance that will be executed concurrently for each item in the batch.
 	 * This must be implemented by any subclass.
 	 */
-	protected abstract nodeToRun: AbstractNode
+	protected abstract nodeToRun: AbstractNode<any, any, TContext>
 
 	constructor() {
 		super()
@@ -161,7 +175,7 @@ export abstract class ParallelBatchFlow<T = any> extends Flow<Iterable<T>, Promi
 	 * @returns An array or iterable of parameter objects, one for each item.
 	 * The `nodeToRun` will be executed concurrently for each of these objects.
 	 */
-	async prep(_args: NodeArgs): Promise<Iterable<any>> {
+	async prep(_args: NodeArgs<void, void, Params, TContext>): Promise<Iterable<any>> {
 		return []
 	}
 
@@ -169,7 +183,7 @@ export abstract class ParallelBatchFlow<T = any> extends Flow<Iterable<T>, Promi
 	 * Orchestrates the parallel execution of `nodeToRun` for each item.
 	 * @internal
 	 */
-	async exec(args: NodeArgs<any, void>): Promise<PromiseSettledResult<any>[]> {
+	async exec(args: NodeArgs<any, void, Params, TContext>): Promise<PromiseSettledResult<any>[]> {
 		if (!this.nodeToRun)
 			return []
 
@@ -213,8 +227,8 @@ export abstract class ParallelBatchFlow<T = any> extends Flow<Iterable<T>, Promi
  * @param fn An async or sync function that transforms an item from type `T` to type `U`.
  * @returns A `Flow` instance that, when run, will output an array of type `U[]`.
  */
-export function mapCollection<T, U>(items: T[], fn: NodeFunction<T, U>): Flow<void, U[]> {
-	return new class extends Flow {
+export function mapCollection<T, U, TContext extends Context = Context>(items: T[], fn: NodeFunction<T, U>): Flow<void, U[], Params, TContext> {
+	return new class extends Flow<void, U[], Params, TContext> {
 		async exec(): Promise<U[]> {
 			const promises = items.map(item => fn(item))
 			return Promise.all(promises)
@@ -237,8 +251,8 @@ export function mapCollection<T, U>(items: T[], fn: NodeFunction<T, U>): Flow<vo
  * @param predicate An async or sync function that returns `true` or `false` for an item.
  * @returns A `Flow` instance that, when run, will output a filtered array of type `T[]`.
  */
-export function filterCollection<T>(items: T[], predicate: (item: T) => boolean | Promise<boolean>): Flow<void, T[]> {
-	return new class extends Flow {
+export function filterCollection<T, TContext extends Context = Context>(items: T[], predicate: (item: T) => boolean | Promise<boolean>): Flow<void, T[], Params, TContext> {
+	return new class extends Flow<void, T[], Params, TContext> {
 		async exec(): Promise<T[]> {
 			const results = await Promise.all(items.map(item => predicate(item)))
 			return items.filter((_, index) => results[index])
@@ -261,13 +275,13 @@ export function filterCollection<T>(items: T[], predicate: (item: T) => boolean 
  * @param initialValue The initial value for the accumulator.
  * @returns A `Flow` instance that, when run, will output the final accumulated value of type `U`.
  */
-export function reduceCollection<T, U>(
+export function reduceCollection<T, U, TContext extends Context = Context>(
 	items: T[],
 	reducer: (accumulator: U, item: T) => U | Promise<U>,
 	initialValue: U,
-): Flow<void, U> {
-	return new class extends Flow {
-		async exec(_args: NodeArgs): Promise<U> {
+): Flow<void, U, Params, TContext> {
+	return new class extends Flow<void, U, Params, TContext> {
+		async exec(_args: NodeArgs<void, void, Params, TContext>): Promise<U> {
 			let accumulator = initialValue
 			for (const item of items) {
 				if (_args.signal?.aborted) {

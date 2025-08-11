@@ -18,9 +18,14 @@ export const FILTER_FAILED = Symbol('filter_failed')
  * @template ExecRes The type of the `execRes` property.
  * @template TParams The type for the node's static parameters.
  */
-export interface NodeArgs<PrepRes = any, ExecRes = any, TParams extends Params = Params> {
+export interface NodeArgs<
+	PrepRes = any,
+	ExecRes = any,
+	TParams extends Params = Params,
+	TContext extends Context = Context,
+> {
 	/** The shared, mutable context for the workflow run. */
-	ctx: Context
+	ctx: TContext
 	/** The static parameters for the node, merged from the node and flow's `withParams`. */
 	params: TParams
 	/** An `AbortController` to gracefully cancel the workflow. */
@@ -49,8 +54,8 @@ export interface NodeArgs<PrepRes = any, ExecRes = any, TParams extends Params =
  * The context object passed to a node's internal `_run` method.
  * @internal
  */
-export interface NodeRunContext {
-	ctx: Context
+export interface NodeRunContext<TContext extends Context = Context> {
+	ctx: TContext
 	params: Params
 	signal?: AbortSignal
 	logger: Logger

@@ -1,3 +1,4 @@
+import type { Context } from '../../context'
 import type { NodeArgs } from '../../types'
 import type { AbstractNode } from '../../workflow'
 import { Node } from '../../workflow'
@@ -9,7 +10,7 @@ import { ParallelFlow } from '../patterns'
  * to the sub-workflow's context scope.
  * @internal
  */
-export class InputMappingNode extends Node {
+export class InputMappingNode<TContext extends Context = Context> extends Node<void, void, any, any, TContext> {
 	private mappings: Record<string, string>
 	constructor(options: { data: Record<string, string> }) {
 		super()
@@ -18,10 +19,10 @@ export class InputMappingNode extends Node {
 		this.mappings = mappings
 	}
 
-	async prep({ ctx, logger }: NodeArgs) {
+	async prep({ ctx, logger }: NodeArgs<void, void, any, TContext>) {
 		for (const [subKey, parentKey] of Object.entries(this.mappings)) {
-			if (ctx.has(parentKey)) {
-				ctx.set(subKey, ctx.get(parentKey))
+			if (await ctx.has(parentKey)) {
+				ctx.set(subKey, await ctx.get(parentKey))
 			}
 			else {
 				logger.warn(`[InputMapper] Input mapping failed. Key '${parentKey}' not found in context.`)
@@ -36,7 +37,7 @@ export class InputMappingNode extends Node {
  * context scope back to the parent's context scope.
  * @internal
  */
-export class OutputMappingNode extends Node {
+export class OutputMappingNode<TContext extends Context = Context> extends Node<void, void, any, any, TContext> {
 	private mappings: Record<string, string>
 	constructor(options: { data: Record<string, string> }) {
 		super()
@@ -45,10 +46,10 @@ export class OutputMappingNode extends Node {
 		this.mappings = mappings
 	}
 
-	async prep({ ctx, logger }: NodeArgs) {
+	async prep({ ctx, logger }: NodeArgs<void, void, any, TContext>) {
 		for (const [parentKey, subKey] of Object.entries(this.mappings)) {
-			if (ctx.has(subKey)) {
-				ctx.set(parentKey, ctx.get(subKey))
+			if (await ctx.has(subKey)) {
+				ctx.set(parentKey, await ctx.get(subKey))
 			}
 			else {
 				logger.warn(`[OutputMapper] Output mapping failed. Key '${subKey}' not found in context.`)
@@ -62,7 +63,7 @@ export class OutputMappingNode extends Node {
  * It's a structural node that preserves the original node ID in the flattened graph.
  * @internal
  */
-export class SubWorkflowContainerNode extends Node {
+export class SubWorkflowContainerNode<TContext extends Context = Context> extends Node<void, void, any, any, TContext> {
 	constructor() {
 		super()
 		this.isPassthrough = true
@@ -75,7 +76,7 @@ export class SubWorkflowContainerNode extends Node {
 }
 
 /** A private class used by the builder to represent parallel execution blocks. */
-export class ParallelBranchContainer extends ParallelFlow {
+export class ParallelBranchContainer<TContext extends Context = Context> extends ParallelFlow<TContext> {
 	/** A tag to reliably identify this node type in the visualizer. */
 	public readonly isParallelContainer = true
 	// This is now a public, mutable property for the executor to populate.
@@ -94,7 +95,7 @@ export class ParallelBranchContainer extends ParallelFlow {
  * only has one predecessor, preventing false fan-in detection.
  * @internal
  */
-export class ConditionalJoinNode extends Node {
+export class ConditionalJoinNode<TContext extends Context = Context> extends Node<void, void, any, any, TContext> {
 	constructor() {
 		super()
 		this.isPassthrough = true // It performs no logic, just structural

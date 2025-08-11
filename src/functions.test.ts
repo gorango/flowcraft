@@ -21,7 +21,7 @@ describe('mapNode', () => {
 		const doubleNode = mapNode<{ value: number }, number>(params => params.value * 2)
 			.toContext(RESULT)
 		await doubleNode.withParams({ value: 10 }).run(ctx, globalRunOptions)
-		expect(ctx.get(RESULT)).toBe(20)
+		expect(await ctx.get(RESULT)).toBe(20)
 	})
 
 	it('should create a node from an asynchronous function', async () => {
@@ -29,7 +29,7 @@ describe('mapNode', () => {
 		const upperNode = mapNode<{ value: string }, string>(async params => params.value.toUpperCase())
 			.toContext(RESULT)
 		await upperNode.withParams({ value: 'hello' }).run(ctx, globalRunOptions)
-		expect(ctx.get(RESULT)).toBe('HELLO')
+		expect(await ctx.get(RESULT)).toBe('HELLO')
 	})
 
 	it('should handle nodes that produce no output', async () => {
@@ -47,23 +47,23 @@ describe('mapNode', () => {
 describe('contextNode', () => {
 	it('should access context and params in a synchronous function', async () => {
 		const ctx = new TypedContext([[PREFIX, 'Hello']])
-		const greeterNode = contextNode<{ name: string }, string>((ctx, params) => {
-			const prefix = ctx.get(PREFIX) ?? 'Default'
+		const greeterNode = contextNode<{ name: string }, string>(async (ctx, params) => {
+			const prefix = await ctx.get(PREFIX) ?? 'Default'
 			return `${prefix}, ${params.name}!`
 		}).toContext(RESULT)
 		await greeterNode.withParams({ name: 'World' }).run(ctx, globalRunOptions)
-		expect(ctx.get(RESULT)).toBe('Hello, World!')
+		expect(await ctx.get(RESULT)).toBe('Hello, World!')
 	})
 
 	it('should access context and params in an asynchronous function', async () => {
 		const ctx = new TypedContext([[PREFIX, 'Hola']])
 		const greeterNode = contextNode<{ name: string }, string>(async (ctx, params) => {
-			const prefix = ctx.get(PREFIX)
+			const prefix = await ctx.get(PREFIX)
 			await new Promise(resolve => setTimeout(resolve, 1))
 			return `${prefix}, ${params.name}!`
 		}).toContext(RESULT)
 		await greeterNode.withParams({ name: 'Mundo' }).run(ctx, globalRunOptions)
-		expect(ctx.get(RESULT)).toBe('Hola, Mundo!')
+		expect(await ctx.get(RESULT)).toBe('Hola, Mundo!')
 	})
 })
 
@@ -73,7 +73,7 @@ describe('transformNode', () => {
 		const nameLens = lens(NAME)
 		const setNode = transformNode(nameLens.set('Alice'))
 		await setNode.run(ctx, globalRunOptions)
-		expect(ctx.get(NAME)).toBe('Alice')
+		expect(await ctx.get(NAME)).toBe('Alice')
 	})
 
 	it('should apply multiple context transforms in order', async () => {
@@ -85,8 +85,8 @@ describe('transformNode', () => {
 			counterLens.update(c => (c ?? 0) + 5),
 		)
 		await setupNode.run(ctx, globalRunOptions)
-		expect(ctx.get(NAME)).toBe('Bob')
-		expect(ctx.get(COUNTER)).toBe(15)
+		expect(await ctx.get(NAME)).toBe('Bob')
+		expect(await ctx.get(COUNTER)).toBe(15)
 	})
 
 	it('should be chainable within a pipeline', async () => {
@@ -94,8 +94,8 @@ describe('transformNode', () => {
 		const nameLens = lens(NAME)
 		const counterLens = lens(COUNTER)
 		// A node that reads from context
-		const readNode = contextNode((ctx) => {
-			return `${ctx.get(NAME)} has ${ctx.get(COUNTER)} points`
+		const readNode = contextNode(async (ctx) => {
+			return `${await ctx.get(NAME)} has ${await ctx.get(COUNTER)} points`
 		}).toContext(RESULT)
 		const flow = pipeline(
 			transformNode(
@@ -105,7 +105,7 @@ describe('transformNode', () => {
 			readNode,
 		)
 		await flow.run(ctx, globalRunOptions)
-		expect(ctx.get(RESULT)).toBe('Carol has 100 points')
+		expect(await ctx.get(RESULT)).toBe('Carol has 100 points')
 	})
 })
 
@@ -113,10 +113,10 @@ describe('pipeline', () => {
 	it('should create and run a linear sequence of nodes', async () => {
 		const ctx = new TypedContext([[COUNTER, 5]])
 		const add10 = mapNode(() => 10).toContext(COUNTER)
-		const multiplyBy3 = contextNode(ctx => (ctx.get(COUNTER) ?? 0) * 3).toContext(COUNTER)
+		const multiplyBy3 = contextNode(async ctx => (await ctx.get(COUNTER) ?? 0) * 3).toContext(COUNTER)
 		const flow = pipeline(add10, multiplyBy3)
 		await flow.run(ctx, globalRunOptions)
-		expect(ctx.get(COUNTER)).toBe(30)
+		expect(await ctx.get(COUNTER)).toBe(30)
 	})
 
 	it('should run successfully with an empty sequence', async () => {
@@ -168,6 +168,6 @@ describe('compose', () => {
 			.map(res => res.val)
 			.toContext(RESULT)
 		await processNode.withParams({ val: 10 }).run(ctx, globalRunOptions)
-		expect(ctx.get(RESULT)).toBe(30) // (10 + 5) * 2
+		expect(await ctx.get(RESULT)).toBe(30) // (10 + 5) * 2
 	})
 })

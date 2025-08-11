@@ -14,7 +14,7 @@ class SetNode extends Node {
 	constructor(private opts: { data: { value: number } }) { super() }
 	async exec({ ctx }: NodeArgs) {
 		ctx.set(VALUE, this.opts.data.value)
-		const p = ctx.get(PATH) ?? []
+		const p = (await ctx.get(PATH)) ?? []
 		ctx.set(PATH, [...p, 'set'])
 	}
 }
@@ -22,9 +22,9 @@ class SetNode extends Node {
 class AddNode extends Node {
 	constructor(private opts: { data: { value: number } }) { super() }
 	async exec({ ctx }: NodeArgs) {
-		const current = ctx.get(VALUE) ?? 0
+		const current = (await ctx.get(VALUE)) ?? 0
 		ctx.set(VALUE, current + this.opts.data.value)
-		const p = ctx.get(PATH) ?? []
+		const p = (await ctx.get(PATH)) ?? []
 		ctx.set(PATH, [...p, 'add'])
 	}
 }
@@ -32,7 +32,7 @@ class AddNode extends Node {
 class PathLogNode extends Node {
 	constructor(private opts: { data: { id: string } }) { super() }
 	async exec({ ctx }: NodeArgs) {
-		const p = ctx.get(PATH) ?? []
+		const p = (await ctx.get(PATH)) ?? []
 		ctx.set(PATH, [...p, this.opts.data.id])
 	}
 }
@@ -81,8 +81,8 @@ describe('BlueprintExecutor', () => {
 		const ctx = new TypedContext()
 		await executor.run(executor.flow, ctx)
 
-		expect(ctx.get(VALUE)).toBe(15)
-		expect(ctx.get(PATH)).toEqual(['set', 'add'])
+		expect(await ctx.get(VALUE)).toBe(15)
+		expect(await ctx.get(PATH)).toEqual(['set', 'add'])
 	})
 
 	it('should return a specific node instance via getNode()', () => {

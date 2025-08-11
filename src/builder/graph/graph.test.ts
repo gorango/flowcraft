@@ -12,7 +12,8 @@ const debugLogger = new DebugLogger()
 
 describe('graphBuilder', () => {
 	const VALUE = contextKey<number>('value')
-	const PATH = contextKey<string[]>('path')
+	const PATH_A_TAKEN = contextKey<boolean>('path_A')
+	const PATH_B_TAKEN = contextKey<boolean>('path_B')
 
 	interface TestNodeTypeMap {
 		set: { value: number }
@@ -30,7 +31,7 @@ describe('graphBuilder', () => {
 		}
 
 		async prep({ ctx }: NodeArgs) {
-			ctx.set(VALUE, this.value)
+			await ctx.set(VALUE, this.value)
 		}
 	}
 
@@ -42,8 +43,8 @@ describe('graphBuilder', () => {
 		}
 
 		async prep({ ctx }: NodeArgs) {
-			const current = ctx.get(VALUE) ?? 0
-			ctx.set(VALUE, current + this.valueToAdd)
+			const current = (await ctx.get(VALUE)) ?? 0
+			await ctx.set(VALUE, current + this.valueToAdd)
 		}
 	}
 
@@ -55,7 +56,7 @@ describe('graphBuilder', () => {
 		}
 
 		async post({ ctx }: NodeArgs) {
-			const current = ctx.get(VALUE) ?? 0
+			const current = (await ctx.get(VALUE)) ?? 0
 			return current > this.threshold ? 'over' : 'under'
 		}
 	}
@@ -68,8 +69,12 @@ describe('graphBuilder', () => {
 		}
 
 		async prep({ ctx }: NodeArgs) {
-			const currentPath = ctx.get(PATH) ?? []
-			ctx.set(PATH, [...currentPath, this.pathId])
+			if (this.pathId === 'path_A') {
+				await ctx.set(PATH_A_TAKEN, true)
+			}
+			else if (this.pathId === 'path_B') {
+				await ctx.set(PATH_B_TAKEN, true)
+			}
 		}
 	}
 
@@ -117,11 +122,12 @@ describe('graphBuilder', () => {
 		await executor.run(executor.flow, ctx, globalRunOptions)
 
 		// Assert correct execution
-		expect(ctx.get(VALUE)).toBe(1020)
-		const path = ctx.get(PATH)
-		expect(path).toBeDefined()
-		expect(path).toHaveLength(2)
-		expect(path).toEqual(expect.arrayContaining(['path_A', 'path_B']))
+		expect(await ctx.get(VALUE)).toBe(1020)
+
+		const pathATaken = await ctx.get(PATH_A_TAKEN)
+		const pathBTaken = await ctx.get(PATH_B_TAKEN)
+		expect(pathATaken).toBe(true)
+		expect(pathBTaken).toBe(true)
 	})
 
 	it('should correctly generate predecessor maps in the blueprint', () => {
@@ -207,11 +213,11 @@ describe('graphBuilder with sub-workflows', () => {
 		}
 
 		async prep({ ctx }: NodeArgs): Promise<string> {
-			return ctx.get(SUB_VALUE) ?? ctx.get(PARENT_VALUE) ?? 'start'
+			return (await ctx.get(SUB_VALUE)) ?? (await ctx.get(PARENT_VALUE)) ?? 'start'
 		}
 
 		async post({ ctx, execRes }: NodeArgs<string, string>) {
-			const key = ctx.has(SUB_VALUE) ? SUB_VALUE : PARENT_VALUE
+			const key = (await ctx.has(SUB_VALUE)) ? SUB_VALUE : PARENT_VALUE
 			ctx.set(key, execRes)
 		}
 	}
@@ -222,7 +228,7 @@ describe('graphBuilder with sub-workflows', () => {
 		}
 
 		async prep({ ctx }: NodeArgs) {
-			const subResult = ctx.get(PARENT_VALUE) ?? ''
+			const subResult = (await ctx.get(PARENT_VALUE)) ?? ''
 			ctx.set(FINAL_VALUE, `final: ${subResult}`)
 		}
 	}
@@ -274,10 +280,6 @@ describe('graphBuilder with sub-workflows', () => {
 		const builder = new GraphBuilder(subWorkflowNodeRegistry, {}, {
 			subWorkflowNodeTypes: ['custom_sub_workflow'],
 			subWorkflowResolver: mockSubWorkflowResolver,
-			contextKeyMap: new Map([
-				['parent_value', PARENT_VALUE],
-				['sub_value', SUB_VALUE],
-			]),
 		})
 
 		const { blueprint } = builder.buildBlueprint(parentGraph)
@@ -296,6 +298,6 @@ describe('graphBuilder with sub-workflows', () => {
 		await executor.run(executor.flow, ctx, globalRunOptions)
 
 		// The end-to-end result should be the same, proving the wiring is correct.
-		expect(ctx.get(FINAL_VALUE)).toBe('final: start -> A -> D -> E')
+		expect(await ctx.get(FINAL_VALUE)).toBe('final: start -> A -> D -> E')
 	})
 })

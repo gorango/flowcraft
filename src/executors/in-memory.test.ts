@@ -12,18 +12,18 @@ const MIDDLEWARE_PATH = contextKey<string[]>('middleware_path')
 class AddNode extends Node {
 	constructor(private num: number, public id: string) { super() }
 	async exec({ ctx }: any) {
-		const current = ctx.get(VALUE) ?? 0
+		const current = await ctx.get(VALUE) ?? 0
 		ctx.set(VALUE, current + this.num)
-		const path = ctx.get(PATH) ?? []
+		const path = await ctx.get(PATH) ?? []
 		ctx.set(PATH, [...path, this.id])
 	}
 }
 
 class BranchNode extends Node {
 	async post({ ctx }: any) {
-		const path = ctx.get(PATH) ?? []
+		const path = await ctx.get(PATH) ?? []
 		ctx.set(PATH, [...path, 'branch'])
-		return ctx.get(VALUE) > 10 ? 'over' : 'under'
+		return await ctx.get(VALUE) > 10 ? 'over' : 'under'
 	}
 }
 
@@ -37,8 +37,8 @@ describe('testInMemoryExecutor', () => {
 
 		await executor.run(flow, ctx)
 
-		expect(ctx.get(VALUE)).toBe(9)
-		expect(ctx.get(PATH)).toEqual(['start', 'next'])
+		expect(await ctx.get(VALUE)).toBe(9)
+		expect(await ctx.get(PATH)).toEqual(['start', 'next'])
 	})
 
 	it('should handle conditional branching', async () => {
@@ -56,8 +56,8 @@ describe('testInMemoryExecutor', () => {
 
 		await executor.run(flow, ctx)
 
-		expect(ctx.get(VALUE)).toBe(111) // 5 + 6 + 100
-		expect(ctx.get(PATH)).toEqual(['start', 'branch', 'over_node'])
+		expect(await ctx.get(VALUE)).toBe(111) // 5 + 6 + 100
+		expect(await ctx.get(PATH)).toEqual(['start', 'branch', 'over_node'])
 	})
 
 	it('should correctly execute a composed flow (sub-flow)', async () => {
@@ -70,25 +70,25 @@ describe('testInMemoryExecutor', () => {
 		innerFlow.next(outerStart)
 		const executor = new InMemoryExecutor()
 		await executor.run(outerFlow, ctx)
-		expect(ctx.get(VALUE)).toBe(116)
-		expect(ctx.get(PATH)).toEqual(['inner_start', 'inner_end', 'outer_start'])
+		expect(await ctx.get(VALUE)).toBe(116)
+		expect(await ctx.get(PATH)).toEqual(['inner_start', 'inner_end', 'outer_start'])
 	})
 
 	it('should apply middleware from the orchestrating flow to its nodes', async () => {
 		const ctx = new TypedContext()
 		const flow = new Flow(new AddNode(10, 'node1'))
 		const testMiddleware = async (args: NodeArgs, next: MiddlewareNext) => {
-			const path = args.ctx.get(MIDDLEWARE_PATH) ?? []
+			const path = await args.ctx.get(MIDDLEWARE_PATH) ?? []
 			args.ctx.set(MIDDLEWARE_PATH, [...path, `enter_${args.name}`])
 			const result = await next(args)
-			const finalPath = args.ctx.get(MIDDLEWARE_PATH) ?? []
+			const finalPath = await args.ctx.get(MIDDLEWARE_PATH) ?? []
 			args.ctx.set(MIDDLEWARE_PATH, [...finalPath, `exit_${args.name}`])
 			return result
 		}
 		flow.use(testMiddleware)
 		const executor = new InMemoryExecutor()
 		await executor.run(flow, ctx)
-		expect(ctx.get(VALUE)).toBe(10)
-		expect(ctx.get(MIDDLEWARE_PATH)).toEqual(['enter_AddNode', 'exit_AddNode'])
+		expect(await ctx.get(VALUE)).toBe(10)
+		expect(await ctx.get(MIDDLEWARE_PATH)).toEqual(['enter_AddNode', 'exit_AddNode'])
 	})
 })

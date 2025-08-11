@@ -1,3 +1,4 @@
+import type { ContextKey } from '../context'
 import type { NodeArgs } from '../types'
 import type { AbstractNode } from '../workflow'
 import { describe, expect, it } from 'vitest'
@@ -19,27 +20,36 @@ const BATCH_RESULTS = contextKey<string[]>('batch_results')
 const VALUE = contextKey<number>('value')
 const PATH = contextKey<string[]>('path')
 
-class ProcessItemNode extends Node {
+class SequentialProcessItemNode extends Node {
 	async exec({ ctx, params }: NodeArgs) {
 		const id: number = params.id
 		const value: string = params.value
 
-		const processed = ctx.get(PROCESSED_IDS) ?? []
-		ctx.set(PROCESSED_IDS, [...processed, id])
+		const processed = (await ctx.get(PROCESSED_IDS)) ?? []
+		await ctx.set(PROCESSED_IDS, [...processed, id])
 
-		const results = ctx.get(BATCH_RESULTS) ?? []
+		const results = (await ctx.get(BATCH_RESULTS)) ?? []
 		const newResult = `Item ${id}: Processed ${value}`
-		ctx.set(BATCH_RESULTS, [...results, newResult])
+		await ctx.set(BATCH_RESULTS, [...results, newResult])
+	}
+}
+
+class ParallelProcessItemNode extends Node {
+	async exec({ ctx, params }: NodeArgs) {
+		const id: number = params.id
+		await ctx.set(`processed_${id}`, true)
+		await ctx.set(`result_${id}`, `Item ${id}: Processed ${params.value}`)
 	}
 }
 
 class AddNode extends Node {
 	constructor(private number: number) { super() }
 	async exec({ ctx }: NodeArgs) {
-		const current = ctx.get(VALUE) ?? 0
-		ctx.set(VALUE, current + this.number)
-		const path = ctx.get(PATH) ?? []
-		ctx.set(PATH, [...path, `add${this.number}`])
+		const current = (await ctx.get(VALUE)) ?? 0
+		await ctx.set(VALUE, current + this.number)
+
+		const path = (await ctx.get(PATH)) ?? []
+		await ctx.set(PATH, [...path, `add${this.number}`])
 	}
 }
 
@@ -51,13 +61,13 @@ describe('sequenceFlow', () => {
 			new AddNode(10), // 6 + 10 = 16
 		)
 		await flow.run(ctx, globalRunOptions)
-		expect(ctx.get(VALUE)).toBe(16)
+		expect(await ctx.get(VALUE)).toBe(16)
 	})
 })
 
 describe('batchFlow (Sequential)', () => {
 	class TestSequentialBatchFlow extends BatchFlow {
-		protected nodeToRun: AbstractNode = new ProcessItemNode()
+		protected nodeToRun: AbstractNode = new SequentialProcessItemNode()
 
 		constructor(private items: any[]) {
 			super()
@@ -69,14 +79,14 @@ describe('batchFlow (Sequential)', () => {
 	}
 	it('should process all items in the specified order', async () => {
 		const ctx = new TypedContext()
-		const flow = new TestSequentialBatchFlow([ // Use the updated test class
+		const flow = new TestSequentialBatchFlow([
 			{ id: 1, value: 'A' },
 			{ id: 2, value: 'B' },
 			{ id: 3, value: 'C' },
 		])
 		await flow.run(ctx, globalRunOptions)
-		expect(ctx.get(PROCESSED_IDS)).toEqual([1, 2, 3])
-		expect(ctx.get(BATCH_RESULTS)).toEqual([
+		expect(await ctx.get(PROCESSED_IDS)).toEqual([1, 2, 3])
+		expect(await ctx.get(BATCH_RESULTS)).toEqual([
 			'Item 1: Processed A',
 			'Item 2: Processed B',
 			'Item 3: Processed C',
@@ -86,8 +96,7 @@ describe('batchFlow (Sequential)', () => {
 		const ctx = new TypedContext()
 		const flow = new TestSequentialBatchFlow([])
 		await flow.run(ctx, globalRunOptions)
-		expect(ctx.get(PROCESSED_IDS)).toBeUndefined()
-		expect(ctx.get(BATCH_RESULTS)).toBeUndefined()
+		expect(Array.from(ctx.entries())).toHaveLength(0)
 	})
 	it('should pass parent flow parameters to each batch item', async () => {
 		const ctx = new TypedContext()
@@ -97,7 +106,7 @@ describe('batchFlow (Sequential)', () => {
 		])
 		flow.withParams({ value: 'shared' })
 		await flow.run(ctx, globalRunOptions)
-		expect(ctx.get(BATCH_RESULTS)).toEqual([
+		expect(await ctx.get(BATCH_RESULTS)).toEqual([
 			'Item 1: Processed shared',
 			'Item 2: Processed shared',
 		])
@@ -106,7 +115,7 @@ describe('batchFlow (Sequential)', () => {
 
 describe('parallelBatchFlow', () => {
 	class TestParallelBatchFlow extends ParallelBatchFlow {
-		protected nodeToRun: AbstractNode = new ProcessItemNode()
+		protected nodeToRun: AbstractNode = new ParallelProcessItemNode()
 
 		constructor(private items: any[]) {
 			super()
@@ -118,58 +127,80 @@ describe('parallelBatchFlow', () => {
 	}
 	it('should process all items', async () => {
 		const ctx = new TypedContext()
-		const flow = new TestParallelBatchFlow([
+		const items = [
 			{ id: 1, value: 'A' },
 			{ id: 2, value: 'B' },
 			{ id: 3, value: 'C' },
-		])
+		]
+		const flow = new TestParallelBatchFlow(items)
 		await flow.run(ctx, globalRunOptions)
-		// In parallel, order is not guaranteed, so we check for presence and size.
-		const processedIds = ctx.get(PROCESSED_IDS)
-		expect(processedIds).toHaveLength(3)
-		expect(processedIds).toContain(1)
-		expect(processedIds).toContain(2)
-		expect(processedIds).toContain(3)
-		const results = ctx.get(BATCH_RESULTS)
-		expect(results).toHaveLength(3)
-		expect(results).toContain('Item 1: Processed A')
-		expect(results).toContain('Item 2: Processed B')
-		expect(results).toContain('Item 3: Processed C')
+
+		for (const item of items) {
+			expect(await ctx.get(`processed_${item.id}`)).toBe(true)
+			expect(await ctx.get(`result_${item.id}`)).toBe(`Item ${item.id}: Processed ${item.value}`)
+		}
 	})
+
 	it('should complete successfully with an empty batch', async () => {
 		const ctx = new TypedContext()
 		const flow = new TestParallelBatchFlow([])
 		await flow.run(ctx, globalRunOptions)
-		expect(ctx.get(PROCESSED_IDS)).toBeUndefined()
-		expect(ctx.get(BATCH_RESULTS)).toBeUndefined()
+		expect(Array.from(ctx.entries())).toHaveLength(0)
 	})
 })
 
 describe('parallelFlow', () => {
 	it('should run all nodes in parallel and then proceed', async () => {
-		const ctx = new TypedContext([[VALUE, 0]])
+		const ctx = new TypedContext()
+
+		const P_VAL_1 = contextKey<number>('p_val_1')
+		const P_VAL_10 = contextKey<number>('p_val_10')
+		const P_VAL_100 = contextKey<number>('p_val_100')
+
+		class SetValueNode extends Node {
+			constructor(private key: ContextKey<number>, private value: number) {
+				super()
+			}
+
+			async exec({ ctx }: NodeArgs) {
+				await ctx.set(this.key, this.value)
+			}
+		}
+
+		class SumResultsNode extends Node {
+			constructor(private number: number) {
+				super()
+			}
+
+			async exec({ ctx }: NodeArgs) {
+				const v1 = (await ctx.get(P_VAL_1)) ?? 0
+				const v10 = (await ctx.get(P_VAL_10)) ?? 0
+				const v100 = (await ctx.get(P_VAL_100)) ?? 0
+				await ctx.set(VALUE, v1 + v10 + v100 + this.number)
+
+				const path = ['add1', 'add10', 'add100', `add${this.number}`]
+				await ctx.set(PATH, path)
+			}
+		}
+
 		const pFlow = new ParallelFlow([
-			new AddNode(1),
-			new AddNode(10),
-			new AddNode(100),
+			new SetValueNode(P_VAL_1, 1),
+			new SetValueNode(P_VAL_10, 10),
+			new SetValueNode(P_VAL_100, 100),
 		])
-		const finalNode = new AddNode(1000)
+		const finalNode = new SumResultsNode(1000)
 		pFlow.next(finalNode)
 
 		await new Flow(pFlow).run(ctx, globalRunOptions)
 
-		// The parallel AddNodes will race. The final value depends on execution order,
-		// but the path should be correct. Let's verify the final step.
-		// Expected path: add1, add10, add100 (in any order), then add1000
-		const path = ctx.get(PATH)
+		expect(await ctx.get(VALUE)).toBe(1111)
+
+		const path = await ctx.get(PATH)
 		expect(path).toHaveLength(4)
 		expect(path).toContain('add1')
 		expect(path).toContain('add10')
 		expect(path).toContain('add100')
-		expect(path![3]).toBe('add1000') // Final node must be last
-
-		// Verify the final sum
-		expect(ctx.get(VALUE)).toBe(1111)
+		expect(path![3]).toBe('add1000')
 	})
 
 	it('should handle an empty parallel flow', async () => {
@@ -179,7 +210,7 @@ describe('parallelFlow', () => {
 		pFlow.next(finalNode)
 
 		await new Flow(pFlow).run(ctx, globalRunOptions)
-		expect(ctx.get(VALUE)).toBe(5)
+		expect(await ctx.get(VALUE)).toBe(5)
 	})
 })
 

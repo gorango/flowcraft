@@ -19,7 +19,7 @@ export type NodeFunction<TIn = any, TOut = any> = (input: TIn) => TOut | Promise
  * @template TIn The input type, corresponding to `params`.
  * @template TOut The output type, which becomes the node's `execRes`.
  */
-export type ContextFunction<TIn = any, TOut = any> = (ctx: Context, input: TIn) => TOut | Promise<TOut>
+export type ContextFunction<TIn = any, TOut = any, TContext extends Context = Context> = (ctx: TContext, input: TIn) => TOut | Promise<TOut>
 
 /**
  * Creates a `Node` from a simple, pure function that transforms an input to an output.
@@ -32,9 +32,13 @@ export type ContextFunction<TIn = any, TOut = any> = (ctx: Context, input: TIn) 
  * @param fn A function that takes an input object and returns a result.
  * @returns A new `Node` instance that wraps the function.
  */
-export function mapNode<TIn extends Params, TOut>(fn: NodeFunction<TIn, TOut>): Node<void, TOut, any, TIn> {
-	return new class extends BaseNode<void, TOut, any, TIn> {
-		async exec({ params }: NodeArgs<void, void, TIn>): Promise<TOut> {
+export function mapNode<
+	TIn extends Params,
+	TOut,
+	TContext extends Context = Context,
+>(fn: NodeFunction<TIn, TOut>): Node<void, TOut, any, TIn, TContext> {
+	return new class extends BaseNode<void, TOut, any, TIn, TContext> {
+		async exec({ params }: NodeArgs<void, void, TIn, TContext>): Promise<TOut> {
 			return fn(params as TIn)
 		}
 	}()
@@ -45,18 +49,22 @@ export function mapNode<TIn extends Params, TOut>(fn: NodeFunction<TIn, TOut>): 
  * Both the `Context` and the node's `params` are passed as arguments to the function.
  *
  * @example
- * const greeter = contextNode((ctx, params: { name: string }) => {
- *   const language = ctx.get(LANGUAGE_KEY) || 'en'
+ * const greeter = contextNode(async (ctx, params: { name: string }) => {
+ *   const language = await ctx.get(LANGUAGE_KEY) || 'en'
  *   return language === 'en' ? `Hello, ${params.name}` : `Hola, ${params.name}`
  * })
  *
  * @param fn A function that takes the context and an input object, and returns a result.
  * @returns A new `Node` instance that wraps the function.
  */
-export function contextNode<TIn extends Params, TOut>(fn: ContextFunction<TIn, TOut>): Node<void, TOut, any, TIn> {
-	return new class extends BaseNode<void, TOut, any, TIn> {
-		async exec({ ctx, params }: NodeArgs<void, void, TIn>): Promise<TOut> {
-			return fn(ctx, params as TIn)
+export function contextNode<
+	TIn extends Params,
+	TOut,
+	TContext extends Context = Context,
+>(fn: ContextFunction<TIn, TOut, TContext>): Node<void, TOut, any, TIn, TContext> {
+	return new class extends BaseNode<void, TOut, any, TIn, TContext> {
+		async exec({ ctx, params }: NodeArgs<void, void, TIn, TContext>): Promise<TOut> {
+			return await fn(ctx, params as TIn)
 		}
 	}()
 }
@@ -74,11 +82,11 @@ export function contextNode<TIn extends Params, TOut>(fn: ContextFunction<TIn, T
  * @param transforms A sequence of `ContextTransform` functions (e.g., from a lens) to apply.
  * @returns A new `Node` instance that will mutate the context when executed.
  */
-export function transformNode(...transforms: ContextTransform[]): Node {
-	return new class extends BaseNode {
-		async prep({ ctx }: NodeArgs) {
+export function transformNode<TContext extends Context = Context>(...transforms: ContextTransform[]): Node<void, void, any, Params, TContext> {
+	return new class extends BaseNode<void, void, any, Params, TContext> {
+		async prep({ ctx }: NodeArgs<void, void, Params, TContext>) {
 			// Apply the composed transformations directly to the mutable context.
-			composeContext(...transforms)(ctx)
+			await composeContext(...transforms)(ctx)
 		}
 	}()
 }
@@ -93,8 +101,8 @@ export function transformNode(...transforms: ContextTransform[]): Node {
  * @param nodes A sequence of `Node` instances to chain together.
  * @returns A `Flow` instance representing the linear sequence.
  */
-export function pipeline(...nodes: Node[]): Flow {
-	return new SequenceFlow(...nodes)
+export function pipeline<TContext extends Context = Context>(...nodes: Node<any, any, any, any, TContext>[]): Flow<any, any, Params, TContext> {
+	return new SequenceFlow<any, any, Params, TContext>(...nodes)
 }
 
 /**

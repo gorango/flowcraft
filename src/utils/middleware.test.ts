@@ -40,7 +40,7 @@ class StartNode extends Node {
 	async exec({ ctx }: NodeArgs) { ctx.set(VALUE, 15) }
 }
 class DecisionNode extends Node<void, void, 'over' | 'under'> {
-	async post({ ctx }: NodeArgs) { return ctx.get(VALUE)! > 10 ? 'over' : 'under' }
+	async post({ ctx }: NodeArgs) { return (await ctx.get(VALUE)! ?? 0) > 10 ? 'over' : 'under' }
 }
 class OverPathNode extends Node { }
 class UnderPathNode extends Node { }
