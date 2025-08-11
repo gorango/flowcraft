@@ -1,4 +1,3 @@
-import type { ContextKey } from '../../context'
 import type { NodeOptions } from '../../types'
 import type { AbstractNode, Flow } from '../../workflow'
 
@@ -209,10 +208,4 @@ export interface GraphBuilderOptions {
 	 * exclusive conditional paths, not parallel branches.
 	 */
 	conditionalNodeTypes?: string[]
-	/**
-	 * A map to resolve string-based context keys from the graph definition
-	 * to their corresponding runtime `ContextKey` symbols. This is crucial for
-	 * type-safe operation of internal nodes like mappers.
-	 */
-	contextKeyMap?: Map<string, ContextKey<any>>
 }
