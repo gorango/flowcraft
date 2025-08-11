@@ -1,13 +1,13 @@
-# Recipes: Dynamic Fan-Out and Fan-In
+# Common Patterns: Parallel API Calls (Fan-Out)
 
-A "fan-out, fan-in" pattern is where a workflow splits into multiple parallel branches that execute concurrently (fan-out) and then merges the results of those branches back together before proceeding (fan-in).
+A "fan-out, fan-in" pattern is where a workflow splits into multiple parallel branches that execute concurrently (fan-out) and then merges the results of those branches back together before proceeding (fan-in). This is essential for I/O-bound tasks, like calling multiple independent APIs, as it can dramatically reduce the total execution time.
 
 Flowcraft provides a dedicated `ParallelFlow` builder that makes creating this pattern simple and declarative.
 
 ## The Pattern
 
-1. **`ParallelFlow`**: This builder takes an array of nodes that will be executed concurrently.
-2. **Aggregation Node**: A single node is connected to the `ParallelFlow` instance. It will only run after *all* the parallel branches have completed, allowing it to "fan-in" or aggregate the results from the `Context`.
+1.  **`ParallelFlow`**: This builder takes an array of nodes that will be executed concurrently.
+2.  **Aggregation Node**: A single node is connected to the `ParallelFlow` instance. It will only run after *all* the parallel branches have completed, allowing it to "fan-in" or aggregate the results from the `Context`.
 
 ```mermaid
 graph TD
@@ -24,7 +24,7 @@ graph TD
 
 ## Example: Parallel Data Enrichment
 
-Imagine we have a user object and we want to perform two slow, independent API calls simultaneously: one to get the user's recent activity and another to get their profile metadata.
+Imagine we have a user ID and we want to perform two slow, independent API calls simultaneously: one to get the user's recent activity and another to get their profile metadata.
 
 ### 1. Define Context and Nodes
 
@@ -50,18 +50,18 @@ function mockApiCall(operation: string, delay: number) {
 
 // Nodes for each parallel task
 const fetchActivityNode = new Node()
-	.exec(async ({ ctx }) => mockApiCall(`fetchActivity for ${ctx.get(USER_ID)}`, 100))
+	.exec(async ({ ctx }) => mockApiCall(`fetchActivity for ${await ctx.get(USER_ID)}`, 100))
 	.toContext(ACTIVITY_DATA)
 
 const fetchMetadataNode = new Node()
-	.exec(async ({ ctx }) => mockApiCall(`fetchMetadata for ${ctx.get(USER_ID)}`, 150))
+	.exec(async ({ ctx }) => mockApiCall(`fetchMetadata for ${await ctx.get(USER_ID)}`, 150))
 	.toContext(METADATA)
 
 // The final aggregation node (the "fan-in" point)
 const createReportNode = new Node()
 	.exec(async ({ ctx }) => {
-		const activity = ctx.get(ACTIVITY_DATA)
-		const metadata = ctx.get(METADATA)
+		const activity = await ctx.get(ACTIVITY_DATA)
+		const metadata = await ctx.get(METADATA)
 		return `Report created. Activity: ${activity.result}, Metadata: ${metadata.result}`
 	})
 	.toContext(FINAL_REPORT)
@@ -81,6 +81,7 @@ const parallelEnrichment = new ParallelFlow([
 // After all parallel nodes are done, run the report node.
 parallelEnrichment.next(createReportNode)
 
+// The enrichment flow starts with the parallel block.
 const enrichmentFlow = new Flow(parallelEnrichment)
 ```
 
@@ -95,7 +96,7 @@ console.time('ParallelExecution')
 await enrichmentFlow.run(context)
 console.timeEnd('ParallelExecution')
 
-console.log(context.get(FINAL_REPORT))
+console.log(await context.get(FINAL_REPORT))
 ```
 
 The output will be:
@@ -109,4 +110,4 @@ ParallelExecution: 155.25ms
 Report created. Activity: fetchActivity for user-123 data, Metadata: fetchMetadata for user-123 data
 ```
 
-Notice that the total execution time is approximately the duration of the *longest* API call (150ms), not the sum of both (~250ms). This demonstrates how the `ParallelFlow` builder provides a clean and powerful way to implement the fan-out, fan-in pattern for I/O-bound tasks. The `GraphBuilder` uses this same component internally whenever it detects this pattern in a declarative graph.
+Notice that the total execution time is approximately the duration of the *longest* API call (150ms), not the sum of both (~250ms). This demonstrates how the `ParallelFlow` builder provides a clean and powerful way to implement the fan-out, fan-in pattern for I/O-bound tasks.

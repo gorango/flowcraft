@@ -2,7 +2,7 @@ import { defineConfig } from 'vitepress'
 import { MermaidMarkdown, MermaidPlugin } from 'vitepress-plugin-mermaid'
 
 export default defineConfig({
-	cleanUrls: true, // might need to change depending on deployment
+	cleanUrls: true,
 	base: '/flowcraft/',
 	title: 'Flowcraft',
 	description: 'A Workflow Framework',
@@ -23,8 +23,8 @@ export default defineConfig({
 	},
 	themeConfig: {
 		nav: [
-			{ text: 'Guide', link: '/guide', activeMatch: '/guide' },
-			{ text: 'API', link: '/api-reference', activeMatch: '/api-reference' },
+			{ text: 'Guide', link: '/guide/', activeMatch: '/guide' },
+			{ text: 'API', link: '/api-reference/', activeMatch: '/api-reference' },
 		],
 		footer: {
 			message: 'Released under the MIT License.',
@@ -33,53 +33,50 @@ export default defineConfig({
 		sidebar: {
 			'/guide/': [
 				{
-					text: 'Guide',
-					collapsed: true,
+					text: 'Introduction',
 					items: [
-						{ text: 'Introduction', link: '/guide/' },
-						{ text: 'Builders', link: '/guide/builders' },
-						{ text: 'Functional API', link: '/guide/functional-api' },
+						{ text: 'What is Flowcraft?', link: '/guide/' },
+						{ text: 'Core Concepts', link: '/guide/core-concepts' },
+						{ text: 'When to Use Flowcraft', link: '/guide/when-to-use' },
+						{ text: 'Your First Workflow', link: '/guide/getting-started' },
 					],
 				},
 				{
-					text: 'Advanced Concepts',
-					collapsed: true,
+					text: 'Programmatic Flows',
+					collapsed: false,
 					items: [
-						{ text: 'Composition', link: '/guide/advanced-guides/composition' },
-						{ text: 'Error Handling', link: '/guide/advanced-guides/error-handling' },
-						{ text: 'Cancellation', link: '/guide/advanced-guides/cancellation' },
-						{ text: 'Middleware', link: '/guide/advanced-guides/middleware' },
-						{ text: 'Pluggable Logging', link: '/guide/advanced-guides/logging' },
-						{ text: 'Observability', link: '/guide/advanced-guides/observability' },
-						{ text: 'Custom Executor', link: '/guide/advanced-guides/custom-executor' },
+						{ text: 'The Basics', link: '/guide/programmatic/basics' },
+						{ text: 'Functional API', link: '/guide/programmatic/functional-api' },
+						{ text: 'Data Processing Pipelines', link: '/guide/programmatic/data-pipelines' },
+						{
+							text: 'Common Patterns (Recipes)',
+							collapsed: true,
+							items: [
+								{ text: 'Creating Loops', link: '/guide/programmatic/patterns-loops' },
+								{ text: 'Parallel API Calls (Fan-Out)', link: '/guide/programmatic/patterns-parallel-flow' },
+								{ text: 'Batch Processing', link: '/guide/programmatic/patterns-batch-flow' },
+							],
+						},
 					],
 				},
 				{
-					text: 'Recipes',
-					collapsed: true,
+					text: 'Declarative Flows',
+					collapsed: false,
 					items: [
-						{ text: 'Creating a Loop', link: '/guide/recipes/creating-a-loop' },
-						{ text: 'Fan-out and Fan-in', link: '/guide/recipes/fan-out-fan-in' },
-						{ text: 'Resilient API Call Node', link: '/guide/recipes/resilient-api-call' },
-						{ text: 'Data Processing Pipeline', link: '/guide/recipes/data-processing-pipeline' },
+						{ text: 'The Basics', link: '/guide/declarative/basics' },
+						{ text: 'Composition & Data Flow', link: '/guide/declarative/composition-data-flow' },
+						{ text: 'Dependency Injection', link: '/guide/declarative/dependency-injection' },
+						{ text: 'Tooling & Validation', link: '/guide/declarative/tooling-validation' },
 					],
 				},
 				{
-					text: 'Best Practices',
-					collapsed: true,
+					text: 'Advanced Topics',
+					collapsed: false,
 					items: [
-						{ text: 'State Management', link: '/guide/best-practices/state-management' },
-						{ text: 'Data Flow in Sub-Workflows', link: '/guide/best-practices/sub-workflow-data' },
-						{ text: 'Testing Workflows', link: '/guide/best-practices/testing' },
-						{ text: 'Debugging Workflows', link: '/guide/best-practices/debugging' },
-					],
-				},
-				{
-					text: 'Tooling',
-					collapsed: true,
-					items: [
-						{ text: 'Visualizing Workflows', link: '/guide/tooling/mermaid' },
-						{ text: 'Graph Validation', link: '/guide/tooling/graph-validation' },
+						{ text: 'Resilience & Error Handling', link: '/guide/advanced/error-handling' },
+						{ text: 'Execution Control', link: '/guide/advanced/execution-control' },
+						{ text: 'Extending Flowcraft', link: '/guide/advanced/extending' },
+						{ text: 'Best Practices', link: '/guide/advanced/best-practices' },
 					],
 				},
 				{
@@ -92,9 +89,10 @@ export default defineConfig({
 					text: 'API Reference',
 					items: [
 						{ text: 'Introduction', link: '/api-reference/' },
-						{ text: 'Workflow', link: '/api-reference/workflow' },
-						{ text: 'Builders', link: '/api-reference/builder' },
-						{ text: 'Functional Helpers', link: '/api-reference/fn' },
+						{ text: 'Core API', link: '/api-reference/core' },
+						{ text: 'Builders API', link: '/api-reference/builders' },
+						{ text: 'Functional API', link: '/api-reference/functional' },
+						{ text: 'Utilities API', link: '/api-reference/utils' },
 					],
 				},
 			],

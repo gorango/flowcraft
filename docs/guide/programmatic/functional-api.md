@@ -1,6 +1,6 @@
 # Functional API
 
-While Flowcraft's core is built on composable classes like `Node` and `Flow`, it also provides a suite of functional helpers for developers who prefer a more functional programming style. These helpers allow you to define nodes and simple pipelines without explicitly creating new classes.
+While Flowcraft's core is built on composable classes like `Node` and `Flow`, it also provides a suite of functional helpers for a more concise, functional programming style. These helpers allow you to define nodes and simple pipelines without explicitly creating new classes.
 
 All helpers are imported from the main `flowcraft` package.
 
@@ -17,7 +17,7 @@ import {
 
 ## Creating Nodes from Functions
 
-These helpers are the primary way to create `Node` instances from simple functions.
+These helpers are the primary way to create `Node` instances from simple functions, reducing boilerplate for common tasks.
 
 ### `mapNode`
 
@@ -40,6 +40,7 @@ const addNode = mapNode(add)
 
 // Now use it in a flow
 const flow = new Flow(addNode.withParams({ a: 5, b: 10 }))
+// The `exec` result of addNode will be 15.
 ```
 
 ### `contextNode`
@@ -58,8 +59,8 @@ import { contextKey, contextNode, Flow, TypedContext } from 'flowcraft'
 const LANGUAGE = contextKey<'en' | 'es'>('language')
 
 // A function that uses the context to determine the greeting
-function greeter(ctx, params: { name: string }) {
-	const lang = ctx.get(LANGUAGE) || 'en'
+async function greeter(ctx, params: { name: string }) {
+	const lang = await ctx.get(LANGUAGE) || 'en'
 	return lang === 'es' ? `Hola, ${params.name}` : `Hello, ${params.name}`
 }
 
@@ -68,6 +69,7 @@ const greetingNode = contextNode(greeter)
 
 const context = new TypedContext([[LANGUAGE, 'es']])
 const flow = new Flow(greetingNode.withParams({ name: 'Mundo' }))
+// The `exec` result of greetingNode will be "Hola, Mundo".
 ```
 
 ## Creating Flows
@@ -85,9 +87,9 @@ Use `pipeline` as a more readable, functional-style alternative to `new Sequence
 ```typescript
 import { contextNode, mapNode, pipeline } from 'flowcraft'
 
-const fetchNode = mapNode(() => ({ user: 'Alice' }))
+const fetchNode = mapNode(async () => ({ user: 'Alice' }))
 const processNode = mapNode(data => `Processed ${data.user}`)
-const saveNode = contextNode((ctx, result) => { /* save result */ })
+const saveNode = contextNode(async (ctx, result) => { /* save result */ })
 
 const dataPipeline = pipeline(
 	fetchNode,

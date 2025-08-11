@@ -1,15 +1,15 @@
-# Recipes: Creating a Loop
+# Common Patterns: Creating Loops
 
 A common requirement in workflows is to perform an action repeatedly until a certain condition is met. While Flowcraft does not have a dedicated "loop" node, you can easily create loops by wiring a graph of nodes into a cycle.
 
-The key is to have a "decider" node that, based on some condition, either continues the loop or exits it.
+The key to this pattern is a "decider" node that, based on some condition in the `Context`, either returns an action to continue the loop or an action to exit it.
 
 ## The Pattern
 
-1. **Action Node**: A node that performs the main work of the loop's body.
-2. **Decider Node**: A node that checks a condition after the action is performed.
-3. **Cyclical Connection**: The decider node connects back to the action node to continue the loop.
-4. **Exit Connection**: The decider node connects to a different node to break the loop.
+1.  **Action Node**: A node that performs the main work of the loop's body.
+2.  **Decider Node**: A node that checks a condition after the action is performed.
+3.  **Cyclical Connection**: The decider node connects back to the action node to continue the loop.
+4.  **Exit Connection**: The decider node connects to a different node to break the loop.
 
 ```mermaid
 graph TD
@@ -25,12 +25,12 @@ Let's build a simple workflow that increments a counter from 0 to 3.
 
 ### 1. Define Context and Nodes
 
-We need a key for our counter and three nodes:
+We need a key for our counter and nodes for each step:
 
-- `InitializeCounterNode`: Sets the counter to 0.
-- `IncrementCounterNode`: Adds 1 to the counter. This is our "Loop Action".
-- `CheckCounterNode`: Checks if the counter has reached the limit. This is our "Decider".
-- `EndNode`: A final node to execute after the loop is finished.
+-   `InitializeCounterNode`: Sets the counter to 0.
+-   `IncrementCounterNode`: Adds 1 to the counter. This is our "Loop Action".
+-   `CheckCounterNode`: Checks if the counter has reached the limit. This is our "Decider".
+-   `EndNode`: A final node to execute after the loop is finished.
 
 ```typescript
 import { contextKey, Flow, Node, TypedContext } from 'flowcraft'

@@ -1,40 +1,30 @@
-# Recipes: Creating a Data Processing Pipeline
+# Data Processing Pipelines
 
-A common use case for a workflow is to process a piece of data through a series of transformation, validation, and storage steps. Flowcraft's fluent API on the `Node` class (`.map`, `.filter`, `.tap`, `.toContext`) is perfect for this, allowing you to define a clear, readable, and powerful pipeline.
+A very common use case for a workflow is to process a piece of data through a series of transformation, validation, and storage steps. Flowcraft's fluent API on the `Node` class is perfect for this, allowing you to define a clear, readable, and powerful pipeline by chaining methods together.
+
+## Key Concepts
+
+The fluent API consists of several methods that each return a **new `Node` instance**, allowing them to be chained.
+
+-   `.map(fn)`: Transforms the result of the previous step. The function `fn` receives the result and returns a new result.
+-   `.filter(predicate)`: Acts as a conditional gate. If the `predicate` function returns `true`, the chain continues; if `false`, the chain branches to a special `FILTER_FAILED` action.
+-   `.tap(fn)`: "Taps into" the chain to perform a side-effect (like logging) without modifying the data.
+-   `.toContext(key)`: A terminal operation that stores the final result of the chain into the `Context` using a `ContextKey`.
 
 > [!IMPORTANT]
-> **Key Concept: Immutable Chains**
+> **Immutable Chains**
 >
-> Each method in the fluent chain (`.map`, `.filter`, etc.) is **immutable**. It returns a brand new `Node` instance and does **not** modify the node it was called on.
->
-> You must capture the result of the chain in a variable.
->
-> **Correct:**
->
-> ```typescript
-> // The entire chain is assigned to a new variable.
-> const userProcessingPipeline = new ValueNode(rawUser)
->   .tap(...)
->   .map(...)
-> ```
->
-> **Incorrect:**
->
-> ```typescript
-> const startNode = new ValueNode(rawUser);
-> // This does nothing! The new node returned by .tap() is discarded.
-> startNode.tap(...);
-> ```
+> Each method in the fluent chain is **immutable**. It returns a brand new `Node` instance. You must capture the result of the entire chain in a single variable.
 
-## The Goal
+## Example: A User Processing Pipeline
 
-Create a workflow that:
+Let's build a workflow that:
 
-1. Starts with a raw user object.
-2. Logs the initial object for debugging (`.tap`).
-3. Transforms the object into a more usable format (`.map`).
-4. Filters out inactive users (`.filter`).
-5. Stores the final, processed data in the `Context` (`.toContext`).
+1.  Starts with a raw user object.
+2.  Logs the initial object for debugging (`.tap`).
+3.  Transforms the object into a more usable format (`.map`).
+4.  Filters out inactive users (`.filter`).
+5.  Stores the final, processed data in the `Context` (`.toContext`).
 
 ```mermaid
 graph TD
@@ -45,13 +35,9 @@ graph TD
     D -- "false" --> F[End / Discard]
 ```
 
-## The Implementation
-
-We can define this entire pipeline by chaining methods, starting from a simple node that provides the initial data.
-
 ### 1. The Pipeline Definition
 
-We'll use a `ValueNode` (a simple `Node` that just returns a value from its `exec` method) as the starting point for our chain.
+We can define this entire pipeline by chaining methods. We'll start with a simple `Node` that provides the initial data.
 
 ```typescript
 import { contextKey, FILTER_FAILED, Flow, Node, TypedContext } from 'flowcraft'
@@ -84,7 +70,7 @@ const userProcessingPipeline = new ValueNode(rawUser)
 
 ### 2. Wiring the Branches
 
-The `.filter()` method creates a branch. The `DEFAULT_ACTION` path continues the chain if the filter passes. The `FILTER_FAILED` path is taken if it fails. We need to wire up a node to handle that failure path.
+The `.filter()` method creates a branch. The `DEFAULT_ACTION` path continues the chain if the filter passes. The `FILTER_FAILED` path is taken if it fails. We need to create and wire up a node to handle that failure path.
 
 ```typescript
 // A node to handle the case where the filter fails
@@ -92,9 +78,10 @@ const handleInactiveUser = new ValueNode(rawUser)
 	.map(user => user.id)
 	.toContext(FAILED_USER_ID)
 
-// Connect the failure path
+// Connect the failure path from our main pipeline
 userProcessingPipeline.next(handleInactiveUser, FILTER_FAILED)
 
+// Create the final flow, starting with the main pipeline
 const flow = new Flow(userProcessingPipeline)
 ```
 
@@ -107,11 +94,11 @@ const context = new TypedContext()
 await flow.run(context)
 
 console.log('\n--- Active User Result ---')
-console.log('Processed User:', context.get(PROCESSED_USER)) // "Welcome, Jane DOE!"
-console.log('Failed User ID:', context.get(FAILED_USER_ID)) // undefined
+console.log('Processed User:', await context.get(PROCESSED_USER)) // "Welcome, Jane DOE!"
+console.log('Failed User ID:', await context.get(FAILED_USER_ID)) // undefined
 ```
 
-If we change the input data to be an inactive user:
+If we were to change the input data to be an inactive user:
 `const rawUser = { id: 99, ..., status: 'inactive' }`, the output would be:
 
 ```
