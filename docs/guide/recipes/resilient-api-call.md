@@ -47,7 +47,8 @@ class FetchDataNode extends Node<void, any> {
 		this.attempts++
 		console.log(`Attempting to call API... (attempt #${this.attempts})`)
 
-		// Simulate a failing API
+		// Simulate a failing API that succeeds on the 3rd try.
+        // To test the fallback, change this condition to always fail, e.g., `if (true)`.
 		if (this.attempts < 3) {
 			throw new Error('API service is temporarily unavailable.')
 		}
@@ -66,14 +67,14 @@ class FetchDataNode extends Node<void, any> {
 
 	// The post-logic: store the result (from either exec or execFallback)
 	async post({ ctx, execRes }: NodeArgs<void, any>) {
-		ctx.set(API_RESULT, execRes)
+		await ctx.set(API_RESULT, execRes)
 	}
 }
 ```
 
 ### 2. Running the Resilient Node
 
-Now, we can run this node as part of a flow. Even though the API "fails" twice, the workflow will complete successfully because of the retry and fallback logic.
+Now, we can run this node as part of a flow. The behavior will differ based on whether the `exec` eventually succeeds or the `execFallback` is triggered.
 
 ```typescript
 import { ConsoleLogger, Flow, TypedContext } from 'flowcraft'
@@ -86,12 +87,12 @@ const context = new TypedContext()
 await flow.run(context, { logger: new ConsoleLogger() })
 
 console.log('\nWorkflow complete.')
-console.log('Final result in context:', context.get(API_RESULT))
+console.log('Final result in context:', await context.get(API_RESULT))
 ```
 
-### Expected Output
+### Expected Output (Success on Retry)
 
-The output shows the node attempting the call, logging warnings for the retries, executing the fallback, and the workflow completing successfully with the fallback data.
+If the API succeeds on the 3rd attempt, the output will show the retries followed by the successful live data.
 
 ```
 [INFO] Running node: FetchDataNode
@@ -99,6 +100,24 @@ Attempting to call API... (attempt #1)
 [WARN] Attempt 1/3 failed for FetchDataNode. Retrying...
 Attempting to call API... (attempt #2)
 [WARN] Attempt 2/3 failed for FetchDataNode. Retrying...
+Attempting to call API... (attempt #3)
+API call successful!
+
+Workflow complete.
+Final result in context: { id: 123, data: 'live data from API' }
+```
+
+### Expected Output (Fallback Execution)
+
+If you modify the `exec` method to always throw an error, the fallback will be executed:
+
+```
+[INFO] Running node: FetchDataNode
+Attempting to call API... (attempt #1)
+[WARN] Attempt 1/3 failed for FetchDataNode. Retrying...
+Attempting to call API... (attempt #2)
+[WARN] Attempt 2/3 failed for FetchDataNode. Retrying...
+Attempting to call API... (attempt #3)
 [ERROR] All retries failed for FetchDataNode. Executing fallback.
 All API attempts failed. Final error: "API service is temporarily unavailable."
 Returning cached/default data as a fallback.

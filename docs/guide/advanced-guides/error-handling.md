@@ -106,7 +106,7 @@ class ResilientApiNode extends Node<void, { data: string }> {
 	async post({ ctx, execRes }) {
 		// The post phase doesn't care if exec or execFallback ran.
 		// It just receives the result.
-		ctx.set(DATA_KEY, execRes.data)
+		await ctx.set(DATA_KEY, execRes.data)
 	}
 }
 
@@ -116,7 +116,7 @@ const flow = new Flow(new ResilientApiNode())
 
 await flow.run(context, { logger: new ConsoleLogger() })
 
-console.log(`Final data in context: ${context.get(DATA_KEY)}`)
+console.log(`Final data in context: ${await context.get(DATA_KEY)}`)
 ```
 
 The output will be:

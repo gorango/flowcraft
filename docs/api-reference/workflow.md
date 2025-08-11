@@ -15,14 +15,15 @@ import {
 } from 'flowcraft'
 ```
 
-## `Node<PrepRes, ExecRes, PostRes, TParams>`
+## `Node<PrepRes, ExecRes, PostRes, TParams, TContext>`
 
-The base class for a single unit of work. It is generic over its lifecycle results and its static parameters.
+The base class for a single unit of work. It is generic over its lifecycle results, its static parameters, and its context type.
 
 - `PrepRes`: The type of data returned by the `prep` phase.
 - `ExecRes`: The type of data returned by the `exec` phase.
 - `PostRes`: The type of the "action" returned by the `post` phase.
 - `TParams`: **(Optional)** The type of the static parameters object for the node. Defaults to `Params`.
+- `TContext`: **(Optional)** The type of the context object. Defaults to `Context`.
 
 ### Constructor
 
@@ -36,10 +37,10 @@ The base class for a single unit of work. It is generic over its lifecycle resul
 
 These methods are designed to be overridden in your custom `Node` subclasses.
 
-- `async prep(args: NodeArgs<void, void, TParams>): Promise<PrepRes>`: Prepares data for execution. Runs before `exec`. Ideal for reading from the context.
-- `async exec(args: NodeArgs<PrepRes, void, TParams>): Promise<ExecRes>`: Performs the core, isolated logic. Its result is passed to `post`. This is the only phase that is retried on failure.
-- `async post(args: NodeArgs<PrepRes, ExecRes, TParams>): Promise<PostRes>`: Processes results and determines the next step. Runs after `exec`. Ideal for writing to the context. Should return an action string. The default return is `DEFAULT_ACTION`.
-- `async execFallback(args: NodeArgs<PrepRes, void, TParams>): Promise<ExecRes>`: Runs if all `exec` retries fail. If not implemented, the error will be re-thrown.
+- `async prep(args: NodeArgs<void, void, TParams, TContext>): Promise<PrepRes>`: Prepares data for execution. Runs before `exec`. Ideal for reading from the context.
+- `async exec(args: NodeArgs<PrepRes, void, TParams, TContext>): Promise<ExecRes>`: Performs the core, isolated logic. Its result is passed to `post`. This is the only phase that is retried on failure.
+- `async post(args: NodeArgs<PrepRes, ExecRes, TParams, TContext>): Promise<PostRes>`: Processes results and determines the next step. Runs after `exec`. Ideal for writing to the context. Should return an action string. The default return is `DEFAULT_ACTION`.
+- `async execFallback(args: NodeArgs<PrepRes, void, TParams, TContext>): Promise<ExecRes>`: Runs if all `exec` retries fail. If not implemented, the error will be re-thrown.
 
 ### Fluent API Methods
 
@@ -67,21 +68,21 @@ To reduce boilerplate for common patterns, Flowcraft provides specialized abstra
 
 A simplified base class for nodes that only need to perform a core action and return a value. This pattern is ideal for nodes that receive their inputs via `params` and produce an output, without needing `prep` or complex `post` branching logic.
 
-`extends Node<void, ExecRes, any, TParams>`
+`extends Node<void, ExecRes, any, TParams, TContext>`
 
 ### `PreNode`
 
 A simplified base class for nodes that only perform a side effect, such as modifying the `Context` or logging. These nodes do not produce an `exec` result, and their logic is typically placed in the `prep` phase.
 
-`extends Node<void, void, any, TParams>`
+`extends Node<void, void, any, TParams, TContext>`
 
 ### `PostNode`
 
 A simplified base class for nodes that make a branching decision by returning a custom action string from their `post` method. This pattern is ideal for routing the workflow based on data in the `Context`.
 
-`extends Node<void, void, PostRes, TParams>`
+`extends Node<void, void, PostRes, TParams, TContext>`
 
-## `Flow<PrepRes, ExecRes, TParams>`
+## `Flow<PrepRes, ExecRes, TParams, TContext>`
 
 A special `Node` that acts as a container for a graph of other nodes and their shared middleware.
 
@@ -117,7 +118,7 @@ A special `Node` that acts as a container for a graph of other nodes and their s
 
 The shared memory of a workflow.
 
-- `Context`: The interface that defines the contract for a context object.
+- `Context`: The interface that defines the contract for a context object. All its methods are asynchronous.
 - `TypedContext`: The standard `Map`-based implementation of the `Context` interface.
 
 ### `TypedContext` Constructor
@@ -128,9 +129,9 @@ The shared memory of a workflow.
 
 ### Methods
 
-- `.get<T>(key)`: Retrieves a value from the context. Can be called with a `ContextKey<T>` (returns `T | undefined`) or a `string` (returns `any`).
-- `.set<T>(key, value)`: Stores a value in the context.
-- `.has(key)`: Checks if a key exists in the context.
+- `.get<T>(key): Promise<T | undefined>`: Asynchronously retrieves a value from the context. Can be called with a `ContextKey<T>` or a `string`.
+- `.set<T>(key, value): Promise<this>`: Asynchronously stores a value in the context.
+- `.has(key): Promise<boolean>`: Asynchronously checks if a key exists in the context.
 
 ## `ContextKey` and `contextKey()`
 

@@ -69,12 +69,13 @@ export const loggingMiddleware: Middleware = async (args: NodeArgs, next: Middle
 	// 1. Log node entry
 	logger.debug(`[Workflow] > Starting node '${nodeName}'`, { params })
 
-	// 2. Execute the node
+	// 2. Execute the node and wait for its action
 	const action = await next(args)
 
 	// 3. Log node exit and branching
 	if (node) {
-		const nextNode = node.successors.get(action)
+		const successors = node.successors.get(action)
+		const nextNode = successors ? successors[0] : undefined
 		const actionDisplay = getActionDisplay(action)
 
 		if (nextNode) {

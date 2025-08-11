@@ -19,7 +19,7 @@ When you build workflows programmatically (by instantiating `Node` and `Flow` cl
 // A sub-flow that adds 10, multiplies by 2, and returns an action.
 export function createMathFlow(): Flow {
 	const addNode = new Node().exec(async ({ params }) => params.input + 10).toContext(MATH_VALUE)
-	const multiplyNode = new Node().exec(async ({ ctx }) => ctx.get(MATH_VALUE)! * 2).toContext(MATH_VALUE)
+	const multiplyNode = new Node().exec(async ({ ctx }) => (await ctx.get(MATH_VALUE)!) * 2).toContext(MATH_VALUE)
 	const checkNode = new CheckResultNode() // Returns 'over_50' or 'under_50'
 
 	addNode.next(multiplyNode).next(checkNode)

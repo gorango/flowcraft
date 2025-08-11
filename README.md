@@ -39,16 +39,27 @@ npm install flowcraft
 Create and run a simple workflow in a few lines of code.
 
 ```typescript
-import { Flow, mapNode } from 'flowcraft' // Use mapNode for simple functions
+import { contextKey, Flow, Node, TypedContext } from 'flowcraft'
 
-// Create a node from a simple function that takes params and returns a value.
-const greetNode = mapNode(() => 'Hello, World!')
-	// Functional helpers make common tasks easy.
-	.tap(console.log)
+// 1. Define a type-safe key for our data
+const MESSAGE = contextKey<string>('message')
 
+// 2. Create nodes using the fluent API
+const greetNode = new Node()
+	.exec(async ({ params }) => `Hello, ${params.name}!`)
+	.toContext(MESSAGE) // Stores the result in the context
+
+const farewellNode = new Node()
+	.exec(async ({ ctx }) => `${await ctx.get(MESSAGE)} Goodbye!`)
+	.tap(console.log) // Prints the final message
+
+// 3. Chain the nodes and create a flow
+greetNode.next(farewellNode)
 const flow = new Flow(greetNode)
-// Run using the default InMemoryExecutor.
-await flow.run()
+
+// 4. Run the flow with a context and params
+await flow.withParams({ name: 'World' }).run(new TypedContext())
+// Output: "Hello, World! Goodbye!"
 ```
 
 ## Learn by Example
@@ -171,12 +182,13 @@ graph TD
 
 The `Node` is the fundamental building block of a workflow. It represents a single unit of work and is fully generic, allowing you to define types for its lifecycle results and its static parameters.
 
-The class signature is: `Node<PrepRes, ExecRes, PostRes, TParams>`
+The class signature is: `Node<PrepRes, ExecRes, PostRes, TParams, TContext>`
 
 - `PrepRes`: The type of data returned by the `prep` phase.
 - `ExecRes`: The type of data returned by the `exec` phase.
 - `PostRes`: The type of the "action" returned by the `post` phase.
 - `TParams`: The type of the static parameters object for the node, accessible via `.withParams()`.
+- `TContext`: The type of the `Context` object.
 
 **Example: A Type-Safe GreetNode**
 
@@ -192,7 +204,7 @@ interface GreetParams {
 // 2. Define the node with the TParams generic.
 class GreetNode extends Node<void, string, any, GreetParams> {
 	// 3. The 'exec' method can safely access typed parameters.
-	async exec({ params }: NodeArgs<GreetParams>): Promise<string> {
+	async exec({ params }: NodeArgs<void, void, GreetParams>): Promise<string> {
 		let message = `${params.greeting}, World!`
 		if (params.loudly) {
 			message = message.toUpperCase()
@@ -252,8 +264,8 @@ const COUNTER = contextKey<number>('counter')
 class IncrementCounterNode extends PreNode {
 	// You only need to implement the 'prep' method for context mutations.
 	async prep({ ctx }: NodeArgs): Promise<void> {
-		const current = ctx.get(COUNTER) ?? 0
-		ctx.set(COUNTER, current + 1)
+		const current = (await ctx.get(COUNTER)) ?? 0
+		await ctx.set(COUNTER, current + 1)
 	}
 }
 ```
@@ -270,7 +282,7 @@ type UserAction = 'grant_access' | 'deny_access'
 class CheckAdminNode extends PostNode<UserAction> {
 	// You only need to implement the 'post' method for branching logic.
 	async post({ ctx }: NodeArgs): Promise<UserAction> {
-		const role = ctx.get(USER_ROLE)
+		const role = await ctx.get(USER_ROLE)
 		return role === 'admin' ? 'grant_access' : 'deny_access'
 	}
 }
@@ -283,7 +295,7 @@ checkAdmin.next(new GuestPageNode(), 'deny_access')
 
 ### Flow
 
-A `Flow` is a special type of `Node` that orchestrates a sequence of other nodes. It is also generic (`Flow<PrepRes, ExecRes, TParams>`) and can be configured with its own parameters and middleware. It contains the logic for traversing its own graph of operations, making it a powerful, self-contained unit of work.
+A `Flow` is a special type of `Node` that orchestrates a sequence of other nodes. It is also generic (`Flow<PrepRes, ExecRes, TParams, TContext>`) and can be configured with its own parameters and middleware. It contains the logic for traversing its own graph of operations, making it a powerful, self-contained unit of work.
 
 ### Executor
 
@@ -295,7 +307,7 @@ A `Flow` can be configured with middleware functions that wrap the execution of 
 
 ### Context
 
-The `Context` is a shared, type-safe `Map`-like object passed through every node in a flow. It acts as a shared memory space, allowing nodes to pass data and share state.
+The `Context` is a shared, type-safe `Map`-like object passed through every node in a flow. It acts as a shared memory space, allowing nodes to pass data and share state. All its methods are asynchronous.
 
 ### Actions & Branching
 
@@ -322,8 +334,8 @@ To simplify the creation of common and complex patterns, the framework provides 
 
 ### Core Classes
 
-- `Node`: The base class for a unit of work: `Node<PrepRes, ExecRes, PostRes, TParams>`. It has built-in retry logic and a fluent API (`.map`, `.filter`, etc.).
-- `Flow`: Orchestrates a sequence of nodes: `Flow<PrepRes, ExecRes, TParams>`. Supports middleware via `.use()`.
+- `Node`: The base class for a unit of work: `Node<PrepRes, ExecRes, PostRes, TParams, TContext>`. It has built-in retry logic and a fluent API (`.map`, `.filter`, etc.).
+- `Flow`: Orchestrates a sequence of nodes: `Flow<PrepRes, ExecRes, TParams, TContext>`. Supports middleware via `.use()`.
 - `InMemoryExecutor`: The default `IExecutor` implementation for running flows in-memory.
 - `TypedContext`: The standard `Map`-based implementation for the `Context` interface.
 - `ConsoleLogger`, `NullLogger`: Pre-built logger implementations.
@@ -343,9 +355,8 @@ A collection of functions for creating nodes and pipelines in a more functional 
 ### Builder Classes
 
 - `SequenceFlow`: A `Flow` that creates a linear flow from a sequence of nodes.
-- `BatchFlow`: A `Flow` that processes a collection of items sequentially.
-- `ParallelBatchFlow`: A `Flow` that processes a collection of items in parallel.
-- `GraphBuilder`: Constructs a `Flow` from a declarative graph definition. Its `.build()` method returns a `BuildResult` object containing:
+- **`BatchFlow` / `ParallelBatchFlow`**: Process a collection of items sequentially or concurrently.
+- **`GraphBuilder`**: Constructs a `Flow` from a declarative graph definition. Its `.build()` method returns a `BuildResult` object containing:
   - `flow`: The executable `Flow` instance.
   - `nodeMap`: A `Map` of all instantiated nodes, keyed by their ID.
   - `predecessorCountMap`: A `Map` of node IDs to their total number of incoming connections.

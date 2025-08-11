@@ -6,7 +6,7 @@ This guide covers the most effective techniques for debugging your workflows.
 
 ## 1. Inspect Data Flow with `.tap()`
 
-> [!TIP]
+> [!TIP]>
 > The `.tap()` method is your best friend for non-disruptive debugging. It's the cleanest way to inspect data mid-pipeline without breaking a fluent chain.
 
 Instead of breaking your chain to insert a `console.log`, use the `.tap()` method. It receives the result of the previous step, allows you to perform a side-effect (like logging), and then passes the original result through to the next step, completely unmodified.
@@ -19,7 +19,7 @@ import { contextKey, Node } from 'flowcraft'
 const FINAL_RESULT = contextKey<string>('final_result')
 
 // A node that fetches a user object
-const fetchUserNode = new Node().exec(() => ({ id: 123, name: 'Alice', email: 'alice@test.com' }))
+const fetchUserNode = new Node().exec(async () => ({ id: 123, name: 'Alice', email: 'alice@test.com' }))
 
 const processUser = fetchUserNode
 	.map(user => ({ ...user, name: user.name.toUpperCase() }))
@@ -155,6 +155,7 @@ const specificNode = nodeMap.get('my-node-id') // O(1) lookup
 If your workflow isn't behaving as expected, check for these common issues:
 
 - **Forgetting `await flow.run()`**: Since workflows are asynchronous, forgetting to `await` the top-level `run()` call will cause your script to exit before the workflow can complete.
+- **Forgetting `await` on Context Calls**: All context methods (`get`, `set`, etc.) are now asynchronous. Forgetting to `await ctx.get(KEY)` will return a `Promise` instead of the value, which can lead to subtle bugs in your logic.
 - **Context Key Collisions**: In large, composed flows, different sub-flows might accidentally write to the same context key, overwriting each other's data. Using descriptive, unique `ContextKey`s helps prevent this.
 - **Infinite Loops**: If you create a cycle in your graph, make sure your "decider" node has a reliable exit condition. Use a logging middleware to trace the loop and see if the context state is changing as expected on each iteration.
 - **Mutating Objects in Context**: If you place a mutable object (like `{}`, `[]`) in the context, any node can modify it. This can lead to unexpected behavior if one node changes an object that a later node relies on. It's often safer for nodes to create new objects/arrays rather than modifying existing ones in place.

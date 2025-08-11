@@ -43,7 +43,7 @@ Creates a `Node` from a function that requires access to the shared `Context` in
 
 ### Parameters
 
-- `fn: (ctx: Context, input: TIn) => TOut | Promise<TOut>`: A function that takes the `Context` as its first argument and the node's `params` as its second. The result of `fn` becomes the `exec` result of the node.
+- `fn: (ctx: Context, input: TIn) => TOut | Promise<TOut>`: An asynchronous function that takes the `Context` as its first argument and the node's `params` as its second. The result of `fn` becomes the `exec` result of the node.
 
 ### Returns
 
@@ -57,8 +57,8 @@ import { contextKey, contextNode } from 'flowcraft'
 const USER_NAME = contextKey<string>('user_name')
 
 // A node that constructs a greeting using a value from the context
-const greetingNode = contextNode((ctx, params: { punctuation: string }) =>
-	`Hello, ${ctx.get(USER_NAME)}${params.punctuation}`
+const greetingNode = contextNode(async (ctx, params: { punctuation: string }) =>
+	`Hello, ${await ctx.get(USER_NAME)}${params.punctuation}`
 )
 ```
 
@@ -68,7 +68,7 @@ Creates a `Node` that is used purely for its side effect of modifying the `Conte
 
 ### Parameters
 
-- `...transforms: ContextTransform[]`: A sequence of `ContextTransform` functions. A `ContextTransform` is a function of the shape `(ctx: Context) => Context`.
+- `...transforms: ContextTransform[]`: A sequence of `ContextTransform` functions. A `ContextTransform` is a function of the shape `(ctx: Context) => Context | Promise<Context>`.
 
 ### Returns
 
@@ -114,9 +114,9 @@ Creates a `ContextLens` object, which provides a type-safe way to generate funct
 ### Returns
 
 - `ContextLens<T>`: An object with the following methods:
-  - `.get(ctx: Context): T | undefined`: Retrieves the value for the key from the context.
-  - `.set(value: T): ContextTransform`: Returns a function that, when called with a `Context`, will set the key to the provided `value`.
-  - `.update(fn: (current: T | undefined) => T): ContextTransform`: Returns a function that updates the key's value based on its current value.
+  - `.get(ctx: Context): Promise<T | undefined>`: Asynchronously retrieves the value for the key from the context.
+  - `.set(value: T): ContextTransform`: Returns an async function that, when called with a `Context`, will set the key to the provided `value`.
+  - `.update(fn: (current: T | undefined) => T): ContextTransform`: Returns an async function that updates the key's value based on its current value.
 
 ### Example
 
@@ -141,4 +141,4 @@ Composes multiple `ContextTransform` functions into a single `ContextTransform` 
 
 ### Returns
 
-- `ContextTransform`: A single function that applies all transformations.
+- `ContextTransform`: A single async function that applies all transformations.

@@ -88,7 +88,7 @@ const OUTPUT = contextKey<number>('output')
 
 class AddTenNode extends Node {
 	async prep({ ctx }) {
-		return ctx.get(INPUT) || 0
+		return (await ctx.get(INPUT)) || 0
 	}
 
 	async exec({ prepRes: value }) {
@@ -96,7 +96,7 @@ class AddTenNode extends Node {
 	}
 
 	async post({ ctx, execRes: result }) {
-		ctx.set(OUTPUT, result)
+		await ctx.set(OUTPUT, result)
 	}
 }
 ```
@@ -116,7 +116,7 @@ describe('AddTenNode', () => {
 
 		await node.run(context)
 
-		expect(context.get(OUTPUT)).toBe(15)
+		expect(await context.get(OUTPUT)).toBe(15)
 	})
 })
 ```
@@ -147,8 +147,8 @@ describe('DataProcessingFlow', () => {
 		await flow.run(context)
 
 		// Assert the final state of the context after the whole flow has run
-		expect(context.get(FINAL_RESULT)).toBe('expected-final-value')
-		expect(context.get(SOME_INTERMEDIATE_VALUE)).toBeUndefined() // Verify cleanup if applicable
+		expect(await context.get(FINAL_RESULT)).toBe('expected-final-value')
+		expect(await context.get(SOME_INTERMEDIATE_VALUE)).toBeUndefined() // Verify cleanup if applicable
 	})
 })
 ```
@@ -171,7 +171,7 @@ it('should take the "success" path when data is valid', async () => {
 
 	await flow.run(context)
 
-	expect(context.get(PATH_TAKEN)).toBe('success-path')
+	expect(await context.get(PATH_TAKEN)).toBe('success-path')
 })
 
 it('should take the "error" path when data is invalid', async () => {
@@ -182,6 +182,6 @@ it('should take the "error" path when data is invalid', async () => {
 
 	await flow.run(context)
 
-	expect(context.get(PATH_TAKEN)).toBe('error-path')
+	expect(await context.get(PATH_TAKEN)).toBe('error-path')
 })
 ```

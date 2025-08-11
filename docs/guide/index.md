@@ -58,12 +58,12 @@ const nameNode = new Node()
 
 // 2. greetingNode: Reads the name from the Context, creates a greeting, and stores it back.
 const greetingNode = new Node()
-	.exec(async ({ ctx }) => `Hello, ${ctx.get(NAME)}!`)
+	.exec(async ({ ctx }) => `Hello, ${await ctx.get(NAME)}!`)
 	.toContext(GREETING)
 
 // 3. finalNode: Reads the greeting from the Context and assembles the final message.
 const finalNode = new Node()
-	.exec(async ({ ctx }) => `${ctx.get(GREETING)} Welcome to Flowcraft!`)
+	.exec(async ({ ctx }) => `${await ctx.get(GREETING)} Welcome to Flowcraft!`)
 	.toContext(FINAL_MESSAGE)
 ```
 
@@ -87,7 +87,7 @@ async function main() {
 	console.log('Starting workflow...')
 	await flow.withParams({ name: 'Developer' }).run(context)
 
-	const result = context.get(FINAL_MESSAGE)
+	const result = await context.get(FINAL_MESSAGE)
 	console.log('Workflow complete!')
 	console.log(`Final Result: "${result}"`)
 }

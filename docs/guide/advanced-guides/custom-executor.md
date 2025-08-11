@@ -10,7 +10,8 @@ At its core, an executor is any class that implements the `IExecutor` interface.
 
 ```typescript
 interface IExecutor {
-	run: (flow: Flow, context: Context, options?: RunOptions) => Promise<any>
+	run: <T>(flow: Flow<any, T>, context: Context, options?: RunOptions) => Promise<T>
+	getNextNode: (curr: AbstractNode, action: any) => AbstractNode | undefined
 }
 ```
 
@@ -51,9 +52,7 @@ import {
 } from 'flowcraft'
 
 export class DryRunExecutor implements IExecutor {
-	public async run(flow: Flow, context: Context, options?: RunOptions): Promise<any> {
-		// Implementation will go here
-	}
+	// ... implementation ...
 }
 ```
 
@@ -123,9 +122,17 @@ private async _orch(startNode: AbstractNode, context: Context, options: Internal
 		options.logger.info(`[DryRunExecutor] <-- Node returned action: '${actionDisplay}'`)
 
 		// Find the next node based on the action.
-		currentNode = currentNode.successors.get(lastAction)
+		// NOTE: In a real executor, you would use `this.getNextNode(currentNode, lastAction)`
+		const successors = currentNode.successors.get(lastAction)
+		currentNode = successors ? successors[0] : undefined
 	}
 	return lastAction
+}
+
+// Dummy getNextNode to satisfy the interface for this example
+public getNextNode(curr: AbstractNode, action: any): AbstractNode | undefined {
+    const successors = curr.successors.get(action);
+    return successors ? successors[0] : undefined;
 }
 ```
 
@@ -141,12 +148,12 @@ import { DryRunExecutor } from './executors/dry-run-executor'
 const VALUE = contextKey<number>('value')
 
 // A node to set up initial state
-const startNode = new Node().prep(async ({ ctx }) => ctx.set(VALUE, 15))
+const startNode = new Node().prep(async ({ ctx }) => await ctx.set(VALUE, 15))
 
 // A conditional node
 class CheckValueNode extends Node<void, void, 'over' | 'under'> {
 	async post({ ctx }) {
-		return ctx.get(VALUE)! > 10 ? 'over' : 'under'
+		return (await ctx.get(VALUE)!) > 10 ? 'over' : 'under'
 	}
 }
 const checkNode = new CheckValueNode()
@@ -177,11 +184,11 @@ When you run this code, you'll see the executor's logs tracing the path. The `co
 --- Starting Dry Run ---
 [INFO] [DryRunExecutor] Starting dry run for flow: Flow
 [INFO] [DryRunExecutor] --> Visiting node: Node
-[INFO] [DryRunExecutor] <-- Node returned action: 'default'
+[INFO] [DryRunExecutor] <-- Node returned action: 'Symbol(default)'
 [INFO] [DryRunExecutor] --> Visiting node: CheckValueNode
 [INFO] [DryRunExecutor] <-- Node returned action: 'over'
 [INFO] [DryRunExecutor] --> Visiting node: Node
-[INFO] [DryRunExecutor] <-- Node returned action: 'default'
+[INFO] [DryRunExecutor] <-- Node returned action: 'Symbol(default)'
 [INFO] [DryRunExecutor] Dry run complete.
 ```
 

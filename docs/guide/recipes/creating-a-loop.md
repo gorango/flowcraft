@@ -39,22 +39,22 @@ import { contextKey, Flow, Node, TypedContext } from 'flowcraft'
 const COUNTER = contextKey<number>('counter')
 const MAX_LOOPS = 3
 
-const initializeNode = new Node().exec(async ({ ctx }) => ctx.set(COUNTER, 0))
+const initializeNode = new Node().exec(async ({ ctx }) => await ctx.set(COUNTER, 0))
 const endNode = new Node().exec(() => console.log('Loop finished.'))
 
 // The main work of the loop
 class IncrementCounterNode extends Node {
 	async exec({ ctx }) {
-		const current = ctx.get(COUNTER)!
+		const current = (await ctx.get(COUNTER))!
 		console.log(`Loop body: Incrementing counter from ${current} to ${current + 1}`)
-		ctx.set(COUNTER, current + 1)
+		await ctx.set(COUNTER, current + 1)
 	}
 }
 
 // The decider node
 class CheckCounterNode extends Node<void, void, 'continue' | 'exit'> {
 	async post({ ctx }) {
-		const current = ctx.get(COUNTER)!
+		const current = (await ctx.get(COUNTER))!
 		if (current < MAX_LOOPS) {
 			console.log(`Condition check: ${current} < ${MAX_LOOPS}. Continuing loop.`)
 			return 'continue' // The action to continue the loop

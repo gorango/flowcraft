@@ -2,15 +2,15 @@
 
 The `Context` is the heart of a running workflow, acting as its shared memory. Managing the state within the `Context` effectively is one of the most important skills for building clean, maintainable, and scalable workflows in Flowcraft.
 
-## 1. Always Use `ContextKey` for Type Safety
+## 1. Always Use `ContextKey` for Type Safety (In-Memory)
 
 > [!IMPORTANT]
-> This is the most important rule for state management. Always prefer `contextKey()` over raw strings to access the `Context`.
+> This is the most important rule for state management. For in-memory workflows, always prefer `contextKey()` over raw strings to access the `Context`.
 
 **Why?**
 
 - **Compile-Time Safety**: The TypeScript compiler will catch typos and type mismatches. If you try to `set` a `number` to a `ContextKey<string>`, your code won't compile.
-- **No Typos**: `ctx.get('user_id')` vs. `ctx.get('userId')` is a common runtime bug. `ctx.get(USER_ID)` is checked by the compiler.
+- **No Typos**: `await ctx.get('user_id')` vs. `await ctx.get('userId')` is a common runtime bug. `await ctx.get(USER_ID)` is checked by the compiler.
 - **Easy Refactoring**: Renaming a `ContextKey` is a simple, safe refactoring operation in any modern IDE. Renaming a string key across a large codebase is risky.
 
 ```typescript
@@ -18,16 +18,21 @@ import { contextKey, TypedContext } from 'flowcraft'
 
 // --- BAD: Using strings ---
 const ctxStrings = new TypedContext()
-ctxStrings.set('user_id', 123) // 'user_id' is just a string, no type info
-const id_bad = ctxStrings.get('user_id') // Type is 'any'
+await ctxStrings.set('user_id', 123) // 'user_id' is just a string, no type info
+const id_bad = await ctxStrings.get('user_id') // Type is 'any'
 
 // --- GOOD: Using ContextKey ---
 const USER_ID = contextKey<number>('A key for the user ID')
 
 const ctxTyped = new TypedContext()
-ctxTyped.set(USER_ID, 123)
-const id_good = ctxTyped.get(USER_ID) // Type is 'number | undefined'
+await ctxTyped.set(USER_ID, 123)
+const id_good = await ctxTyped.get(USER_ID) // Type is 'number | undefined'
 ```
+
+> [!WARNING]
+> **`ContextKey` vs. Distributed Systems**
+>
+> `ContextKey`s are `Symbol`s, which are in-memory constructs. They cannot be serialized and sent over a network. When building for a distributed environment (e.g., with a Redis-backed context), you **must** use serializable `string` keys. The declarative `GraphBuilder` is designed with this in mind and operates on string keys.
 
 ## 2. Keep the Context Minimal
 
@@ -43,8 +48,8 @@ import { Node } from 'flowcraft'
 class DataProcessorNode extends Node {
 	async exec({ prepRes: data }) {
 		// BAD: Don't put temporary data in the context
-		// ctx.set(TEMP_VALUE, data.a + data.b)
-		// const intermediate = ctx.get(TEMP_VALUE)
+		// await ctx.set(TEMP_VALUE, data.a + data.b)
+		// const intermediate = await ctx.get(TEMP_VALUE)
 		// return intermediate * 2
 
 		// GOOD: Use local variables for intermediate steps
@@ -73,8 +78,8 @@ const CURRENT_VALUE = contextKey<number>('current_value')
 // This node's behavior depends on a value that must be in the context.
 class AddNumberFromContext extends Node {
 	async exec({ ctx }) {
-		const valueToAdd = ctx.get(NUMBER_TO_ADD) // less reusable
-		return ctx.get(CURRENT_VALUE) + valueToAdd
+		const valueToAdd = await ctx.get(NUMBER_TO_ADD) // less reusable
+		return (await ctx.get(CURRENT_VALUE)) + valueToAdd
 	}
 }
 
@@ -83,7 +88,7 @@ class AddNumberFromContext extends Node {
 class AddNumberFromParams extends Node {
 	async exec({ ctx, params }) {
 		const valueToAdd = params.amount // much more reusable
-		return ctx.get(CURRENT_VALUE) + valueToAdd
+		return (await ctx.get(CURRENT_VALUE)) + valueToAdd
 	}
 }
 
