@@ -22,6 +22,9 @@ export default defineConfig({
 		},
 	},
 	themeConfig: {
+		search: {
+			provider: 'local',
+		},
 		nav: [
 			{ text: 'Guide', link: '/guide/', activeMatch: '/guide' },
 			{ text: 'API', link: '/api-reference/', activeMatch: '/api-reference' },
@@ -49,7 +52,7 @@ export default defineConfig({
 						{ text: 'Functional API', link: '/guide/programmatic/functional-api' },
 						{ text: 'Data Processing Pipelines', link: '/guide/programmatic/data-pipelines' },
 						{
-							text: 'Common Patterns (Recipes)',
+							text: 'Common Patterns',
 							collapsed: true,
 							items: [
 								{ text: 'Creating Loops', link: '/guide/programmatic/patterns-loops' },
