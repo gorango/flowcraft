@@ -38,6 +38,9 @@ export class SequenceFlow<
 export class ParallelFlow<
 	TContext extends Context = Context,
 > extends Flow<void, void, Params, TContext> {
+	/** A tag to reliably identify this node type in the visualizer. */
+	public readonly isParallelContainer = true
+
 	/**
 	 * @param nodesToRun The array of nodes to execute concurrently.
 	 */

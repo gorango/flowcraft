@@ -29,18 +29,35 @@ import {
 import { BlueprintExecutor } from './runner'
 
 /**
- * A type-safe helper function for creating a `TypedNodeRegistry`.
- * This function preserves the strong typing of the registry object, enabling
- * compile-time validation of `TypedWorkflowGraph` definitions.
+ * A smart factory that takes an object of custom node classes and returns a fully
+ * prepared `NodeRegistry` map with all internal nodes required by the GraphBuilder.
  *
- * @param registry The registry object, where keys are node types and values are `Node` constructors.
- * @returns The same registry object, correctly typed for use with `GraphBuilder`.
+ * @param registry An object where keys are node type strings and values are the corresponding Node constructors.
+ * @returns A `Map` instance ready to be used by the `GraphBuilder` or a custom executor.
  */
 export function createNodeRegistry<
 	TNodeMap extends NodeTypeMap,
 	TContext = object,
->(registry: TypedNodeRegistry<TNodeMap, TContext>): TypedNodeRegistry<TNodeMap, TContext> {
-	return registry
+>(registry: TypedNodeRegistry<TNodeMap, TContext>): NodeRegistry {
+	const finalRegistry: NodeRegistry = new Map()
+
+	for (const key in registry) {
+		if (Object.prototype.hasOwnProperty.call(registry, key))
+			finalRegistry.set(key, registry[key])
+	}
+
+	if (!finalRegistry.has('__internal_input_mapper__'))
+		finalRegistry.set('__internal_input_mapper__', InputMappingNode as any)
+	if (!finalRegistry.has('__internal_output_mapper__'))
+		finalRegistry.set('__internal_output_mapper__', OutputMappingNode as any)
+	if (!finalRegistry.has('__internal_sub_workflow_container__'))
+		finalRegistry.set('__internal_sub_workflow_container__', SubWorkflowContainerNode as any)
+	if (!finalRegistry.has('__internal_conditional_join__'))
+		finalRegistry.set('__internal_conditional_join__', ConditionalJoinNode as any)
+	if (!finalRegistry.has('__internal_parallel_container__'))
+		finalRegistry.set('__internal_parallel_container__', ParallelBranchContainer as any)
+
+	return finalRegistry
 }
 
 /**
@@ -77,18 +94,9 @@ export class GraphBuilder<
 		logger: Logger = new NullLogger(),
 	) {
 		this.logger = logger
-		this.registry = registry instanceof Map ? registry : new Map(Object.entries(registry))
-		if (!this.registry.has('__internal_input_mapper__'))
-			this.registry.set('__internal_input_mapper__', InputMappingNode as any)
-		if (!this.registry.has('__internal_output_mapper__'))
-			this.registry.set('__internal_output_mapper__', OutputMappingNode as any)
-		if (!this.registry.has('__internal_sub_workflow_container__'))
-			this.registry.set('__internal_sub_workflow_container__', SubWorkflowContainerNode as any)
-		if (!this.registry.has('__internal_conditional_join__'))
-			this.registry.set('__internal_conditional_join__', ConditionalJoinNode as any)
-		if (!this.registry.has('__internal_parallel_container__'))
-			this.registry.set('__internal_parallel_container__', ParallelBranchContainer as any)
-
+		this.registry = registry instanceof Map
+			? registry
+			: createNodeRegistry(registry as TypedNodeRegistry<TNodeMap, TContext>)
 		this.subWorkflowNodeTypes = options.subWorkflowNodeTypes ?? []
 		this.conditionalNodeTypes = options.conditionalNodeTypes ?? []
 		this.subWorkflowResolver = options.subWorkflowResolver

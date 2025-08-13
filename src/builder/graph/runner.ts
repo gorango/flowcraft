@@ -6,7 +6,8 @@ import type { GraphNode, NodeRegistry, TypedNodeRegistry, WorkflowBlueprint } fr
 import { InMemoryExecutor } from '../../executors/in-memory'
 import { DEFAULT_ACTION } from '../../types'
 import { Flow } from '../../workflow/index'
-import { ConditionalJoinNode, InputMappingNode, OutputMappingNode, ParallelBranchContainer, SubWorkflowContainerNode } from './internal-nodes'
+import { createNodeRegistry } from './graph'
+import { ParallelBranchContainer } from './internal-nodes'
 
 /**
  * An execution engine that hydrates a runnable `Flow` from a serializable
@@ -23,19 +24,7 @@ export class BlueprintExecutor implements IExecutor {
 		registry: NodeRegistry | TypedNodeRegistry<any, any>,
 		private nodeOptionsContext: Record<string, any> = {},
 	) {
-		this.registry = registry instanceof Map ? registry : new Map(Object.entries(registry))
-
-		if (!this.registry.has('__internal_input_mapper__'))
-			this.registry.set('__internal_input_mapper__', InputMappingNode as any)
-		if (!this.registry.has('__internal_output_mapper__'))
-			this.registry.set('__internal_output_mapper__', OutputMappingNode as any)
-		if (!this.registry.has('__internal_sub_workflow_container__'))
-			this.registry.set('__internal_sub_workflow_container__', SubWorkflowContainerNode as any)
-		if (!this.registry.has('__internal_conditional_join__'))
-			this.registry.set('__internal_conditional_join__', ConditionalJoinNode as any)
-		if (!this.registry.has('__internal_parallel_container__'))
-			this.registry.set('__internal_parallel_container__', ParallelBranchContainer as any)
-
+		this.registry = registry instanceof Map ? registry : createNodeRegistry(registry)
 		this.nodeMap = this._createNodeMap(blueprint.nodes)
 		this._wireGraph()
 		const startNode = this.nodeMap.get(blueprint.startNodeId)
