@@ -301,3 +301,69 @@ describe('graphBuilder with sub-workflows', () => {
 		expect(await ctx.get(FINAL_VALUE)).toBe('final: start -> A -> D -> E')
 	})
 })
+
+describe('graphBuilder sub-workflow predecessor mapping', () => {
+	const PARENT_OUTPUT = contextKey<string>('parent_output')
+	const SUB_OUTPUT = contextKey<string>('sub_output')
+
+	class ParentProducerNode extends Node<void, string> {
+		async exec() { return 'data_from_parent' }
+		async post({ ctx, execRes }: NodeArgs<void, string>) {
+			await ctx.set(PARENT_OUTPUT, execRes)
+		}
+	}
+
+	class SubTaskNode extends Node<string, string> {
+		async prep({ ctx }: NodeArgs) { return await ctx.get(PARENT_OUTPUT) ?? 'no_parent_data' }
+		async exec({ prepRes }: NodeArgs<string>) { return `${prepRes}_plus_sub_data` }
+		async post({ ctx, execRes }: NodeArgs<string, string>) {
+			await ctx.set(SUB_OUTPUT, execRes)
+		}
+	}
+
+	class FinalConsumerNode extends Node { }
+
+	const testRegistry = createNodeRegistry({
+		parent_producer: ParentProducerNode,
+		sub_task: SubTaskNode,
+		final_consumer: FinalConsumerNode,
+	})
+
+	const subWorkflowGraph: WorkflowGraph = {
+		nodes: [{ id: 'task1', type: 'sub_task', data: {} }],
+		edges: [],
+	}
+
+	const parentGraph: TypedWorkflowGraph<any> = {
+		nodes: [
+			{ id: 'parent', type: 'parent_producer', data: {} },
+			{ id: 'sub', type: 'workflow', data: { workflowId: 101 } },
+			{ id: 'final', type: 'final_consumer', data: {} },
+		],
+		edges: [
+			{ source: 'parent', target: 'sub' },
+			{ source: 'sub', target: 'final' },
+		],
+	}
+
+	it('should correctly map original predecessors across sub-workflow boundaries', () => {
+		const mockResolver: SubWorkflowResolver = {
+			getGraph: id => (id === 101 ? subWorkflowGraph : undefined),
+		}
+		const builder = new GraphBuilder(testRegistry, {}, {
+			subWorkflowNodeTypes: ['workflow'],
+			subWorkflowResolver: mockResolver,
+		})
+
+		const { blueprint } = builder.buildBlueprint(parentGraph)
+		const { originalPredecessorIdMap } = blueprint
+
+		// Assertion 1: A node INSIDE the sub-workflow sees the PARENT producer.
+		expect(originalPredecessorIdMap['sub:task1']).toBeDefined()
+		expect(originalPredecessorIdMap['sub:task1']).toEqual(['parent'])
+
+		// Assertion 2: A node AFTER the sub-workflow sees the SUB-WORKFLOW CONTAINER as its producer.
+		expect(originalPredecessorIdMap.final).toBeDefined()
+		expect(originalPredecessorIdMap.final).toEqual(['sub'])
+	})
+})

@@ -187,7 +187,11 @@ describe('BlueprintExecutor with conditional convergence', () => {
 
 		const joinNodeId = 'start__conditional_join'
 		expect(blueprint.nodes.some(n => n.id === joinNodeId)).toBe(true)
-		expect(blueprint.originalPredecessorIdMap.converge).toEqual([joinNodeId])
+
+		const convergePreds = blueprint.originalPredecessorIdMap.converge
+		expect(convergePreds).toBeDefined()
+		expect(convergePreds).toHaveLength(2)
+		expect(convergePreds).toEqual(expect.arrayContaining(['path-a', 'path-b']))
 	})
 })
 

@@ -371,24 +371,29 @@ export class GraphBuilder<
 			const selfType = nodeData.type
 			const selfOriginalId = nodeData.data?.originalId ?? nodeId
 
-			// Base Case: If a node is a "producer", it terminates the search.
-			// Producers are user-defined nodes or special containers that represent a logical unit.
-			const isProducer = !selfType.startsWith('__internal_')
-				|| selfType === '__internal_sub_workflow_container__'
-				|| selfType === '__internal_output_mapper__'
-				|| selfType === '__internal_conditional_join__'
-
-			if (isProducer) {
+			// Base Case: User-defined nodes are always the source of data.
+			if (!selfType.startsWith('__internal_')) {
 				const result = [selfOriginalId]
 				memo.set(nodeId, result)
 				return result
 			}
 
-			// Recursive Step: If the node is transparent wiring, look past it to its predecessors.
+			// Special Case: The output mapper acts as the logical source for anything
+			// outside the sub-workflow. It represents the sub-workflow's result.
+			if (selfType === '__internal_output_mapper__') {
+				// The originalId of the output_mapper is the ID of the container.
+				const result = [selfOriginalId]
+				memo.set(nodeId, result)
+				return result
+			}
+
+			// Recursive Step: For all other internal nodes (input_mapper, container, join),
+			// they are transparent wiring. Look through them.
 			const directPredecessors = predecessorIdMap.get(nodeId) || []
 			const producers = new Set<string>()
-			for (const predId of directPredecessors)
+			for (const predId of directPredecessors) {
 				findOriginalProducers(predId).forEach(p => producers.add(p))
+			}
 
 			const result = Array.from(producers)
 			memo.set(nodeId, result)
@@ -396,8 +401,7 @@ export class GraphBuilder<
 		}
 
 		for (const targetId of nodeDataMap.keys()) {
-			const targetNodeData = nodeDataMap.get(targetId)!
-			const mapKey = targetNodeData.data?.originalId ?? targetId
+			const mapKey = targetId
 
 			const directPredecessors = predecessorIdMap.get(targetId) || []
 			const producers = new Set<string>()
