@@ -27,6 +27,17 @@ export abstract class AbstractNode<
 	public isPassthrough = false
 
 	/**
+	 * Gets the original, un-prefixed ID of the node from its graph definition.
+	 * This is useful for sub-workflow nodes where the runtime ID might be namespaced (e.g., 'parent:child').
+	 */
+	public get originalId(): string {
+		// 1. Prefer the logical `originalId` injected by the GraphBuilder.
+		// 2. Fall back to the primary runtime `id` property on the node instance.
+		// 3. An uninitialized node with no id.
+		return this.graphData?.data?.originalId ?? this.id?.toString() ?? ''
+	}
+
+	/**
 	 * Sets a unique identifier for this node instance.
 	 * Primarily used by the GraphBuilder for wiring and debugging.
 	 * @param id The unique ID for the node.
