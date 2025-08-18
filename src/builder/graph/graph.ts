@@ -261,10 +261,14 @@ export class GraphBuilder<
 						this.logger.debug(`[GraphBuilder] Inserting conditional join node for '${conditionalNode.id}' converging at '${convergenceTargetId}'`)
 						flatGraph.nodes.push({ id: joinNodeId, type: '__internal_conditional_join__', data: {} })
 						const branchTerminalIds = this._findBranchTerminals(branches, convergenceTargetId, flatGraph)
-						for (const terminalId of branchTerminalIds) {
-							const edgeIndex = flatGraph.edges.findIndex(e => e.source === terminalId && e.target === convergenceTargetId)
-							if (edgeIndex > -1) {
-								flatGraph.edges[edgeIndex].target = joinNodeId
+						const terminalsToReroute = new Set(branchTerminalIds)
+						if (flatGraph.edges.some(e => e.source === conditionalNode.id && e.target === convergenceTargetId)) {
+							terminalsToReroute.add(conditionalNode.id)
+						}
+						for (const terminalId of terminalsToReroute) {
+							const edgesToUpdate = flatGraph.edges.filter(e => e.source === terminalId && e.target === convergenceTargetId)
+							for (const edge of edgesToUpdate) {
+								edge.target = joinNodeId
 							}
 						}
 						flatGraph.edges.push({ source: joinNodeId, target: convergenceTargetId })

@@ -367,3 +367,54 @@ describe('graphBuilder sub-workflow predecessor mapping', () => {
 		expect(originalPredecessorIdMap.final).toEqual(['sub'])
 	})
 })
+
+describe('GraphBuilder conditional convergence', () => {
+	class TaskNode extends Node { }
+	class ConditionalNode extends Node<void, void, 'true' | 'false'> {
+		async post() {
+			return 'true' as const // The actual return value doesn't matter for the build test.
+		}
+	}
+
+	const testRegistry = createNodeRegistry({
+		conditional: ConditionalNode,
+		task: TaskNode,
+	})
+
+	it('should correctly reroute a direct edge from a conditional node to a convergence point', () => {
+		const graph: TypedWorkflowGraph<any> = {
+			nodes: [
+				{ id: 'start', type: 'conditional', data: {} },
+				{ id: 'path-true', type: 'task', data: {} },
+				{ id: 'converge', type: 'task', data: {} },
+			],
+			edges: [
+				{ source: 'start', target: 'path-true', action: 'true' },
+				{ source: 'start', target: 'converge', action: 'false' },
+				{ source: 'path-true', target: 'converge' },
+			],
+		}
+
+		const builder = new GraphBuilder(testRegistry, {}, {
+			conditionalNodeTypes: ['conditional'],
+		})
+
+		const { blueprint } = builder.buildBlueprint(graph)
+
+		// 1. A conditional join node should have been inserted.
+		const joinNode = blueprint.nodes.find(n => n.type === '__internal_conditional_join__')
+		expect(joinNode, 'A conditional join node should be created').toBeDefined()
+
+		// 2. The convergence node's direct predecessors in the final graph should ONLY be the new join node.
+		const convergePredecessors = blueprint.edges
+			.filter(e => e.target === 'converge')
+			.map(e => e.source)
+		expect(convergePredecessors, 'Convergence node should only have one predecessor (the join node)')
+			.toEqual([joinNode!.id])
+
+		// 3. This is the key assertion that fails before the fix.
+		// The convergence node should have a final predecessor count of 1.
+		expect(blueprint.predecessorCountMap.converge, 'Predecessor count for the convergence node should be 1')
+			.toBe(1)
+	})
+})
