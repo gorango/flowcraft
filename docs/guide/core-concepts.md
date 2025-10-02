@@ -12,15 +12,15 @@ Every `Node` has a well-defined, three-phase lifecycle that separates concerns a
 
 ```mermaid
 graph TD
-    A(Start) --> B{prep()}
-    B -- prepRes --> C{exec()}
-    C -- execRes --> D{post()}
+    A(Start) --> B{prep}
+    B -- prepRes --> C{exec}
+    C -- execRes --> D{post}
     D -- action --> E(Next Node or End)
 
     subgraph "Error Handling"
         C -- Fails --> F{Retries?}
         F -- Yes --> C
-        F -- No --> G{execFallback()}
+        F -- No --> G{execFallback}
         G -- fallbackRes --> D
     end
 ```
