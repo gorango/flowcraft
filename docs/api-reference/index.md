@@ -8,7 +8,7 @@ All components are imported from the main `flowcraft` package. For a more narrat
 
 This is the main entry point for the most essential components of the framework.
 
-- **[Core Workflow API](./workflow.md)**: Detailed documentation for the fundamental building blocks:
+- **[Core Workflow API](./core.md)**: Detailed documentation for the fundamental building blocks:
   - `Node`: The base class for a unit of work.
   - `Flow`: The orchestrator for a graph of nodes.
   - `IExecutor` and `InMemoryExecutor`: The execution engine contract and its default implementation.
@@ -20,7 +20,7 @@ This is the main entry point for the most essential components of the framework.
 
 This module contains classes that simplify the creation of common and complex workflow patterns.
 
-- **[Builder API](./builder.md)**: Documentation for the builder classes:
+- **[Builder API](./builders.md)**: Documentation for the builder classes:
   - `SequenceFlow`: For creating simple, linear workflows.
   - `ParallelFlow`: For creating concurrent workflows.
   - `BatchFlow`: For processing a collection of items sequentially.
@@ -31,7 +31,7 @@ This module contains classes that simplify the creation of common and complex wo
 
 This module provides a set of functions for creating nodes and pipelines in a more functional programming style.
 
-- **[Functional API](./fn.md)**: Documentation for the functional helpers:
+- **[Functional API](./functional.md)**: Documentation for the functional helpers:
   - `mapNode`: Creates a `Node` from a simple, pure function.
   - `contextNode`: Creates a `Node` from a function that requires `Context` access.
   - `pipeline`: A functional alias for creating a linear `SequenceFlow`.

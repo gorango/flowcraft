@@ -66,7 +66,7 @@ Generates a [Mermaid.js](https://mermaid.js.org/) graph definition from a `Flow`
 
 ### Example
 
-See the **[Visualizing Workflows guide](/guide/tooling/mermaid.md)** for detailed examples.
+See the **[Visualizing Workflows guide](/guide/declarative/tooling-validation.md)** for detailed examples.
 
 ---
 
