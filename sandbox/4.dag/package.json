@@ -5,15 +5,15 @@
 		"start": "npx tsx src/main.ts"
 	},
 	"dependencies": {
-		"dotenv": "^17.2.1",
+		"dotenv": "^17.2.3",
 		"flowcraft": "workspace:*",
 		"lodash-es": "^4.17.21",
-		"openai": "^5.10.2",
-		"yaml": "^2.8.0"
+		"openai": "^6.0.1",
+		"yaml": "^2.8.1"
 	},
 	"devDependencies": {
 		"@types/lodash-es": "^4.17.12",
-		"@types/node": "^24.1.0",
-		"typescript": "^5.8.3"
+		"@types/node": "^24.6.2",
+		"typescript": "^5.9.3"
 	}
 }

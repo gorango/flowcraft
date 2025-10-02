@@ -5,14 +5,14 @@
 		"start": "npx tsx src/main.ts"
 	},
 	"dependencies": {
-		"dotenv": "^17.2.1",
+		"dotenv": "^17.2.3",
 		"flowcraft": "workspace:*",
-		"openai": "^5.10.2",
+		"openai": "^6.0.1",
 		"superjson": "^2.2.2"
 	},
 	"devDependencies": {
-		"@types/node": "^24.1.0",
-		"tsx": "^4.20.3",
-		"typescript": "^5.8.3"
+		"@types/node": "^24.6.2",
+		"tsx": "^4.20.6",
+		"typescript": "^5.9.3"
 	}
 }

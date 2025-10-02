@@ -2,7 +2,7 @@
 	"name": "flowcraft",
 	"type": "module",
 	"version": "1.0.0-beta.23",
-	"packageManager": "pnpm@10.13.1",
+	"packageManager": "pnpm@10.17.1",
 	"description": "A flexible workflow framework",
 	"repository": {
 		"type": "git",
@@ -30,15 +30,15 @@
 		"docs:preview": "vitepress preview docs"
 	},
 	"devDependencies": {
-		"@antfu/eslint-config": "^5.0.0",
-		"@types/node": "^24.1.0",
+		"@antfu/eslint-config": "^5.4.1",
+		"@types/node": "^24.6.2",
 		"@vitest/coverage-v8": "3.2.4",
-		"eslint": "^9.32.0",
-		"jiti": "^2.5.1",
-		"mermaid": "^11.9.0",
+		"eslint": "^9.36.0",
+		"jiti": "^2.6.1",
+		"mermaid": "^11.12.0",
 		"tsup": "^8.5.0",
-		"typescript": "^5.8.3",
-		"vitepress": "^1.6.3",
+		"typescript": "^5.9.3",
+		"vitepress": "^1.6.4",
 		"vitepress-plugin-mermaid": "^2.0.17",
 		"vitest": "^3.2.4"
 	}
