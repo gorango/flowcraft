@@ -1,6 +1,7 @@
 import type { Context } from './context.js'
 import type {
 	ExecutionMetadata,
+	IConditionEvaluator,
 	IEventBus,
 	ISerializer,
 	NodeContext,
@@ -33,6 +34,66 @@ class JsonSerializer implements ISerializer {
 }
 
 /**
+ * A simple, safe, dependency-free evaluator for basic conditions.
+ * Handles property access and common comparisons.
+ */
+class DefaultConditionEvaluator implements IConditionEvaluator {
+	evaluate(condition: string, context: Record<string, any>): boolean {
+		// A more robust regex that defines the left-hand side more strictly.
+		const parts = condition.match(/^([\w.]+)\s*([<>=!]{1,3})\s*(.*)$/s)
+		if (!parts) {
+			// Fallback for simple truthy checks like "result.isAdmin"
+			return !!this.resolvePath(condition.trim(), context)
+		}
+
+		const [, leftPath, operator, rightStr] = parts
+		const leftVal = this.resolvePath(leftPath.trim(), context)
+		const rightVal = this.parseValue(rightStr.trim())
+
+		switch (operator) {
+			case '==':
+			case '===':
+				return leftVal === rightVal
+			case '!=':
+			case '!==':
+				return leftVal !== rightVal
+			case '>':
+				return leftVal > rightVal
+			case '<':
+				return leftVal < rightVal
+			case '>=':
+				return leftVal >= rightVal
+			case '<=':
+				return leftVal <= rightVal
+			default:
+				return false
+		}
+	}
+
+	private resolvePath(path: string, context: Record<string, any>): any {
+		return path.split('.').reduce((acc, part) => acc && acc[part], context)
+	}
+
+	private parseValue(str: string): any {
+		if (str === 'true')
+			return true
+		if (str === 'false')
+			return false
+		if (str === 'null')
+			return null
+		if (str === 'undefined')
+			return undefined
+		if (!isNaN(Number(str)) && !isNaN(Number.parseFloat(str))) // eslint-disable-line unicorn/prefer-number-properties
+			return Number(str)
+		// Handle strings like "'admin'" or '"admin"'
+		if ((str.startsWith('\'') && str.endsWith('\'')) || (str.startsWith('"') && str.endsWith('"')))
+			return str.slice(1, -1)
+
+		return str
+	}
+}
+
+/**
  * The unified runtime engine for Flowcraft V2
  * Handles compilation, caching, and execution of workflow blueprints
  */
@@ -44,7 +105,7 @@ export class FlowcraftRuntime<TContext extends Record<string, any> = Record<stri
 	private compiledFlows: Map<string, ExecutableFlow<TContext>>
 	private blueprintCache: Map<string, WorkflowBlueprint>
 	private eventBus: IEventBus
-	private serializer: ISerializer
+	private conditionEvaluator: IConditionEvaluator
 
 	constructor(options: RuntimeOptions) {
 		this.registry = options.registry
@@ -52,7 +113,7 @@ export class FlowcraftRuntime<TContext extends Record<string, any> = Record<stri
 		this.defaultNodeConfig = options.defaultNodeConfig || {}
 		this.environment = options.environment || 'development'
 		this.eventBus = options.eventBus || new NullEventBus()
-		this.serializer = options.serializer || new JsonSerializer()
+		this.conditionEvaluator = options.conditionEvaluator || new DefaultConditionEvaluator()
 		this.compiledFlows = new Map()
 		this.blueprintCache = new Map()
 	}
@@ -78,21 +139,15 @@ export class FlowcraftRuntime<TContext extends Record<string, any> = Record<stri
 		})
 
 		try {
-			// get or compile the executable flow
 			const executableFlow = await this.getOrCompileFlow(blueprint, functionRegistry)
-
-			// create execution context
 			const metadata: ExecutionMetadata = {
 				executionId,
 				blueprintId: blueprint.id,
-				currentNodeId: '', // will be set during execution
+				currentNodeId: '',
 				startedAt: startTime,
 				environment: this.environment,
 			}
-
 			const context = createContext<TContext>(initialContext, metadata)
-
-			// execute the flow
 			finalContext = await executableFlow.execute(context)
 		}
 		catch (error) {
@@ -107,38 +162,42 @@ export class FlowcraftRuntime<TContext extends Record<string, any> = Record<stri
 					error instanceof Error ? error : undefined,
 				)
 		}
-		finally {
-			const endTime = new Date()
-			const result: WorkflowResult<TContext> = {
-				context: finalContext?.toJSON() as TContext ?? initialContext as TContext,
-				metadata: {
-					executionId,
-					blueprintId: blueprint.id,
-					startedAt: startTime,
-					completedAt: endTime,
-					duration: endTime.getTime() - startTime.getTime(),
-					status,
-					error: finalError
-						? { nodeId: finalError.nodeId, message: finalError.message, details: finalError }
-						: undefined,
-				},
-			}
 
-			await this.eventBus.emit('workflow:finish', result)
-			if (status === 'failed' && finalError) {
-				// Re-throw the error after logging to allow for programmatic catching
-				throw finalError
-			}
-			return result
+		const endTime = new Date()
+		const result: WorkflowResult<TContext> = {
+			context: finalContext?.toJSON() as TContext ?? initialContext as TContext,
+			metadata: {
+				executionId,
+				blueprintId: blueprint.id,
+				startedAt: startTime,
+				completedAt: endTime,
+				duration: endTime.getTime() - startTime.getTime(),
+				status,
+				error: finalError
+					? {
+							nodeId: finalError.nodeId,
+							message: finalError.message,
+							details: finalError,
+						}
+					: undefined,
+			},
 		}
+
+		await this.eventBus.emit('workflow:finish', result)
+
+		if (status === 'failed' && finalError) {
+			throw finalError
+		}
+		return result
 	}
 
 	/**
 	 * Get a compiled flow from cache or compile it
 	 */
 	private async getOrCompileFlow(blueprint: WorkflowBlueprint, functionRegistry?: Map<string, any>): Promise<ExecutableFlow<TContext>> {
-		// check cache first
-		const cached = this.compiledFlows.get(blueprint.id)
+		// If a function registry is provided, it might contain different implementations,
+		// so we bypass the cache to ensure we compile with the correct functions.
+		const cached = !functionRegistry && this.compiledFlows.get(blueprint.id)
 		if (cached) {
 			return cached
 		}
@@ -146,8 +205,10 @@ export class FlowcraftRuntime<TContext extends Record<string, any> = Record<stri
 		// compile the blueprint
 		const compiled = await this.compileBlueprint(blueprint, functionRegistry)
 
-		// cache it
-		this.compiledFlows.set(blueprint.id, compiled)
+		// cache it only if no special function registry was provided
+		if (!functionRegistry) {
+			this.compiledFlows.set(blueprint.id, compiled)
+		}
 
 		return compiled
 	}
@@ -213,6 +274,7 @@ export class FlowcraftRuntime<TContext extends Record<string, any> = Record<stri
 	): any {
 		const builtInNodes = ['parallel-container', 'batch-processor', 'loop-controller', 'subflow']
 		if (builtInNodes.includes(nodeDef.uses)) {
+			// Built-in nodes are handled by name in the executor
 			return nodeDef.uses
 		}
 		if (this.registry[nodeDef.uses]) {
@@ -225,20 +287,48 @@ export class FlowcraftRuntime<TContext extends Record<string, any> = Record<stri
 	}
 
 	/**
-	 * Find the starting node for execution
+	 * Find the starting node for execution. If multiple start nodes are found,
+	 * wrap them in a synthetic parallel container to create a single entry point.
 	 */
 	private findStartNode(
 		nodeMap: Map<string, CompiledNode>,
 		edges: any[],
 	): CompiledNode {
 		const targetNodes = new Set(edges.map(e => e.target))
-		const startNodes = Array.from(nodeMap.values()).filter(node => !targetNodes.has(node.id))
+
+		// Identify all nodes that are part of a parallel branch, as they are not valid start nodes.
+		const branchNodes = new Set<string>()
+		for (const node of nodeMap.values()) {
+			if (node.implementation === 'parallel-container' && Array.isArray(node.params.branches)) {
+				for (const branchId of node.params.branches) {
+					branchNodes.add(branchId)
+				}
+			}
+		}
+
+		const startNodes = Array.from(nodeMap.values()).filter(
+			node => !targetNodes.has(node.id) && !branchNodes.has(node.id),
+		)
 
 		if (startNodes.length === 0 && nodeMap.size > 0) {
 			throw new Error('No start node found - all nodes have incoming edges (cycle detected).')
 		}
 
-		return startNodes[0]
+		if (startNodes.length === 1) {
+			return startNodes[0]
+		}
+
+		// Handle multiple start nodes by creating a synthetic parallel root
+		const syntheticRoot: CompiledNode = {
+			id: '__synthetic_root__',
+			implementation: 'parallel-container',
+			params: {
+				branches: startNodes.map(n => n.id),
+			},
+			config: {},
+			nextNodes: [], // The container's output is not wired to a next step by default
+		}
+		return syntheticRoot
 	}
 
 	/**
@@ -262,11 +352,12 @@ export class FlowcraftRuntime<TContext extends Record<string, any> = Record<stri
 		return this.dependencies
 	}
 
-	/**
-	 * Get the configured event bus
-	 */
 	getEventBus(): IEventBus {
 		return this.eventBus
+	}
+
+	getConditionEvaluator(): IConditionEvaluator {
+		return this.conditionEvaluator
 	}
 
 	/**
@@ -312,6 +403,7 @@ class ExecutableFlow<TContext extends Record<string, any>> {
 	private nodeMap: Map<string, CompiledNode>
 	private runtime: FlowcraftRuntime<TContext>
 	private eventBus: IEventBus
+	private conditionEvaluator: IConditionEvaluator
 
 	constructor(
 		startNode: CompiledNode,
@@ -322,6 +414,7 @@ class ExecutableFlow<TContext extends Record<string, any>> {
 		this.nodeMap = nodeMap
 		this.runtime = runtime
 		this.eventBus = runtime.getEventBus()
+		this.conditionEvaluator = runtime.getConditionEvaluator()
 	}
 
 	/**
@@ -341,7 +434,7 @@ class ExecutableFlow<TContext extends Record<string, any>> {
 			const result = await this._executeNodeWithResiliency(currentNode, currentContext)
 
 			// determine next node based on result
-			currentNode = this.getNextNode(currentNode, result)
+			currentNode = await this.getNextNode(currentNode, result, currentContext)
 
 			// update context with result - the output becomes the input for the next node
 			if (result.output !== undefined) {
@@ -356,7 +449,7 @@ class ExecutableFlow<TContext extends Record<string, any>> {
 	 * Wraps the execution of a single node with resiliency logic (retries, fallback, timeout).
 	 */
 	private async _executeNodeWithResiliency(node: CompiledNode, context: Context<TContext>): Promise<NodeResult> {
-		const { maxRetries = 1, retryDelay = 0, timeout, fallback } = node.config
+		const { maxRetries = 1, retryDelay = 0, timeout } = node.config
 		let lastError: Error | undefined
 		const executionId = context.getMetadata().executionId
 
@@ -444,6 +537,12 @@ class ExecutableFlow<TContext extends Record<string, any>> {
 		node: CompiledNode,
 		context: Context<TContext>,
 	): Promise<NodeResult> {
+		// Built-in structural nodes
+		if (node.implementation === 'parallel-container') {
+			return this._executeParallelContainer(node, context)
+		}
+
+		// Standard node implementation (function or class)
 		const nodeContext: NodeContext<TContext> = {
 			get: (key: keyof TContext) => context.get(key as string) as TContext[keyof TContext],
 			set: (key: keyof TContext, value: TContext[keyof TContext]) => context.set(key as string, value),
@@ -468,27 +567,78 @@ class ExecutableFlow<TContext extends Record<string, any>> {
 			}
 		}
 
-		throw new Error(`Unknown node implementation type for ${node.id}`)
+		throw new Error(`Unknown node implementation type for ${node.id}: ${node.implementation}`)
 	}
 
 	/**
-	 * Get the next node based on execution result
+	 * Executes the branches of a parallel container and aggregates results.
 	 */
-	private getNextNode(currentNode: CompiledNode, result: NodeResult): CompiledNode | undefined {
+	private async _executeParallelContainer(node: CompiledNode, context: Context<TContext>): Promise<NodeResult> {
+		const branchIds = node.params.branches as string[] | undefined
+		if (!branchIds) {
+			return { error: { message: 'Parallel container is missing "branches" in its params' } }
+		}
+
+		const branchNodes = branchIds.map(id => this.nodeMap.get(id)).filter(Boolean) as CompiledNode[]
+
+		const promises = branchNodes.map(branchNode =>
+			// Execute each branch as a new, independent "mini-flow" starting from that node.
+			// Each branch gets a clean scope of the context to avoid side-effect race conditions.
+			new ExecutableFlow(branchNode, this.nodeMap, this.runtime).execute(context.createScope()),
+		)
+
+		const settledResults = await Promise.allSettled(promises)
+
+		const outputs: any[] = []
+		for (const result of settledResults) {
+			if (result.status === 'rejected') {
+				// If any branch fails, the whole container fails.
+				throw result.reason
+			}
+			// The final "input" value in the context of the branch is its result.
+			outputs.push(result.value.get('input' as any))
+		}
+
+		// The output of the container is an array of the outputs of its branches.
+		return { output: outputs }
+	}
+
+	/**
+	 * Get the next node based on execution result and conditional edges.
+	 */
+	private async getNextNode(
+		currentNode: CompiledNode,
+		result: NodeResult,
+		context: Context<TContext>,
+	): Promise<CompiledNode | undefined> {
 		if (!currentNode.nextNodes || currentNode.nextNodes.length === 0) {
 			return undefined
 		}
 
-		// find edge that matches a returned action
+		const candidates = currentNode.nextNodes
+
+		// 1. Find a direct match on the node's returned action
 		if (result.action) {
-			const matchingEdge = currentNode.nextNodes.find(edge => edge.action === result.action)
-			if (matchingEdge) {
-				return matchingEdge.node
+			const actionMatch = candidates.find(edge => edge.action === result.action)
+			if (actionMatch) {
+				return actionMatch.node
 			}
 		}
 
-		// if no action matches or no action was returned, find the default edge (no action or condition)
-		const defaultEdge = currentNode.nextNodes.find(edge => !edge.action && !edge.condition)
-		return defaultEdge?.node
+		// 2. Evaluate conditional edges
+		const conditionalEdges = candidates.filter(edge => edge.condition)
+		for (const edge of conditionalEdges) {
+			// Create the context for the evaluator
+			const evalContext = {
+				...context.toJSON(), // Make all context values available
+				result: result.output, // Make the direct output of the node available as `result`
+			}
+			if (await this.conditionEvaluator.evaluate(edge.condition!, evalContext)) {
+				return edge.node
+			}
+		}
+
+		// 3. Fallback to the default edge (no action, no condition)
+		return candidates.find(edge => !edge.action && !edge.condition)?.node
 	}
 }

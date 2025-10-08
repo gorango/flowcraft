@@ -137,32 +137,22 @@ export class Flow<TContext extends Record<string, any> = Record<string, any>> {
 	}
 
 	/**
-	 * Create a parallel execution pattern
+	 * Defines a parallel execution block.
+	 * This creates a special 'parallel-container' node. You must create edges
+	 * from a predecessor node *to* this new parallel node, and from this node
+	 * to a successor. The branches themselves should not be connected to the main flow.
+	 * @param id The ID for the new parallel container node.
+	 * @param branchEntryNodeIds An array of node IDs that represent the starting point of each parallel branch.
+	 * @param config Optional resiliency configuration for the container itself.
 	 */
 	parallel(
-		sources: string[],
-		target: string,
-		options?: {
-			strategy?: 'all' | 'any' | 'race'
-			timeout?: number
-		},
+		id: string,
+		branchEntryNodeIds: string[],
+		config?: NodeConfig,
 	): this {
-		// Create a parallel container node
-		const parallelNodeId = `parallel_${Date.now()}`
-		this.node(parallelNodeId, 'parallel-container', {
-			sources,
-			strategy: options?.strategy || 'all',
-			timeout: options?.timeout,
-		})
-
-		// Connect sources to parallel node
-		for (const source of sources) {
-			this.edge(source, parallelNodeId)
-		}
-
-		// Connect parallel node to target
-		this.edge(parallelNodeId, target)
-
+		this.node(id, 'parallel-container', {
+			branches: branchEntryNodeIds,
+		}, config)
 		return this
 	}
 

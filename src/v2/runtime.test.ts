@@ -1,5 +1,5 @@
 import type { IEventBus, NodeResult } from './types.js'
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createFlow } from './flow.js'
 import { FlowcraftRuntime } from './runtime.js'
 import { mockDependencies, mockNodeRegistry } from './test-utils.js'
@@ -194,6 +194,85 @@ describe('FlowcraftRuntime', () => {
 			expect(badNodeStart).toBeDefined()
 			expect(badNodeError).toBeDefined()
 			expect(badNodeError.payload.error).toBe('failed')
+		})
+	})
+
+	describe('advanced control flow', () => {
+		it('should correctly execute a parallel fan-out/fan-in and aggregate results', async () => {
+			const flow = createFlow('parallel-join-flow')
+
+			// The branches are defined but not connected to the main flow
+			flow.node('branchA', async () => ({ output: 'A' }))
+			flow.node('branchB', async () => {
+				await new Promise(resolve => setTimeout(resolve, 10)) // Ensure B is slower
+				return { output: 'B' }
+			})
+
+			// The main flow
+			flow.node('start', async () => ({ output: 'start' }))
+			flow.parallel('parallel-block', ['branchA', 'branchB']) // Creates the container
+			flow.node('end', async ctx => ({ output: `Joined: ${ctx.input.join(',')}` }))
+
+			flow.edge('start', 'parallel-block')
+			flow.edge('parallel-block', 'end')
+
+			const blueprint = flow.toBlueprint()
+			const result = await runtime.run(blueprint, {}, flow.getFunctionRegistry())
+
+			expect(result.metadata.status).toBe('completed')
+			expect(result.context.input).toBe('Joined: A,B')
+		})
+
+		it('should evaluate a conditional edge with the default evaluator and route correctly', async () => {
+			const flow = createFlow('default-condition-flow')
+			flow.node('start', async () => ({ output: { value: 15, user: { role: 'admin' } } }))
+			flow.node('pathA', async () => ({ output: 'A' }))
+			flow.node('pathB', async () => ({ output: 'B' }))
+			flow.node('defaultPath', async () => ({ output: 'Default' }))
+
+			// Edges from 'start' using the simple evaluator syntax
+			flow.edge('start', 'pathA', { condition: 'result.user.role === \'admin\'' })
+			flow.edge('start', 'pathB', { condition: 'result.value <= 10' })
+			flow.edge('start', 'defaultPath') // Default fallback
+
+			const blueprint = flow.toBlueprint()
+
+			// Test path A (role is admin)
+			const resultA = await runtime.run(blueprint, {}, flow.getFunctionRegistry())
+			expect(resultA.context.input).toBe('A')
+
+			// Test path B (value is 5)
+			const blueprintB = flow.clone('b-test').toBlueprint() // Use a clone for a clean run
+			// The runtime will start with the 'start' node, which overwrites the input.
+			// To test this properly, we need to modify the start node's output.
+			const startNode = blueprintB.nodes.find(n => n.id === 'start')!
+			const funcRegistry = flow.getFunctionRegistry()
+			funcRegistry.set(startNode.uses, async () => ({ output: { value: 5, user: { role: 'guest' } } }))
+			const resultB_run = await runtime.run(blueprintB, {}, funcRegistry)
+			expect(resultB_run.context.input).toBe('B')
+		})
+
+		it('should use a custom condition evaluator if provided', async () => {
+			const customEvaluator = {
+				evaluate: vi.fn().mockResolvedValue(true), // Always returns true
+			}
+			const customRuntime = new FlowcraftRuntime({
+				registry: mockNodeRegistry,
+				conditionEvaluator: customEvaluator,
+			})
+
+			const flow = createFlow('custom-eval-flow')
+			flow.node('start', async () => ({ output: 1 }))
+			flow.node('pathA', async () => ({ output: 'A' }))
+			flow.edge('start', 'pathA', { condition: 'this-will-be-handled-by-mock' })
+
+			const blueprint = flow.toBlueprint()
+			await customRuntime.run(blueprint, {}, flow.getFunctionRegistry())
+
+			expect(customEvaluator.evaluate).toHaveBeenCalledWith(
+				'this-will-be-handled-by-mock',
+				expect.any(Object),
+			)
 		})
 	})
 })

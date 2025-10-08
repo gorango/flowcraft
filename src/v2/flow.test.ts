@@ -158,7 +158,7 @@ describe('Flow Builder', () => {
 	})
 
 	describe('advanced pattern builders', () => {
-		it('should generate the correct fan-in/fan-out blueprint structure for parallel', () => {
+		it('should generate the correct blueprint structure for a parallel block', () => {
 			const flow = new Flow('test-flow')
 
 			flow.node('start', 'start-func')
@@ -166,21 +166,27 @@ describe('Flow Builder', () => {
 			flow.node('branch2', 'branch2-func')
 			flow.node('end', 'end-func')
 
-			flow.parallel(['branch1', 'branch2'], 'end')
+			// Manually create the parallel node and wire it
+			flow.parallel('parallel-container', ['branch1', 'branch2'])
+			flow.edge('start', 'parallel-container')
+			flow.edge('parallel-container', 'end')
 
 			const blueprint = flow.toBlueprint()
 
-			// should have 5 nodes: start, branch1, branch2, parallel-container, end
+			// 5 nodes: start, branch1, branch2, parallel-container, end
 			expect(blueprint.nodes).toHaveLength(5)
-
-			// find the parallel container node
-			const parallelNode = blueprint.nodes.find(n => n.uses === 'parallel-container')
+			const parallelNode = blueprint.nodes.find(n => n.id === 'parallel-container')
 			expect(parallelNode).toBeDefined()
-			expect(parallelNode?.params?.sources).toEqual(['branch1', 'branch2'])
-			expect(parallelNode?.params?.strategy).toBe('all')
+			expect(parallelNode?.uses).toBe('parallel-container')
+			expect(parallelNode?.params?.branches).toEqual(['branch1', 'branch2'])
 
-			// check edges
-			expect(blueprint.edges).toHaveLength(3) // start->parallel, branch1->parallel, branch2->parallel (parallel->end is added by parallel method)
+			// Edges: start->container, container->end.
+			const mainEdges = blueprint.edges
+			expect(mainEdges).toHaveLength(2)
+			expect(mainEdges).toEqual(expect.arrayContaining([
+				expect.objectContaining({ source: 'start', target: 'parallel-container' }),
+				expect.objectContaining({ source: 'parallel-container', target: 'end' }),
+			]))
 		})
 
 		it('should generate a blueprint with a batch-processor node for batch', () => {

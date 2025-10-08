@@ -197,6 +197,13 @@ export interface RuntimeDependencies {
 }
 
 /**
+ * Interface for a pluggable condition evaluator.
+ */
+export interface IConditionEvaluator {
+	evaluate: (condition: string, context: Record<string, any>) => Promise<boolean> | boolean
+}
+
+/**
  * Options for the runtime
  */
 export interface RuntimeOptions {
@@ -208,10 +215,10 @@ export interface RuntimeOptions {
 	defaultNodeConfig?: NodeConfig
 	/** Execution environment */
 	environment?: 'development' | 'staging' | 'production'
-	/** Pluggable serializer for context persistence */
-	serializer?: ISerializer
 	/** Pluggable event bus for observability */
 	eventBus?: IEventBus
+	/** Pluggable evaluator for edge conditions */
+	conditionEvaluator?: IConditionEvaluator
 }
 
 /**
