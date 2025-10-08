@@ -101,7 +101,7 @@ async function main() {
 				// This is the first node for this run. Persist the initial context from the job payload.
 				const initialContextObject = job.data.context
 				for (const [key, value] of Object.entries(initialContextObject))
-					context.set(key, value)
+					await context.set(key, value)
 
 				const serializedInitialContext = Object.entries(initialContextObject).flatMap(([key, value]) => [key, JSON.stringify(value)])
 				if (serializedInitialContext.length > 0)
@@ -111,15 +111,15 @@ async function main() {
 				// For subsequent nodes, hydrate the context from the Redis hash.
 				for (const [key, value] of Object.entries(contextData)) {
 					try {
-						context.set(key, JSON.parse(value))
+						await context.set(key, JSON.parse(value))
 					}
 					catch {
-						context.set(key, value) // Fallback for non-JSON strings
+						await context.set(key, value) // Fallback for non-JSON strings
 					}
 				}
 			}
 
-			context.set(RUN_ID, runId)
+			await context.set(RUN_ID, runId)
 
 			const action = await node._run({
 				ctx: context,
@@ -141,7 +141,7 @@ async function main() {
 
 			if (action === FINAL_ACTION) {
 				logger.info(`[Worker] Final node executed for Run ID ${runId}. Reporting 'completed' status...`)
-				const finalPayload = context.get('__final_payload')
+				const finalPayload = await context.get('__final_payload')
 				const statusPayload = { status: 'completed', payload: finalPayload ?? null }
 				await redisConnection.set(statusKey, JSON.stringify(statusPayload), 'EX', 3600)
 				await redisConnection.del(contextKey) // Clean up context hash
@@ -151,33 +151,42 @@ async function main() {
 			if (controller.signal.aborted)
 				throw new AbortError('Job cancelled after execution, before enqueueing next step.')
 
-			const successor = node.successors.get(action)
-			if (!successor) {
+			const successorNodes = node.successors.get(action)
+			if (!successorNodes || successorNodes.length === 0) {
 				logger.info(`[Worker] Branch complete for run ${runId}. Node '${nodeId}' has no successor for action '${String(action)}'.`)
 				return
 			}
 
-			const nodesToEnqueue = (successor instanceof Flow) ? (successor as any).nodesToRun : [successor]
+			// Iterate over each potential successor node for the given action.
+			for (const successor of successorNodes) {
+				// Handle the case where the successor is a container like a ParallelFlow
+				const nodesToEnqueue = (successor instanceof Flow) ? (successor as any).nodesToRun : [successor]
 
-			for (const nextNode of nodesToEnqueue) {
-				const nextNodeId = nextNode.id!
-				const predecessorCount = await masterRegistry.getPredecessorCount(workflowId, nextNodeId)
+				for (const nextNode of nodesToEnqueue) {
+					const nextNodeId = nextNode.id!
+					if (!nextNodeId) {
+						logger.error(`[Worker] Successor node found for run ${runId} but it has no ID. Cannot enqueue.`, { successorDetails: nextNode })
+						continue
+					}
 
-				if (predecessorCount <= 1) {
-					logger.info(`[Worker] Enqueuing successor: ${nextNodeId} for run ${runId}.`)
-					await queue.add(nextNodeId, { runId, workflowId, nodeId: nextNodeId, context: {}, params })
-				}
-				else {
-					const joinKey = `workflow:join:${runId}:${nextNodeId}`
-					const completedCount = await redisConnection.incr(joinKey)
-					await redisConnection.expire(joinKey, 3600)
+					const predecessorCount = await masterRegistry.getPredecessorCount(workflowId, nextNodeId)
 
-					logger.info(`[Worker] Predecessor ${nodeId} completed for fan-in node ${nextNodeId}. (${completedCount}/${predecessorCount})`)
-
-					if (completedCount >= predecessorCount) {
-						logger.info(`[Worker] All ${predecessorCount} predecessors for ${nextNodeId} have completed. Enqueuing join node.`)
+					if (predecessorCount <= 1) {
+						logger.info(`[Worker] Enqueuing successor: ${nextNodeId} for run ${runId}.`)
 						await queue.add(nextNodeId, { runId, workflowId, nodeId: nextNodeId, context: {}, params })
-						await redisConnection.del(joinKey)
+					}
+					else {
+						const joinKey = `workflow:join:${runId}:${nextNodeId}`
+						const completedCount = await redisConnection.incr(joinKey)
+						await redisConnection.expire(joinKey, 3600)
+
+						logger.info(`[Worker] Predecessor ${nodeId} completed for fan-in node ${nextNodeId}. (${completedCount}/${predecessorCount})`)
+
+						if (completedCount >= predecessorCount) {
+							logger.info(`[Worker] All ${predecessorCount} predecessors for ${nextNodeId} have completed. Enqueuing join node.`)
+							await queue.add(nextNodeId, { runId, workflowId, nodeId: nextNodeId, context: {}, params })
+							await redisConnection.del(joinKey)
+						}
 					}
 				}
 			}

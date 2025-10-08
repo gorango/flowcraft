@@ -66,7 +66,7 @@ async function main() {
 
 	const flow = await registry.getFlow(WORKFLOW_ID)
 	const context = config[ACTIVE_USE_CASE].getInitialContext()
-	context.set(RUN_ID, runId) // Add runId to the context
+	await context.set(RUN_ID, runId) // Add runId to the context
 
 	const executor = new BullMQExecutor(QUEUE_NAME, redisConnection)
 

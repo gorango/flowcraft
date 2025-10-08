@@ -1,7 +1,7 @@
 import type { Flow, NodeRegistry, SubWorkflowResolver, WorkflowGraph } from 'flowcraft'
 import { promises as fs } from 'node:fs'
 import path from 'node:path'
-import { ConsoleLogger, GraphBuilder, Node } from 'flowcraft'
+import { ConsoleLogger, createNodeRegistry, GraphBuilder, Node } from 'flowcraft'
 import {
 	LLMConditionNode,
 	LLMProcessNode,
@@ -18,7 +18,7 @@ const registryObject = {
 	'sub-workflow': Node,
 }
 
-export const nodeRegistry: NodeRegistry = new Map(Object.entries(registryObject))
+export const nodeRegistry: NodeRegistry = createNodeRegistry(registryObject)
 
 export class WorkflowRegistry implements SubWorkflowResolver {
 	private flowCache = new Map<number, Flow>()

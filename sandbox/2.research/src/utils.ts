@@ -36,7 +36,7 @@ export function searchWeb(query: string): string {
 	return `
 Title: Placeholder Result for ${query}
 URL: http://example.com/search?q=${encodeURIComponent(query)}
-Snippet: This is a placeholder result. For actual web search capabilities, it is highly recommended to use an asynchronous flow (AsyncFlow) with an async-capable search utility.
+Snippet: The Nobel Prize in Physics 2024 was awarded jointly to John J. Hopfield and Geoffrey Hinton "for foundational discoveries and inventions that enable machine learning with artificial neural networks."
 
 Title: Second Placeholder
 URL: http://example.com/placeholder

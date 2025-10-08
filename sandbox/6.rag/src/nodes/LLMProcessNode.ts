@@ -12,14 +12,14 @@ export class LLMProcessNode extends Node<string, string> {
 		this.data = options.data
 	}
 
-	prep(args: NodeArgs): Promise<string> {
+	async prep(args: NodeArgs): Promise<string> {
 		const template = this.data.promptTemplate
 		const templateData: Record<string, any> = {}
 
 		for (const [templateKey, contextKeyString] of Object.entries(this.data.inputs)) {
 			const keySymbol = keyRegistry.get(contextKeyString)
 			if (keySymbol) {
-				let value = args.ctx.get(keySymbol as any)
+				let value = await args.ctx.get(keySymbol as any)
 
 				if (keySymbol === SEARCH_RESULTS) {
 					const searchResults = value as SearchResult[] | undefined
@@ -43,6 +43,6 @@ export class LLMProcessNode extends Node<string, string> {
 	}
 
 	async post(args: NodeArgs<string, string>) {
-		args.ctx.set(FINAL_ANSWER, args.execRes)
+		await args.ctx.set(FINAL_ANSWER, args.execRes)
 	}
 }

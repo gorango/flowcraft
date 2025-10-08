@@ -1,5 +1,5 @@
 import type { Job } from 'bullmq'
-import type { Context, IExecutor, RunOptions } from 'flowcraft'
+import type { AbstractNode, Context, IExecutor, RunOptions } from 'flowcraft'
 import type IORedis from 'ioredis'
 import type { NodeJobPayload } from './types'
 import { Queue } from 'bullmq'
@@ -13,6 +13,13 @@ export class BullMQExecutor implements IExecutor {
 		private connection: IORedis,
 	) {
 		this.queue = new Queue(queueName, { connection })
+	}
+
+	public getNextNode(curr: AbstractNode, action: any): AbstractNode | undefined {
+		const nextNodes = curr.successors.get(action)
+		// For the distributed executor, we take the first successor for a given action.
+		// Parallelism is handled by specific container nodes like ParallelFlow.
+		return nextNodes?.[0]
 	}
 
 	async run(flow: Flow, context: Context, options?: RunOptions): Promise<any> {

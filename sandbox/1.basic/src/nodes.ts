@@ -14,7 +14,7 @@ export const SECTION_CONTENTS = contextKey<Record<string, string>>('section_cont
  */
 export class GenerateOutlineNode extends Node<string, { sections: string[] }> {
 	async prep({ ctx }: NodeArgs): Promise<string> {
-		return ctx.get(TOPIC)!
+		return (await ctx.get(TOPIC))!
 	}
 
 	async exec({ prepRes: topic }: NodeArgs<string>): Promise<{ sections: string[] }> {
@@ -42,9 +42,9 @@ export class WriteContentNode extends BatchFlow {
 	protected nodeToRun: AbstractNode = new WriteSingleSectionNode()
 
 	async prep({ ctx }: NodeArgs) {
-		const sections = ctx.get(SECTIONS) || []
+		const sections = (await ctx.get(SECTIONS)) || []
 		console.log(`\n[WriteContentNode] Preparing to write content for ${sections.length} sections.\n`)
-		return sections.map(section => ({ section }))
+		return sections.map((section: string) => ({ section }))
 	}
 }
 
@@ -54,8 +54,9 @@ export class WriteContentNode extends BatchFlow {
  */
 export class AssembleDraftNode extends Node {
 	async prep({ ctx }: NodeArgs) {
-		const sectionContents = ctx.get(SECTION_CONTENTS) || {}
-		const draft = (ctx.get(SECTIONS) || []).map(section =>
+		const sectionContents = (await ctx.get(SECTION_CONTENTS)) || {}
+		const sections = (await ctx.get(SECTIONS)) || []
+		const draft = sections.map((section: string) =>
 			`## ${section}\n\n${sectionContents[section]}\n`,
 		).join('\n')
 
@@ -86,7 +87,7 @@ Include one brief example or analogy.`
 	}
 
 	async post({ ctx, prepRes: section, execRes: content }: NodeArgs<string, string>) {
-		const contents = ctx.get(SECTION_CONTENTS) || {}
+		const contents = (await ctx.get(SECTION_CONTENTS)) || {}
 		contents[section] = content
 		ctx.set(SECTION_CONTENTS, contents)
 	}
@@ -97,7 +98,7 @@ Include one brief example or analogy.`
  */
 export class ApplyStyleNode extends Node<string, string> {
 	async prep({ ctx }: NodeArgs): Promise<string> {
-		return ctx.get(DRAFT) || ''
+		return (await ctx.get(DRAFT)) || ''
 	}
 
 	async exec({ prepRes: draft }: NodeArgs<string>): Promise<string> {

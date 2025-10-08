@@ -14,8 +14,8 @@ async function runFlow(topic: string) {
 	const flow = createArticleFlow()
 	await flow.run(context, { logger })
 	console.log('\n=== Workflow Completed ===\n')
-	console.log(`Topic: ${context.get(TOPIC)}`)
-	console.log(`Final Article Length: ${context.get(FINAL_ARTICLE)?.length || 0} characters`)
+	console.log(`Topic: ${await context.get(TOPIC)}`)
+	console.log(`Final Article Length: ${(await context.get(FINAL_ARTICLE))?.length || 0} characters`)
 }
 
 const topic = process.argv[2] || 'AI Safety'

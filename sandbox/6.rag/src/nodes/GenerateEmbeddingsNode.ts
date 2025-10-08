@@ -21,12 +21,12 @@ export class GenerateEmbeddingsNode extends ParallelBatchFlow {
 
 	// The `prep` phase gathers the items to be processed in parallel.
 	async prep({ ctx }: NodeArgs) {
-		const chunks = ctx.get(CHUNKS)
+		const chunks = await ctx.get(CHUNKS)
 		if (!chunks)
 			return []
 
 		// Return an array of parameter objects for the batch processor.
-		return Array.from(chunks.values()).map(chunk => ({
+		return Array.from(chunks.values()).map((chunk: any) => ({
 			chunkId: chunk.id,
 			text: chunk.text,
 		}))
@@ -48,9 +48,10 @@ export class GenerateEmbeddingsNode extends ParallelBatchFlow {
 			}
 		}
 
-		ctx.set(EMBEDDINGS, embeddings)
+		await ctx.set(EMBEDDINGS, embeddings)
 		logger?.info(`[GenerateEmbeddingsNode] Generated ${embeddings.size} embeddings.`)
 
-		return execRes
+		// Return undefined to indicate no specific action, letting the graph define successors
+		// return undefined as any
 	}
 }

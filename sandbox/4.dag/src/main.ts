@@ -67,7 +67,7 @@ async function main() {
 
 	console.log('\n--- Workflow Complete ---\n')
 	console.log('Final Output:\n')
-	console.log(context.get('final_output'))
+	console.log(await context.get('final_output'))
 }
 
 main().catch(console.error)

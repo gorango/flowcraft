@@ -31,7 +31,7 @@ async function main() {
 	console.log('\n--- Workflow Complete ---\n')
 
 	// 5. Inspect the final state of the context.
-	const finalAnswer = context.get(FINAL_ANSWER)
+	const finalAnswer = await context.get(FINAL_ANSWER)
 	console.log('Final Answer:\n', finalAnswer)
 
 	// 6. Demonstrate robust serialization of the final context.

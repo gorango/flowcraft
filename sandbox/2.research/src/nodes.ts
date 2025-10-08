@@ -18,10 +18,10 @@ interface DecidePrepRes {
 
 export class DecideActionNode extends Node<DecidePrepRes, Decision, string> {
 	async prep({ ctx }: NodeArgs) {
-		const question = ctx.get<string>('question')!
-		const context = ctx.get<string>('context') || 'No previous search results.'
-		const searchCount = ctx.get<number>('searchCount') || 0
-		const maxSearches = ctx.get<number>('maxSearches') ?? 2
+		const question = (await ctx.get<string>('question'))!
+		const context = (await ctx.get<string>('context')) || 'No previous search results.'
+		const searchCount = (await ctx.get<number>('searchCount')) || 0
+		const maxSearches = (await ctx.get<number>('maxSearches')) ?? 2
 		return { question, context, searchCount, maxSearches }
 	}
 
@@ -63,7 +63,7 @@ If the action is 'search', you MUST include a "search_query".`
 
 export class SearchWebNode extends Node<string, string, string> {
 	async prep({ ctx }: NodeArgs) {
-		return ctx.get<string>('search_query')!
+		return (await ctx.get<string>('search_query'))!
 	}
 
 	async exec({ prepRes: query }: NodeArgs<string>) {
@@ -71,11 +71,11 @@ export class SearchWebNode extends Node<string, string, string> {
 	}
 
 	async post({ ctx, prepRes: query, execRes: searchResults }: NodeArgs<string, string>) {
-		const currentContext = ctx.get('context') || ''
+		const currentContext = (await ctx.get('context')) || ''
 		const newContext = `${currentContext}\n\nSearch for "${query}":\n${searchResults}`
 		ctx.set('context', newContext)
 
-		const count = ctx.get<number>('searchCount') || 0
+		const count = (await ctx.get<number>('searchCount')) || 0
 		ctx.set('searchCount', count + 1)
 
 		console.log(`📚 Found information (Search #${count + 1}), analyzing results...`)
@@ -85,8 +85,8 @@ export class SearchWebNode extends Node<string, string, string> {
 
 export class AnswerQuestionNode extends Node<{ question: string, context: string }, string> {
 	async prep({ ctx }: NodeArgs) {
-		const question = ctx.get<string>('question')!
-		const context = ctx.get<string>('context') || 'No context provided.'
+		const question = (await ctx.get<string>('question'))!
+		const context = (await ctx.get<string>('context')) || 'No context provided.'
 		return { question, context }
 	}
 

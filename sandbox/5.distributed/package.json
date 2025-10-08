@@ -3,7 +3,7 @@
 	"type": "module",
 	"scripts": {
 		"start": "tsx src/client.ts",
-		"worker": "tsx src/worker.ts"
+		"worker": "tsx --watch src/worker.ts"
 	},
 	"dependencies": {
 		"bullmq": "^5.61.0",

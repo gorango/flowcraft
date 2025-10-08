@@ -24,7 +24,7 @@ async function runAgent(question: string) {
 	await agentFlow.run(context, { logger: new ConsoleLogger() })
 	console.log('\n🎯 Final Answer:')
 
-	console.log(context.get<string>('answer') || 'No answer found.')
+	console.log(await context.get<string>('answer') || 'No answer found.')
 }
 
 const question = process.argv.slice(2).join(' ')

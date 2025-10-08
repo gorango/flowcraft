@@ -14,7 +14,7 @@ export class LoadAndChunkNode extends Node<string, Map<string, DocumentChunk>> {
 	}
 
 	async exec({ ctx, logger }: NodeArgs): Promise<Map<string, DocumentChunk>> {
-		const path = ctx.get(DOCUMENT_PATH) || this.filePath
+		const path = (await ctx.get(DOCUMENT_PATH)) || this.filePath
 		logger.info(`[LoadAndChunkNode] Reading and chunking file: ${path}`)
 
 		const content = await fs.readFile(path, 'utf-8')
@@ -35,6 +35,6 @@ export class LoadAndChunkNode extends Node<string, Map<string, DocumentChunk>> {
 	}
 
 	async post({ ctx, execRes }: NodeArgs<string, Map<string, DocumentChunk>>) {
-		ctx.set(CHUNKS, execRes)
+		await ctx.set(CHUNKS, execRes)
 	}
 }

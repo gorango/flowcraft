@@ -11,8 +11,8 @@ export class StoreInVectorDBNode extends Node {
 	async exec({ ctx, logger }: NodeArgs) {
 		logger.info('[StoreInVectorDBNode] Simulating storage of chunks and vectors.')
 
-		const chunks = ctx.get(CHUNKS)
-		const embeddings = ctx.get(EMBEDDINGS)
+		const chunks = await ctx.get(CHUNKS)
+		const embeddings = await ctx.get(EMBEDDINGS)
 
 		if (!chunks || !embeddings) {
 			throw new Error('Missing chunks or embeddings in context.')
@@ -31,6 +31,6 @@ export class StoreInVectorDBNode extends Node {
 		}
 
 		logger.info(`[StoreInVectorDBNode] DB is ready with ${db.size} entries.`)
-		ctx.set(VECTOR_DB, db)
+		await ctx.set(VECTOR_DB, db)
 	}
 }

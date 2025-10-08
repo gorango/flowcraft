@@ -16,7 +16,7 @@ export class LLMProcessNode extends Node<string, string> {
 		this.data = options.data
 	}
 
-	prep(args: NodeArgs): Promise<string> {
+	async prep(args: NodeArgs): Promise<string> {
 		const template = this.data.promptTemplate
 		const inputMappings = this.data.inputs
 		const templateData: Record<string, any> = {}
@@ -26,7 +26,7 @@ export class LLMProcessNode extends Node<string, string> {
 			let value: any
 
 			for (const sourcePath of sourcePaths) {
-				value = args.ctx.get(sourcePath)
+				value = await args.ctx.get(sourcePath)
 				if (value !== undefined)
 					break
 			}
@@ -47,7 +47,7 @@ export class LLMProcessNode extends Node<string, string> {
 	}
 
 	async post(args: NodeArgs<string, string>) {
-		args.ctx.set(this.data.nodeId, args.execRes)
+		await args.ctx.set(this.data.nodeId, args.execRes)
 		args.logger.info(`[Node: ${this.data.nodeId}] ✓ Process complete.`)
 	}
 }
@@ -72,7 +72,7 @@ export class LLMConditionNode extends Node<string, string, 'true' | 'false'> {
 
 	async post(args: NodeArgs<string, string>): Promise<'true' | 'false'> {
 		const result = args.execRes.toLowerCase().includes('true') ? 'true' : 'false'
-		args.ctx.set(this.data.nodeId, result)
+		await args.ctx.set(this.data.nodeId, result)
 		args.logger.info(`[Node: ${this.data.nodeId}] ✓ Condition evaluated to: ${result}`)
 		return result
 	}
@@ -94,7 +94,7 @@ export class LLMRouterNode extends Node<string, string, string> {
 
 	async post(args: NodeArgs<string, string>): Promise<string> {
 		const result = args.execRes.trim()
-		args.ctx.set(this.data.nodeId, result)
+		await args.ctx.set(this.data.nodeId, result)
 		args.logger.info(`[Node: ${this.data.nodeId}] ✓ Routing decision is: '${result}'`)
 		return result
 	}
@@ -116,10 +116,10 @@ export class OutputNode extends Node<string, void, typeof FINAL_ACTION | string 
 	async post(args: NodeArgs<string, void>): Promise<any> {
 		const finalResult = args.prepRes
 		const outputKey = this.data.outputKey || 'final_output'
-		args.ctx.set(outputKey, finalResult)
+		await args.ctx.set(outputKey, finalResult)
 
 		// The payload needs to be the *entire context* for sub-workflow output mapping.
-		args.ctx.set('__final_payload', {
+		await args.ctx.set('__final_payload', {
 			result: finalResult,
 			context: Object.fromEntries(args.ctx.entries()),
 		})

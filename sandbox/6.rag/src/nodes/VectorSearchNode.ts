@@ -17,7 +17,7 @@ export class VectorSearchNode extends Node<void, SearchResult[]> {
 
 	async exec({ ctx, logger }: NodeArgs): Promise<SearchResult[]> {
 		logger.info(`[VectorSearchNode] Performing vector search for question: "${this.question}"`)
-		const db = ctx.get(VECTOR_DB)
+		const db = await ctx.get(VECTOR_DB)
 		if (!db || db.size === 0) {
 			logger.warn('[VectorSearchNode] Vector DB is empty. Cannot perform search.')
 			return []
@@ -48,6 +48,6 @@ export class VectorSearchNode extends Node<void, SearchResult[]> {
 	}
 
 	async post({ ctx, execRes }: NodeArgs<void, SearchResult[]>) {
-		ctx.set(SEARCH_RESULTS, execRes)
+		await ctx.set(SEARCH_RESULTS, execRes)
 	}
 }

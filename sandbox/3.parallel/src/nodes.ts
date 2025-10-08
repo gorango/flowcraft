@@ -22,7 +22,7 @@ ${text}`
 
 	async post({ ctx, execRes }: NodeArgs<void, { language: string, translation: string }>) {
 		const { language, translation } = execRes
-		const outputDir = ctx.get('output_dir')!
+		const outputDir = (await ctx.get('output_dir'))!
 		const filename = path.join(outputDir, `README_${language.toUpperCase()}.md`)
 		await fs.writeFile(filename, translation, 'utf-8')
 		console.log(`Saved translation to ${filename}`)
@@ -33,8 +33,8 @@ export class TranslateFlow extends ParallelBatchFlow {
 	protected nodeToRun: AbstractNode = new TranslateNode()
 
 	async prep({ ctx }: NodeArgs): Promise<any[]> {
-		const languages = ctx.get('languages')!
-		const text = ctx.get('text')
+		const languages = (await ctx.get('languages'))!
+		const text = await ctx.get('text')
 		return languages.map((language: string) => ({
 			language,
 			text,
