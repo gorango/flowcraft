@@ -45,8 +45,8 @@ The `Context` is the shared memory of a single workflow run. It's an object that
 
 ```typescript
 // Always use `await` when interacting with the context
-const currentUser = await ctx.get(USER_KEY);
-await ctx.set(RESULT_KEY, { data: '...' });
+const currentUser = await ctx.get(USER_KEY)
+await ctx.set(RESULT_KEY, { data: '...' })
 ```
 
 ## 4. Action

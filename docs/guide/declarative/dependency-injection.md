@@ -23,7 +23,7 @@ Create an interface that defines the contract for all the shared services your a
 export interface MyAppDependencies {
 	apiClient: {
 		fetch: (path: string) => Promise<any>
-	},
+	}
 	db: {
 		save: (key: string, data: any) => Promise<void>
 	}
@@ -37,7 +37,7 @@ As always, define a `NodeTypeMap` for your declarative graph nodes.
 ```typescript
 // src/types.ts
 export interface MyNodeTypeMap {
-	'fetch-user': { userId: number },
+	'fetch-user': { userId: number }
 	'save-user': { userKey: string }
 }
 ```
@@ -85,7 +85,7 @@ const registry = createNodeRegistry<MyNodeTypeMap, MyAppDependencies>({
 })
 
 // Create concrete instances of our services.
-const myApi = { fetch: async (path) => ({ name: 'Alice' }) }
+const myApi = { fetch: async path => ({ name: 'Alice' }) }
 const myDb = { save: async (key, data) => { /* ... */ } }
 
 // Instantiate the builder, providing the registry and the dependencies.

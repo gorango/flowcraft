@@ -52,6 +52,7 @@ class SetValueNode extends Node {
 		super()
 		this.value = options.data.value
 	}
+
 	async exec({ ctx }) {
 		await ctx.set(VALUE, this.value)
 	}
@@ -64,6 +65,7 @@ class AddValueNode extends Node {
 		super()
 		this.valueToAdd = options.data.value
 	}
+
 	async exec({ ctx }) {
 		const current = (await ctx.get(VALUE)) ?? 0
 		await ctx.set(VALUE, current + this.valueToAdd)
@@ -78,7 +80,7 @@ import { createNodeRegistry } from 'flowcraft'
 
 // Define a "map" of your node types to their data shapes.
 interface MyNodeTypeMap {
-	set: SetData,
+	set: SetData
 	add: AddData
 }
 

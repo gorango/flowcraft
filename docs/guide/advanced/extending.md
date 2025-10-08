@@ -46,7 +46,8 @@ export class DryRunExecutor implements IExecutor {
 			executor: this,
 		}
 
-		if (!flow.startNode) return
+		if (!flow.startNode)
+			return
 
 		logger.info(`[DryRunExecutor] Starting dry run for flow: ${flow.constructor.name}`)
 		const lastAction = await this._orch(flow.startNode, context, internalOptions)

@@ -80,10 +80,10 @@ All context operations are **asynchronous**, so you must always use `await`.
 
 ```typescript
 // Reading from the context
-const someValue = await ctx.get(SOME_KEY);
+const someValue = await ctx.get(SOME_KEY)
 
 // Writing to the context
-await ctx.set(ANOTHER_KEY, 'new-value');
+await ctx.set(ANOTHER_KEY, 'new-value')
 ```
 
 ## 4. Branching Logic

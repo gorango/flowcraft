@@ -12,11 +12,11 @@ Always prefer `contextKey()` over raw strings for in-memory workflows. This prov
 
 ```typescript
 // BAD: Prone to typos, returns `any`
-const userId = await ctx.get('user_id');
+const userId = await ctx.get('user_id')
 
 // GOOD: Type-safe, autocompletes, checked by the compiler
-const USER_ID = contextKey<number>('user_id');
-const userId = await ctx.get(USER_ID); // type is `number | undefined`
+const USER_ID = contextKey<number>('user_id')
+const userId = await ctx.get(USER_ID) // type is `number | undefined`
 ```
 > [!WARNING]
 > For distributed workflows built with `GraphBuilder`, you must use serializable `string` keys, as `ContextKey`s (`Symbol`s) cannot be sent over a network.
@@ -36,11 +36,11 @@ This makes your nodes more reusable and their dependencies more explicit.
 // GOOD: `amount` is static configuration, passed via params.
 class AddAmountNode extends Node {
 	async exec({ ctx, params }) {
-		const current = await ctx.get(VALUE);
-		return current + params.amount;
+		const current = await ctx.get(VALUE)
+		return current + params.amount
 	}
 }
-const add10 = new AddAmountNode().withParams({ amount: 10 });
+const add10 = new AddAmountNode().withParams({ amount: 10 })
 ```
 
 ### 4. Plan for Serialization
@@ -66,11 +66,11 @@ A `Node`'s `exec` method is designed to be a pure function. You can test it dire
 ```typescript
 // MyNode.test.ts
 it('should correctly process data', async () => {
-    const node = new MyNode();
-    const mockArgs = { prepRes: { input: 'test' } }; // Mock inputs
-    const result = await node.exec(mockArgs);
-    expect(result).toBe('PROCESSED TEST');
-});
+	const node = new MyNode()
+	const mockArgs = { prepRes: { input: 'test' } } // Mock inputs
+	const result = await node.exec(mockArgs)
+	expect(result).toBe('PROCESSED TEST')
+})
 ```
 
 ### 2. Test the Full Lifecycle with `.run()`
@@ -84,13 +84,13 @@ To test a node's interaction with the `Context` (`prep` and `post`), use the `no
 ```typescript
 // MyNode.test.ts
 it('should read from and write to the context', async () => {
-    const node = new MyNode();
-    const context = new TypedContext([[INPUT, 'test']]);
+	const node = new MyNode()
+	const context = new TypedContext([[INPUT, 'test']])
 
-    await node.run(context);
+	await node.run(context)
 
-    expect(await context.get(OUTPUT)).toBe('PROCESSED TEST');
-});
+	expect(await context.get(OUTPUT)).toBe('PROCESSED TEST')
+})
 ```
 
 ### 3. Test Flows by Asserting Final State

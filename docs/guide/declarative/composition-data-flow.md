@@ -115,10 +115,11 @@ const resolver: SubWorkflowResolver = {
 
 const builder = new GraphBuilder(myRegistry, {}, {
 	subWorkflowNodeTypes: ['math-sub-workflow'], // 1. Register the type
-	subWorkflowResolver: resolver,             // 2. Provide the resolver
+	subWorkflowResolver: resolver, // 2. Provide the resolver
 })
 
 const { blueprint } = builder.buildBlueprint(require('./main-workflow.json'))
+
 const executor = new BlueprintExecutor(blueprint, myRegistry)
 const context = new TypedContext()
 await executor.run(executor.flow, context)
