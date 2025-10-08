@@ -1,13 +1,31 @@
 {
 	"name": "flowcraft",
 	"type": "module",
-	"version": "1.0.0-beta.23",
+	"version": "1.0.0",
 	"packageManager": "pnpm@10.18.1",
 	"description": "A flexible workflow framework",
+	"license": "MIT",
+	"homepage": "https://github.com/gorango/flowcraft",
 	"repository": {
 		"type": "git",
 		"url": "https://github.com/gorango/flowcraft.git"
 	},
+	"bugs": "https://github.com/gorango/flowcraft/issues",
+	"keywords": [
+		"agentic-workflows",
+		"ai-agent",
+		"background-jobs",
+		"dag",
+		"data-pipelines",
+		"declarative-workflows",
+		"distributed-systems",
+		"etl",
+		"llm-orchestration",
+		"orchestration",
+		"rag",
+		"state-machine",
+		"workflow-engine"
+	],
 	"exports": {
 		".": {
 			"types": "./dist/index.d.ts",
@@ -20,11 +38,11 @@
 	"scripts": {
 		"dev": "tsup --watch --config config/tsup.config.ts",
 		"build": "tsup --config config/tsup.config.ts",
-		"type-check": "tsc --noEmit -p config/tsconfig.json",
+		"lint": "eslint --fix . --ext .ts",
+		"typecheck": "tsc --noEmit -p config/tsconfig.json",
 		"test": "vitest run --config config/vitest.config.ts",
 		"test:watch": "vitest --config config/vitest.config.ts",
-		"coverage": "vitest run --coverage --config config/vitest.config.ts",
-		"lint": "eslint --fix . --ext .ts",
+		"test:coverage": "vitest run --coverage --config config/vitest.config.ts",
 		"docs:dev": "vitepress dev docs",
 		"docs:build": "vitepress build docs",
 		"docs:preview": "vitepress preview docs"
