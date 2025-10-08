@@ -247,6 +247,258 @@ describe('FlowcraftRuntime', () => {
 			expect(result.context.input).toBe('Joined: A,B')
 		})
 
+		describe('Batch Processing', () => {
+			it('should process all items sequentially', async () => {
+				const processedItems: any[] = []
+				const flow = createFlow('batch-sequential-flow')
+
+				flow.node('start', async () => ({ output: [{ id: 1 }, { id: 2 }, { id: 3 }] }))
+				flow.node('processor', async (context) => {
+					const item = context.input as { id: number }
+					processedItems.push(item)
+					return { output: item }
+				})
+				flow.node('end', async context => ({ output: context.input }))
+				flow.batch('start', 'processor')
+				flow.edge('processor', 'end')
+
+				const blueprint = flow.toBlueprint()
+				const result = await runtime.run(blueprint, {}, flow.getFunctionRegistry())
+
+				expect(result.metadata.status).toBe('completed')
+				expect(processedItems).toEqual([{ id: 1 }, { id: 2 }, { id: 3 }])
+				expect(Array.isArray(result.context.input)).toBe(true)
+			})
+
+			it('should process items concurrently', async () => {
+				const startTimes: number[] = []
+				const finishTimes: number[] = []
+				const flow = createFlow('batch-concurrent-flow')
+
+				flow.node('start', async () => ({ output: [{ id: 1 }, { id: 2 }, { id: 3 }] }))
+				flow.node('processor', async (context) => {
+					const item = context.input as { id: number }
+					const startTime = Date.now()
+					startTimes.push(startTime)
+
+					// Simulate variable processing time
+					await sleep(30 - item.id * 5)
+
+					const finishTime = Date.now()
+					finishTimes.push(finishTime)
+					return { output: item }
+				})
+				flow.batch('start', 'processor', { concurrency: 3 })
+
+				const blueprint = flow.toBlueprint()
+				const result = await runtime.run(blueprint, {}, flow.getFunctionRegistry())
+
+				expect(result.metadata.status).toBe('completed')
+				// Check that processing started concurrently (start times overlap)
+				expect(Math.max(...startTimes) - Math.min(...startTimes)).toBeLessThan(20)
+				expect(finishTimes).toHaveLength(3)
+			})
+		})
+
+		describe('Loop Processing', () => {
+			it('should execute a fixed number of times based on maxIterations', async () => {
+				const flow = createFlow('loop-max-iterations-flow')
+
+				flow.node('start', async (context) => {
+					context.set('counter', 0)
+					return { output: null }
+				})
+				flow.node('increment', async (context) => {
+					const current = context.get('counter') || 0
+					context.set('counter', current + 1)
+					return { output: null }
+				})
+				flow.node('loop-controller', 'loop-controller', {
+					maxIterations: 5,
+				})
+				flow.node('end', async () => ({ output: 'done' }))
+
+				flow.edge('start', 'loop-controller')
+				flow.edge('loop-controller', 'increment', { action: 'continue' })
+				flow.edge('increment', 'loop-controller')
+				flow.edge('loop-controller', 'end', { action: 'break' })
+
+				const blueprint = flow.toBlueprint()
+				const result = await runtime.run(blueprint, {}, flow.getFunctionRegistry())
+
+				expect(result.metadata.status).toBe('completed')
+				expect(result.context.counter).toBe(5)
+			})
+
+			it('should execute until a condition is no longer met', async () => {
+				const flow = createFlow('loop-condition-flow')
+
+				flow.node('start', async (context) => {
+					context.set('counter', 0)
+					return { output: null }
+				})
+				flow.node('increment', async (context) => {
+					const current = context.get('counter') || 0
+					context.set('counter', current + 1)
+					return { output: null }
+				})
+				flow.node('loop-controller', 'loop-controller', {
+					condition: 'counter < 3',
+				})
+				flow.node('end', async () => ({ output: 'done' }))
+
+				flow.edge('start', 'loop-controller')
+				flow.edge('loop-controller', 'increment', { action: 'continue' })
+				flow.edge('increment', 'loop-controller')
+				flow.edge('loop-controller', 'end', { action: 'break' })
+
+				const blueprint = flow.toBlueprint()
+				const result = await runtime.run(blueprint, {}, flow.getFunctionRegistry())
+
+				expect(result.metadata.status).toBe('completed')
+				expect(result.context.counter).toBe(3)
+			})
+		})
+
+		describe('Convergence Patterns', () => {
+			it('should execute a convergence node only after all parallel branches complete', async () => {
+				const flow = createFlow('diamond-convergence-flow')
+
+				flow.node('start', async (context) => {
+					context.set('shared_state', { branchA_complete: false, branchB_complete: false })
+					return { output: 'start' }
+				})
+				flow.node('branchA', async (context) => {
+					await sleep(10)
+					const state = context.get('shared_state') as any
+					state.branchA_complete = true
+					context.set('shared_state', state)
+					return { output: 'A' }
+				})
+				flow.node('branchB', async (context) => {
+					await sleep(20)
+					const state = context.get('shared_state') as any
+					state.branchB_complete = true
+					context.set('shared_state', state)
+					return { output: 'B' }
+				})
+				flow.node('end', async (context) => {
+					const state = context.get('shared_state') as any
+					if (state.branchA_complete && state.branchB_complete) {
+						return { output: 'success' }
+					}
+					throw new Error('Convergence failed - branches not complete')
+				})
+
+				flow.parallel('parallel-block', ['branchA', 'branchB'])
+				flow.edge('start', 'parallel-block')
+				flow.edge('parallel-block', 'end')
+
+				const blueprint = flow.toBlueprint()
+				const result = await runtime.run(blueprint, {}, flow.getFunctionRegistry())
+
+				expect(result.metadata.status).toBe('completed')
+				expect(result.context.input).toBe('success')
+			})
+		})
+
+		describe('Advanced Sub-Workflows', () => {
+			it('should isolate context and not leak changes to the parent', async () => {
+				// Create sub-workflow
+				const subFlow = createFlow('sub-isolator')
+				subFlow.node('modify', async (context) => {
+					context.set('shared_key', 'sub_value')
+					return { output: 'modified' }
+				})
+				runtime.registerBlueprint(subFlow.toBlueprint())
+
+				// Create parent workflow
+				const parentFlow = createFlow('parent-isolation-flow')
+				parentFlow.node('start', async (context) => {
+					context.set('shared_key', 'parent_value')
+					return { output: 'start' }
+				})
+				parentFlow.subflow('run-sub', 'sub-isolator')
+				parentFlow.node('end', async (context) => {
+					const value = context.get('shared_key')
+					return { output: value }
+				})
+
+				parentFlow.edge('start', 'run-sub')
+				parentFlow.edge('run-sub', 'end')
+
+				const blueprint = parentFlow.toBlueprint()
+				const functionRegistry = new Map([
+					...subFlow.getFunctionRegistry(),
+					...parentFlow.getFunctionRegistry(),
+				])
+
+				const result = await runtime.run(blueprint, {}, functionRegistry)
+
+				expect(result.metadata.status).toBe('completed')
+				expect(result.context.input).toBe('parent_value')
+			})
+
+			it('should correctly map data and propagate results through nested sub-workflows', async () => {
+				// Create child workflow
+				const childFlow = createFlow('child-math')
+				childFlow.node('add', async (context) => {
+					const val = context.get('child_in') || 0
+					return { output: val + 1 }
+				})
+				runtime.registerBlueprint(childFlow.toBlueprint())
+
+				// Create parent workflow that uses the child
+				const parentFlow = createFlow('parent-math')
+				parentFlow.node('start', async (context) => {
+					context.set('parent_in', 10)
+					return { output: 10 }
+				})
+				parentFlow.subflow('run-child', 'child-math', {
+					inputs: { child_in: 'parent_in' },
+					outputs: { result: 'input' },
+				})
+				parentFlow.edge('start', 'run-child')
+				runtime.registerBlueprint(parentFlow.toBlueprint())
+
+				// Create grandparent workflow that uses the parent
+				const grandparentFlow = createFlow('grandparent-math')
+				grandparentFlow.subflow('run-parent', 'parent-math', {
+					outputs: { grandparent_result: 'result' },
+				})
+
+				const blueprint = grandparentFlow.toBlueprint()
+				const functionRegistry = new Map([
+					...childFlow.getFunctionRegistry(),
+					...parentFlow.getFunctionRegistry(),
+					...grandparentFlow.getFunctionRegistry(),
+				])
+
+				const result = await runtime.run(blueprint, {}, functionRegistry)
+
+				expect(result.metadata.status).toBe('completed')
+				expect(result.context.grandparent_result).toBe(11) // 10 -> child(11) -> parent(11)
+			})
+		})
+
+		describe('Edge Transformation', () => {
+			it('should apply a transformation to data between two nodes', async () => {
+				const flow = createFlow('transform-flow')
+
+				flow.node('source', async () => ({ output: 10 }))
+				flow.node('target', async context => ({ output: context.input }))
+				flow.node('end', async context => ({ output: context.input }))
+				flow.edge('source', 'target', { transform: 'input * 2' })
+				flow.edge('target', 'end')
+
+				const blueprint = flow.toBlueprint()
+				const result = await runtime.run(blueprint, {}, flow.getFunctionRegistry())
+
+				expect(result.metadata.status).toBe('completed')
+				expect(result.context.input).toBe(20)
+			})
+		})
+
 		it('should evaluate a conditional edge with the default evaluator and route correctly', async () => {
 			const flow = createFlow('default-condition-flow')
 			flow.node('start', async () => ({ output: { value: 15, user: { role: 'admin' } } }))

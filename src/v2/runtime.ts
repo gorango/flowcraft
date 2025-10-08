@@ -17,6 +17,54 @@ import { randomUUID } from 'node:crypto'
 import { createContext } from './context.js'
 import { CancelledWorkflowError, NodeExecutionError } from './errors.js'
 
+/**
+ * Simple semaphore for controlling concurrency
+ */
+class Semaphore {
+	private permits: number
+	private waiting: Array<() => void> = []
+
+	constructor(permits: number) {
+		this.permits = permits
+	}
+
+	async acquire<T>(fn: () => Promise<T>): Promise<T> {
+		if (this.permits > 0) {
+			this.permits--
+			try {
+				return await fn()
+			}
+			finally {
+				this.release()
+			}
+		}
+
+		return new Promise((resolve, reject) => {
+			this.waiting.push(async () => {
+				try {
+					this.permits--
+					const result = await fn()
+					resolve(result)
+				}
+				catch (error) {
+					reject(error)
+				}
+				finally {
+					this.release()
+				}
+			})
+		})
+	}
+
+	private release(): void {
+		this.permits++
+		if (this.waiting.length > 0) {
+			const next = this.waiting.shift()!
+			next()
+		}
+	}
+}
+
 /** A default event bus that does nothing, ensuring the framework is silent by default. */
 class NullEventBus implements IEventBus {
 	emit() { /* no-op */ }
@@ -479,13 +527,14 @@ class ExecutableFlow<TContext extends Record<string, any>> {
 			// execute the node with resiliency
 			const result = await this._executeNodeWithResiliency(currentNode, currentContext)
 
-			// determine next node based on result
-			currentNode = await this.getNextNode(currentNode, result, currentContext)
-
-			// update context with result - the output becomes the input for the next node
+			// The default input for the next node is the output of this one.
+			// getNextNode may modify this if a transform is present.
 			if (result.output !== undefined) {
 				currentContext.set('input' as any, result.output)
 			}
+
+			// determine next node based on result
+			currentNode = await this.getNextNode(currentNode, result, currentContext)
 		}
 
 		return currentContext
@@ -599,6 +648,12 @@ class ExecutableFlow<TContext extends Record<string, any>> {
 		if (node.implementation === 'parallel-container') {
 			return this._executeParallelContainer(node, context)
 		}
+		if (node.implementation === 'batch-processor') {
+			return this._executeBatchProcessor(node, context)
+		}
+		if (node.implementation === 'loop-controller') {
+			return this._executeLoopController(node, context)
+		}
 		// Handle sub-workflows
 		if (node.implementation === 'subflow') {
 			return this._executeSubflow(node, context)
@@ -678,7 +733,9 @@ class ExecutableFlow<TContext extends Record<string, any>> {
 		}
 
 		// The final 'input' of the sub-workflow's context becomes the output of this node
-		return { output: subFinalContext.get('input' as any) }
+		// But if the sub-workflow has a specific output node, we should return that
+		const finalInput = subFinalContext.get('input' as any)
+		return { output: finalInput }
 	}
 
 	/**
@@ -692,10 +749,9 @@ class ExecutableFlow<TContext extends Record<string, any>> {
 
 		const branchNodes = branchIds.map(id => this.nodeMap.get(id)).filter(Boolean) as CompiledNode[]
 
+		// Use shared context for all branches to allow communication between them
 		const promises = branchNodes.map(branchNode =>
-			// Execute each branch as a new, independent "mini-flow" starting from that node.
-			// Each branch gets a clean scope of the context to avoid side-effect race conditions.
-			new ExecutableFlow(branchNode, this.nodeMap, this.runtime, this.functionRegistry).execute(context.createScope()),
+			new ExecutableFlow(branchNode, this.nodeMap, this.runtime, this.functionRegistry).execute(context),
 		)
 
 		const settledResults = await Promise.allSettled(promises)
@@ -715,6 +771,125 @@ class ExecutableFlow<TContext extends Record<string, any>> {
 	}
 
 	/**
+	 * Executes a batch processor that processes items from an array.
+	 */
+	private async _executeBatchProcessor(node: CompiledNode, context: Context<TContext>): Promise<NodeResult> {
+		const { batchSize = 10, concurrency = 1, timeout } = node.params
+		const inputArray = context.get('input' as any)
+
+		if (!Array.isArray(inputArray)) {
+			return { error: { message: 'Batch processor expects an array as input' } }
+		}
+
+		const results: any[] = []
+
+		// Process items in batches
+		for (let i = 0; i < inputArray.length; i += batchSize) {
+			const batch = inputArray.slice(i, i + batchSize)
+
+			if (concurrency === 1) {
+				// Sequential processing
+				for (const item of batch) {
+					const itemContext = context.createScope()
+					itemContext.set('input' as any, item)
+					const result = await this._processBatchItem(node, itemContext, timeout)
+					if (result.error) {
+						return result
+					}
+					results.push(result.output)
+				}
+			}
+			else {
+				// Concurrent processing with limited concurrency
+				const semaphore = new Semaphore(concurrency)
+				const promises = batch.map(async (item: any) => {
+					return semaphore.acquire(async () => {
+						const itemContext = context.createScope()
+						itemContext.set('input' as any, item)
+						return this._processBatchItem(node, itemContext, timeout)
+					})
+				})
+
+				const settledResults = await Promise.allSettled(promises)
+
+				for (const result of settledResults) {
+					if (result.status === 'rejected') {
+						throw result.reason
+					}
+					if (result.value.error) {
+						return result.value
+					}
+					results.push(result.value.output)
+				}
+			}
+		}
+
+		return { output: results }
+	}
+
+	/**
+	 * Process a single item in a batch.
+	 */
+	private async _processBatchItem(node: CompiledNode, context: Context<TContext>, timeout?: number): Promise<NodeResult> {
+		// Find the next node after the batch processor (this should be the processor node)
+		const nextNodes = node.nextNodes.filter(edge => !edge.action && !edge.condition)
+		if (nextNodes.length === 0) {
+			return { error: { message: 'Batch processor must have a target node to process items' } }
+		}
+
+		const processorNode = nextNodes[0].node
+
+		// Execute the processor node
+		const executionPromise = this.executeNode(processorNode, context)
+
+		if (timeout) {
+			return Promise.race([
+				executionPromise,
+				new Promise<NodeResult>((_, reject) =>
+					setTimeout(() => reject(new Error('Batch item processing timed out')), timeout),
+				),
+			])
+		}
+
+		const result = await executionPromise
+		return result
+	}
+
+	/**
+	 * Executes a loop controller that manages iteration logic.
+	 */
+	private async _executeLoopController(node: CompiledNode, context: Context<TContext>): Promise<NodeResult> {
+		const { maxIterations = 100, condition } = node.params
+
+		// Get current iteration count from context
+		const iterations = (context as any).get('loop_iterations') || 0
+
+		// The loop controller doesn't execute anything directly - it just determines the next action
+		// The actual loop logic is handled by the flow execution
+
+		// Check condition if provided
+		if (condition) {
+			const evalContext = {
+				...context.toJSON(),
+				iterations,
+			}
+			const shouldContinue = await this.conditionEvaluator.evaluate(condition, evalContext)
+			if (!shouldContinue) {
+				return { action: 'break' }
+			}
+		}
+
+		// Check max iterations
+		if (iterations >= maxIterations) {
+			return { action: 'break' }
+		}
+
+		// Increment iteration count for next time
+		(context as any).set('loop_iterations', iterations + 1)
+		return { action: 'continue' }
+	}
+
+	/**
 	 * Get the next node based on execution result and conditional edges.
 	 */
 	private async getNextNode(
@@ -722,6 +897,18 @@ class ExecutableFlow<TContext extends Record<string, any>> {
 		result: NodeResult,
 		context: Context<TContext>,
 	): Promise<CompiledNode | undefined> {
+		if (currentNode.implementation === 'batch-processor') {
+			// The batch processor's "next node" is the item processor. We have already executed it.
+			// The real next node is whatever comes after the item processor.
+			const itemProcessorEdge = currentNode.nextNodes.find(edge => !edge.action && !edge.condition)
+			if (itemProcessorEdge) {
+				// Recursively call getNextNode, starting from the item processor, to find the true next step.
+				// The aggregated result of the batch is used for evaluating conditions.
+				return this.getNextNode(itemProcessorEdge.node, result, context)
+			}
+			return undefined // Batch processor is the end of this path.
+		}
+
 		if (!currentNode.nextNodes || currentNode.nextNodes.length === 0) {
 			return undefined
 		}
@@ -732,6 +919,11 @@ class ExecutableFlow<TContext extends Record<string, any>> {
 		if (result.action) {
 			const actionMatch = candidates.find(edge => edge.action === result.action)
 			if (actionMatch) {
+				// Apply transformation if present
+				if (actionMatch.transform) {
+					const transformedOutput = await this._applyTransform(actionMatch.transform, result.output, context)
+					context.set('input' as any, transformedOutput)
+				}
 				return actionMatch.node
 			}
 		}
@@ -745,11 +937,47 @@ class ExecutableFlow<TContext extends Record<string, any>> {
 				result: result.output, // Make the direct output of the node available as `result`
 			}
 			if (await this.conditionEvaluator.evaluate(edge.condition!, evalContext)) {
+				// Apply transformation if present
+				if (edge.transform) {
+					const transformedOutput = await this._applyTransform(edge.transform, result.output, context)
+					context.set('input' as any, transformedOutput)
+				}
 				return edge.node
 			}
 		}
 
 		// 3. Fallback to the default edge (no action, no condition)
-		return candidates.find(edge => !edge.action && !edge.condition)?.node
+		const defaultEdge = candidates.find(edge => !edge.action && !edge.condition)
+		if (defaultEdge) {
+			// Apply transformation if present
+			if (defaultEdge.transform) {
+				const transformedOutput = await this._applyTransform(defaultEdge.transform, result.output, context)
+				context.set('input' as any, transformedOutput)
+			}
+			return defaultEdge.node
+		}
+
+		return undefined
+	}
+
+	/**
+	 * Apply a transformation to the output data.
+	 */
+	private async _applyTransform(transform: string, output: any, context: Context<TContext>): Promise<any> {
+		try {
+			// Simple transformation evaluator - supports basic expressions
+			// For example: "input * 2", "input.toUpperCase()", "input.map(x => x * 2)"
+			const transformContext = {
+				input: output,
+				context: context.toJSON(),
+			}
+
+			// Use Function constructor for safe evaluation
+			const transformFn = new Function('input', 'context', `return ${transform}`) // eslint-disable-line no-new-func
+			return transformFn(transformContext.input, transformContext.context)
+		}
+		catch (error) {
+			throw new Error(`Failed to apply transform "${transform}": ${error instanceof Error ? error.message : 'Unknown error'}`)
+		}
 	}
 }
