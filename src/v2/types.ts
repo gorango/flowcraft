@@ -114,6 +114,8 @@ export interface ExecutionMetadata {
 	startedAt: Date
 	/** Current execution environment */
 	environment: 'development' | 'staging' | 'production'
+	/** **[Task 1b]** Abort signal for graceful cancellation */
+	signal?: AbortSignal
 }
 
 /**
@@ -175,7 +177,7 @@ export interface NodeRegistry {
 }
 
 /**
- * Interface for a pluggable serializer.
+ * **[Task 1a]** Interface for a pluggable serializer.
  */
 export interface ISerializer {
 	serialize: (data: Record<string, any>) => string
@@ -219,6 +221,8 @@ export interface RuntimeOptions {
 	eventBus?: IEventBus
 	/** Pluggable evaluator for edge conditions */
 	conditionEvaluator?: IConditionEvaluator
+	/** **[Task 1a]** Pluggable serializer for complex data types */
+	serializer?: ISerializer
 }
 
 /**

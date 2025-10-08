@@ -285,3 +285,25 @@ export function createParallelTestBlueprint() {
 		],
 	}
 }
+
+/** **[Task 1b Test]** A custom error for testing signal propagation. */
+class AbortError extends Error {
+	constructor() {
+		super('The operation was aborted.')
+		this.name = 'AbortError'
+	}
+}
+
+/** **[Task 1b Test]** A cancellation-aware sleep utility. */
+export async function sleep(ms: number, signal?: AbortSignal): Promise<void> {
+	return new Promise((resolve, reject) => {
+		if (signal?.aborted) {
+			return reject(new AbortError())
+		}
+		const timeoutId = setTimeout(resolve, ms)
+		signal?.addEventListener('abort', () => {
+			clearTimeout(timeoutId)
+			reject(new AbortError())
+		})
+	})
+}

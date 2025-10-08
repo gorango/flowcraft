@@ -1,8 +1,9 @@
 import type { IEventBus, NodeResult } from './types.js'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { CancelledWorkflowError } from './errors.js'
 import { createFlow } from './flow.js'
 import { FlowcraftRuntime } from './runtime.js'
-import { mockDependencies, mockNodeRegistry } from './test-utils.js'
+import { mockDependencies, mockNodeRegistry, sleep } from './test-utils.js'
 
 describe('FlowcraftRuntime', () => {
 	let runtime: FlowcraftRuntime
@@ -140,6 +141,29 @@ describe('FlowcraftRuntime', () => {
 		})
 	})
 
+	describe('cancellation', () => {
+		it('should gracefully cancel a long-running node', async () => {
+			const flow = createFlow('cancellation-flow')
+			let nodeFinished = false
+			flow.node('long-node', async ({ metadata }) => {
+				await sleep(100, metadata.signal) // Use cancellation-aware sleep
+				nodeFinished = true
+				return { output: 'done' }
+			})
+			const blueprint = flow.toBlueprint()
+			const controller = new AbortController()
+
+			const runPromise = runtime.run(blueprint, {}, flow.getFunctionRegistry(), controller.signal)
+
+			// Abort shortly after starting
+			setTimeout(() => controller.abort(), 20)
+
+			// The promise should now reject with a specific cancellation error
+			await expect(runPromise).rejects.toThrow(CancelledWorkflowError)
+			expect(nodeFinished).toBe(false)
+		})
+	})
+
 	describe('observability: event bus', () => {
 		it('should emit workflow:start and workflow:finish events', async () => {
 			const flow = createFlow('event-flow').node('dummy', async () => ({ output: null }))
@@ -273,6 +297,54 @@ describe('FlowcraftRuntime', () => {
 				'this-will-be-handled-by-mock',
 				expect.any(Object),
 			)
+		})
+	})
+
+	describe('sub-workflows', () => {
+		it('should execute a sub-workflow and map inputs/outputs correctly', async () => {
+			// 1. Create the sub-workflow
+			const subFlow = createFlow('sub-math')
+			subFlow.node('add', async (ctx) => {
+				const val = (ctx.get('sub_val') as number) || 0
+				return { output: val + 10 }
+			})
+			const subBlueprint = subFlow.toBlueprint()
+			runtime.registerBlueprint(subBlueprint)
+
+			// 2. Create the parent workflow
+			const parentFlow = createFlow('parent-flow')
+			parentFlow.node('start', async () => ({ output: 5 }))
+			parentFlow.subflow('run-math', 'sub-math', {
+				inputs: { sub_val: 'input' }, // map parent `input` to sub `sub_val`
+				outputs: { final_result: 'input' }, // map sub `input` to parent `final_result`
+			})
+			parentFlow.edge('start', 'run-math')
+			const parentBlueprint = parentFlow.toBlueprint()
+			const functionRegistry = new Map([
+				...subFlow.getFunctionRegistry(),
+				...parentFlow.getFunctionRegistry(),
+			])
+
+			// 3. Run and assert
+			const result = await runtime.run(parentBlueprint, {}, functionRegistry)
+
+			expect(result.metadata.status).toBe('completed')
+			expect(result.context.final_result).toBe(15) // 5 (from start) + 10 (from sub)
+		})
+
+		it('should propagate errors from a sub-workflow', async () => {
+			const subFlow = createFlow('sub-fail')
+			subFlow.node('fails', async () => {
+				throw new Error('sub-workflow failed')
+			})
+			runtime.registerBlueprint(subFlow.toBlueprint())
+
+			const parentFlow = createFlow('parent-fail')
+			parentFlow.subflow('call-sub', 'sub-fail')
+			const blueprint = parentFlow.toBlueprint()
+			const registry = new Map([...subFlow.getFunctionRegistry(), ...parentFlow.getFunctionRegistry()])
+
+			await expect(runtime.run(blueprint, {}, registry)).rejects.toThrow('sub-workflow failed')
 		})
 	})
 })

@@ -15,14 +15,14 @@ import type {
 } from './types.js'
 import { randomUUID } from 'node:crypto'
 import { createContext } from './context.js'
-import { NodeExecutionError } from './errors.js'
+import { CancelledWorkflowError, NodeExecutionError } from './errors.js'
 
 /** A default event bus that does nothing, ensuring the framework is silent by default. */
 class NullEventBus implements IEventBus {
 	emit() { /* no-op */ }
 }
 
-/** A default serializer using standard JSON, keeping the core dependency-free. */
+/** A default serializer using standard JSON. */
 class JsonSerializer implements ISerializer {
 	serialize(data: Record<string, any>): string {
 		return JSON.stringify(data)
@@ -38,15 +38,29 @@ class JsonSerializer implements ISerializer {
  * Handles property access and common comparisons.
  */
 class DefaultConditionEvaluator implements IConditionEvaluator {
+	private parseCondition(condition: string): { leftPath: string, operator: string, rightStr: string } | null {
+		condition = condition.trim()
+		const operators = ['===', '!==', '<=', '>=', '==', '!=', '<', '>', '=']
+		for (const op of operators) {
+			const index = condition.indexOf(op)
+			if (index > 0) {
+				const leftPath = condition.substring(0, index).trim()
+				const rightStr = condition.substring(index + op.length).trim()
+				return { leftPath, operator: op, rightStr }
+			}
+		}
+		return null
+	}
+
 	evaluate(condition: string, context: Record<string, any>): boolean {
-		// A more robust regex that defines the left-hand side more strictly.
-		const parts = condition.match(/^([\w.]+)\s*([<>=!]{1,3})\s*(.*)$/s)
-		if (!parts) {
+		// Parse the condition to avoid regex backtracking issues
+		const parsed = this.parseCondition(condition)
+		if (!parsed) {
 			// Fallback for simple truthy checks like "result.isAdmin"
 			return !!this.resolvePath(condition.trim(), context)
 		}
 
-		const [, leftPath, operator, rightStr] = parts
+		const { leftPath, operator, rightStr } = parsed
 		const leftVal = this.resolvePath(leftPath.trim(), context)
 		const rightVal = this.parseValue(rightStr.trim())
 
@@ -106,6 +120,7 @@ export class FlowcraftRuntime<TContext extends Record<string, any> = Record<stri
 	private blueprintCache: Map<string, WorkflowBlueprint>
 	private eventBus: IEventBus
 	private conditionEvaluator: IConditionEvaluator
+	private serializer: ISerializer
 
 	constructor(options: RuntimeOptions) {
 		this.registry = options.registry
@@ -114,6 +129,7 @@ export class FlowcraftRuntime<TContext extends Record<string, any> = Record<stri
 		this.environment = options.environment || 'development'
 		this.eventBus = options.eventBus || new NullEventBus()
 		this.conditionEvaluator = options.conditionEvaluator || new DefaultConditionEvaluator()
+		this.serializer = options.serializer || new JsonSerializer()
 		this.compiledFlows = new Map()
 		this.blueprintCache = new Map()
 	}
@@ -125,42 +141,59 @@ export class FlowcraftRuntime<TContext extends Record<string, any> = Record<stri
 		blueprint: WorkflowBlueprint,
 		initialContext: Partial<TContext> = {},
 		functionRegistry?: Map<string, any>,
+		signal?: AbortSignal,
 	): Promise<WorkflowResult<TContext>> {
 		const startTime = new Date()
 		const executionId = randomUUID()
 		let finalContext: Context<TContext> | undefined
-		let status: 'completed' | 'failed' = 'completed'
-		let finalError: NodeExecutionError | undefined
+		let status: 'completed' | 'failed' | 'cancelled' = 'completed'
+		let finalError: NodeExecutionError | CancelledWorkflowError | undefined
 
-		await this.eventBus.emit('workflow:start', {
-			executionId,
-			blueprintId: blueprint.id,
-			initialContext,
-		})
-
-		try {
-			const executableFlow = await this.getOrCompileFlow(blueprint, functionRegistry)
-			const metadata: ExecutionMetadata = {
+		// Handle immediate cancellation
+		if (signal?.aborted) {
+			const err = new CancelledWorkflowError('Workflow cancelled before execution could start.', executionId)
+			// Even though we throw, we still want to emit the lifecycle events.
+			status = 'cancelled'
+			finalError = err
+		}
+		else {
+			await this.eventBus.emit('workflow:start', {
 				executionId,
 				blueprintId: blueprint.id,
-				currentNodeId: '',
-				startedAt: startTime,
-				environment: this.environment,
-			}
-			const context = createContext<TContext>(initialContext, metadata)
-			finalContext = await executableFlow.execute(context)
-		}
-		catch (error) {
-			status = 'failed'
-			finalError = error instanceof NodeExecutionError
-				? error
-				: new NodeExecutionError(
-					error instanceof Error ? error.message : 'Unknown workflow error',
-					'workflow_runtime',
-					blueprint.id,
+				initialContext,
+			})
+
+			try {
+				const executableFlow = await this.getOrCompileFlow(blueprint, functionRegistry)
+				const metadata: ExecutionMetadata = {
 					executionId,
-					error instanceof Error ? error : undefined,
-				)
+					blueprintId: blueprint.id,
+					currentNodeId: '',
+					startedAt: startTime,
+					environment: this.environment,
+					signal,
+				}
+				const context = createContext<TContext>(initialContext, metadata)
+				finalContext = await executableFlow.execute(context)
+			}
+			catch (error) {
+				if (error instanceof CancelledWorkflowError) {
+					status = 'cancelled'
+					finalError = error
+				}
+				else {
+					status = 'failed'
+					finalError = error instanceof NodeExecutionError
+						? error
+						: new NodeExecutionError(
+							error instanceof Error ? error.message : 'Unknown workflow error',
+							'workflow_runtime',
+							blueprint.id,
+							executionId,
+							error instanceof Error ? error : undefined,
+						)
+				}
+			}
 		}
 
 		const endTime = new Date()
@@ -175,7 +208,7 @@ export class FlowcraftRuntime<TContext extends Record<string, any> = Record<stri
 				status,
 				error: finalError
 					? {
-							nodeId: finalError.nodeId,
+							nodeId: finalError instanceof NodeExecutionError ? finalError.nodeId : 'workflow_runtime',
 							message: finalError.message,
 							details: finalError,
 						}
@@ -185,7 +218,7 @@ export class FlowcraftRuntime<TContext extends Record<string, any> = Record<stri
 
 		await this.eventBus.emit('workflow:finish', result)
 
-		if (status === 'failed' && finalError) {
+		if (finalError) {
 			throw finalError
 		}
 		return result
@@ -262,7 +295,7 @@ export class FlowcraftRuntime<TContext extends Record<string, any> = Record<stri
 		// find the start node (node with no incoming edges)
 		const startNode = this.findStartNode(nodeMap, blueprint.edges)
 
-		return new ExecutableFlow<TContext>(startNode, nodeMap, this)
+		return new ExecutableFlow<TContext>(startNode, nodeMap, this, functionRegistry)
 	}
 
 	/**
@@ -272,6 +305,7 @@ export class FlowcraftRuntime<TContext extends Record<string, any> = Record<stri
 		nodeDef: Pick<NodeDefinition, 'id' | 'uses'>,
 		functionRegistry: Map<string, any>,
 	): any {
+		// Added 'subflow' to built-in nodes
 		const builtInNodes = ['parallel-container', 'batch-processor', 'loop-controller', 'subflow']
 		if (builtInNodes.includes(nodeDef.uses)) {
 			// Built-in nodes are handled by name in the executor
@@ -360,6 +394,10 @@ export class FlowcraftRuntime<TContext extends Record<string, any> = Record<stri
 		return this.conditionEvaluator
 	}
 
+	getSerializer(): ISerializer {
+		return this.serializer
+	}
+
 	/**
 	 * Clear the compiled flow cache
 	 */
@@ -404,17 +442,20 @@ class ExecutableFlow<TContext extends Record<string, any>> {
 	private runtime: FlowcraftRuntime<TContext>
 	private eventBus: IEventBus
 	private conditionEvaluator: IConditionEvaluator
+	private functionRegistry: Map<string, any>
 
 	constructor(
 		startNode: CompiledNode,
 		nodeMap: Map<string, CompiledNode>,
 		runtime: FlowcraftRuntime<TContext>,
+		functionRegistry: Map<string, any>,
 	) {
 		this.startNode = startNode
 		this.nodeMap = nodeMap
 		this.runtime = runtime
 		this.eventBus = runtime.getEventBus()
 		this.conditionEvaluator = runtime.getConditionEvaluator()
+		this.functionRegistry = functionRegistry
 	}
 
 	/**
@@ -425,6 +466,11 @@ class ExecutableFlow<TContext extends Record<string, any>> {
 		let currentContext = context
 
 		while (currentNode) {
+			// Check for cancellation before each node
+			if (currentContext.getMetadata().signal?.aborted) {
+				throw new CancelledWorkflowError('Workflow execution cancelled.', currentContext.getMetadata().executionId)
+			}
+
 			// update metadata for the current node
 			currentContext = currentContext.withMetadata({
 				currentNodeId: currentNode.id,
@@ -459,6 +505,10 @@ class ExecutableFlow<TContext extends Record<string, any>> {
 		try {
 			for (let attempt = 1; attempt <= maxRetries; attempt++) {
 				try {
+					// Check for cancellation before each attempt
+					if (context.getMetadata().signal?.aborted) {
+						throw new Error('Operation aborted.') // Generic error to be caught and converted
+					}
 					const executionPromise = this.executeNode(node, context)
 					const result = timeout
 						? await Promise.race([
@@ -482,6 +532,10 @@ class ExecutableFlow<TContext extends Record<string, any>> {
 					return result
 				}
 				catch (error) {
+					// If it's an abort, break the retry loop and re-throw.
+					if (error instanceof Error && (error.name === 'AbortError' || error.message === 'Operation aborted.')) {
+						throw error
+					}
 					lastError = error instanceof Error ? error : new Error('Unknown error during node execution')
 					if (attempt < maxRetries) {
 						await this.eventBus.emit('node:retry', {
@@ -519,6 +573,10 @@ class ExecutableFlow<TContext extends Record<string, any>> {
 			throw lastError
 		}
 		catch (error) {
+			// Convert abort-style errors into the official CancelledWorkflowError
+			if (error instanceof Error && (error.name === 'AbortError' || error.message === 'Operation aborted.')) {
+				throw new CancelledWorkflowError('Node execution cancelled.', executionId)
+			}
 			const finalError = error instanceof Error ? error : new Error('Unknown error')
 			await this.eventBus.emit('node:error', {
 				executionId,
@@ -540,6 +598,10 @@ class ExecutableFlow<TContext extends Record<string, any>> {
 		// Built-in structural nodes
 		if (node.implementation === 'parallel-container') {
 			return this._executeParallelContainer(node, context)
+		}
+		// Handle sub-workflows
+		if (node.implementation === 'subflow') {
+			return this._executeSubflow(node, context)
 		}
 
 		// Standard node implementation (function or class)
@@ -571,6 +633,55 @@ class ExecutableFlow<TContext extends Record<string, any>> {
 	}
 
 	/**
+	 * Executes a sub-workflow blueprint.
+	 */
+	private async _executeSubflow(node: CompiledNode, parentContext: Context<TContext>): Promise<NodeResult> {
+		const { blueprintId, inputs = {}, outputs = {} } = node.params
+		if (!blueprintId) {
+			return { error: { message: `Subflow node '${node.id}' is missing 'blueprintId' in its params.` } }
+		}
+
+		const subBlueprint = this.runtime.getBlueprint(blueprintId)
+		if (!subBlueprint) {
+			return { error: { message: `Sub-workflow blueprint with ID '${blueprintId}' not found.` } }
+		}
+
+		// Create a scoped context for the sub-workflow
+		const subContextData: Record<string, any> = {}
+		// Apply input mappings
+		for (const [subKey, parentKey] of Object.entries(inputs)) {
+			if (parentContext.has(parentKey as any)) {
+				subContextData[subKey] = parentContext.get(parentKey as any)
+			}
+		}
+
+		// Run the sub-workflow. It inherits the signal from the parent.
+		const subResult = await this.runtime.run(
+			subBlueprint,
+			subContextData as Partial<TContext>,
+			this.functionRegistry, // Pass the combined function registry
+			parentContext.getMetadata().signal,
+		)
+
+		if (subResult.metadata.status === 'failed' || subResult.metadata.status === 'cancelled') {
+			// Propagate the error
+			throw subResult.metadata.error?.details
+		}
+
+		const subFinalContext = createContext(subResult.context, parentContext.getMetadata())
+
+		// Apply output mappings
+		for (const [parentKey, subKey] of Object.entries(outputs)) {
+			if (subFinalContext.has(subKey as any)) {
+				parentContext.set(parentKey as any, subFinalContext.get(subKey as any))
+			}
+		}
+
+		// The final 'input' of the sub-workflow's context becomes the output of this node
+		return { output: subFinalContext.get('input' as any) }
+	}
+
+	/**
 	 * Executes the branches of a parallel container and aggregates results.
 	 */
 	private async _executeParallelContainer(node: CompiledNode, context: Context<TContext>): Promise<NodeResult> {
@@ -584,7 +695,7 @@ class ExecutableFlow<TContext extends Record<string, any>> {
 		const promises = branchNodes.map(branchNode =>
 			// Execute each branch as a new, independent "mini-flow" starting from that node.
 			// Each branch gets a clean scope of the context to avoid side-effect race conditions.
-			new ExecutableFlow(branchNode, this.nodeMap, this.runtime).execute(context.createScope()),
+			new ExecutableFlow(branchNode, this.nodeMap, this.runtime, this.functionRegistry).execute(context.createScope()),
 		)
 
 		const settledResults = await Promise.allSettled(promises)

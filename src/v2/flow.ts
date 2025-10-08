@@ -77,6 +77,30 @@ export class Flow<TContext extends Record<string, any> = Record<string, any>> {
 	}
 
 	/**
+	 * Add a sub-workflow execution node.
+	 * @param id The ID for this sub-workflow node in the parent flow.
+	 * @param blueprintId The ID of the blueprint to execute.
+	 * @param options Mappings for passing data between the parent and sub-workflow contexts.
+	 * @param options.inputs Mapping of sub-workflow input keys to parent context keys.
+	 * @param options.outputs Mapping of parent context keys to sub-workflow output keys.
+	 */
+	subflow(
+		id: string,
+		blueprintId: string,
+		options?: {
+			inputs?: Record<string, string>
+			outputs?: Record<string, string>
+		},
+	): this {
+		this.node(id, 'subflow', {
+			blueprintId,
+			inputs: options?.inputs,
+			outputs: options?.outputs,
+		})
+		return this
+	}
+
+	/**
 	 * Add an edge between nodes
 	 */
 	edge(

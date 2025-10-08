@@ -20,3 +20,16 @@ export class NodeExecutionError extends Error {
 			this.stack = `${this.stack}\nCaused by: ${originalError.stack}`
 	}
 }
+
+/**
+ * Error thrown when a workflow is gracefully aborted via an AbortSignal.
+ */
+export class CancelledWorkflowError extends Error {
+	constructor(
+		message = 'Workflow execution was cancelled',
+		public readonly executionId: string,
+	) {
+		super(message)
+		this.name = 'CancelledWorkflowError'
+	}
+}
