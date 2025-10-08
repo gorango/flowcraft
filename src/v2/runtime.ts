@@ -1,7 +1,10 @@
 import type { Context } from './context.js'
 import type {
 	ExecutionMetadata,
+	IEventBus,
+	ISerializer,
 	NodeContext,
+	NodeDefinition,
 	NodeRegistry,
 	NodeResult,
 	RuntimeDependencies,
@@ -11,6 +14,23 @@ import type {
 } from './types.js'
 import { randomUUID } from 'node:crypto'
 import { createContext } from './context.js'
+import { NodeExecutionError } from './errors.js'
+
+/** A default event bus that does nothing, ensuring the framework is silent by default. */
+class NullEventBus implements IEventBus {
+	emit() { /* no-op */ }
+}
+
+/** A default serializer using standard JSON, keeping the core dependency-free. */
+class JsonSerializer implements ISerializer {
+	serialize(data: Record<string, any>): string {
+		return JSON.stringify(data)
+	}
+
+	deserialize(text: string): Record<string, any> {
+		return JSON.parse(text)
+	}
+}
 
 /**
  * The unified runtime engine for Flowcraft V2
@@ -23,12 +43,16 @@ export class FlowcraftRuntime<TContext extends Record<string, any> = Record<stri
 	private environment: 'development' | 'staging' | 'production'
 	private compiledFlows: Map<string, ExecutableFlow<TContext>>
 	private blueprintCache: Map<string, WorkflowBlueprint>
+	private eventBus: IEventBus
+	private serializer: ISerializer
 
 	constructor(options: RuntimeOptions) {
 		this.registry = options.registry
 		this.dependencies = options.dependencies || {}
 		this.defaultNodeConfig = options.defaultNodeConfig || {}
 		this.environment = options.environment || 'development'
+		this.eventBus = options.eventBus || new NullEventBus()
+		this.serializer = options.serializer || new JsonSerializer()
 		this.compiledFlows = new Map()
 		this.blueprintCache = new Map()
 	}
@@ -43,6 +67,15 @@ export class FlowcraftRuntime<TContext extends Record<string, any> = Record<stri
 	): Promise<WorkflowResult<TContext>> {
 		const startTime = new Date()
 		const executionId = randomUUID()
+		let finalContext: Context<TContext> | undefined
+		let status: 'completed' | 'failed' = 'completed'
+		let finalError: NodeExecutionError | undefined
+
+		await this.eventBus.emit('workflow:start', {
+			executionId,
+			blueprintId: blueprint.id,
+			initialContext,
+		})
 
 		try {
 			// get or compile the executable flow
@@ -60,48 +93,43 @@ export class FlowcraftRuntime<TContext extends Record<string, any> = Record<stri
 			const context = createContext<TContext>(initialContext, metadata)
 
 			// execute the flow
-			const finalContext = await executableFlow.execute(context)
-
-			const endTime = new Date()
-			return {
-				context: finalContext.toJSON() as any,
-				metadata: {
-					executionId,
-					blueprintId: blueprint.id,
-					startedAt: startTime,
-					completedAt: endTime,
-					duration: endTime.getTime() - startTime.getTime(),
-					status: 'completed',
-				},
-			}
+			finalContext = await executableFlow.execute(context)
 		}
 		catch (error) {
+			status = 'failed'
+			finalError = error instanceof NodeExecutionError
+				? error
+				: new NodeExecutionError(
+					error instanceof Error ? error.message : 'Unknown workflow error',
+					'workflow_runtime',
+					blueprint.id,
+					executionId,
+					error instanceof Error ? error : undefined,
+				)
+		}
+		finally {
 			const endTime = new Date()
-			const errorMessage = error instanceof Error ? error.message : 'Unknown error'
-
-			// try to extract node ID from error message
-			let nodeId = 'unknown'
-			const nodeMatch = errorMessage.match(/Node (\w+) failed:/)
-			if (nodeMatch) {
-				nodeId = nodeMatch[1]
-			}
-
-			return {
-				context: initialContext as any,
+			const result: WorkflowResult<TContext> = {
+				context: finalContext?.toJSON() as TContext ?? initialContext as TContext,
 				metadata: {
 					executionId,
 					blueprintId: blueprint.id,
 					startedAt: startTime,
 					completedAt: endTime,
 					duration: endTime.getTime() - startTime.getTime(),
-					status: 'failed',
-					error: {
-						nodeId,
-						message: errorMessage,
-						details: error,
-					},
+					status,
+					error: finalError
+						? { nodeId: finalError.nodeId, message: finalError.message, details: finalError }
+						: undefined,
 				},
 			}
+
+			await this.eventBus.emit('workflow:finish', result)
+			if (status === 'failed' && finalError) {
+				// Re-throw the error after logging to allow for programmatic catching
+				throw finalError
+			}
+			return result
 		}
 	}
 
@@ -134,9 +162,14 @@ export class FlowcraftRuntime<TContext extends Record<string, any> = Record<stri
 		// first pass: create compiled nodes
 		for (const nodeDef of blueprint.nodes) {
 			const implementation = this.findNodeImplementation(nodeDef, functionRegistry)
+			const fallbackImplementation = nodeDef.config?.fallback
+				? this.findNodeImplementation({ id: nodeDef.id, uses: nodeDef.config.fallback }, functionRegistry)
+				: undefined
+
 			const compiledNode: CompiledNode = {
 				id: nodeDef.id,
 				implementation,
+				fallbackImplementation,
 				params: nodeDef.params || {},
 				config: { ...this.defaultNodeConfig, ...nodeDef.config },
 				nextNodes: [],
@@ -175,7 +208,7 @@ export class FlowcraftRuntime<TContext extends Record<string, any> = Record<stri
 	 * Find the implementation for a given node definition
 	 */
 	private findNodeImplementation(
-		nodeDef: any,
+		nodeDef: Pick<NodeDefinition, 'id' | 'uses'>,
 		functionRegistry: Map<string, any>,
 	): any {
 		const builtInNodes = ['parallel-container', 'batch-processor', 'loop-controller', 'subflow']
@@ -188,7 +221,7 @@ export class FlowcraftRuntime<TContext extends Record<string, any> = Record<stri
 		if (functionRegistry.has(nodeDef.uses)) {
 			return functionRegistry.get(nodeDef.uses)
 		}
-		throw new Error(`Node implementation '${nodeDef.uses}' not found`)
+		throw new Error(`Node implementation '${nodeDef.uses}' for node '${nodeDef.id}' not found in any registry.`)
 	}
 
 	/**
@@ -201,22 +234,11 @@ export class FlowcraftRuntime<TContext extends Record<string, any> = Record<stri
 		const targetNodes = new Set(edges.map(e => e.target))
 		const startNodes = Array.from(nodeMap.values()).filter(node => !targetNodes.has(node.id))
 
-		if (startNodes.length === 0) {
-			throw new Error('No start node found - all nodes have incoming edges')
-		}
-		if (startNodes.length > 1) {
-			// this is a valid scenario for parallel workflows, so we don't throw an error.
-			// the execution logic will handle it. We can pick the first one as a nominal start.
+		if (startNodes.length === 0 && nodeMap.size > 0) {
+			throw new Error('No start node found - all nodes have incoming edges (cycle detected).')
 		}
 
 		return startNodes[0]
-	}
-
-	/**
-	 * Get runtime dependencies
-	 */
-	getDependencies(): RuntimeDependencies {
-		return this.dependencies
 	}
 
 	/**
@@ -231,6 +253,20 @@ export class FlowcraftRuntime<TContext extends Record<string, any> = Record<stri
 	 */
 	getBlueprint(id: string): WorkflowBlueprint | undefined {
 		return this.blueprintCache.get(id)
+	}
+
+	/**
+	 * Get runtime dependencies
+	 */
+	getDependencies(): RuntimeDependencies {
+		return this.dependencies
+	}
+
+	/**
+	 * Get the configured event bus
+	 */
+	getEventBus(): IEventBus {
+		return this.eventBus
 	}
 
 	/**
@@ -257,6 +293,7 @@ export class FlowcraftRuntime<TContext extends Record<string, any> = Record<stri
 interface CompiledNode {
 	id: string
 	implementation: any
+	fallbackImplementation?: any
 	params: Record<string, any>
 	config: any
 	nextNodes: Array<{
@@ -274,6 +311,7 @@ class ExecutableFlow<TContext extends Record<string, any>> {
 	private startNode: CompiledNode
 	private nodeMap: Map<string, CompiledNode>
 	private runtime: FlowcraftRuntime<TContext>
+	private eventBus: IEventBus
 
 	constructor(
 		startNode: CompiledNode,
@@ -283,6 +321,7 @@ class ExecutableFlow<TContext extends Record<string, any>> {
 		this.startNode = startNode
 		this.nodeMap = nodeMap
 		this.runtime = runtime
+		this.eventBus = runtime.getEventBus()
 	}
 
 	/**
@@ -293,17 +332,13 @@ class ExecutableFlow<TContext extends Record<string, any>> {
 		let currentContext = context
 
 		while (currentNode) {
-			// update metadata
+			// update metadata for the current node
 			currentContext = currentContext.withMetadata({
 				currentNodeId: currentNode.id,
 			})
 
-			// execute the node
-			const result = await this.executeNode(currentNode, currentContext)
-
-			if (result.error) {
-				throw new Error(`Node ${currentNode.id} failed: ${result.error.message}`)
-			}
+			// execute the node with resiliency
+			const result = await this._executeNodeWithResiliency(currentNode, currentContext)
 
 			// determine next node based on result
 			currentNode = this.getNextNode(currentNode, result)
@@ -318,316 +353,122 @@ class ExecutableFlow<TContext extends Record<string, any>> {
 	}
 
 	/**
-	 * Execute a single node
+	 * Wraps the execution of a single node with resiliency logic (retries, fallback, timeout).
+	 */
+	private async _executeNodeWithResiliency(node: CompiledNode, context: Context<TContext>): Promise<NodeResult> {
+		const { maxRetries = 1, retryDelay = 0, timeout, fallback } = node.config
+		let lastError: Error | undefined
+		const executionId = context.getMetadata().executionId
+
+		await this.eventBus.emit('node:start', { executionId, nodeId: node.id })
+		const startTime = Date.now()
+
+		try {
+			for (let attempt = 1; attempt <= maxRetries; attempt++) {
+				try {
+					const executionPromise = this.executeNode(node, context)
+					const result = timeout
+						? await Promise.race([
+								executionPromise,
+								new Promise<NodeResult>((_, reject) =>
+									setTimeout(() => reject(new Error('Node execution timed out')), timeout),
+								),
+							])
+						: await executionPromise
+
+					if (result.error) {
+						throw new Error(result.error.message) // Propagate node-level error for retry
+					}
+
+					await this.eventBus.emit('node:finish', {
+						executionId,
+						nodeId: node.id,
+						duration: Date.now() - startTime,
+						result,
+					})
+					return result
+				}
+				catch (error) {
+					lastError = error instanceof Error ? error : new Error('Unknown error during node execution')
+					if (attempt < maxRetries) {
+						await this.eventBus.emit('node:retry', {
+							executionId,
+							nodeId: node.id,
+							attempt,
+							maxRetries,
+							error: lastError.message,
+						})
+						if (retryDelay > 0) {
+							await new Promise(resolve => setTimeout(resolve, retryDelay))
+						}
+					}
+				}
+			}
+
+			// All retries failed, attempt fallback
+			await this.eventBus.emit('node:fallback', { executionId, nodeId: node.id, error: lastError?.message })
+			if (node.fallbackImplementation) {
+				const fallbackResult = await this.executeNode(
+					{ ...node, implementation: node.fallbackImplementation },
+					context,
+				)
+				await this.eventBus.emit('node:finish', {
+					executionId,
+					nodeId: node.id,
+					duration: Date.now() - startTime,
+					result: fallbackResult,
+					isFallback: true,
+				})
+				return fallbackResult
+			}
+
+			// No fallback, throw the final error
+			throw lastError
+		}
+		catch (error) {
+			const finalError = error instanceof Error ? error : new Error('Unknown error')
+			await this.eventBus.emit('node:error', {
+				executionId,
+				nodeId: node.id,
+				duration: Date.now() - startTime,
+				error: finalError.message,
+			})
+			throw new NodeExecutionError(finalError.message, node.id, context.getMetadata().blueprintId, executionId, finalError)
+		}
+	}
+
+	/**
+	 * Execute a single node's core logic.
 	 */
 	private async executeNode(
 		node: CompiledNode,
 		context: Context<TContext>,
 	): Promise<NodeResult> {
-		try {
-			// create the plain object accessor for the node implementation
-			const nodeContext: NodeContext<TContext> = {
-				get: (key: keyof TContext) => context.get(key as string) as TContext[keyof TContext],
-				set: (key: keyof TContext, value: TContext[keyof TContext]) => context.set(key as string, value),
-				has: (key: keyof TContext) => context.has(key as string),
-				keys: () => context.keys() as (keyof TContext)[],
-				values: () => context.values() as TContext[],
-				entries: () => context.entries() as [keyof TContext, TContext][],
-				input: context.get('input' as any),
-				metadata: context.getMetadata(),
-				dependencies: this.runtime.getDependencies(),
-			}
-
-			// execute based on implementation type
-			if (node.implementation === 'subflow') {
-				return await this.executeSubflow(node, context)
-			}
-			else if (node.implementation === 'parallel-container') {
-				return await this.executeParallelContainer(node, context)
-			}
-			else if (node.implementation === 'batch-processor') {
-				return await this.executeBatchProcessor(node, context)
-			}
-			else if (node.implementation === 'loop-controller') {
-				return await this.executeLoopController(node, context)
-			}
-			else if (typeof node.implementation === 'function') {
-				if (node.implementation.prototype?.execute) {
-					// class-based node
-					const instance = new node.implementation(node.params) // eslint-disable-line new-cap
-					return await instance.execute(nodeContext)
-				}
-				else {
-					// function-based node
-					return await node.implementation(nodeContext)
-				}
-			}
-
-			throw new Error(`Unknown node implementation type for ${node.id}`)
-		}
-		catch (error) {
-			return {
-				error: {
-					message: error instanceof Error ? error.message : 'Unknown error',
-					details: error,
-				},
-			}
-		}
-	}
-
-	/**
-	 * Execute a parallel container node
-	 */
-	private async executeParallelContainer(node: CompiledNode, context: Context<TContext>): Promise<NodeResult> {
-		const params = node.params || {}
-		const sources = params.sources || []
-		const strategy = params.strategy || 'all'
-
-		try {
-			const sourceNodes = sources
-				.map((sourceId: string) => this.nodeMap.get(sourceId))
-				.filter((n: CompiledNode | undefined): n is CompiledNode => n !== undefined)
-
-			if (sourceNodes.length === 0) {
-				return { output: [] }
-			}
-
-			const promises = sourceNodes.map(async (sourceNode: any) => {
-				const branchContext = context.createScope()
-				const result = await this.executeNode(sourceNode, branchContext)
-				return { nodeId: sourceNode.id, result }
-			})
-
-			const results = await Promise.all(promises)
-
-			if (strategy === 'all') {
-				const firstError = results.find(r => r.result.error)
-				if (firstError) {
-					return {
-						error: {
-							message: `Parallel execution failed in node '${firstError.nodeId}': ${firstError.result.error?.message}`,
-							details: firstError.result.error?.details,
-						},
-					}
-				}
-			}
-
-			switch (strategy) {
-				case 'all':
-					return { output: results.map(r => r.result) }
-				case 'any': {
-					const successful = results.find(r => !r.result.error)
-					return successful ? { output: successful.result } : { error: { message: 'All parallel executions failed' } }
-				}
-				case 'race':
-					return { output: results[0]?.result }
-				default:
-					return { error: { message: `Unknown parallel strategy: ${strategy}` } }
-			}
-		}
-		catch (error) {
-			return {
-				error: {
-					message: `Parallel execution failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
-				},
-			}
-		}
-	}
-
-	/**
-	 * Execute a batch processor node
-	 */
-	private async executeBatchProcessor(node: CompiledNode, context: Context<TContext>): Promise<NodeResult> {
-		const params = node.params || {}
-		const batchSize = params.batchSize || 10
-		const concurrency = params.concurrency || 1
-		const timeout = params.timeout
-		const input = context.get('input' as any)
-
-		try {
-			if (!Array.isArray(input)) {
-				return { error: { message: 'Batch processor requires array input' } }
-			}
-
-			const batches: any[][] = []
-			for (let i = 0; i < input.length; i += batchSize) {
-				batches.push(input.slice(i, i + batchSize))
-			}
-
-			const results: any[] = []
-			for (let i = 0; i < batches.length; i += concurrency) {
-				const batchPromises = batches.slice(i, i + concurrency).map(async (batch) => {
-					const batchContext = context.createScope({ input: batch } as any)
-					const nextNode = node.nextNodes?.[0]?.node
-					if (nextNode) {
-						return await this.executeNode(nextNode, batchContext)
-					}
-					return { output: batch }
-				})
-
-				const batchResults = await Promise.all(batchPromises)
-				results.push(...batchResults)
-
-				if (timeout && (Date.now() - (context.getMetadata().startedAt?.getTime() || 0)) > timeout) {
-					return { error: { message: 'Batch processing timeout' } }
-				}
-			}
-
-			return { output: results }
-		}
-		catch (error) {
-			return {
-				error: {
-					message: `Batch processing failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
-				},
-			}
-		}
-	}
-
-	/**
-	 * Execute a loop controller node
-	 */
-	private async executeLoopController(node: CompiledNode, context: Context<TContext>): Promise<NodeResult> {
-		const params = node.params || {}
-		const maxIterations = params.maxIterations || 100
-		const condition = params.condition
-		const timeout = params.timeout
-
-		try {
-			let iterations = 0
-			let iterationContext = context
-
-			while (iterations < maxIterations) {
-				if (timeout && (Date.now() - (context.getMetadata().startedAt?.getTime() || 0)) > timeout) {
-					return { action: 'break', output: { iterations, reason: 'timeout' } }
-				}
-
-				if (condition) {
-					const nodeContextProxy = { get: (key: any) => iterationContext.get(key) }
-					const conditionMet = await this.evaluateCondition(condition, nodeContextProxy as any)
-					if (!conditionMet) {
-						return { action: 'break', output: { iterations, reason: 'condition_not_met' } }
-					}
-				}
-
-				const loopBodyNode = node.nextNodes?.find(edge => edge.action === 'continue')?.node
-				if (loopBodyNode) {
-					const result = await this.executeNode(loopBodyNode, iterationContext)
-					if (result.error) {
-						return { action: 'break', error: result.error }
-					}
-
-					iterationContext = iterationContext.createScope({ input: result.output } as any)
-
-					if (result.action === 'break') {
-						return { action: 'break', output: iterationContext.get('input' as any) }
-					}
-				}
-				else {
-					// no loop body, break to prevent infinite loop
-					return { action: 'break', output: { iterations, reason: 'no_loop_body' } }
-				}
-
-				iterations++
-			}
-
-			return { action: 'break', output: { iterations, reason: 'max_iterations_reached' } }
-		}
-		catch (error) {
-			return {
-				action: 'break',
-				error: {
-					message: `Loop execution failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
-				},
-			}
-		}
-	}
-
-	/**
-	 * Evaluate a condition expression
-	 */
-	private async evaluateCondition(condition: string, context: NodeContext<TContext>): Promise<boolean> {
-		try {
-			const parts = condition.split(' ')
-			if (parts.length === 1) {
-				return Boolean(context.get(parts[0] as keyof TContext))
-			}
-
-			if (parts.length === 3) {
-				const left = context.get(parts[0] as keyof TContext)
-				const operator = parts[1]
-				const rightStr = parts[2]
-				const right = !isNaN(Number.parseFloat(rightStr)) ? Number.parseFloat(rightStr) : rightStr // eslint-disable-line unicorn/prefer-number-properties
-
-				switch (operator) {
-					case '>': return (left as any) > right
-					case '<': return (left as any) < right
-					case '>=': return (left as any) >= right
-					case '<=': return (left as any) <= right
-					case '==': return (left as any) == right // eslint-disable-line eqeqeq
-					case '===': return (left as any) === right
-				}
-			}
-			return false
-		}
-		catch {
-			return false
-		}
-	}
-
-	/**
-	 * Execute a subflow node
-	 */
-	private async executeSubflow(node: CompiledNode, context: Context<TContext>): Promise<NodeResult> {
-		const params = node.params || {}
-		const subBlueprintId = params.blueprintId
-
-		if (!subBlueprintId) {
-			return { error: { message: 'Subflow node missing blueprintId parameter' } }
+		const nodeContext: NodeContext<TContext> = {
+			get: (key: keyof TContext) => context.get(key as string) as TContext[keyof TContext],
+			set: (key: keyof TContext, value: TContext[keyof TContext]) => context.set(key as string, value),
+			has: (key: keyof TContext) => context.has(key as string),
+			keys: () => context.keys() as (keyof TContext)[],
+			values: () => context.values() as any[],
+			entries: () => context.entries() as [keyof TContext, any][],
+			input: context.get('input' as any),
+			metadata: context.getMetadata(),
+			dependencies: this.runtime.getDependencies(),
 		}
 
-		const subBlueprint = this.runtime.getBlueprint(subBlueprintId)
-		if (!subBlueprint) {
-			return { error: { message: `Subflow blueprint '${subBlueprintId}' not found` } }
-		}
-
-		try {
-			const inputMapping = (params.inputs || {}) as Record<string, string>
-			const outputMapping = (params.outputs || {}) as Record<string, string>
-			const subflowInitialContext: Record<string, any> = {}
-
-			for (const [subflowKey, parentKey] of Object.entries(inputMapping)) {
-				const value = context.get(parentKey as keyof TContext)
-				if (value !== undefined) {
-					subflowInitialContext[subflowKey] = value
-				}
+		if (typeof node.implementation === 'function') {
+			if (node.implementation.prototype?.execute) {
+				// class-based node
+				const instance = new node.implementation(node.params) // eslint-disable-line new-cap
+				return await instance.execute(nodeContext)
 			}
-
-			const subflowResult = await this.runtime.run(subBlueprint, subflowInitialContext as any)
-
-			if (subflowResult.metadata.status === 'failed') {
-				return { error: { message: `Subflow '${subBlueprintId}' failed: ${subflowResult.metadata.error?.message}` } }
-			}
-
-			for (const [parentKey, subflowKey] of Object.entries(outputMapping)) {
-				const value = (subflowResult.context as any)[subflowKey]
-				if (value !== undefined) {
-					context.set(parentKey as keyof TContext, value)
-				}
-			}
-
-			return {
-				output: subflowResult.context as any,
-				metadata: { subflowExecutionId: subflowResult.metadata.executionId },
+			else {
+				// function-based node
+				return await node.implementation(nodeContext)
 			}
 		}
-		catch (error) {
-			return {
-				error: {
-					message: `Subflow execution failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
-				},
-			}
-		}
+
+		throw new Error(`Unknown node implementation type for ${node.id}`)
 	}
 
 	/**

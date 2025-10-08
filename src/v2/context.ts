@@ -2,7 +2,8 @@ import type { ExecutionMetadata } from './types.js'
 
 /**
  * Synchronous context implementation for Flowcraft V2
- * Provides type-safe access to workflow state with serialization support
+ * Provides type-safe access to workflow state.
+ * Serialization for complex types is handled by a pluggable serializer in the Runtime.
  */
 export class Context<TContext extends Record<string, any> = Record<string, any>> {
 	private data: Map<string, any>
@@ -73,42 +74,34 @@ export class Context<TContext extends Record<string, any> = Record<string, any>>
 	}
 
 	/**
-	 * Convert context to a plain object for serialization
+	 * Convert context to a plain object. This is the default serialization method.
 	 */
 	toJSON(): Record<string, any> {
-		const obj: Record<string, any> = {}
-		for (const [key, value] of this.data.entries()) {
-			obj[String(key)] = this.serializeValue(value)
-		}
-		return obj
+		return Object.fromEntries(this.data)
 	}
 
 	/**
-	 * Create a context from a plain object
+	 * Create a context from a plain object. This is the default deserialization method.
 	 */
 	static fromJSON<TContext extends Record<string, any>>(
 		data: Record<string, any>,
 		metadata: ExecutionMetadata,
 	): Context<TContext> {
-		const obj: Record<string, any> = {}
-		for (const [key, value] of Object.entries(data)) {
-			obj[key] = this.deserializeValue(value)
-		}
-		return new Context<TContext>(obj as any, metadata)
+		return new Context<TContext>(data as any, metadata)
 	}
 
 	/**
 	 * Create a new context with updated metadata
 	 */
 	withMetadata(metadata: Partial<ExecutionMetadata>): Context<TContext> {
-		return new Context<TContext>(this.toJSON() as Partial<TContext>, { ...this.metadata, ...metadata })
+		return new Context<TContext>(Object.fromEntries(this.data) as Partial<TContext>, { ...this.metadata, ...metadata })
 	}
 
 	/**
 	 * Create a scoped context for sub-workflows
 	 */
 	createScope(additionalData: Record<string, any> = {}): Context<TContext> {
-		const currentData = this.toJSON()
+		const currentData = Object.fromEntries(this.data)
 		const mergedData = { ...currentData, ...additionalData }
 		return new Context<TContext>(mergedData as Partial<TContext>, this.metadata)
 	}
@@ -118,74 +111,6 @@ export class Context<TContext extends Record<string, any> = Record<string, any>>
 	 */
 	getMetadata(): ExecutionMetadata {
 		return this.metadata
-	}
-
-	/**
-	 * Serialize a value for JSON storage
-	 * This is a basic implementation - can be enhanced with superjson later
-	 */
-	private serializeValue(value: any): any {
-		if (value === null || value === undefined) {
-			return value
-		}
-
-		if (typeof value === 'object') {
-			// Handle Date objects
-			if (value instanceof Date) {
-				return { __type: 'Date', value: value.toISOString() }
-			}
-
-			// Handle Map objects
-			if (value instanceof Map) {
-				return { __type: 'Map', value: Array.from(value.entries()) }
-			}
-
-			// Handle Set objects
-			if (value instanceof Set) {
-				return { __type: 'Set', value: Array.from(value) }
-			}
-
-			// Handle RegExp objects
-			if (value instanceof RegExp) {
-				return { __type: 'RegExp', value: { source: value.source, flags: value.flags } }
-			}
-
-			// Handle Error objects
-			if (value instanceof Error) {
-				return { __type: 'Error', value: { message: value.message, stack: value.stack } }
-			}
-		}
-
-		return value
-	}
-
-	/**
-	 * Deserialize a value from JSON storage
-	 */
-	private static deserializeValue(value: any): any {
-		if (value === null || value === undefined) {
-			return value
-		}
-
-		if (typeof value === 'object' && value.__type) {
-			switch (value.__type) {
-				case 'Date':
-					return new Date(value.value)
-				case 'Map':
-					return new Map(value.value)
-				case 'Set':
-					return new Set(value.value)
-				case 'RegExp':
-					return new RegExp(value.value.source, value.value.flags)
-				case 'Error': {
-					const error = new Error(value.value.message)
-					error.stack = value.value.stack
-					return error
-				}
-			}
-		}
-
-		return value
 	}
 }
 

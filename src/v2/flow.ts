@@ -47,8 +47,8 @@ export class Flow<TContext extends Record<string, any> = Record<string, any>> {
 			}
 		}
 		else if (typeof implementation === 'function' && implementation.prototype?.execute) {
-			// Class-based node - use the constructor function's string representation
-			const className = implementation.toString().split(' ')[1] || `class_${id}_${Date.now()}`
+			// Class-based node
+			const className = implementation.name || `class_${id}_${Date.now()}`
 			nodeDef = {
 				id,
 				uses: className,

@@ -46,19 +46,17 @@ export interface NodeDefinition {
 }
 
 /**
- * Configuration options for a node
+ * Configuration options for a node's resiliency and behavior.
  */
 export interface NodeConfig {
-	/** Maximum number of retry attempts */
+	/** Maximum number of retry attempts (e.g., 3 means 1 initial try + 2 retries). Defaults to 1. */
 	maxRetries?: number
-	/** Delay between retries in milliseconds */
+	/** Delay between retries in milliseconds. Defaults to 0. */
 	retryDelay?: number
-	/** Maximum execution time in milliseconds */
+	/** Maximum execution time in milliseconds before the node fails. */
 	timeout?: number
-	/** Memory limit for the node */
-	memoryLimit?: number
-	/** CPU limit for the node */
-	cpuLimit?: number
+	/** The `uses` key of another node implementation to call if all retries fail. */
+	fallback?: string
 }
 
 /**
@@ -177,6 +175,21 @@ export interface NodeRegistry {
 }
 
 /**
+ * Interface for a pluggable serializer.
+ */
+export interface ISerializer {
+	serialize: (data: Record<string, any>) => string
+	deserialize: (text: string) => Record<string, any>
+}
+
+/**
+ * Interface for a pluggable event bus.
+ */
+export interface IEventBus {
+	emit: (eventName: string, payload: Record<string, any>) => Promise<void> | void
+}
+
+/**
  * Runtime dependencies that can be injected
  */
 export interface RuntimeDependencies {
@@ -195,6 +208,10 @@ export interface RuntimeOptions {
 	defaultNodeConfig?: NodeConfig
 	/** Execution environment */
 	environment?: 'development' | 'staging' | 'production'
+	/** Pluggable serializer for context persistence */
+	serializer?: ISerializer
+	/** Pluggable event bus for observability */
+	eventBus?: IEventBus
 }
 
 /**
