@@ -38,7 +38,7 @@
 	"scripts": {
 		"dev": "tsup --watch --config config/tsup.config.ts",
 		"build": "tsup --config config/tsup.config.ts",
-		"lint": "eslint --fix . --ext .ts",
+		"lint": "eslint --fix --ext .ts",
 		"typecheck": "tsc --noEmit -p config/tsconfig.json",
 		"test": "vitest run --config config/vitest.config.ts",
 		"test:watch": "vitest --config config/vitest.config.ts",
