@@ -1,5 +1,4 @@
 import type { NodeContext, NodeResult } from 'flowcraft'
-import type { IContext } from 'flowcraft'
 import { callLLM, resolveTemplate } from './utils.js'
 
 /**

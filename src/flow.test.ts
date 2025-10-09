@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { createFlow, Flow } from './flow'
+import { FlowcraftRuntime } from './runtime'
 
 describe('Flow Builder', () => {
 	describe('basic construction', () => {
@@ -364,6 +365,151 @@ describe('Flow Builder', () => {
 			flow.node('dummy', async () => ({ output: null }))
 			expect(flow.toBlueprint().id).toBe('helper-flow')
 			expect(flow.toBlueprint().metadata).toEqual(metadata)
+		})
+	})
+
+	describe('transform method', () => {
+		it('should generate the correct number of intermediate nodes for a transform chain with 3 steps', () => {
+			const flow = new Flow('test-flow')
+
+			flow.node('start', async () => ({ output: { id: 1 } }))
+			flow.node('end', async () => ({ output: null }))
+
+			flow.transform('start', 'end', [
+				input => ({ ...input, name: 'test' }),
+				input => input.id > 0,
+				input => console.log(input),
+			])
+
+			const blueprint = flow.toBlueprint()
+
+			// Should have start, end, and 3 transform nodes
+			expect(blueprint.nodes).toHaveLength(5)
+			const transformNodes = blueprint.nodes.filter(n => n.id.startsWith('start_transform_'))
+			expect(transformNodes).toHaveLength(3)
+		})
+
+		it('should correctly chain the intermediate nodes in a linear sequence', () => {
+			const flow = new Flow('test-flow')
+
+			flow.node('start', async () => ({ output: { id: 1 } }))
+			flow.node('end', async () => ({ output: null }))
+
+			flow.transform('start', 'end', [
+				input => ({ ...input, name: 'test' }),
+				input => input.id > 0,
+			])
+
+			const blueprint = flow.toBlueprint()
+
+			// Check edges form a chain: start -> transform_0 -> transform_1 -> end
+			const edges = blueprint.edges
+			expect(edges).toHaveLength(3)
+			expect(edges[0]).toEqual({ source: 'start', target: expect.stringMatching(/^start_transform_0_/) })
+			expect(edges[1]).toEqual({ source: expect.stringMatching(/^start_transform_0_/), target: expect.stringMatching(/^start_transform_1_/) })
+ 			expect(edges[2]).toEqual({ source: expect.stringMatching(/^start_transform_1_/), target: 'end', condition: 'result !== undefined' })
+		})
+
+		it('should register anonymous functions in the function registry', () => {
+			const flow = new Flow('test-flow')
+
+			flow.node('start', async () => ({ output: { id: 1 } }))
+			flow.node('end', async () => ({ output: null }))
+
+			const mapFn = (input: any) => ({ ...input, name: 'test' })
+			const filterFn = (input: any) => input.id > 0
+
+			flow.transform('start', 'end', [mapFn, filterFn])
+
+			const registry = flow.getFunctionRegistry()
+			expect(registry.size).toBe(4) // start, end, and 2 transforms
+
+			// Check that the nodes use the registry keys
+			const blueprint = flow.toBlueprint()
+			const transformNodes = blueprint.nodes.filter(n => n.id.startsWith('start_transform_'))
+			expect(transformNodes[0].uses).toMatch(/^transform_start_transform_0_/)
+			expect(transformNodes[1].uses).toMatch(/^transform_start_transform_1_/)
+		})
+
+		it('should handle an empty transform array by creating a direct edge', () => {
+			const flow = new Flow('test-flow')
+
+			flow.node('start', async () => ({ output: { id: 1 } }))
+			flow.node('end', async () => ({ output: null }))
+
+			flow.transform('start', 'end', [])
+
+			const blueprint = flow.toBlueprint()
+
+			// Should have only start and end nodes
+			expect(blueprint.nodes).toHaveLength(2)
+			// Should have one direct edge
+			expect(blueprint.edges).toHaveLength(1)
+			expect(blueprint.edges[0]).toEqual({ source: 'start', target: 'end' })
+		})
+	})
+
+	describe('integration tests', () => {
+		it('should execute a full map-tap-filter-map pipeline correctly', async () => {
+			const flow = new Flow('test-flow')
+
+			flow.node('start', async () => ({ output: { id: 1, name: ' test user ', status: 'active' } }))
+			flow.node('end', async (context) => {
+				const input = context.input
+				return { output: `Processed: ${input.name} (${input.id})` }
+			})
+
+			flow.transform('start', 'end', [
+				input => ({ ...input, name: input.name.trim() }), // map
+				input => input.status === 'active', // filter (should pass)
+				input => console.log(`Processing active user: ${input.id}`), // tap
+				input => ({ name: input.name.toUpperCase(), id: input.id }), // map
+			])
+
+			const blueprint = flow.toBlueprint()
+			const runtime = new FlowcraftRuntime({ registry: {} })
+			const result = await runtime.run(blueprint, {}, flow.getFunctionRegistry())
+
+			expect(result.metadata.status).toBe('completed')
+			expect(result.context.end).toBe('Processed: TEST USER (1)')
+		})
+
+		it('should terminate the chain when a filter returns false', async () => {
+			const flow = new Flow('test-flow')
+
+			flow.node('start', async () => ({ output: { id: 1, name: 'user', status: 'inactive' } }))
+			flow.node('end', async () => ({ output: 'Should not reach here' }))
+
+			flow.transform('start', 'end', [
+				input => ({ ...input, name: input.name.trim() }),
+				input => input.status === 'active', // filter (should fail)
+				input => ({ name: input.name.toUpperCase(), id: input.id }), // should not execute
+			])
+
+			const blueprint = flow.toBlueprint()
+			const runtime = new FlowcraftRuntime({ registry: {} })
+
+			const result = await runtime.run(blueprint, {}, flow.getFunctionRegistry())
+
+			// Since filter fails, the next nodes should not be executed
+			expect(result.context.end).toBeUndefined()
+		})
+
+		it('should fail the entire workflow if a transform function throws an error', async () => {
+			const flow = new Flow('test-flow')
+
+			flow.node('start', async () => ({ output: { id: 1 } }))
+			flow.node('end', async () => ({ output: 'Should not reach here' }))
+
+			flow.transform('start', 'end', [
+				_input => ({ ..._input, name: 'test' }),
+				(_input) => { throw new Error('Transform error') }, // error in map
+			])
+
+			const blueprint = flow.toBlueprint()
+			const runtime = new FlowcraftRuntime({ registry: {} })
+
+			await expect(runtime.run(blueprint, {}, flow.getFunctionRegistry())).rejects.toThrow('Transform error')
 		})
 	})
 })

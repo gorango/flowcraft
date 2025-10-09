@@ -244,6 +244,26 @@ export interface RuntimeOptions {
 }
 
 /**
+ * Transform function for mapping input to output
+ */
+export type MapFunction<TInput = any, TOutput = any> = (input: TInput) => TOutput
+
+/**
+ * Transform function for filtering input
+ */
+export type FilterFunction<TInput = any> = (input: TInput) => boolean
+
+/**
+ * Transform function for tapping/side effects
+ */
+export type TapFunction<TInput = any> = (input: TInput) => void
+
+/**
+ * Union type for all transform functions
+ */
+export type TransformFunction<TInput = any> = MapFunction<TInput> | FilterFunction<TInput> | TapFunction<TInput>
+
+/**
  * Result of running a workflow
  */
 export interface WorkflowResult<TContext = any> {

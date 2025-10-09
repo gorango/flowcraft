@@ -5,6 +5,7 @@ import type {
 	NodeDefinition,
 	NodeFunction,
 	NodeMap,
+	TransformFunction,
 	WorkflowBlueprint,
 } from './types'
 
@@ -254,6 +255,82 @@ export class Flow<TContext extends Record<string, any> = Record<string, any>, TN
 		this.edge(source, loopNodeId)
 		this.edge(loopNodeId, target, { action: 'continue' })
 		this.edge(loopNodeId, target, { action: 'break' })
+
+		return this
+	}
+
+	/**
+	 * Create a chain of anonymous transformation nodes between source and target
+	 */
+	transform<TInput = any>(
+		sourceNodeId: string,
+		targetNodeId: string,
+		transforms: TransformFunction<TInput>[],
+	): this {
+		if (transforms.length === 0) {
+			// If no transforms, just add a direct edge
+			this.edge(sourceNodeId, targetNodeId)
+			return this
+		}
+
+		// Generate unique node IDs for all transform nodes
+		const transformNodeIds = transforms.map((_, i) => `${sourceNodeId}_transform_${i}_${Date.now()}`)
+
+		// Create nodes and edges
+		for (let i = 0; i < transforms.length; i++) {
+			const transformNodeId = transformNodeIds[i]
+			let transformFunction: NodeFunction<TContext>
+
+ 			// Check if this is a filter
+ 			let isFilter = false
+ 			try {
+ 				const testInput = { test: true } as any
+ 				const testResult = transforms[i](testInput)
+ 				isFilter = typeof testResult === 'boolean'
+ 			} catch (error) {
+ 				// If the transform throws during filter check, assume it's not a filter
+ 				isFilter = false
+ 			}
+
+			if (isFilter) {
+				transformFunction = async (context) => {
+					const input = context.input
+					const filterResult = transforms[i](input)
+					if (filterResult) {
+						return { output: input }
+					}
+					else {
+						return { output: undefined }
+					}
+				}
+			}
+			else {
+				transformFunction = async (context) => {
+					const input = context.input
+					const result = transforms[i](input)
+					return { output: result }
+				}
+			}
+
+			// Register the function and create the node
+			const functionKey = `transform_${transformNodeId}`
+			this.functionRegistry.set(functionKey, transformFunction)
+			this.node(transformNodeId, functionKey)
+
+			// Add edge from previous to current only for the first node
+			if (i === 0) {
+				this.edge(sourceNodeId, transformNodeId)
+			}
+
+			// Add edge from current to next with condition if filter
+			const nextNodeId = i === transforms.length - 1 ? targetNodeId : transformNodeIds[i + 1]
+			if (isFilter) {
+				this.edge(transformNodeId, nextNodeId, { condition: 'result !== undefined' })
+			}
+			else {
+				this.edge(transformNodeId, nextNodeId)
+			}
+		}
 
 		return this
 	}
