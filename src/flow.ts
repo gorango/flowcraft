@@ -37,7 +37,6 @@ export class Flow<TContext extends Record<string, any> = Record<string, any>> {
 		let nodeDef: NodeDefinition
 
 		if (typeof implementation === 'string') {
-			// Reference to a registered node
 			nodeDef = {
 				id,
 				uses: implementation,
@@ -46,7 +45,6 @@ export class Flow<TContext extends Record<string, any> = Record<string, any>> {
 			}
 		}
 		else if (typeof implementation === 'function' && implementation.prototype?.execute) {
-			// Class-based node
 			const className = implementation.name || `class_${id}_${Date.now()}`
 			nodeDef = {
 				id,
@@ -56,7 +54,6 @@ export class Flow<TContext extends Record<string, any> = Record<string, any>> {
 			}
 		}
 		else if (typeof implementation === 'function') {
-			// Inline function - store in private registry
 			const functionKey = `function_${id}_${Date.now()}`
 			this.functionRegistry.set(functionKey, implementation as NodeFunction)
 
@@ -267,23 +264,18 @@ export class Flow<TContext extends Record<string, any> = Record<string, any>> {
 	 * Validate the blueprint and return it
 	 */
 	toBlueprint(): WorkflowBlueprint {
-		if (!this.blueprint.id) {
+		if (!this.blueprint.id)
 			throw new Error('Workflow must have an ID')
-		}
 
-		if (!this.blueprint.nodes || this.blueprint.nodes.length === 0) {
+		if (!this.blueprint.nodes || this.blueprint.nodes.length === 0)
 			throw new Error('Workflow must have at least one node')
-		}
 
-		// Validate that all referenced nodes exist
 		const nodeIds = new Set(this.blueprint.nodes!.map(n => n.id))
 		for (const edge of this.blueprint.edges!) {
-			if (!nodeIds.has(edge.source)) {
+			if (!nodeIds.has(edge.source))
 				throw new Error(`Source node '${edge.source}' not found`)
-			}
-			if (!nodeIds.has(edge.target)) {
+			if (!nodeIds.has(edge.target))
 				throw new Error(`Target node '${edge.target}' not found`)
-			}
 		}
 
 		return this.blueprint as WorkflowBlueprint
@@ -313,7 +305,7 @@ export class Flow<TContext extends Record<string, any> = Record<string, any>> {
 	merge(other: Flow<TContext>, prefix?: string): this {
 		const otherBlueprint = other.toBlueprint()
 
-		// Add prefix to node IDs if specified
+		// add prefix to node IDs if specified
 		const nodeIdMap = new Map<string, string>()
 		for (const node of otherBlueprint.nodes) {
 			const newId = prefix ? `${prefix}_${node.id}` : node.id
@@ -326,7 +318,7 @@ export class Flow<TContext extends Record<string, any> = Record<string, any>> {
 			this.blueprint.nodes!.push(newNode)
 		}
 
-		// Update edge references
+		// update edge references
 		for (const edge of otherBlueprint.edges) {
 			const newEdge: EdgeDefinition = {
 				source: nodeIdMap.get(edge.source) || edge.source,
@@ -338,7 +330,7 @@ export class Flow<TContext extends Record<string, any> = Record<string, any>> {
 			this.blueprint.edges!.push(newEdge)
 		}
 
-		// Merge function registry
+		// merge function registry
 		for (const [key, fn] of other.getFunctionRegistry()) {
 			this.functionRegistry.set(key, fn)
 		}

@@ -6,7 +6,7 @@ import type { WorkflowBlueprint } from './types'
 export type Cycles = string[][]
 
 /**
- * Analyzes a V2 workflow blueprint to detect cycles.
+ * Analyzes a workflow blueprint to detect cycles.
  * @param blueprint The WorkflowBlueprint object containing nodes and edges.
  * @returns An array of cycles found. Each cycle is represented as an array of node IDs.
  */
