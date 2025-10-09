@@ -1,4 +1,4 @@
-import type { IEventBus, NodeResult } from './types'
+import type { IEventBus, IOrchestrator, Middleware, NodeResult } from './types'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { CancelledWorkflowError } from './errors'
 import { createFlow } from './flow'
@@ -777,6 +777,183 @@ describe('FlowcraftRuntime', () => {
 			// Assert that the unmapped internal state did not leak into the parent context
 			expect(result.context).not.toHaveProperty('internal_state')
 			expect(result.context).not.toHaveProperty('final_data')
+		})
+	})
+
+	describe('middleware', () => {
+		it('should execute middleware in LIFO order', async () => {
+			const executionLog: string[] = []
+
+			const middleware1: Middleware = {
+				beforeNode: async (ctx, nodeId) => {
+					executionLog.push('before-mw1')
+				},
+				afterNode: async (ctx, nodeId, result) => {
+					executionLog.push('after-mw1')
+				},
+			}
+
+			const middleware2: Middleware = {
+				beforeNode: async (ctx, nodeId) => {
+					executionLog.push('before-mw2')
+				},
+				afterNode: async (ctx, nodeId, result) => {
+					executionLog.push('after-mw2')
+				},
+			}
+
+			const runtimeWithMiddleware = new FlowcraftRuntime({
+				registry: mockNodeRegistry,
+				dependencies: mockDependencies,
+				middleware: [middleware1, middleware2],
+			})
+
+			const flow = createFlow('middleware-test')
+			flow.node('test-node', async () => ({ output: 'test' }))
+			const blueprint = flow.toBlueprint()
+
+			await runtimeWithMiddleware.run(blueprint, {}, flow.getFunctionRegistry())
+
+			expect(executionLog).toEqual(['before-mw1', 'before-mw2', 'after-mw2', 'after-mw1'])
+		})
+
+		it('should allow beforeNode middleware to modify context visible to the node', async () => {
+			const middleware: Middleware = {
+				beforeNode: async (ctx, nodeId) => {
+					await ctx.set('middleware_added', 'middleware_value')
+				},
+			}
+
+			const runtimeWithMiddleware = new FlowcraftRuntime({
+				registry: mockNodeRegistry,
+				dependencies: mockDependencies,
+				middleware: [middleware],
+			})
+
+			const flow = createFlow('context-modification-test')
+			flow.node('test-node', async (context) => {
+				const value = await context.context.get('middleware_added')
+				return { output: value }
+			})
+			const blueprint = flow.toBlueprint()
+
+			const result = await runtimeWithMiddleware.run(blueprint, {}, flow.getFunctionRegistry())
+
+			expect(result.context['test-node']).toBe('middleware_value')
+		})
+
+		it('should halt execution if beforeNode throws', async () => {
+			const middleware: Middleware = {
+				beforeNode: async () => {
+					throw new Error('Middleware error')
+				},
+			}
+
+			const runtimeWithMiddleware = new FlowcraftRuntime({
+				registry: mockNodeRegistry,
+				dependencies: mockDependencies,
+				middleware: [middleware],
+			})
+
+			const flow = createFlow('middleware-error-test')
+			flow.node('test-node', async () => {
+				throw new Error('Node should not execute')
+			})
+			const blueprint = flow.toBlueprint()
+
+			await expect(runtimeWithMiddleware.run(blueprint, {}, flow.getFunctionRegistry())).rejects.toThrow('Middleware error')
+		})
+
+		it('should still fail the workflow if afterNode throws', async () => {
+			const middleware: Middleware = {
+				afterNode: async () => {
+					throw new Error('After middleware error')
+				},
+			}
+
+			const runtimeWithMiddleware = new FlowcraftRuntime({
+				registry: mockNodeRegistry,
+				dependencies: mockDependencies,
+				middleware: [middleware],
+			})
+
+			const flow = createFlow('after-middleware-error-test')
+			flow.node('test-node', async () => ({ output: 'test' }))
+			const blueprint = flow.toBlueprint()
+
+			await expect(runtimeWithMiddleware.run(blueprint, {}, flow.getFunctionRegistry())).rejects.toThrow('After middleware error')
+		})
+
+		it('should allow afterNode middleware to inspect the node\'s result', async () => {
+			let capturedResult: any = null
+
+			const middleware: Middleware = {
+				afterNode: async (ctx, nodeId, result) => {
+					capturedResult = result
+				},
+			}
+
+			const runtimeWithMiddleware = new FlowcraftRuntime({
+				registry: mockNodeRegistry,
+				dependencies: mockDependencies,
+				middleware: [middleware],
+			})
+
+			const flow = createFlow('result-inspection-test')
+			flow.node('test-node', async () => ({ output: { data: 'test-data' } }))
+			const blueprint = flow.toBlueprint()
+
+			await runtimeWithMiddleware.run(blueprint, {}, flow.getFunctionRegistry())
+
+			expect(capturedResult).toEqual({ output: { data: 'test-data' } })
+		})
+	})
+
+	describe('orchestrator', () => {
+		it('should delegate execution control to the provided orchestrator', async () => {
+			const executionLog: string[] = []
+
+			const mockOrchestrator: IOrchestrator = {
+				orchestrate: async (flow, context) => {
+					executionLog.push('orchestrator-called')
+					// Simulate traversing the flow graph and recording planned execution order
+					// In a real implementation, this would coordinate with distributed workers
+					return flow.execute(context)
+				},
+			}
+
+			const runtimeWithOrchestrator = new FlowcraftRuntime({
+				registry: mockNodeRegistry,
+				dependencies: mockDependencies,
+				orchestrator: mockOrchestrator,
+			})
+
+			const flow = createFlow('orchestrator-test')
+			flow.node('start', async () => ({ output: 'start' }))
+			flow.node('end', async (context) => {
+				const input = await context.context.get('input')
+				return { output: `processed-${input}` }
+			})
+			flow.edge('start', 'end')
+
+			const blueprint = flow.toBlueprint()
+			const result = await runtimeWithOrchestrator.run(blueprint, {}, flow.getFunctionRegistry())
+
+			expect(executionLog).toContain('orchestrator-called')
+			expect(result.metadata.status).toBe('completed')
+			expect(result.context.end).toBe('processed-start')
+		})
+
+		it('should use DefaultOrchestrator by default', async () => {
+			// The default runtime should use DefaultOrchestrator
+			const flow = createFlow('default-orchestrator-test')
+			flow.node('test-node', async () => ({ output: 'test' }))
+			const blueprint = flow.toBlueprint()
+
+			const result = await runtime.run(blueprint, {}, flow.getFunctionRegistry())
+
+			expect(result.metadata.status).toBe('completed')
+			expect(result.context['test-node']).toBe('test')
 		})
 	})
 })

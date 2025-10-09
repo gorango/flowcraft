@@ -5,7 +5,9 @@ import type {
 	IConditionEvaluator,
 	IContext,
 	IEventBus,
+	IOrchestrator,
 	ISerializer,
+	Middleware,
 	NodeContext,
 	NodeDefinition,
 	NodeMap,
@@ -19,6 +21,7 @@ import type {
 import { randomUUID } from 'node:crypto'
 import { createAsyncContext, createContext } from './context'
 import { CancelledWorkflowError, NodeExecutionError } from './errors'
+import { DefaultOrchestrator } from './orchestrator'
 
 /**
  * Simple semaphore for controlling concurrency
@@ -176,6 +179,8 @@ export class FlowcraftRuntime<TContext extends Record<string, any> = Record<stri
 	private eventBus: IEventBus
 	private conditionEvaluator: IConditionEvaluator
 	private serializer: ISerializer
+	private middleware: Middleware<TContext>[]
+	private orchestrator: IOrchestrator
 
 	constructor(options: RuntimeOptions) {
 		this.registry = options.registry
@@ -185,6 +190,8 @@ export class FlowcraftRuntime<TContext extends Record<string, any> = Record<stri
 		this.eventBus = options.eventBus || new NullEventBus()
 		this.conditionEvaluator = options.conditionEvaluator || new DefaultConditionEvaluator()
 		this.serializer = options.serializer || new JsonSerializer()
+		this.middleware = (options.middleware || []) as Middleware<TContext>[]
+		this.orchestrator = options.orchestrator || new DefaultOrchestrator()
 		this.compiledFlows = new Map()
 		this.blueprintCache = new Map()
 	}
@@ -228,7 +235,7 @@ export class FlowcraftRuntime<TContext extends Record<string, any> = Record<stri
 					signal,
 				}
 				const context = createContext<TContext>(initialContext, metadata) as Context<TContext>
-				finalContext = await executableFlow.execute(context)
+				finalContext = await this.orchestrator.orchestrate(executableFlow, context)
 			}
 			catch (error) {
 				if (error instanceof CancelledWorkflowError) {
@@ -450,6 +457,10 @@ export class FlowcraftRuntime<TContext extends Record<string, any> = Record<stri
 		return this.serializer
 	}
 
+	getMiddleware(): Middleware<TContext>[] {
+		return this.middleware
+	}
+
 	clearCache(): void {
 		this.compiledFlows.clear()
 	}
@@ -541,6 +552,13 @@ export class FlowcraftRuntime<TContext extends Record<string, any> = Record<stri
 		const startTime = Date.now()
 
 		try {
+			// Execute beforeNode middleware hooks
+			for (const mw of this.middleware) {
+				if (mw.beforeNode) {
+					await mw.beforeNode(context, nodeDef.id)
+				}
+			}
+
 			for (let attempt = 1; attempt <= maxRetries; attempt++) {
 				try {
 					// check for cancellation before each attempt
@@ -569,6 +587,14 @@ export class FlowcraftRuntime<TContext extends Record<string, any> = Record<stri
 						duration: Date.now() - startTime,
 						result,
 					})
+
+					// Execute afterNode middleware hooks in reverse order (LIFO)
+					for (const mw of this.middleware.reverse()) {
+						if (mw.afterNode) {
+							await mw.afterNode(context, nodeDef.id, result)
+						}
+					}
+
 					return result
 				}
 				catch (error) {
@@ -595,6 +621,13 @@ export class FlowcraftRuntime<TContext extends Record<string, any> = Record<stri
 			// all retries failed, attempt fallback
 			await this.eventBus.emit('node:fallback', { executionId, nodeId: nodeDef.id, error: lastError?.message })
 			if (nodeDef.config?.fallback) {
+				// Execute beforeNode middleware for fallback
+				for (const mw of this.middleware) {
+					if (mw.beforeNode) {
+						await mw.beforeNode(context, nodeDef.id)
+					}
+				}
+
 				const fallbackNodeDef = { ...nodeDef, uses: nodeDef.config.fallback }
 				const fallbackResult = await this._executeNodeLogic(fallbackNodeDef, context)
 				await this.eventBus.emit('node:finish', {
@@ -604,6 +637,14 @@ export class FlowcraftRuntime<TContext extends Record<string, any> = Record<stri
 					result: fallbackResult,
 					isFallback: true,
 				})
+
+				// Execute afterNode middleware for fallback in reverse order (LIFO)
+				for (const mw of this.middleware.reverse()) {
+					if (mw.afterNode) {
+						await mw.afterNode(context, nodeDef.id, fallbackResult)
+					}
+				}
+
 				return fallbackResult
 			}
 
@@ -611,6 +652,20 @@ export class FlowcraftRuntime<TContext extends Record<string, any> = Record<stri
 			throw lastError
 		}
 		catch (error) {
+			// Execute afterNode middleware even on error (in reverse order)
+			try {
+				for (const mw of this.middleware.reverse()) {
+					if (mw.afterNode) {
+						// We don't have a result to pass, so we'll pass undefined
+						await mw.afterNode(context, nodeDef.id, { error: { message: error instanceof Error ? error.message : 'Unknown error' } } as NodeResult)
+					}
+				}
+			}
+			catch (middlewareError) {
+				// If middleware fails, log it but don't override the original error
+				console.warn('Middleware afterNode hook failed:', middlewareError)
+			}
+
 			// convert abort-style errors into CancelledWorkflowError
 			if (error instanceof Error && (error.name === 'AbortError' || error.message === 'Operation aborted.'))
 				throw new CancelledWorkflowError('Node execution cancelled.', executionId)
@@ -734,13 +789,14 @@ interface CompiledNode {
 /**
  * An executable flow that can be run
  */
-class ExecutableFlow<TContext extends Record<string, any>> {
+export class ExecutableFlow<TContext extends Record<string, any>> {
 	private startNode: CompiledNode
 	private nodeMap: Map<string, CompiledNode>
 	private runtime: FlowcraftRuntime<TContext>
 	private eventBus: IEventBus
 	private conditionEvaluator: IConditionEvaluator
 	private functionRegistry: Map<string, any>
+	private middleware: Middleware<TContext>[]
 
 	constructor(
 		startNode: CompiledNode,
@@ -754,6 +810,7 @@ class ExecutableFlow<TContext extends Record<string, any>> {
 		this.eventBus = runtime.getEventBus()
 		this.conditionEvaluator = runtime.getConditionEvaluator()
 		this.functionRegistry = functionRegistry
+		this.middleware = runtime.getMiddleware() || []
 	}
 
 	/**
@@ -881,6 +938,13 @@ class ExecutableFlow<TContext extends Record<string, any>> {
 		const startTime = Date.now()
 
 		try {
+			// Execute beforeNode middleware hooks
+			for (const mw of this.middleware) {
+				if (mw.beforeNode) {
+					await mw.beforeNode(context, node.id)
+				}
+			}
+
 			for (let attempt = 1; attempt <= maxRetries; attempt++) {
 				try {
 					// check for cancellation before each attempt
@@ -909,6 +973,14 @@ class ExecutableFlow<TContext extends Record<string, any>> {
 						duration: Date.now() - startTime,
 						result,
 					})
+
+					// Execute afterNode middleware hooks in reverse order (LIFO)
+					for (const mw of this.middleware.reverse()) {
+						if (mw.afterNode) {
+							await mw.afterNode(context, node.id, result)
+						}
+					}
+
 					return result
 				}
 				catch (error) {
@@ -935,6 +1007,13 @@ class ExecutableFlow<TContext extends Record<string, any>> {
 			// all retries failed, attempt fallback
 			await this.eventBus.emit('node:fallback', { executionId, nodeId: node.id, error: lastError?.message })
 			if (node.fallbackImplementation) {
+				// Execute beforeNode middleware for fallback
+				for (const mw of this.middleware) {
+					if (mw.beforeNode) {
+						await mw.beforeNode(context, node.id)
+					}
+				}
+
 				const fallbackResult = await this.executeNode(
 					{ ...node, implementation: node.fallbackImplementation },
 					context,
@@ -946,6 +1025,14 @@ class ExecutableFlow<TContext extends Record<string, any>> {
 					result: fallbackResult,
 					isFallback: true,
 				})
+
+				// Execute afterNode middleware for fallback in reverse order (LIFO)
+				for (const mw of this.middleware.reverse()) {
+					if (mw.afterNode) {
+						await mw.afterNode(context, node.id, fallbackResult)
+					}
+				}
+
 				return fallbackResult
 			}
 
@@ -953,6 +1040,20 @@ class ExecutableFlow<TContext extends Record<string, any>> {
 			throw lastError
 		}
 		catch (error) {
+			// Execute afterNode middleware even on error (in reverse order)
+			try {
+				for (const mw of this.middleware.reverse()) {
+					if (mw.afterNode) {
+						// We don't have a result to pass, so we'll pass undefined
+						await mw.afterNode(context, node.id, { error: { message: error instanceof Error ? error.message : 'Unknown error' } } as NodeResult)
+					}
+				}
+			}
+			catch (middlewareError) {
+				// If middleware fails, log it but don't override the original error
+				console.warn('Middleware afterNode hook failed:', middlewareError)
+			}
+
 			// convert abort-style errors into CancelledWorkflowError
 			if (error instanceof Error && (error.name === 'AbortError' || error.message === 'Operation aborted.'))
 				throw new CancelledWorkflowError('Node execution cancelled.', executionId)

@@ -224,6 +224,21 @@ export interface IConditionEvaluator {
 }
 
 /**
+ * Middleware interface for cross-cutting concerns like transactions and tracing.
+ */
+export interface Middleware<TContext extends Record<string, any> = Record<string, any>> {
+	beforeNode?: (ctx: IContext<TContext>, nodeId: string) => Promise<void>
+	afterNode?: (ctx: IContext<TContext>, nodeId: string, result: NodeResult) => Promise<void>
+}
+
+/**
+ * Interface for pluggable orchestrators that control workflow execution strategy.
+ */
+export interface IOrchestrator {
+	orchestrate: (flow: any, context: any) => Promise<any>
+}
+
+/**
  * Options for the runtime
  */
 export interface RuntimeOptions {
@@ -241,6 +256,10 @@ export interface RuntimeOptions {
 	conditionEvaluator?: IConditionEvaluator
 	/** **[Task 1a]** Pluggable serializer for complex data types */
 	serializer?: ISerializer
+	/** Middleware for cross-cutting concerns */
+	middleware?: Middleware<any>[]
+	/** Pluggable orchestrator for execution strategy */
+	orchestrator?: IOrchestrator
 }
 
 /**
