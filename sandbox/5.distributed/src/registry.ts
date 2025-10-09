@@ -1,4 +1,4 @@
-import type { NodeRegistry } from 'flowcraft/v2'
+import type { NodeRegistry } from 'flowcraft'
 import { llmCondition, llmProcess, llmRouter, outputNode } from './nodes.js'
 
 /**

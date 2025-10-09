@@ -1,4 +1,4 @@
-import type { WorkflowResult } from 'flowcraft/v2'
+import type { WorkflowResult } from 'flowcraft'
 import type IORedis from 'ioredis'
 import OpenAI from 'openai'
 import 'dotenv/config'

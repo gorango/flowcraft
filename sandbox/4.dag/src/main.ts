@@ -1,8 +1,8 @@
-import type { EdgeDefinition, NodeDefinition, WorkflowBlueprint } from 'flowcraft/v2'
+import type { EdgeDefinition, NodeDefinition, WorkflowBlueprint } from 'flowcraft'
 import { promises as fs } from 'node:fs'
 import path from 'node:path'
 import process from 'node:process'
-import { FlowcraftRuntime } from 'flowcraft/v2'
+import { FlowcraftRuntime } from 'flowcraft'
 import { agentNodeRegistry } from './registry.js'
 import 'dotenv/config'
 

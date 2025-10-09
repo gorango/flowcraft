@@ -1,6 +1,6 @@
-import type { NodeContext, NodeResult } from 'flowcraft/v2'
+import type { NodeContext, NodeResult } from 'flowcraft'
 import * as fs from 'node:fs/promises'
-import { createFlow } from 'flowcraft/v2'
+import { createFlow } from 'flowcraft'
 import { DocumentChunk, SearchResult } from './types.js'
 import { callLLM, cosineSimilarity, getEmbedding, resolveTemplate } from './utils.js'
 

@@ -1,6 +1,6 @@
 import process from 'node:process'
 import dotenv from 'dotenv'
-import { FlowcraftRuntime } from 'flowcraft/v2'
+import { FlowcraftRuntime } from 'flowcraft'
 import { createArticleFlow } from './flow.js'
 
 dotenv.config()

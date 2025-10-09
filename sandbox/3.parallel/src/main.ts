@@ -2,7 +2,7 @@ import * as fs from 'node:fs/promises'
 import * as path from 'node:path'
 import process from 'node:process'
 import dotenv from 'dotenv'
-import { FlowcraftRuntime } from 'flowcraft/v2'
+import { FlowcraftRuntime } from 'flowcraft'
 import { createTranslateFlow } from './flow.js'
 
 dotenv.config()

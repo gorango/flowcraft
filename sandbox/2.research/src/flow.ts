@@ -1,5 +1,5 @@
-import type { NodeContext, NodeResult } from 'flowcraft/v2'
-import { createFlow } from 'flowcraft/v2'
+import type { NodeContext, NodeResult } from 'flowcraft'
+import { createFlow } from 'flowcraft'
 import yaml from 'yaml'
 import { callLLM, searchWeb } from './utils.js'
 

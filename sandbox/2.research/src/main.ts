@@ -1,6 +1,6 @@
 import process from 'node:process'
 import dotenv from 'dotenv'
-import { FlowcraftRuntime } from 'flowcraft/v2'
+import { FlowcraftRuntime } from 'flowcraft'
 import { createAgentFlow } from './flow.js'
 
 dotenv.config()
@@ -28,7 +28,7 @@ async function main() {
 	const result = await runtime.run(
 		blueprint,
 		{
-			question, // Set the 'question' key directly
+			input: question, // Set the 'question' key directly
 			search_count: 0,
 			max_searches: MAX_SEARCHES,
 		},

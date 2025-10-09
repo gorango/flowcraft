@@ -1,4 +1,4 @@
-import { createFlow } from 'flowcraft/v2'
+import { createFlow } from 'flowcraft'
 import yaml from 'yaml'
 import { callLLM } from './utils.js'
 

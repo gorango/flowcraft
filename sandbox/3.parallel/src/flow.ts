@@ -1,7 +1,7 @@
-import type { NodeContext, NodeResult } from 'flowcraft/v2'
+import type { NodeContext, NodeResult } from 'flowcraft'
 import * as fs from 'node:fs/promises'
 import * as path from 'node:path'
-import { createFlow } from 'flowcraft/v2'
+import { createFlow } from 'flowcraft'
 import { callLLM } from './utils.js'
 
 interface TranslationContext {
