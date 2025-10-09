@@ -5,7 +5,6 @@ import type {
 	IConditionEvaluator,
 	IContext,
 	IEventBus,
-	IOrchestrator,
 	ISerializer,
 	Middleware,
 	NodeContext,
@@ -21,7 +20,6 @@ import type {
 import { randomUUID } from 'node:crypto'
 import { createAsyncContext, createContext } from './context'
 import { CancelledWorkflowError, FatalNodeExecutionError, NodeExecutionError } from './errors'
-import { DefaultOrchestrator } from './orchestrator'
 
 /**
  * Simple semaphore for controlling concurrency
@@ -180,7 +178,6 @@ export class FlowcraftRuntime<TContext extends Record<string, any> = Record<stri
 	private conditionEvaluator: IConditionEvaluator
 	private serializer: ISerializer
 	private middleware: Middleware<TContext>[]
-	private orchestrator: IOrchestrator
 
 	constructor(options: RuntimeOptions) {
 		this.registry = options.registry
@@ -191,7 +188,6 @@ export class FlowcraftRuntime<TContext extends Record<string, any> = Record<stri
 		this.conditionEvaluator = options.conditionEvaluator || new DefaultConditionEvaluator()
 		this.serializer = options.serializer || new JsonSerializer()
 		this.middleware = (options.middleware || []) as Middleware<TContext>[]
-		this.orchestrator = options.orchestrator || new DefaultOrchestrator()
 		this.compiledFlows = new Map()
 		this.blueprintCache = new Map()
 	}
@@ -235,7 +231,7 @@ export class FlowcraftRuntime<TContext extends Record<string, any> = Record<stri
 					signal,
 				}
 				const context = createContext<TContext>(initialContext, metadata) as Context<TContext>
-				finalContext = await this.orchestrator.orchestrate(executableFlow, context)
+				finalContext = await executableFlow.execute(context)
 			}
 			catch (error) {
 				if (error instanceof CancelledWorkflowError) {

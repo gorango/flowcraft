@@ -1,4 +1,4 @@
-import type { IEventBus, IOrchestrator, Middleware, NodeResult } from './types'
+import type { IEventBus, Middleware, NodeResult } from './types'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { CancelledWorkflowError, FatalNodeExecutionError } from './errors'
 import { createFlow } from './flow'
@@ -1084,51 +1084,5 @@ describe('FlowcraftRuntime', () => {
 		})
 	})
 
-	describe('orchestrator', () => {
-		it('should delegate execution control to the provided orchestrator', async () => {
-			const executionLog: string[] = []
 
-			const mockOrchestrator: IOrchestrator = {
-				orchestrate: async (flow, context) => {
-					executionLog.push('orchestrator-called')
-					// Simulate traversing the flow graph and recording planned execution order
-					// In a real implementation, this would coordinate with distributed workers
-					return flow.execute(context)
-				},
-			}
-
-			const runtimeWithOrchestrator = new FlowcraftRuntime({
-				registry: mockNodeRegistry,
-				dependencies: mockDependencies,
-				orchestrator: mockOrchestrator,
-			})
-
-			const flow = createFlow('orchestrator-test')
-			flow.node('start', async () => ({ output: 'start' }))
-			flow.node('end', async (context) => {
-				const input = await context.context.get('input')
-				return { output: `processed-${input}` }
-			})
-			flow.edge('start', 'end')
-
-			const blueprint = flow.toBlueprint()
-			const result = await runtimeWithOrchestrator.run(blueprint, {}, flow.getFunctionRegistry())
-
-			expect(executionLog).toContain('orchestrator-called')
-			expect(result.metadata.status).toBe('completed')
-			expect(result.context.end).toBe('processed-start')
-		})
-
-		it('should use DefaultOrchestrator by default', async () => {
-			// The default runtime should use DefaultOrchestrator
-			const flow = createFlow('default-orchestrator-test')
-			flow.node('test-node', async () => ({ output: 'test' }))
-			const blueprint = flow.toBlueprint()
-
-			const result = await runtime.run(blueprint, {}, flow.getFunctionRegistry())
-
-			expect(result.metadata.status).toBe('completed')
-			expect(result.context['test-node']).toBe('test')
-		})
-	})
 })
