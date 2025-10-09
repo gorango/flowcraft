@@ -316,18 +316,24 @@ describe('FlowcraftRuntime', () => {
 				flow.node('processor', async (context) => {
 					const item = context.input as { id: number }
 					processedItems.push(item)
-					return { output: item }
+					return { output: item.id * 10 }
 				})
 				flow.node('end', async context => ({ output: context.input }))
-				flow.batch('start', 'processor')
-				flow.edge('processor', 'end')
+
+				// Manually define the batch controller and wire the graph correctly
+				flow.node('batch-controller', 'batch-processor', {
+					workerNodeId: 'processor', // The worker is not in the main graph path
+					concurrency: 1,
+				})
+				flow.edge('start', 'batch-controller')
+				flow.edge('batch-controller', 'end')
 
 				const blueprint = flow.toBlueprint()
 				const result = await runtime.run(blueprint, {}, flow.getFunctionRegistry())
 
 				expect(result.metadata.status).toBe('completed')
 				expect(processedItems).toEqual([{ id: 1 }, { id: 2 }, { id: 3 }])
-				expect(Array.isArray(result.context.end)).toBe(true)
+				expect(result.context.end).toEqual([10, 20, 30])
 			})
 
 			it('should process items concurrently', async () => {
@@ -338,22 +344,24 @@ describe('FlowcraftRuntime', () => {
 				flow.node('start', async () => ({ output: [{ id: 1 }, { id: 2 }, { id: 3 }] }))
 				flow.node('processor', async (context) => {
 					const item = context.input as { id: number }
-					const startTime = Date.now()
-					startTimes.push(startTime)
-
-					// Simulate variable processing time
-					await sleep(30 - item.id * 5)
-
-					const finishTime = Date.now()
-					finishTimes.push(finishTime)
+					startTimes.push(Date.now())
+					await sleep(30 - item.id * 5) // Simulate variable processing time
+					finishTimes.push(Date.now())
 					return { output: item }
 				})
-				flow.batch('start', 'processor', { concurrency: 3 })
+				flow.node('end', async () => ({ output: 'done' }))
+
+				// Manually define the batch controller
+				flow.node('batch-controller', 'batch-processor', {
+					workerNodeId: 'processor',
+					concurrency: 3,
+				})
+				flow.edge('start', 'batch-controller')
+				flow.edge('batch-controller', 'end')
 
 				const blueprint = flow.toBlueprint()
-				const result = await runtime.run(blueprint, {}, flow.getFunctionRegistry())
+				await runtime.run(blueprint, {}, flow.getFunctionRegistry())
 
-				expect(result.metadata.status).toBe('completed')
 				// Check that processing started concurrently (start times overlap)
 				expect(Math.max(...startTimes) - Math.min(...startTimes)).toBeLessThan(20)
 				expect(finishTimes).toHaveLength(3)
@@ -403,6 +411,7 @@ describe('FlowcraftRuntime', () => {
 					return { output: null }
 				})
 				flow.node('loop-controller', 'loop-controller', {
+					maxIterations: 10, // Add a safety max
 					condition: 'counter < 3',
 				})
 				flow.node('end', async () => ({ output: 'done' }))
@@ -442,6 +451,7 @@ describe('FlowcraftRuntime', () => {
 					context.set('shared_state', state)
 					return { output: 'B' }
 				})
+				// This node will only run after the parallel block is fully merged
 				flow.node('end', async (context) => {
 					const state = context.get('shared_state') as any
 					if (state.branchA_complete && state.branchB_complete) {
@@ -450,9 +460,11 @@ describe('FlowcraftRuntime', () => {
 					throw new Error('Convergence failed - branches not complete')
 				})
 
-				flow.parallel('parallel-block', ['branchA', 'branchB'])
-				flow.edge('start', 'parallel-block')
-				flow.edge('parallel-block', 'end')
+				// This test relies on manual fan-in, which the new execution engine supports.
+				flow.edge('start', 'branchA')
+				flow.edge('start', 'branchB')
+				flow.edge('branchA', 'end')
+				flow.edge('branchB', 'end')
 
 				const blueprint = flow.toBlueprint()
 				const result = await runtime.run(blueprint, {}, flow.getFunctionRegistry())

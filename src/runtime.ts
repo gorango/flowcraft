@@ -255,10 +255,10 @@ export class FlowcraftRuntime<TContext extends Record<string, any> = Record<stri
 				status,
 				error: finalError
 					? {
-							nodeId: finalError instanceof NodeExecutionError ? finalError.nodeId : 'workflow_runtime',
-							message: finalError.message,
-							details: finalError,
-						}
+						nodeId: finalError instanceof NodeExecutionError ? finalError.nodeId : 'workflow_runtime',
+						message: finalError.message,
+						details: finalError,
+					}
 					: undefined,
 			},
 		}
@@ -313,12 +313,13 @@ export class FlowcraftRuntime<TContext extends Record<string, any> = Record<stri
 				fallbackImplementation,
 				params: nodeDef.params || {},
 				config: { ...this.defaultNodeConfig, ...nodeDef.config },
+				predecessorIds: new Set(), // Will be populated next
 				nextNodes: [],
 			}
 			nodeMap.set(nodeDef.id, compiledNode)
 		}
 
-		// second pass: wire up the edges
+		// second pass: wire up the edges and predecessors
 		for (const edgeDef of blueprint.edges) {
 			const sourceNode = nodeMap.get(edgeDef.source)
 			const targetNode = nodeMap.get(edgeDef.target)
@@ -337,10 +338,12 @@ export class FlowcraftRuntime<TContext extends Record<string, any> = Record<stri
 				condition: edgeDef.condition,
 				transform: edgeDef.transform,
 			})
+			// Add the source as a predecessor of the target
+			targetNode.predecessorIds.add(sourceNode.id)
 		}
 
 		// find the start node (node with no incoming edges)
-		const startNode = this.findStartNode(nodeMap, blueprint.edges)
+		const startNode = this.findStartNode(nodeMap)
 
 		return new ExecutableFlow<TContext>(startNode, nodeMap, this, functionRegistry)
 	}
@@ -373,13 +376,15 @@ export class FlowcraftRuntime<TContext extends Record<string, any> = Record<stri
 	 */
 	private findStartNode(
 		nodeMap: Map<string, CompiledNode>,
-		edges: any[],
 	): CompiledNode {
-		const targetNodes = new Set(edges.map(e => e.target))
-
 		// Identify all nodes that are part of a parallel branch, as they are not valid start nodes.
 		const branchNodes = new Set<string>()
 		for (const node of nodeMap.values()) {
+			// Also treat batch worker nodes as internal branch nodes, not start nodes.
+			// This prevents them from being incorrectly identified as a parallel entry point.
+			if (node.implementation === 'batch-processor' && node.params.workerNodeId) {
+				branchNodes.add(node.params.workerNodeId)
+			}
 			if (node.implementation === 'parallel-container' && Array.isArray(node.params.branches)) {
 				for (const branchId of node.params.branches) {
 					branchNodes.add(branchId)
@@ -388,10 +393,14 @@ export class FlowcraftRuntime<TContext extends Record<string, any> = Record<stri
 		}
 
 		const startNodes = Array.from(nodeMap.values()).filter(
-			node => !targetNodes.has(node.id) && !branchNodes.has(node.id),
+			node => node.predecessorIds.size === 0 && !branchNodes.has(node.id),
 		)
 
 		if (startNodes.length === 0 && nodeMap.size > 0) {
+			// Check if the only nodes without predecessors are branch nodes, which is a valid DAG start
+			if (Array.from(nodeMap.values()).every(node => node.predecessorIds.size > 0 || branchNodes.has(node.id))) {
+				throw new Error('No start node found. A workflow must have at least one node with no incoming edges that is not a parallel branch.')
+			}
 			throw new Error('No start node found - all nodes have incoming edges (cycle detected).')
 		}
 
@@ -407,8 +416,10 @@ export class FlowcraftRuntime<TContext extends Record<string, any> = Record<stri
 				branches: startNodes.map(n => n.id),
 			},
 			config: {},
+			predecessorIds: new Set(),
 			nextNodes: [], // The container's output is not wired to a next step by default
 		}
+		nodeMap.set(syntheticRoot.id, syntheticRoot)
 		return syntheticRoot
 	}
 
@@ -472,6 +483,7 @@ interface CompiledNode {
 	fallbackImplementation?: any
 	params: Record<string, any>
 	config: any
+	predecessorIds: Set<string>
 	nextNodes: Array<{
 		node: CompiledNode
 		action?: string
@@ -510,6 +522,8 @@ class ExecutableFlow<TContext extends Record<string, any>> {
 	 */
 	async execute(context: Context<TContext>): Promise<Context<TContext>> {
 		let frontier: CompiledNode[] = [this.startNode]
+		const executedNodeIds = new Set<string>()
+		const receivedInputs = new Map<string, Set<string>>() // Tracks which inputs a node has received
 
 		while (frontier.length > 0) {
 			if (context.getMetadata().signal?.aborted) {
@@ -517,28 +531,53 @@ class ExecutableFlow<TContext extends Record<string, any>> {
 			}
 
 			const executionPromises = frontier.map(async (node) => {
-				const nodeContext = context.withMetadata({ currentNodeId: node.id })
-				const result = await this._executeNodeWithResiliency(node, nodeContext)
-				return { node, result, context: nodeContext }
+				// Mutate metadata on the main context object.
+				context.setMetadata({ currentNodeId: node.id })
+				// Pass the main context object directly. Any modifications will persist.
+				const result = await this._executeNodeWithResiliency(node, context)
+				return { node, result }
 			})
 
 			const results = await Promise.all(executionPromises)
-			const nextNodeSet = new Set<CompiledNode>()
+			const nextFrontierSet = new Set<CompiledNode>()
 
-			for (const { node, result, context: resultingContext } of results) {
-				context.merge(resultingContext)
-				context.set(node.id as any, result.output)
-
-				if (result.output !== undefined) {
-					context.set('input' as any, result.output)
+			// Step 1: Update context with results and mark nodes as executed.
+			for (const { node, result } of results) {
+				if (node.id !== '__synthetic_root__') {
+					context.set(node.id as any, result.output)
+					// Set the 'input' for the next nodes.
+					if (result.output !== undefined) {
+						context.set('input' as any, result.output)
+					}
 				}
+				executedNodeIds.add(node.id)
+			}
 
-				const nextNodes = await this.getNextNodes(node, result, context)
-				for (const nextNode of nextNodes) {
-					nextNodeSet.add(nextNode)
+			// Step 2: Determine the next set of nodes to execute.
+			for (const { node, result } of results) {
+				const potentialNextNodes = await this.getNextNodes(node, result, context)
+				for (const nextNode of potentialNextNodes) {
+					// Update received inputs for the next node
+					if (!receivedInputs.has(nextNode.id)) {
+						receivedInputs.set(nextNode.id, new Set())
+					}
+					receivedInputs.get(nextNode.id)!.add(node.id)
+
+					const predecessors = this.nodeMap.get(nextNode.id)?.predecessorIds ?? new Set()
+					const received = receivedInputs.get(nextNode.id)!
+
+					// A node is ready if all predecessors have sent input. An exception is made for loop controllers,
+					// which can run as soon as *any* input is received. This breaks the fan-in deadlock for loops.
+					const isReady = nextNode.implementation === 'loop-controller' || Array.from(predecessors).every(p => received.has(p))
+					if (isReady) {
+						nextFrontierSet.add(nextNode)
+						// Once a loop controller is scheduled, clear its inputs so it can be triggered again by the feedback edge.
+						if (nextNode.implementation === 'loop-controller')
+							received.clear()
+					}
 				}
 			}
-			frontier = Array.from(nextNodeSet)
+			frontier = Array.from(nextFrontierSet)
 		}
 
 		return context
@@ -565,11 +604,11 @@ class ExecutableFlow<TContext extends Record<string, any>> {
 					const executionPromise = this.executeNode(node, context)
 					const result = timeout
 						? await Promise.race([
-								executionPromise,
-								new Promise<NodeResult>((_, reject) =>
-									setTimeout(() => reject(new Error('Node execution timed out')), timeout),
-								),
-							])
+							executionPromise,
+							new Promise<NodeResult>((_, reject) =>
+								setTimeout(() => reject(new Error('Node execution timed out')), timeout),
+							),
+						])
 						: await executionPromise
 
 					if (result.error) {
@@ -783,85 +822,60 @@ class ExecutableFlow<TContext extends Record<string, any>> {
 	 * Executes a batch processor that processes items from an array.
 	 */
 	private async _executeBatchProcessor(node: CompiledNode, context: Context<TContext>): Promise<NodeResult> {
-		const { batchSize = 10, concurrency = 1, timeout } = node.params
+		const { concurrency = 1, workerNodeId } = node.params
 		const inputArray = context.get('input' as any)
+
+		if (!workerNodeId || typeof workerNodeId !== 'string') {
+			return { error: { message: `Batch processor node '${node.id}' requires a 'workerNodeId' parameter.` } }
+		}
+		const workerNode = this.nodeMap.get(workerNodeId)
+		if (!workerNode) {
+			return { error: { message: `Batch processor could not find worker node with ID '${workerNodeId}'.` } }
+		}
 
 		if (!Array.isArray(inputArray)) {
 			return { error: { message: 'Batch processor expects an array as input' } }
 		}
 
 		const results: any[] = []
+		const semaphore = new Semaphore(concurrency)
+		const promises = inputArray.map(item =>
+			semaphore.acquire(async () => {
+				// Each item gets its own scope with the item set as 'input'
+				const itemContext = context.createScope({ input: item })
+				const itemResult = await this._processBatchItem(workerNode, itemContext)
 
-		// Process items in batches
-		for (let i = 0; i < inputArray.length; i += batchSize) {
-			const batch = inputArray.slice(i, i + batchSize)
+				// After execution, merge any state changes from the item's scope back to the main context.
+				context.merge(itemContext)
+				return itemResult
+			}),
+		)
 
-			if (concurrency === 1) {
-				// Sequential processing
-				for (const item of batch) {
-					const itemContext = context.createScope()
-					itemContext.set('input' as any, item)
-					const result = await this._processBatchItem(node, itemContext, timeout)
-					if (result.error) {
-						return result
-					}
-					results.push(result.output)
-				}
+		const settledResults = await Promise.allSettled(promises)
+
+		for (const result of settledResults) {
+			if (result.status === 'rejected') {
+				throw result.reason // Fail the whole batch if one item fails
 			}
-			else {
-				// Concurrent processing with limited concurrency
-				const semaphore = new Semaphore(concurrency)
-				const promises = batch.map(async (item: any) => {
-					return semaphore.acquire(async () => {
-						const itemContext = context.createScope()
-						itemContext.set('input' as any, item)
-						return this._processBatchItem(node, itemContext, timeout)
-					})
-				})
-
-				const settledResults = await Promise.allSettled(promises)
-
-				for (const result of settledResults) {
-					if (result.status === 'rejected') {
-						throw result.reason
-					}
-					if (result.value.error) {
-						return result.value
-					}
-					results.push(result.value.output)
-				}
+			if (result.value.error) {
+				return result.value // Propagate error from worker
 			}
+			results.push(result.value.output)
 		}
 
 		return { output: results }
 	}
 
 	/**
-	 * Process a single item in a batch.
+	 * Process a single item in a batch by executing the specified worker node.
 	 */
-	private async _processBatchItem(node: CompiledNode, context: Context<TContext>, timeout?: number): Promise<NodeResult> {
-		// Find the next node after the batch processor (this should be the processor node)
-		const nextNodes = node.nextNodes.filter(edge => !edge.action && !edge.condition)
-		if (nextNodes.length === 0) {
-			return { error: { message: 'Batch processor must have a target node to process items' } }
-		}
-
-		const processorNode = nextNodes[0].node
-
-		// Execute the processor node
-		const executionPromise = this.executeNode(processorNode, context)
-
-		if (timeout) {
-			return Promise.race([
-				executionPromise,
-				new Promise<NodeResult>((_, reject) =>
-					setTimeout(() => reject(new Error('Batch item processing timed out')), timeout),
-				),
-			])
-		}
-
-		const result = await executionPromise
-		return result
+	private async _processBatchItem(workerNode: CompiledNode, context: Context<TContext>): Promise<NodeResult> {
+		// Since a batch worker is a self-contained execution, we create a new
+		// mini-flow for it to run to completion.
+		const flow = new ExecutableFlow(workerNode, this.nodeMap, this.runtime, this.functionRegistry)
+		const finalContext = await flow.execute(context)
+		// The result of the batch item is the final 'input' value in its context.
+		return { output: finalContext.get('input' as any) }
 	}
 
 	/**
@@ -871,16 +885,21 @@ class ExecutableFlow<TContext extends Record<string, any>> {
 		const { maxIterations = 100, condition } = node.params
 
 		// Get current iteration count from context
-		const iterations = (context as any).get('loop_iterations') || 0
+		const iterations = context.get('loop_iterations' as any) || 0
 
-		// The loop controller doesn't execute anything directly - it just determines the next action
-		// The actual loop logic is handled by the flow execution
+		// Check max iterations FIRST. This prevents running the N+1th iteration.
+		if (iterations >= maxIterations) {
+			return { action: 'break' }
+		}
+
+		// Increment iteration count for the next run
+		context.set('loop_iterations' as any, iterations + 1)
 
 		// Check condition if provided
 		if (condition) {
 			const evalContext = {
 				...context.toJSON(),
-				iterations,
+				iterations, // use the pre-incremented value for the check
 			}
 			const shouldContinue = await this.conditionEvaluator.evaluate(condition, evalContext)
 			if (!shouldContinue) {
@@ -888,13 +907,6 @@ class ExecutableFlow<TContext extends Record<string, any>> {
 			}
 		}
 
-		// Check max iterations
-		if (iterations >= maxIterations) {
-			return { action: 'break' }
-		}
-
-		// Increment iteration count for next time
-		(context as any).set('loop_iterations', iterations + 1)
 		return { action: 'continue' }
 	}
 
@@ -906,12 +918,13 @@ class ExecutableFlow<TContext extends Record<string, any>> {
 		result: NodeResult,
 		context: Context<TContext>,
 	): Promise<CompiledNode[]> {
+		// Special handling for batch processor: it's a container. Its "next" node
+		// is the one connected *from* the container, not the worker inside it.
 		if (currentNode.implementation === 'batch-processor') {
-			const itemProcessorEdge = currentNode.nextNodes.find(edge => !edge.action && !edge.condition)
-			if (itemProcessorEdge) {
-				return this.getNextNodes(itemProcessorEdge.node, result, context)
-			}
-			return []
+			// The successor is any node connected from the batch processor that isn't the worker.
+			const workerId = currentNode.params.workerNodeId
+			const successorEdge = currentNode.nextNodes.find(edge => edge.node.id !== workerId)
+			return successorEdge ? [successorEdge.node] : []
 		}
 
 		if (!currentNode.nextNodes || currentNode.nextNodes.length === 0) {
