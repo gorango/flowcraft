@@ -22,8 +22,8 @@ async function resolveInputs(ctx: LlmNodeContext, inputs: Record<string, string 
 		const sourceKeys = Array.isArray(sourceKeyOrKeys) ? sourceKeyOrKeys : [sourceKeyOrKeys]
 		let valueFound = false
 		for (const sourceKey of sourceKeys) {
-			if (await ctx.context.has(sourceKey as any)) {
-				resolved[templateKey] = await ctx.context.get(sourceKey as any)
+			if (await ctx.context.has(sourceKey)) {
+				resolved[templateKey] = await ctx.context.get(sourceKey)
 				valueFound = true
 			}
 		}
@@ -58,6 +58,6 @@ export async function outputNode(ctx: LlmNodeContext): Promise<NodeResult> {
 	const { outputKey = 'final_output' } = ctx.params
 	const templateData = await resolveInputs(ctx, ctx.params.inputs)
 	const finalOutput = resolveTemplate(ctx.params.promptTemplate, templateData)
-	await ctx.context.set(outputKey as any, finalOutput)
+	await ctx.context.set(outputKey, finalOutput)
 	return { output: finalOutput }
 }

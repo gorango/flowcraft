@@ -8,6 +8,7 @@ import type {
 	ISerializer,
 	NodeContext,
 	NodeDefinition,
+	NodeMap,
 	NodeRegistry,
 	NodeResult,
 	RuntimeDependencies,
@@ -165,13 +166,13 @@ class DefaultConditionEvaluator implements IConditionEvaluator {
 /**
  * Handles compilation, caching, and execution of workflow blueprints
  */
-export class FlowcraftRuntime<TContext extends Record<string, any> = Record<string, any>> {
+export class FlowcraftRuntime<TContext extends Record<string, any> = Record<string, any>, TNodeMap extends NodeMap = NodeMap> {
 	private registry: NodeRegistry
 	private dependencies: RuntimeDependencies
 	private defaultNodeConfig: any
 	private environment: 'development' | 'staging' | 'production'
 	private compiledFlows: Map<string, ExecutableFlow<TContext>>
-	private blueprintCache: Map<string, WorkflowBlueprint>
+	private blueprintCache: Map<string, WorkflowBlueprint<TNodeMap>>
 	private eventBus: IEventBus
 	private conditionEvaluator: IConditionEvaluator
 	private serializer: ISerializer
@@ -192,7 +193,7 @@ export class FlowcraftRuntime<TContext extends Record<string, any> = Record<stri
 	 * Run a workflow blueprint
 	 */
 	async run(
-		blueprint: WorkflowBlueprint,
+		blueprint: WorkflowBlueprint<TNodeMap>,
 		initialContext: Partial<TContext> = {},
 		functionRegistry?: Map<string, any>,
 		signal?: AbortSignal,
@@ -282,7 +283,7 @@ export class FlowcraftRuntime<TContext extends Record<string, any> = Record<stri
 	/**
 	 * Get a compiled flow from cache or compile it
 	 */
-	private async getOrCompileFlow(blueprint: WorkflowBlueprint, functionRegistry?: Map<string, any>): Promise<ExecutableFlow<TContext>> {
+	private async getOrCompileFlow(blueprint: WorkflowBlueprint<TNodeMap>, functionRegistry?: Map<string, any>): Promise<ExecutableFlow<TContext>> {
 		// if a function registry is provided, it might contain different implementations,
 		// so we bypass the cache to ensure we compile with the correct functions.
 		const cached = !functionRegistry && this.compiledFlows.get(blueprint.id)
@@ -302,7 +303,7 @@ export class FlowcraftRuntime<TContext extends Record<string, any> = Record<stri
 	/**
 	 * Compile a blueprint into an executable flow
 	 */
-	private async compileBlueprint(blueprint: WorkflowBlueprint, functionRegistry: Map<string, any> = new Map()): Promise<ExecutableFlow<TContext>> {
+	private async compileBlueprint(blueprint: WorkflowBlueprint<TNodeMap>, functionRegistry: Map<string, any> = new Map()): Promise<ExecutableFlow<TContext>> {
 		// create a map of nodes by ID for quick lookup
 		const nodeMap = new Map<string, CompiledNode>()
 
@@ -358,7 +359,7 @@ export class FlowcraftRuntime<TContext extends Record<string, any> = Record<stri
 	 * Find the implementation for a given node definition
 	 */
 	private findNodeImplementation(
-		nodeDef: Pick<NodeDefinition, 'id' | 'uses'>,
+		nodeDef: Pick<NodeDefinition<TNodeMap>, 'id' | 'uses'>,
 		functionRegistry: Map<string, any>,
 	): any {
 		const builtInNodes = ['parallel-container', 'batch-processor', 'loop-controller', 'subflow']
@@ -425,11 +426,11 @@ export class FlowcraftRuntime<TContext extends Record<string, any> = Record<stri
 	/**
 	 * Register a blueprint for use as a sub-workflow
 	 */
-	registerBlueprint(blueprint: WorkflowBlueprint): void {
+	registerBlueprint(blueprint: WorkflowBlueprint<TNodeMap>): void {
 		this.blueprintCache.set(blueprint.id, blueprint)
 	}
 
-	getBlueprint(id: string): WorkflowBlueprint | undefined {
+	getBlueprint(id: string): WorkflowBlueprint<TNodeMap> | undefined {
 		return this.blueprintCache.get(id)
 	}
 
@@ -464,7 +465,7 @@ export class FlowcraftRuntime<TContext extends Record<string, any> = Record<stri
 	 * [NEW] Finds the starting node(s) for a given blueprint.
 	 * Essential for a distributed client to kick off the workflow.
 	 */
-	public findStartNodes(blueprint: WorkflowBlueprint): NodeDefinition[] {
+	public findStartNodes(blueprint: WorkflowBlueprint<TNodeMap>): NodeDefinition<TNodeMap>[] {
 		const targetNodeIds = new Set(blueprint.edges.map(e => e.target))
 		return blueprint.nodes.filter(node => !targetNodeIds.has(node.id))
 	}
@@ -474,7 +475,7 @@ export class FlowcraftRuntime<TContext extends Record<string, any> = Record<stri
 	 * This is the core method for a distributed worker.
 	 */
 	public async executeNode(
-		blueprint: WorkflowBlueprint,
+		blueprint: WorkflowBlueprint<TNodeMap>,
 		nodeId: string,
 		context: IContext<TContext>,
 	): Promise<NodeResult> {
@@ -491,11 +492,11 @@ export class FlowcraftRuntime<TContext extends Record<string, any> = Record<stri
 	 * This is the core orchestration method for a distributed worker.
 	 */
 	public async determineNextNodes(
-		blueprint: WorkflowBlueprint,
+		blueprint: WorkflowBlueprint<TNodeMap>,
 		nodeId: string,
 		result: NodeResult,
 		context: IContext<TContext>,
-	): Promise<NodeDefinition[]> {
+	): Promise<NodeDefinition<TNodeMap>[]> {
 		const edges = blueprint.edges.filter(e => e.source === nodeId)
 		if (edges.length === 0)
 			return []
@@ -531,7 +532,7 @@ export class FlowcraftRuntime<TContext extends Record<string, any> = Record<stri
 	 * [NEW] Wraps the execution of a single node with resiliency logic (retries, fallback, timeout).
 	 * This version works with NodeDefinition and async IContext.
 	 */
-	private async _executeNodeWithResiliency(nodeDef: NodeDefinition, context: IContext<TContext>): Promise<NodeResult> {
+	private async _executeNodeWithResiliency(nodeDef: NodeDefinition<TNodeMap>, context: IContext<TContext>): Promise<NodeResult> {
 		const { maxRetries = 1, retryDelay = 0, timeout } = nodeDef.config || {}
 		let lastError: Error | undefined
 		const executionId = context.getMetadata().executionId
@@ -628,7 +629,7 @@ export class FlowcraftRuntime<TContext extends Record<string, any> = Record<stri
 	/**
 	 * [FIXED] Execute a single node's core logic using async IContext.
 	 */
-	private async _executeNodeLogic(nodeDef: NodeDefinition, context: IContext<TContext>): Promise<NodeResult> {
+	private async _executeNodeLogic(nodeDef: NodeDefinition<TNodeMap>, context: IContext<TContext>): Promise<NodeResult> {
 		// --- THIS IS THE FIX ---
 		// Handle built-in node types before attempting to find a function implementation.
 		if (nodeDef.uses === 'subflow') {
@@ -670,7 +671,7 @@ export class FlowcraftRuntime<TContext extends Record<string, any> = Record<stri
 	/**
 	 * [NEW] Executes a sub-workflow blueprint, adapted for IContext.
 	 */
-	private async _executeSubflow(nodeDef: NodeDefinition, parentContext: IContext<TContext>): Promise<NodeResult> {
+	private async _executeSubflow(nodeDef: NodeDefinition<TNodeMap>, parentContext: IContext<TContext>): Promise<NodeResult> {
 		const { blueprintId, inputs = {}, outputs = {} } = nodeDef.params || {}
 		if (!blueprintId) {
 			return { error: { message: `Subflow node '${nodeDef.id}' is missing 'blueprintId' in its params.` } }

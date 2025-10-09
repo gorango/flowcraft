@@ -44,7 +44,7 @@ export function createArticleFlow() {
 			return { output: titles }
 		})
 		.node('apply-style', async (ctx) => {
-			const draft = await ctx.context.get('draft-post')
+			const draft = await ctx.context.get('draft')
 			console.log('\n===== APPLYING STYLE =====')
 			const prompt
 				= `

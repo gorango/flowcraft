@@ -72,7 +72,7 @@ async function searchWebNode(ctx: NodeContext<ResearchContext>): Promise<NodeRes
 }
 
 // Node to generate the final answer
-async function answerQuestion(ctx: NodeContext): Promise<NodeResult> {
+async function answerQuestion(ctx: NodeContext<ResearchContext>): Promise<NodeResult> {
 	const question = (await ctx.context.get('question'))!
 	const context = (await ctx.context.get('context')) || 'No context provided.'
 	const prompt = `Based on the following context, provide a comprehensive answer to the question.

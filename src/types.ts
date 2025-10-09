@@ -1,8 +1,15 @@
 /**
+ * Node map for type-safe node parameters
+ */
+export interface NodeMap {
+	[nodeName: string]: Record<string, any>
+}
+
+/**
  * The central, serializable representation of any flow
  * This is the single source of truth that can be persisted, distributed, or executed
  */
-export interface WorkflowBlueprint {
+export interface WorkflowBlueprint<TNodeMap extends NodeMap = NodeMap> {
 	/** Unique identifier for this blueprint */
 	id: string
 	/** Metadata about the blueprint */
@@ -13,25 +20,27 @@ export interface WorkflowBlueprint {
 		tags?: string[]
 	}
 	/** Node definitions that make up this workflow */
-	nodes: NodeDefinition[]
+	nodes: NodeDefinition<TNodeMap>[]
 	/** Edge definitions that connect the nodes */
 	edges: EdgeDefinition[]
 	/** Input schema for the workflow */
 	inputs?: Record<string, any>
 	/** Output schema for the workflow */
 	outputs?: Record<string, any>
+	/** Node map for type safety */
+	nodeMap?: TNodeMap
 }
 
 /**
  * Definition of a single node in the workflow
  */
-export interface NodeDefinition {
+export interface NodeDefinition<TNodeMap extends NodeMap = NodeMap> {
 	/** Unique identifier for this node within the blueprint */
 	id: string
 	/** The type of node - either a registered node class or a function key */
 	uses: string
 	/** Static configuration/parameters for the node */
-	params?: Record<string, any>
+	params?: TNodeMap[NodeDefinition['uses']] | Record<string, any>
 	/** Runtime configuration (retries, timeouts, etc.) */
 	config?: NodeConfig
 	/** Input mapping for this node */
@@ -158,7 +167,9 @@ export interface NodeRegistryEntry {
 /**
  * Node implementation - can be a class or function
  */
-export type NodeImplementation = NodeClass | NodeFunction
+export type NodeImplementation<TContext extends Record<string, any> = Record<string, any>>
+	= | NodeClass
+		| NodeFunction<TContext>
 
 /**
  * Class-based node implementation (for complex, reusable nodes)
@@ -172,7 +183,9 @@ export interface NodeClass {
 /**
  * Function-based node implementation (for simple, inline nodes)
  */
-export type NodeFunction = (context: NodeContext) => Promise<NodeResult>
+export type NodeFunction<TContext extends Record<string, any> = Record<string, any>> = (
+	context: NodeContext<TContext>,
+) => Promise<NodeResult>
 
 /**
  * Registry for nodes and their implementations

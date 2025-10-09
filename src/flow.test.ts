@@ -27,7 +27,7 @@ describe('Flow Builder', () => {
 				tags: ['test', 'example'],
 			}
 
-			const flow = new Flow('test-flow', metadata)
+			const flow = new Flow('test-flow', undefined, metadata)
 			flow.node('dummy', async () => ({ output: null }))
 			const blueprint = flow.toBlueprint()
 
@@ -359,7 +359,7 @@ describe('Flow Builder', () => {
 	describe('createFlow helper', () => {
 		it('should create a flow using the helper function', () => {
 			const metadata = { name: 'Helper Flow' }
-			const flow = createFlow('helper-flow', metadata)
+			const flow = createFlow('helper-flow', undefined, metadata)
 
 			flow.node('dummy', async () => ({ output: null }))
 			expect(flow.toBlueprint().id).toBe('helper-flow')

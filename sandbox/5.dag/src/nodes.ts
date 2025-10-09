@@ -1,10 +1,15 @@
 import type { NodeContext, NodeResult } from 'flowcraft'
+import type { IContext } from 'flowcraft'
 import { callLLM, resolveTemplate } from './utils.js'
 
 /**
  * A generic context for our LLM nodes.
  */
-interface LlmNodeContext extends NodeContext {
+interface LlmNodeContext {
+	context: any
+	input?: any
+	metadata: any
+	dependencies: any
 	params: {
 		promptTemplate: string
 		inputs: Record<string, string | string[]>
@@ -21,8 +26,8 @@ async function resolveInputs(ctx: NodeContext, inputs: Record<string, string | s
 		const sourceKeys = Array.isArray(sourceKeyOrKeys) ? sourceKeyOrKeys : [sourceKeyOrKeys]
 		let valueFound = false
 		for (const sourceKey of sourceKeys) {
-			if (await ctx.context.has(sourceKey as any)) {
-				resolved[templateKey] = await ctx.context.get(sourceKey as any)
+			if (await ctx.context.has(sourceKey)) {
+				resolved[templateKey] = await ctx.context.get(sourceKey)
 				valueFound = true
 			}
 		}
@@ -57,6 +62,6 @@ export async function outputNode(ctx: LlmNodeContext): Promise<NodeResult> {
 	const { outputKey = 'final_output' } = ctx.params
 	const templateData = await resolveInputs(ctx, ctx.params.inputs)
 	const finalOutput = resolveTemplate(ctx.params.promptTemplate, templateData)
-	await ctx.context.set(outputKey as any, finalOutput)
+	await ctx.context.set(outputKey, finalOutput)
 	return { output: finalOutput }
 }

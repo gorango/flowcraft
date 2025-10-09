@@ -11,7 +11,7 @@ interface TranslationContext {
 }
 
 // 1. Prepare the list of translation jobs
-async function prepareJobs(ctx: NodeContext): Promise<NodeResult> {
+async function prepareJobs(ctx: NodeContext<TranslationContext>): Promise<NodeResult> {
 	const languages = await ctx.context.get('languages') as string[]
 	const text = await ctx.context.get('text') as string
 	// The output of this node is an array of objects, which the batch processor will iterate over.
@@ -20,7 +20,7 @@ async function prepareJobs(ctx: NodeContext): Promise<NodeResult> {
 }
 
 // 2. This function will be executed FOR EACH item in the batch
-async function translateItem(ctx: NodeContext): Promise<NodeResult> {
+async function translateItem(ctx: NodeContext<TranslationContext>): Promise<NodeResult> {
 	// The `input` for a batch worker is a single item from the source array.
 	const { language, text } = ctx.input as { language: string, text: string }
 	const prompt = `
@@ -38,13 +38,13 @@ ${text}`
 }
 
 // 3. This node runs AFTER the entire batch is complete
-async function saveResults(ctx: NodeContext): Promise<NodeResult> {
+async function saveResults(ctx: NodeContext<TranslationContext>): Promise<NodeResult> {
 	// The `input` for the successor of a batch is an array of all worker outputs.
 	const translations = ctx.input as { language: string, translation: string }[]
 	const outputDir = await ctx.context.get('output_dir')!
 
 	const promises = translations.map(({ language, translation }) => {
-		const filename = path.join(outputDir, `README_${language.toUpperCase()}.md`)
+		const filename = path.join(outputDir!, `README_${language.toUpperCase()}.md`)
 		console.log(`Saving translation to ${filename}`)
 		return fs.writeFile(filename, translation, 'utf-8')
 	})

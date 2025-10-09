@@ -14,7 +14,7 @@ interface RagContext {
 	final_answer: string
 }
 
-async function loadAndChunk(ctx: NodeContext): Promise<NodeResult> {
+async function loadAndChunk(ctx: NodeContext<RagContext>): Promise<NodeResult> {
 	const path = await ctx.context.get('document_path')!
 	console.log(`[Node] Reading and chunking file: ${path}`)
 
@@ -32,7 +32,7 @@ async function loadAndChunk(ctx: NodeContext): Promise<NodeResult> {
 	return { output: Array.from(chunks.values()) }
 }
 
-async function generateSingleEmbedding(ctx: NodeContext): Promise<NodeResult> {
+async function generateSingleEmbedding(ctx: NodeContext<RagContext>): Promise<NodeResult> {
 	const chunk = ctx.input
 	if (!chunk || !chunk.text) {
 		throw new TypeError('Batch worker for embeddings received an invalid chunk.')
@@ -41,7 +41,7 @@ async function generateSingleEmbedding(ctx: NodeContext): Promise<NodeResult> {
 	return { output: { chunkId: chunk.id, vector } }
 }
 
-async function storeInVectorDB(ctx: NodeContext): Promise<NodeResult> {
+async function storeInVectorDB(ctx: NodeContext<RagContext>): Promise<NodeResult> {
 	console.log('[Node] Simulating storage of chunks and vectors.')
 	const embeddingResults = ctx.input as { chunkId: string, vector: number[] }[]
 	const chunks = await ctx.context.get('chunks') as Map<string, DocumentChunk>
@@ -58,7 +58,7 @@ async function storeInVectorDB(ctx: NodeContext): Promise<NodeResult> {
 	return { output: 'DB Ready' }
 }
 
-async function vectorSearch(ctx: NodeContext): Promise<NodeResult> {
+async function vectorSearch(ctx: NodeContext<RagContext>): Promise<NodeResult> {
 	const question = await ctx.context.get('question')!
 	const db = await ctx.context.get('vector_db') as Map<string, { chunk: DocumentChunk, vector: number[] }>
 	console.log(`[Node] Performing vector search for question: "${question}"`)
@@ -82,7 +82,7 @@ async function vectorSearch(ctx: NodeContext): Promise<NodeResult> {
 	return { output: searchResults }
 }
 
-async function generateFinalAnswer(ctx: NodeContext): Promise<NodeResult> {
+async function generateFinalAnswer(ctx: NodeContext<RagContext>): Promise<NodeResult> {
 	const searchResults = ctx.input as SearchResult[]
 	const contextText = searchResults?.map(r => r.chunk.text).join('\n\n---\n\n') ?? ''
 	const question = await ctx.context.get('question')!

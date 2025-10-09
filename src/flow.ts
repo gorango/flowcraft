@@ -4,63 +4,88 @@ import type {
 	NodeConfig,
 	NodeDefinition,
 	NodeFunction,
+	NodeMap,
 	WorkflowBlueprint,
 } from './types'
 
 /**
+ * A custom type guard to definitively check if an implementation is a NodeClass.
+ * @param value The value to check.
+ * @returns True if the value is a class with an `execute` method on its prototype.
+ */
+function isNodeClass(value: any): value is NodeClass {
+	return typeof value === 'function' && !!value.prototype?.execute
+}
+
+/**
  * Provides a type-safe, programmatic API that produces serializable blueprints
  */
-export class Flow<TContext extends Record<string, any> = Record<string, any>> {
-	private blueprint: Partial<WorkflowBlueprint>
-	private functionRegistry: Map<string, NodeFunction>
+export class Flow<TContext extends Record<string, any> = Record<string, any>, TNodeMap extends NodeMap = NodeMap> {
+	private blueprint: Partial<WorkflowBlueprint<TNodeMap>>
+	private functionRegistry: Map<string, NodeFunction<TContext>>
 
-	constructor(id: string, metadata?: WorkflowBlueprint['metadata']) {
+	constructor(id: string, nodeMap?: TNodeMap, metadata?: WorkflowBlueprint['metadata']) {
 		this.blueprint = {
 			id,
 			metadata,
 			nodes: [],
 			edges: [],
+			nodeMap,
 		}
 		this.functionRegistry = new Map()
 	}
 
 	/**
-	 * Add a node to the workflow
+	 * Add a node to the workflow with type-safe parameters
 	 * Can be a function, class, or registered node name
 	 */
+	node<K extends keyof TNodeMap>(
+		id: string,
+		uses: K,
+		params: TNodeMap[K],
+		config?: NodeConfig,
+	): this
 	node(
 		id: string,
-		implementation: NodeFunction | NodeClass | string,
+		implementation: NodeFunction<TContext> | NodeClass | string,
 		params?: Record<string, any>,
 		config?: NodeConfig,
+	): this
+	node(
+		id: string,
+		implementationOrUses: NodeFunction<TContext> | NodeClass | string | keyof TNodeMap,
+		paramsOrConfig?: Record<string, any> | TNodeMap[keyof TNodeMap] | NodeConfig,
+		config?: NodeConfig,
 	): this {
-		let nodeDef: NodeDefinition
+		let nodeDef: NodeDefinition<TNodeMap>
 
-		if (typeof implementation === 'string') {
+		if (typeof implementationOrUses === 'string') {
 			nodeDef = {
 				id,
-				uses: implementation,
-				params,
+				uses: implementationOrUses,
+				params: paramsOrConfig as Record<string, any>,
 				config,
 			}
 		}
-		else if (typeof implementation === 'function' && implementation.prototype?.execute) {
-			const className = implementation.name || `class_${id}_${Date.now()}`
+		// 1. Use the type guard. If this is true, TypeScript *knows* it's a NodeClass.
+		else if (isNodeClass(implementationOrUses)) {
+			const className = implementationOrUses.name || `class_${id}_${Date.now()}`
 			nodeDef = {
 				id,
 				uses: className,
-				params,
+				params: paramsOrConfig as Record<string, any>,
 				config,
 			}
 		}
-		else if (typeof implementation === 'function') {
+		// 2. Because the above check failed, if it's a function, TypeScript now knows
+		//    it *must* be a NodeFunction, as the NodeClass possibility has been eliminated.
+		else if (typeof implementationOrUses === 'function') {
 			const functionKey = `function_${id}_${Date.now()}`
-			this.functionRegistry.set(functionKey, implementation as NodeFunction)
-
+			this.functionRegistry.set(functionKey, implementationOrUses) // This is now 100% type-safe.
 			nodeDef = {
 				id,
 				uses: functionKey,
-				params,
+				params: paramsOrConfig as Record<string, any>,
 				config,
 			}
 		}
@@ -284,15 +309,15 @@ export class Flow<TContext extends Record<string, any> = Record<string, any>> {
 	/**
 	 * Get the function registry (for runtime use)
 	 */
-	getFunctionRegistry(): Map<string, NodeFunction> {
+	getFunctionRegistry(): Map<string, NodeFunction<any>> {
 		return new Map(this.functionRegistry)
 	}
 
 	/**
 	 * Create a copy of this flow
 	 */
-	clone(newId?: string): Flow<TContext> {
-		const cloned = new Flow<TContext>(newId || `${this.blueprint.id}_clone`)
+	clone(newId?: string): Flow<TContext, TNodeMap> {
+		const cloned = new Flow<TContext, TNodeMap>(newId || `${this.blueprint.id}_clone`, this.blueprint.nodeMap)
 		cloned.blueprint = JSON.parse(JSON.stringify(this.blueprint))
 		cloned.blueprint.id = newId || `${this.blueprint.id}_clone`
 		cloned.functionRegistry = new Map(this.functionRegistry)
@@ -302,7 +327,7 @@ export class Flow<TContext extends Record<string, any> = Record<string, any>> {
 	/**
 	 * Merge another flow into this one
 	 */
-	merge(other: Flow<TContext>, prefix?: string): this {
+	merge(other: Flow<TContext, TNodeMap>, prefix?: string): this {
 		const otherBlueprint = other.toBlueprint()
 
 		// add prefix to node IDs if specified
@@ -311,7 +336,7 @@ export class Flow<TContext extends Record<string, any> = Record<string, any>> {
 			const newId = prefix ? `${prefix}_${node.id}` : node.id
 			nodeIdMap.set(node.id, newId)
 
-			const newNode: NodeDefinition = {
+			const newNode: NodeDefinition<TNodeMap> = {
 				...node,
 				id: newId,
 			}
@@ -342,9 +367,10 @@ export class Flow<TContext extends Record<string, any> = Record<string, any>> {
 /**
  * Create a new flow builder
  */
-export function createFlow<TContext extends Record<string, any> = Record<string, any>>(
+export function createFlow<TContext extends Record<string, any> = Record<string, any>, TNodeMap extends NodeMap = NodeMap>(
 	id: string,
+	nodeMap?: TNodeMap,
 	metadata?: WorkflowBlueprint['metadata'],
-): Flow<TContext> {
-	return new Flow(id, metadata)
+): Flow<TContext, TNodeMap> {
+	return new Flow(id, nodeMap, metadata)
 }
