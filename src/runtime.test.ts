@@ -1083,6 +1083,4 @@ describe('FlowcraftRuntime', () => {
 			expect(executionLog).toEqual(['before', 'after'])
 		})
 	})
-
-
 })

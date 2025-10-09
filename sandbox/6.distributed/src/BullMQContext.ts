@@ -1,13 +1,14 @@
 // sandbox/6.distributed/src/BullMQContext.ts
 
 import type IORedis from 'ioredis'
-import type { ExecutionMetadata, IContext } from '../../../src/types.js'
+import type { ExecutionMetadata, IAsyncContext } from 'flowcraft'
 
 /**
  * A distributed context that persists state in a Redis hash.
  * Each workflow run gets its own hash key, allowing for concurrent executions.
  */
-export class BullMQContext implements IContext {
+export class BullMQContext implements IAsyncContext<Record<string, any>> {
+	public readonly type = 'async' as const
 	private redis: IORedis
 	private runId: string
 	private stateKey: string
@@ -25,9 +26,8 @@ export class BullMQContext implements IContext {
 		return value ? JSON.parse(value) : undefined
 	}
 
-	async set(key: string, value: any): Promise<this> {
+	async set<K extends string>(key: K, value: any): Promise<void> {
 		await this.redis.hset(this.stateKey, key, JSON.stringify(value))
-		return this
 	}
 
 	async has(key: string): Promise<boolean> {
@@ -62,7 +62,7 @@ export class BullMQContext implements IContext {
 	}
 
 	// These methods are not applicable in a stateless distributed context
-	createScope(): IContext {
+	createScope(additionalData?: Record<string, any>): IAsyncContext<Record<string, any>> {
 		throw new Error('createScope is not supported in BullMQContext')
 	}
 

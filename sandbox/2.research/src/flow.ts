@@ -1,4 +1,4 @@
-import type { NodeContext, NodeResult } from 'flowcraft'
+import type { NodeContext, NodeResult, ISyncContext } from 'flowcraft'
 import { createFlow } from 'flowcraft'
 import yaml from 'yaml'
 import { callLLM, searchWeb } from './utils.js'
@@ -21,10 +21,11 @@ interface Decision {
 
 // Node to decide the next step
 async function decideAction(ctx: NodeContext<ResearchContext>): Promise<NodeResult> {
-	const question = (await ctx.context.get('question'))!
-	const context = (await ctx.context.get('context')) || 'No previous search results.'
-	const search_count = (await ctx.context.get('search_count')) || 0
-	const max_searches = (await ctx.context.get('max_searches'))!
+	const syncContext = ctx.context as ISyncContext<ResearchContext>
+	const question = syncContext.get('question')!
+	const context = syncContext.get('context') || 'No previous search results.'
+	const search_count = syncContext.get('search_count') || 0
+	const max_searches = syncContext.get('max_searches')!
 
 	const prompt = `
 You are a research assistant. Based on the question, context, and the number of searches performed, decide whether to search for more information or answer the question.
@@ -46,7 +47,7 @@ Return your decision in YAML format with "action" and "reason". If action is 'se
 
 	console.log(`\n🤔 Agent decides to ${decision.action}. Reason: ${decision.reason}`)
 	if (decision.action === 'search' && decision.search_query) {
-		await ctx.context.set('search_query', decision.search_query)
+		ctx.context.set('search_query', decision.search_query)
 		console.log(`🔍 Search Query: ${decision.search_query}`)
 	}
 
@@ -55,17 +56,18 @@ Return your decision in YAML format with "action" and "reason". If action is 'se
 
 // Node to perform a web search
 async function searchWebNode(ctx: NodeContext<ResearchContext>): Promise<NodeResult> {
-	const query = await ctx.context.get('search_query')
+	const syncContext = ctx.context as ISyncContext<ResearchContext>
+	const query = syncContext.get('search_query')
 	if (!query)
 		return { output: 'No search query provided.' }
 
 	const searchResults = await searchWeb(query)
-	const currentContext = (await ctx.context.get('context')) || ''
+	const currentContext = syncContext.get('context') || ''
 	const newContext = `${currentContext}\n\nSearch for "${query}":\n${searchResults}`
-	await ctx.context.set('context', newContext)
+	syncContext.set('context', newContext)
 
-	const count = (await ctx.context.get('search_count')) || 0
-	await ctx.context.set('search_count', count + 1)
+	const count = syncContext.get('search_count') || 0
+	syncContext.set('search_count', count + 1)
 
 	console.log(`📚 Found information (Search #${count + 1}), analyzing results...`)
 	return { output: newContext }
@@ -73,8 +75,9 @@ async function searchWebNode(ctx: NodeContext<ResearchContext>): Promise<NodeRes
 
 // Node to generate the final answer
 async function answerQuestion(ctx: NodeContext<ResearchContext>): Promise<NodeResult> {
-	const question = (await ctx.context.get('question'))!
-	const context = (await ctx.context.get('context')) || 'No context provided.'
+	const syncContext = ctx.context as ISyncContext<ResearchContext>
+	const question = syncContext.get('question')!
+	const context = syncContext.get('context') || 'No context provided.'
 	const prompt = `Based on the following context, provide a comprehensive answer to the question.
  Context:
  ${context}
@@ -83,7 +86,7 @@ async function answerQuestion(ctx: NodeContext<ResearchContext>): Promise<NodeRe
 
 	console.log('✍️  Crafting final answer...')
 	const finalAnswer = await callLLM(prompt)
-	await ctx.context.set('answer', finalAnswer)
+	syncContext.set('answer', finalAnswer)
 	console.log('✅ Answer generated successfully.')
 	return { output: finalAnswer }
 }
@@ -91,15 +94,16 @@ async function answerQuestion(ctx: NodeContext<ResearchContext>): Promise<NodeRe
 export function createAgentFlow() {
 	return createFlow<ResearchContext>('research-agent')
 		.node('initialize-research', async ({ context }) => {
-			const question = await context.get('question')
+			const syncContext = context as ISyncContext<ResearchContext>
+			const question = syncContext.get('question')
 			if (!question) {
 				throw new Error('Initial context must contain a "question".')
 			}
-			if (!(await context.has('search_count'))) {
-				await context.set('search_count', 0)
+			if (!syncContext.has('search_count')) {
+				syncContext.set('search_count', 0)
 			}
-			if (!(await context.has('context'))) {
-				await context.set('context', '')
+			if (!syncContext.has('context')) {
+				syncContext.set('context', '')
 			}
 			console.log(`DEBUG: Research initialized for question: "${question}"`)
 			return { output: 'Initialized' }

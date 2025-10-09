@@ -1,11 +1,12 @@
-import type { Context } from './context'
 import type {
+	ContextImplementation,
 	EdgeDefinition,
 	ExecutionMetadata,
+	IAsyncContext,
 	IConditionEvaluator,
-	IContext,
 	IEventBus,
 	ISerializer,
+	ISyncContext,
 	Middleware,
 	NodeContext,
 	NodeDefinition,
@@ -18,7 +19,7 @@ import type {
 	WorkflowResult,
 } from './types'
 import { randomUUID } from 'node:crypto'
-import { createAsyncContext, createContext } from './context'
+import { Context, createAsyncContext, createContext } from './context'
 import { CancelledWorkflowError, FatalNodeExecutionError, NodeExecutionError } from './errors'
 
 /**
@@ -178,6 +179,7 @@ export class FlowcraftRuntime<TContext extends Record<string, any> = Record<stri
 	private conditionEvaluator: IConditionEvaluator
 	private serializer: ISerializer
 	private middleware: Middleware<TContext>[]
+	private contextProvider?: (initialData: Record<string, any>, metadata: ExecutionMetadata) => IAsyncContext<any>
 
 	constructor(options: RuntimeOptions) {
 		this.registry = options.registry
@@ -188,6 +190,7 @@ export class FlowcraftRuntime<TContext extends Record<string, any> = Record<stri
 		this.conditionEvaluator = options.conditionEvaluator || new DefaultConditionEvaluator()
 		this.serializer = options.serializer || new JsonSerializer()
 		this.middleware = (options.middleware || []) as Middleware<TContext>[]
+		this.contextProvider = options.contextProvider
 		this.compiledFlows = new Map()
 		this.blueprintCache = new Map()
 	}
@@ -203,7 +206,7 @@ export class FlowcraftRuntime<TContext extends Record<string, any> = Record<stri
 	): Promise<WorkflowResult<TContext>> {
 		const startTime = new Date()
 		const executionId = randomUUID()
-		let finalContext: Context<TContext> | undefined
+		let finalContext: ContextImplementation<TContext> | undefined
 		let status: 'completed' | 'failed' | 'cancelled' = 'completed'
 		let finalError: NodeExecutionError | CancelledWorkflowError | undefined
 
@@ -230,7 +233,9 @@ export class FlowcraftRuntime<TContext extends Record<string, any> = Record<stri
 					environment: this.environment,
 					signal,
 				}
-				const context = createContext<TContext>(initialContext, metadata) as Context<TContext>
+				const context: ContextImplementation<TContext> = this.contextProvider
+					? this.contextProvider(initialContext, metadata)
+					: new Context<TContext>(initialContext, metadata)
 				finalContext = await executableFlow.execute(context)
 			}
 			catch (error) {
@@ -484,7 +489,7 @@ export class FlowcraftRuntime<TContext extends Record<string, any> = Record<stri
 	public async executeNode(
 		blueprint: WorkflowBlueprint<TNodeMap>,
 		nodeId: string,
-		context: IContext<TContext>,
+		context: IAsyncContext<TContext>,
 	): Promise<NodeResult> {
 		const nodeDef = blueprint.nodes.find(n => n.id === nodeId)
 		if (!nodeDef) {
@@ -502,7 +507,7 @@ export class FlowcraftRuntime<TContext extends Record<string, any> = Record<stri
 		blueprint: WorkflowBlueprint<TNodeMap>,
 		nodeId: string,
 		result: NodeResult,
-		context: IContext<TContext>,
+		context: IAsyncContext<TContext>,
 	): Promise<NodeDefinition<TNodeMap>[]> {
 		const edges = blueprint.edges.filter(e => e.source === nodeId)
 		if (edges.length === 0)
@@ -537,9 +542,9 @@ export class FlowcraftRuntime<TContext extends Record<string, any> = Record<stri
 
 	/**
 	 * [NEW] Wraps the execution of a single node with resiliency logic (retries, fallback, timeout).
-	 * This version works with NodeDefinition and async IContext.
+	 * This version works with NodeDefinition and ContextImplementation.
 	 */
-	private async _executeNodeWithResiliency(nodeDef: NodeDefinition<TNodeMap>, context: IContext<TContext>): Promise<NodeResult> {
+	private async _executeNodeWithResiliency(nodeDef: NodeDefinition<TNodeMap>, context: ContextImplementation<TContext>): Promise<NodeResult> {
 		const { maxRetries = 1, retryDelay = 0, timeout } = nodeDef.config || {}
 		let lastError: Error | undefined
 		const executionId = context.getMetadata().executionId
@@ -680,9 +685,9 @@ export class FlowcraftRuntime<TContext extends Record<string, any> = Record<stri
 	}
 
 	/**
-	 * [FIXED] Execute a single node's core logic using async IContext.
+	 * [FIXED] Execute a single node's core logic using ContextImplementation.
 	 */
-	private async _executeNodeLogic(nodeDef: NodeDefinition<TNodeMap>, context: IContext<TContext>): Promise<NodeResult> {
+	private async _executeNodeLogic(nodeDef: NodeDefinition<TNodeMap>, context: ContextImplementation<TContext>): Promise<NodeResult> {
 		// --- THIS IS THE FIX ---
 		// Handle built-in node types before attempting to find a function implementation.
 		if (nodeDef.uses === 'subflow') {
@@ -722,9 +727,9 @@ export class FlowcraftRuntime<TContext extends Record<string, any> = Record<stri
 	}
 
 	/**
-	 * [NEW] Executes a sub-workflow blueprint, adapted for IContext.
+	 * [NEW] Executes a sub-workflow blueprint, adapted for ContextImplementation.
 	 */
-	private async _executeSubflow(nodeDef: NodeDefinition<TNodeMap>, parentContext: IContext<TContext>): Promise<NodeResult> {
+	private async _executeSubflow(nodeDef: NodeDefinition<TNodeMap>, parentContext: ContextImplementation<TContext>): Promise<NodeResult> {
 		const { blueprintId, inputs = {}, outputs = {} } = nodeDef.params || {}
 		if (!blueprintId) {
 			return { error: { message: `Subflow node '${nodeDef.id}' is missing 'blueprintId' in its params.` } }
@@ -737,8 +742,15 @@ export class FlowcraftRuntime<TContext extends Record<string, any> = Record<stri
 
 		const subContextData: Record<string, any> = {}
 		for (const [subKey, parentKey] of Object.entries(inputs as Record<string, string>)) {
-			if (await parentContext.has(parentKey as any)) {
-				subContextData[subKey] = await parentContext.get(parentKey as any)
+			if (parentContext.type === 'sync') {
+				if (parentContext.has(parentKey as any)) {
+					subContextData[subKey] = parentContext.get(parentKey as any)
+				}
+			}
+			else {
+				if (await parentContext.has(parentKey as any)) {
+					subContextData[subKey] = await parentContext.get(parentKey as any)
+				}
 			}
 		}
 
@@ -757,8 +769,16 @@ export class FlowcraftRuntime<TContext extends Record<string, any> = Record<stri
 		const subFinalContext = createAsyncContext(subResult.context, parentContext.getMetadata())
 
 		for (const [parentKey, subKey] of Object.entries(outputs as Record<string, string>)) {
-			if (await subFinalContext.has(subKey as any)) {
-				await parentContext.set(parentKey as any, await subFinalContext.get(subKey as any))
+			if (parentContext.type === 'sync') {
+				const value = await subFinalContext.get(subKey as any)
+				if (value !== undefined) {
+					parentContext.set(parentKey as any, value)
+				}
+			}
+			else {
+				if (await subFinalContext.has(subKey as any)) {
+					await parentContext.set(parentKey as any, await subFinalContext.get(subKey as any))
+				}
 			}
 		}
 
@@ -814,7 +834,7 @@ export class ExecutableFlow<TContext extends Record<string, any>> {
 	/**
 	 * Execute the flow using a frontier-based approach that supports DAGs and cycles.
 	 */
-	async execute(context: Context<TContext>): Promise<Context<TContext>> {
+	async execute(context: ContextImplementation<TContext>): Promise<ContextImplementation<TContext>> {
 		let frontier: CompiledNode[] = [this.startNode]
 		const executedNodeIds = new Set<string>()
 		const receivedInputs = new Map<string, Set<string>>() // tracks which inputs a node has received
@@ -925,9 +945,9 @@ export class ExecutableFlow<TContext extends Record<string, any>> {
 
 	/**
 	 * Wraps the execution of a single compiled node with resiliency logic (retries, fallback, timeout).
-	 * This version works with CompiledNode and synchronous Context.
+	 * This version works with CompiledNode and ContextImplementation.
 	 */
-	private async _executeCompiledNodeWithResiliency(node: CompiledNode, context: Context<TContext>): Promise<NodeResult> {
+	private async _executeCompiledNodeWithResiliency(node: CompiledNode, context: ContextImplementation<TContext>): Promise<NodeResult> {
 		const { maxRetries = 1, retryDelay = 0, timeout } = node.config
 		let lastError: Error | undefined
 		const executionId = context.getMetadata().executionId
@@ -1105,7 +1125,7 @@ export class ExecutableFlow<TContext extends Record<string, any>> {
 	 */
 	private async executeNode(
 		node: CompiledNode,
-		context: Context<TContext>,
+		context: ContextImplementation<TContext>,
 	): Promise<NodeResult> {
 		if (node.implementation === 'parallel-container') {
 			return this._executeParallelContainer(node, context)
@@ -1123,7 +1143,7 @@ export class ExecutableFlow<TContext extends Record<string, any>> {
 		// standard node implementation (function or class)
 		const nodeContext: NodeContext<TContext> = {
 			context,
-			input: await context.get('input' as keyof TContext),
+			input: context.type === 'sync' ? context.get('input' as keyof TContext) : await context.get('input' as keyof TContext),
 			metadata: context.getMetadata(),
 			dependencies: this.runtime.getDependencies(),
 			params: node.params,
@@ -1147,7 +1167,7 @@ export class ExecutableFlow<TContext extends Record<string, any>> {
 	/**
 	 * Executes a sub-workflow blueprint.
 	 */
-	private async _executeSubflow(node: CompiledNode, parentContext: Context<TContext>): Promise<NodeResult> {
+	private async _executeSubflow(node: CompiledNode, parentContext: ContextImplementation<TContext>): Promise<NodeResult> {
 		const { blueprintId, inputs = {}, outputs = {} } = node.params
 		if (!blueprintId) {
 			return { error: { message: `Subflow node '${node.id}' is missing 'blueprintId' in its params.` } }
@@ -1200,7 +1220,7 @@ export class ExecutableFlow<TContext extends Record<string, any>> {
 	/**
 	 * Executes the branches of a parallel container and aggregates results.
 	 */
-	private async _executeParallelContainer(node: CompiledNode, context: Context<TContext>): Promise<NodeResult> {
+	private async _executeParallelContainer(node: CompiledNode, context: ContextImplementation<TContext>): Promise<NodeResult> {
 		const branchIds = node.params.branches as string[] | undefined
 		if (!branchIds) {
 			return { error: { message: 'Parallel container is missing "branches" in its params' } }
@@ -1210,7 +1230,7 @@ export class ExecutableFlow<TContext extends Record<string, any>> {
 
 		// use shared context for all branches to allow cross-communication
 		const promises = branchNodes.map(branchNode =>
-			new ExecutableFlow(branchNode, this.nodeMap, this.runtime, this.functionRegistry).execute(context.createScope() as Context<TContext>),
+			new ExecutableFlow(branchNode, this.nodeMap, this.runtime, this.functionRegistry).execute(context.createScope()),
 		)
 
 		const settledResults = await Promise.allSettled(promises)
@@ -1225,7 +1245,23 @@ export class ExecutableFlow<TContext extends Record<string, any>> {
 			// the conventional output of a branch is the final value of the 'input' key
 			outputs.push(await branchContext.get('input' as any))
 			// merge the results from the branch scope back into the main context
-			context.mergeSync(branchContext)
+			if (branchContext.type === 'sync') {
+				// If the branch is sync, we can merge directly into either parent type.
+				if (context.type === 'sync') {
+					context.merge(branchContext as unknown as ISyncContext<any>)
+				} else {
+					await context.merge(branchContext as unknown as IAsyncContext<any>)
+				}
+			} else {
+				// If the branch is async, we must use its async toJSON method.
+				const branchData = await branchContext.toJSON()
+				const tempSyncContext = Context.fromJSON(branchData, branchContext.getMetadata())
+				if (context.type === 'sync') {
+					context.merge(tempSyncContext as unknown as ISyncContext<any>)
+				} else {
+					await context.merge(tempSyncContext as unknown as IAsyncContext<any>)
+				}
+			}
 		}
 
 		// the output of the container is an array of the outputs of its branches
@@ -1235,7 +1271,7 @@ export class ExecutableFlow<TContext extends Record<string, any>> {
 	/**
 	 * Executes a batch processor that processes items from an array.
 	 */
-	private async _executeBatchProcessor(node: CompiledNode, context: Context<TContext>): Promise<NodeResult> {
+	private async _executeBatchProcessor(node: CompiledNode, context: ContextImplementation<TContext>): Promise<NodeResult> {
 		const { concurrency = 1, workerImplementationKey } = node.params
 		const inputArray = await context.get('input' as any)
 
@@ -1254,11 +1290,27 @@ export class ExecutableFlow<TContext extends Record<string, any>> {
 		const promises = inputArray.map((item: any) =>
 			semaphore.acquire(async () => {
 				// each item gets its own scope with the item set as 'input'
-				const itemContext = context.createScope({ input: item }) as Context<TContext>
+				const itemContext = context.createScope({ input: item })
 				const itemResult = await this._processBatchItemWithImplementation(workerImplementation, itemContext)
 
 				// after execution, merge any state changes from the item's scope back to the main context
-				context.mergeSync(itemContext)
+				if (itemContext.type === 'sync') {
+					// If the item context is sync, we can merge directly into either parent type.
+					if (context.type === 'sync') {
+						context.merge(itemContext as unknown as ISyncContext<any>)
+					} else {
+						await context.merge(itemContext as unknown as IAsyncContext<any>)
+					}
+				} else {
+					// If the item context is async, we must use its async toJSON method.
+					const itemData = await itemContext.toJSON()
+					const tempSyncContext = Context.fromJSON(itemData, itemContext.getMetadata())
+					if (context.type === 'sync') {
+						context.merge(tempSyncContext as unknown as ISyncContext<any>)
+					} else {
+						await context.merge(tempSyncContext as unknown as IAsyncContext<any>)
+					}
+				}
 				return itemResult
 			}),
 		)
@@ -1281,7 +1333,7 @@ export class ExecutableFlow<TContext extends Record<string, any>> {
 	/**
 	 * Process a single item in a batch by executing the specified worker implementation.
 	 */
-	private async _processBatchItemWithImplementation(workerImplementation: any, context: Context<TContext>): Promise<NodeResult> {
+	private async _processBatchItemWithImplementation(workerImplementation: any, context: ContextImplementation<TContext>): Promise<NodeResult> {
 		// Execute the worker directly
 		const nodeContext: NodeContext<TContext> = {
 			context,
@@ -1306,7 +1358,7 @@ export class ExecutableFlow<TContext extends Record<string, any>> {
 	/**
 	 * Executes a loop controller that manages iteration logic.
 	 */
-	private async _executeLoopController(node: CompiledNode, context: Context<TContext>): Promise<NodeResult> {
+	private async _executeLoopController(node: CompiledNode, context: ContextImplementation<TContext>): Promise<NodeResult> {
 		const { maxIterations = 100, condition } = node.params
 
 		const iterations = await context.get('loop_iterations' as any) || 0
@@ -1337,7 +1389,7 @@ export class ExecutableFlow<TContext extends Record<string, any>> {
 	private async getNextNodes(
 		currentNode: CompiledNode,
 		result: NodeResult,
-		context: Context<TContext>,
+		context: ContextImplementation<TContext>,
 	): Promise<CompiledNode[]> {
 		// special handling for batch processor: it's a container.. its "next" node is the one connected _from_ the container, not the worker inside it
 		if (currentNode.implementation === 'batch-processor') {
@@ -1360,7 +1412,7 @@ export class ExecutableFlow<TContext extends Record<string, any>> {
 		if (matchingEdges.length === 0) {
 			const conditionalEdges = candidates.filter(edge => edge.condition)
 			for (const edge of conditionalEdges) {
-				const evalContext = { ...context.toJSON(), result: result.output }
+				const evalContext = { ...(await context.toJSON()), result: result.output }
 				if (await this.conditionEvaluator.evaluate(edge.condition!, evalContext)) {
 					matchingEdges.push(edge)
 				}
@@ -1386,7 +1438,7 @@ export class ExecutableFlow<TContext extends Record<string, any>> {
 	/**
 	 * Apply a transformation to the output data.
 	 */
-	private async _applyTransform(transform: string, output: any, context: Context<TContext>): Promise<any> {
+	private async _applyTransform(transform: string, output: any, context: ContextImplementation<TContext>): Promise<any> {
 		try {
 			// simple transformation evaluator - supports basic expressions
 			// for example: "input * 2", "input.toUpperCase()", "input.map(x => x * 2)"

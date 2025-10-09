@@ -1,4 +1,4 @@
-import type { NodeContext, NodeResult } from 'flowcraft'
+import type { NodeContext, NodeResult, ISyncContext } from 'flowcraft'
 import * as fs from 'node:fs/promises'
 import { createFlow } from 'flowcraft'
 import { DocumentChunk, SearchResult } from './types.js'
@@ -15,7 +15,8 @@ interface RagContext {
 }
 
 async function loadAndChunk(ctx: NodeContext<RagContext>): Promise<NodeResult> {
-	const path = await ctx.context.get('document_path')!
+	const syncContext = ctx.context as ISyncContext<RagContext>
+	const path = syncContext.get('document_path')!
 	console.log(`[Node] Reading and chunking file: ${path}`)
 
 	const content = await fs.readFile(path!, 'utf-8')
@@ -27,7 +28,7 @@ async function loadAndChunk(ctx: NodeContext<RagContext>): Promise<NodeResult> {
 		const chunk = new DocumentChunk(chunkId, paragraph.trim(), path!)
 		chunks.set(chunkId, chunk)
 	}
-	await ctx.context.set('chunks', chunks)
+	syncContext.set('chunks', chunks)
 	console.log(`[Node] Created ${chunks.size} chunks.`)
 	return { output: Array.from(chunks.values()) }
 }
@@ -44,7 +45,8 @@ async function generateSingleEmbedding(ctx: NodeContext<RagContext>): Promise<No
 async function storeInVectorDB(ctx: NodeContext<RagContext>): Promise<NodeResult> {
 	console.log('[Node] Simulating storage of chunks and vectors.')
 	const embeddingResults = ctx.input as { chunkId: string, vector: number[] }[]
-	const chunks = await ctx.context.get('chunks') as Map<string, DocumentChunk>
+	const syncContext = ctx.context as ISyncContext<RagContext>
+	const chunks = syncContext.get('chunks') as Map<string, DocumentChunk>
 	const db = new Map<string, { chunk: DocumentChunk, vector: number[] }>()
 
 	for (const { chunkId, vector } of embeddingResults) {
@@ -53,14 +55,15 @@ async function storeInVectorDB(ctx: NodeContext<RagContext>): Promise<NodeResult
 			db.set(chunkId, { chunk, vector })
 		}
 	}
-	await ctx.context.set('vector_db', db)
+	syncContext.set('vector_db', db)
 	console.log(`[Node] DB is ready with ${db.size} entries.`)
 	return { output: 'DB Ready' }
 }
 
 async function vectorSearch(ctx: NodeContext<RagContext>): Promise<NodeResult> {
-	const question = await ctx.context.get('question')!
-	const db = await ctx.context.get('vector_db') as Map<string, { chunk: DocumentChunk, vector: number[] }>
+	const syncContext = ctx.context as ISyncContext<RagContext>
+	const question = syncContext.get('question')!
+	const db = syncContext.get('vector_db') as Map<string, { chunk: DocumentChunk, vector: number[] }>
 	console.log(`[Node] Performing vector search for question: "${question}"`)
 
 	const questionVector = await getEmbedding(question!)
@@ -77,7 +80,7 @@ async function vectorSearch(ctx: NodeContext<RagContext>): Promise<NodeResult> {
 		const chunk = db.get(id)!.chunk
 		return new SearchResult(chunk, score)
 	})
-	await ctx.context.set('search_results', searchResults)
+	syncContext.set('search_results', searchResults)
 	console.log(`[Node] Found ${searchResults.length} relevant results.`)
 	return { output: searchResults }
 }
@@ -85,13 +88,14 @@ async function vectorSearch(ctx: NodeContext<RagContext>): Promise<NodeResult> {
 async function generateFinalAnswer(ctx: NodeContext<RagContext>): Promise<NodeResult> {
 	const searchResults = ctx.input as SearchResult[]
 	const contextText = searchResults?.map(r => r.chunk.text).join('\n\n---\n\n') ?? ''
-	const question = await ctx.context.get('question')!
+	const syncContext = ctx.context as ISyncContext<RagContext>
+	const question = syncContext.get('question')!
 	const prompt = resolveTemplate(
 		'Based on the following context, please provide a clear and concise answer to the user\'s question.\n\n**CONTEXT**\n\n{{context}}\n\n**QUESTION**\n\n{{question}}\n\n**ANSWER**',
 		{ context: contextText, question },
 	)
 	const answer = await callLLM(prompt)
-	await ctx.context.set('final_answer', answer)
+	syncContext.set('final_answer', answer)
 	return { output: answer }
 }
 
@@ -100,20 +104,14 @@ async function generateFinalAnswer(ctx: NodeContext<RagContext>): Promise<NodeRe
 export function createRagFlow() {
 	return createFlow<RagContext>('advanced-rag-agent')
 		.node('load_and_chunk', loadAndChunk)
-		.node('generate_embedding_worker', generateSingleEmbedding)
 		.node('store_in_db', storeInVectorDB)
 		.node('vector_search', vectorSearch)
 		.node('generate_final_answer', generateFinalAnswer)
 
-		// Manually define the batch processor node that uses the worker
-		.node('batch-processor', 'batch-processor', {
-			workerNodeId: 'generate_embedding_worker',
-			concurrency: 5,
-		})
+		// Use the batch method to process embeddings in parallel
+		.batch('load_and_chunk', 'store_in_db', generateSingleEmbedding, { concurrency: 5 })
 
-		// Manually wire the graph edges
-		.edge('load_and_chunk', 'batch-processor')
-		.edge('batch-processor', 'store_in_db')
+		// Wire the graph edges
 		.edge('store_in_db', 'vector_search')
 		.edge('vector_search', 'generate_final_answer')
 }

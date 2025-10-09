@@ -1,4 +1,4 @@
-import type { NodeContext, NodeResult } from 'flowcraft'
+import type { NodeContext, NodeResult, ISyncContext } from 'flowcraft'
 import { callLLM, resolveTemplate } from './utils.js'
 
 /**
@@ -20,13 +20,14 @@ interface LlmNodeContext {
  * Resolves input values from the context based on the node's `inputs` mapping.
  */
 async function resolveInputs(ctx: NodeContext, inputs: Record<string, string | string[]>): Promise<Record<string, any>> {
+	const syncContext = ctx.context as ISyncContext<any>
 	const resolved: Record<string, any> = {}
 	for (const [templateKey, sourceKeyOrKeys] of Object.entries(inputs)) {
 		const sourceKeys = Array.isArray(sourceKeyOrKeys) ? sourceKeyOrKeys : [sourceKeyOrKeys]
 		let valueFound = false
 		for (const sourceKey of sourceKeys) {
-			if (await ctx.context.has(sourceKey)) {
-				resolved[templateKey] = await ctx.context.get(sourceKey)
+			if (syncContext.has(sourceKey)) {
+				resolved[templateKey] = syncContext.get(sourceKey)
 				valueFound = true
 			}
 		}
@@ -59,8 +60,9 @@ export async function llmRouter(ctx: LlmNodeContext): Promise<NodeResult> {
 
 export async function outputNode(ctx: LlmNodeContext): Promise<NodeResult> {
 	const { outputKey = 'final_output' } = ctx.params
+	const syncContext = ctx.context as ISyncContext<any>
 	const templateData = await resolveInputs(ctx, ctx.params.inputs)
 	const finalOutput = resolveTemplate(ctx.params.promptTemplate, templateData)
-	await ctx.context.set(outputKey, finalOutput)
+	syncContext.set(outputKey, finalOutput)
 	return { output: finalOutput }
 }

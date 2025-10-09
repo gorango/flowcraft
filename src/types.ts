@@ -87,7 +87,7 @@ export interface EdgeDefinition {
  */
 export interface NodeContext<TContext extends Record<string, any> = Record<string, any>> {
 	/** The context object for getting/setting data */
-	context: IContext<TContext>
+	context: ContextImplementation<TContext>
 	/** The input data from the previous node */
 	input?: any
 	/** Metadata about the current execution */
@@ -99,20 +99,45 @@ export interface NodeContext<TContext extends Record<string, any> = Record<strin
 }
 
 /**
- * Interface for context that persists state and provides async operations
+ * Synchronous context interface for in-memory state management
  */
-export interface IContext<TContext extends Record<string, any> = Record<string, any>> {
+export interface ISyncContext<TContext extends Record<string, any> = Record<string, any>> {
+	readonly type: 'sync'
+	get: <K extends keyof TContext>(key: K) => TContext[K] | undefined
+	set: <K extends keyof TContext>(key: K, value: TContext[K]) => void
+	has: (key: keyof TContext) => boolean
+	delete: (key: keyof TContext) => boolean
+	keys: () => string[]
+	toJSON: () => Record<string, any>
+	getMetadata: () => ExecutionMetadata
+	setMetadata: (metadata: Partial<ExecutionMetadata>) => this
+	createScope: (additionalData?: Record<string, any>) => ISyncContext<TContext>
+	merge: (other: ISyncContext<any>) => void
+}
+
+/**
+ * Asynchronous context interface for remote/distributed state management
+ */
+export interface IAsyncContext<TContext extends Record<string, any> = Record<string, any>> {
+	readonly type: 'async'
 	get: <K extends keyof TContext>(key: K) => Promise<TContext[K] | undefined>
-	set: <K extends keyof TContext>(key: K, value: TContext[K]) => Promise<this>
+	set: <K extends keyof TContext>(key: K, value: TContext[K]) => Promise<void>
 	has: (key: keyof TContext) => Promise<boolean>
 	delete: (key: keyof TContext) => Promise<boolean>
 	keys: () => Promise<string[]>
 	toJSON: () => Promise<Record<string, any>>
 	getMetadata: () => ExecutionMetadata
 	setMetadata: (metadata: Partial<ExecutionMetadata>) => this
-	createScope: (additionalData?: Record<string, any>) => IContext<TContext>
-	merge: (other: IContext<any>) => Promise<void>
+	createScope: (additionalData?: Record<string, any>) => IAsyncContext<TContext>
+	merge: (other: IAsyncContext<any>) => Promise<void>
 }
+
+
+
+/**
+ * Discriminated union for context implementations
+ */
+export type ContextImplementation<T extends Record<string, any>> = ISyncContext<T> | IAsyncContext<T>
 
 /**
  * Metadata about the current workflow execution
@@ -227,8 +252,8 @@ export interface IConditionEvaluator {
  * Middleware interface for cross-cutting concerns like transactions and tracing.
  */
 export interface Middleware<TContext extends Record<string, any> = Record<string, any>> {
-	beforeNode?: (ctx: IContext<TContext>, nodeId: string) => Promise<void>
-	afterNode?: (ctx: IContext<TContext>, nodeId: string, result: NodeResult) => Promise<void>
+	beforeNode?: (ctx: ContextImplementation<TContext>, nodeId: string) => Promise<void>
+	afterNode?: (ctx: ContextImplementation<TContext>, nodeId: string, result: NodeResult) => Promise<void>
 }
 
 /**
@@ -251,6 +276,8 @@ export interface RuntimeOptions {
 	serializer?: ISerializer
 	/** Middleware for cross-cutting concerns */
 	middleware?: Middleware<any>[]
+	/** Provider for async context implementations */
+	contextProvider?: (initialData: Record<string, any>, metadata: ExecutionMetadata) => IAsyncContext<any>
 }
 
 /**

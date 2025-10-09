@@ -1,4 +1,4 @@
-import type { NodeContext, NodeResult } from 'flowcraft'
+import type { NodeContext, NodeResult, ISyncContext } from 'flowcraft'
 import * as fs from 'node:fs/promises'
 import * as path from 'node:path'
 import { createFlow } from 'flowcraft'
@@ -12,8 +12,9 @@ interface TranslationContext {
 
 // 1. Prepare the list of translation jobs
 async function prepareJobs(ctx: NodeContext<TranslationContext>): Promise<NodeResult> {
-	const languages = await ctx.context.get('languages') as string[]
-	const text = await ctx.context.get('text') as string
+	const syncContext = ctx.context as ISyncContext<TranslationContext>
+	const languages = syncContext.get('languages') as string[]
+	const text = syncContext.get('text') as string
 	// The output of this node is an array of objects, which the batch processor will iterate over.
 	const jobs = languages.map(language => ({ language, text }))
 	return { output: jobs }
@@ -41,7 +42,8 @@ ${text}`
 async function saveResults(ctx: NodeContext<TranslationContext>): Promise<NodeResult> {
 	// The `input` for the successor of a batch is an array of all worker outputs.
 	const translations = ctx.input as { language: string, translation: string }[]
-	const outputDir = await ctx.context.get('output_dir')!
+	const syncContext = ctx.context as ISyncContext<TranslationContext>
+	const outputDir = syncContext.get('output_dir')!
 
 	const promises = translations.map(({ language, translation }) => {
 		const filename = path.join(outputDir!, `README_${language.toUpperCase()}.md`)

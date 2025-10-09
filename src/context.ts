@@ -1,11 +1,12 @@
-import type { ExecutionMetadata, IContext } from './types'
+import type { ExecutionMetadata, ISyncContext } from './types'
 
 /**
- * Context implementation that provides async access to workflow state.
+ * Synchronous context implementation for in-memory workflow state.
  * Serialization for complex types is handled by a pluggable serializer in the Runtime.
  */
 export class Context<TContext extends Record<string, any> = Record<string, any>>
-implements IContext<TContext> {
+implements ISyncContext<TContext> {
+	public readonly type = 'sync' as const
 	private data: Map<string, any>
 	private metadata: ExecutionMetadata
 
@@ -20,37 +21,36 @@ implements IContext<TContext> {
 	/**
 	 * Get a value from the context with full type safety
 	 */
-	async get<K extends keyof TContext>(key: K): Promise<TContext[K] | undefined> {
-		return Promise.resolve(this.data.get(String(key)) as TContext[K] | undefined)
+	get<K extends keyof TContext>(key: K): TContext[K] | undefined {
+		return this.data.get(String(key)) as TContext[K] | undefined
 	}
 
 	/**
 	 * Set a value in the context with full type safety
 	 */
-	async set<K extends keyof TContext>(key: K, value: TContext[K]): Promise<this> {
+	set<K extends keyof TContext>(key: K, value: TContext[K]): void {
 		this.data.set(String(key), value)
-		return Promise.resolve(this)
 	}
 
 	/**
 	 * Check if a key exists in the context
 	 */
-	async has(key: keyof TContext): Promise<boolean> {
-		return Promise.resolve(this.data.has(String(key)))
+	has(key: keyof TContext): boolean {
+		return this.data.has(String(key))
 	}
 
 	/**
 	 * Delete a key from the context
 	 */
-	async delete(key: keyof TContext): Promise<boolean> {
-		return Promise.resolve(this.data.delete(String(key)))
+	delete(key: keyof TContext): boolean {
+		return this.data.delete(String(key))
 	}
 
 	/**
 	 * Get all context keys
 	 */
-	async keys(): Promise<string[]> {
-		return Promise.resolve(Array.from(this.data.keys()))
+	keys(): string[] {
+		return Array.from(this.data.keys())
 	}
 
 	/**
@@ -102,7 +102,7 @@ implements IContext<TContext> {
 	/**
 	 * Create a scoped context for sub-workflows
 	 */
-	createScope(additionalData: Record<string, any> = {}): IContext<TContext> {
+	createScope(additionalData: Record<string, any> = {}): ISyncContext<TContext> {
 		const currentData = Object.fromEntries(this.data)
 		const mergedData = { ...currentData, ...additionalData }
 		return new Context<TContext>(mergedData as Partial<TContext>, this.metadata)
@@ -111,8 +111,8 @@ implements IContext<TContext> {
 	/**
 	 * Merges data from another context into this one, overwriting existing keys.
 	 */
-	async merge(other: IContext<any>): Promise<void> {
-		const otherData = await other.toJSON()
+	merge(other: ISyncContext<any>): void {
+		const otherData = other.toJSON()
 		for (const [key, value] of Object.entries(otherData)) {
 			this.data.set(key, value)
 		}
@@ -145,12 +145,4 @@ export function createContext<TContext extends Record<string, any> = Record<stri
 	return new Context(initialData, metadata)
 }
 
-/**
- * Create a new async context with the given data and metadata
- */
-export function createAsyncContext<TContext extends Record<string, any> = Record<string, any>>(
-	initialData: Partial<TContext> = {},
-	metadata: ExecutionMetadata,
-): IContext<TContext> {
-	return new Context(initialData, metadata)
-}
+export { createAsyncContext } from './async-context'
