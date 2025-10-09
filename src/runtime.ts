@@ -564,6 +564,57 @@ class ExecutableFlow<TContext extends Record<string, any>> {
 
 			// Step 2: Determine the next set of nodes to execute.
 			for (const { node, result } of results) {
+				// Special handling for parallel containers: their branches' next nodes should be included
+				if (node.implementation === 'parallel-container' && node.params.branches) {
+					const branchIds = node.params.branches as string[]
+					for (const branchId of branchIds) {
+						const branchNode = this.nodeMap.get(branchId)
+						if (branchNode) {
+							// Get the next nodes from each branch
+							const branchNextNodes = await this.getNextNodes(branchNode, { output: context.get(branchId as any) }, context)
+							for (const nextNode of branchNextNodes) {
+								// Update received inputs for the next node
+								if (!receivedInputs.has(nextNode.id)) {
+									receivedInputs.set(nextNode.id, new Set())
+								}
+								receivedInputs.get(nextNode.id)!.add(branchId)
+
+								const predecessors = this.nodeMap.get(nextNode.id)?.predecessorIds ?? new Set()
+								const received = receivedInputs.get(nextNode.id)!
+
+								const joinStrategy = this.nodeMap.get(nextNode.id)?.config.joinStrategy || 'all'
+								const isReady
+									= (joinStrategy === 'any' && received.size > 0)
+										|| (joinStrategy === 'all' && Array.from(predecessors).every(p => received.has(p)))
+								if (isReady) {
+									nextFrontierSet.add(nextNode)
+								}
+							}
+						}
+					}
+					// Also handle the parallel container's own next nodes (for normal flow continuation)
+					const containerNextNodes = await this.getNextNodes(node, result, context)
+					for (const nextNode of containerNextNodes) {
+						// Update received inputs for the next node
+						if (!receivedInputs.has(nextNode.id)) {
+							receivedInputs.set(nextNode.id, new Set())
+						}
+						receivedInputs.get(nextNode.id)!.add(node.id)
+
+						const predecessors = this.nodeMap.get(nextNode.id)?.predecessorIds ?? new Set()
+						const received = receivedInputs.get(nextNode.id)!
+
+						const joinStrategy = this.nodeMap.get(nextNode.id)?.config.joinStrategy || 'all'
+						const isReady
+							= (joinStrategy === 'any' && received.size > 0)
+								|| (joinStrategy === 'all' && Array.from(predecessors).every(p => received.has(p)))
+						if (isReady) {
+							nextFrontierSet.add(nextNode)
+						}
+					}
+					continue // Skip the normal processing for parallel containers
+				}
+
 				const potentialNextNodes = await this.getNextNodes(node, result, context)
 				for (const nextNode of potentialNextNodes) {
 					// Update received inputs for the next node
