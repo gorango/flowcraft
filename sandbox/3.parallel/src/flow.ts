@@ -11,18 +11,18 @@ interface TranslationContext {
 }
 
 // 1. Prepare the list of translation jobs
-async function prepareJobs(ctx: NodeContext<TranslationContext>): Promise<NodeResult> {
-	const languages = ctx.get('languages')!
-	const text = ctx.get('text')!
+async function prepareJobs(ctx: NodeContext): Promise<NodeResult> {
+	const languages = await ctx.context.get('languages') as string[]
+	const text = await ctx.context.get('text') as string
 	// The output of this node is an array of objects, which the batch processor will iterate over.
 	const jobs = languages.map(language => ({ language, text }))
 	return { output: jobs }
 }
 
 // 2. This function will be executed FOR EACH item in the batch
-async function translateItem(ctx: NodeContext<{ language: string, text: string }>): Promise<NodeResult> {
+async function translateItem(ctx: NodeContext): Promise<NodeResult> {
 	// The `input` for a batch worker is a single item from the source array.
-	const { language, text } = ctx.input!
+	const { language, text } = ctx.input as { language: string, text: string }
 	const prompt = `
 Translate the following markdown text into ${language}.
 Preserve markdown formatting, links, and code blocks.
@@ -41,7 +41,7 @@ ${text}`
 async function saveResults(ctx: NodeContext): Promise<NodeResult> {
 	// The `input` for the successor of a batch is an array of all worker outputs.
 	const translations = ctx.input as { language: string, translation: string }[]
-	const outputDir = ctx.get('output_dir')!
+	const outputDir = await ctx.context.get('output_dir')!
 
 	const promises = translations.map(({ language, translation }) => {
 		const filename = path.join(outputDir, `README_${language.toUpperCase()}.md`)
@@ -60,16 +60,15 @@ export function createTranslateFlow() {
 	flow.node('translate-item', translateItem) // The "worker" function for the batch
 	flow.node('save-results', saveResults)
 
-	// The batch helper wires `prepare-jobs` to the internal batch processor.
-	// The processor then invokes `translate-item` for each item.
-	flow.batch(
-		'prepare-jobs', // Source node providing the array
-		'translate-item', // Node to execute for each item
-		{ concurrency: 8 }, // Run up to 8 translations at once
-	)
+	// Manually define the batch processor node
+	flow.node('batch-processor', 'batch-processor', {
+		workerNodeId: 'translate-item',
+		concurrency: 8,
+	})
 
-	// The runtime knows to execute this edge only after all batch items are done.
-	flow.edge('translate-item', 'save-results')
+	// Manually wire the graph edges
+	flow.edge('prepare-jobs', 'batch-processor')
+	flow.edge('batch-processor', 'save-results')
 
 	return flow
 }

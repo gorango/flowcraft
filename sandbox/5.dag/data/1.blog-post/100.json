@@ -34,7 +34,6 @@
 			"id": "final_output",
 			"type": "output",
 			"data": {
-				"outputKey": "final_output",
 				"promptTemplate": "--- TITLES ---\n{{titles}}\n\n--- DRAFT ---\n{{draft}}",
 				"inputs": {
 					"titles": "suggest_titles",

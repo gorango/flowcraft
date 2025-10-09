@@ -14,7 +14,6 @@
 			"id": "output_email",
 			"type": "output",
 			"data": {
-				"outputKey": "final_output",
 				"promptTemplate": "{{result}}",
 				"inputs": {
 					"result": "gen_rejection_email"

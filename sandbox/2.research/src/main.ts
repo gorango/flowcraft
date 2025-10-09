@@ -24,13 +24,15 @@ async function main() {
 		environment: 'development',
 	})
 
+	// Provide the initial state needed by the 'initialize-research' node.
+	const initialContext = {
+		question,
+		max_searches: MAX_SEARCHES,
+	}
+
 	const result = await runtime.run(
 		blueprint,
-		{
-			input: question,
-			search_count: 0,
-			max_searches: MAX_SEARCHES,
-		},
+		initialContext,
 		functionRegistry,
 	)
 

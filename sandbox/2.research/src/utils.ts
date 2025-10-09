@@ -37,13 +37,13 @@ export async function callLLM(prompt: string): Promise<string> {
 }
 
 /**
- * Placeholder for a synchronous web search function.
+ * Placeholder for an asynchronous web search function.
  * @param query The search query.
  * @returns A formatted string of placeholder search results.
  */
-export function searchWeb(query: string): string {
-	console.log(`[SYNC PLACEHOLDER] Searching for: "${query}"`)
-	return `
+export async function searchWeb(query: string): Promise<string> {
+	console.log(`[ASYNC PLACEHOLDER] Searching for: "${query}"`)
+	return Promise.resolve(`
 Title: Placeholder Result for ${query}
 URL: http://example.com/search?q=${encodeURIComponent(query)}
 Snippet: The Nobel Prize in Physics 2024 was awarded jointly to John J. Hopfield and Geoffrey Hinton "for foundational discoveries and inventions that enable machine learning with artificial neural networks."
@@ -51,5 +51,5 @@ Snippet: The Nobel Prize in Physics 2024 was awarded jointly to John J. Hopfield
 Title: Second Placeholder
 URL: http://example.com/placeholder
 Snippet: Using synchronous I/O in Node.js can block the event loop, impacting performance. Async operations are the standard.
-`.trim()
+`.trim())
 }

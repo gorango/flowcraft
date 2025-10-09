@@ -21,10 +21,10 @@ interface Decision {
 
 // Node to decide the next step
 async function decideAction(ctx: NodeContext<ResearchContext>): Promise<NodeResult> {
-	const question = ctx.get('question')!
-	const context = ctx.get('context') || 'No previous search results.'
-	const search_count = ctx.get('search_count') || 0
-	const max_searches = ctx.get('max_searches')!
+	const question = (await ctx.context.get('question'))!
+	const context = (await ctx.context.get('context')) || 'No previous search results.'
+	const search_count = (await ctx.context.get('search_count')) || 0
+	const max_searches = (await ctx.context.get('max_searches'))!
 
 	const prompt = `
 You are a research assistant. Based on the question, context, and the number of searches performed, decide whether to search for more information or answer the question.
@@ -46,7 +46,7 @@ Return your decision in YAML format with "action" and "reason". If action is 'se
 
 	console.log(`\n🤔 Agent decides to ${decision.action}. Reason: ${decision.reason}`)
 	if (decision.action === 'search' && decision.search_query) {
-		ctx.set('search_query', decision.search_query)
+		await ctx.context.set('search_query', decision.search_query)
 		console.log(`🔍 Search Query: ${decision.search_query}`)
 	}
 
@@ -55,51 +55,60 @@ Return your decision in YAML format with "action" and "reason". If action is 'se
 
 // Node to perform a web search
 async function searchWebNode(ctx: NodeContext<ResearchContext>): Promise<NodeResult> {
-	const query = ctx.get('search_query')
+	const query = await ctx.context.get('search_query')
 	if (!query)
 		return { output: 'No search query provided.' }
 
-	const searchResults = searchWeb(query)
-	const currentContext = ctx.get('context') || ''
+	const searchResults = await searchWeb(query)
+	const currentContext = (await ctx.context.get('context')) || ''
 	const newContext = `${currentContext}\n\nSearch for "${query}":\n${searchResults}`
-	ctx.set('context', newContext)
+	await ctx.context.set('context', newContext)
 
-	const count = ctx.get('search_count') || 0
-	ctx.set('search_count', count + 1)
+	const count = (await ctx.context.get('search_count')) || 0
+	await ctx.context.set('search_count', count + 1)
 
 	console.log(`📚 Found information (Search #${count + 1}), analyzing results...`)
 	return { output: newContext }
 }
 
 // Node to generate the final answer
-async function answerQuestion(ctx: NodeContext<ResearchContext>): Promise<NodeResult> {
-	const question = ctx.get('question')!
-	const context = ctx.get('context') || 'No context provided.'
+async function answerQuestion(ctx: NodeContext): Promise<NodeResult> {
+	const question = (await ctx.context.get('question'))!
+	const context = (await ctx.context.get('context')) || 'No context provided.'
 	const prompt = `Based on the following context, provide a comprehensive answer to the question.
-Context:
-${context}
+ Context:
+ ${context}
 
-Question: "${question}"`
+ Question: "${question}"`
 
 	console.log('✍️  Crafting final answer...')
 	const finalAnswer = await callLLM(prompt)
-	ctx.set('answer', finalAnswer)
+	await ctx.context.set('answer', finalAnswer)
 	console.log('✅ Answer generated successfully.')
 	return { output: finalAnswer }
 }
 
 export function createAgentFlow() {
 	return createFlow<ResearchContext>('research-agent')
-		// Add a dedicated start node with no incoming edges.
-		.node('start-research', async ({ set, input }) => {
-			// It receives the initial question and puts it into the context.
-			set('question', input as string)
-			return { output: 'Research started' }
+		.node('initialize-research', async ({ context }) => {
+			const question = await context.get('question')
+			if (!question) {
+				throw new Error('Initial context must contain a "question".')
+			}
+			if (!(await context.has('search_count'))) {
+				await context.set('search_count', 0)
+			}
+			if (!(await context.has('context'))) {
+				await context.set('context', '')
+			}
+			console.log(`DEBUG: Research initialized for question: "${question}"`)
+			return { output: 'Initialized' }
 		})
-		.node('decide-action', decideAction)
+		.node('decide-action', decideAction, {}, { joinStrategy: 'any' })
 		.node('search-web', searchWebNode)
 		.node('answer-question', answerQuestion)
-		.edge('start-research', 'decide-action')
+		// Define the graph structure
+		.edge('initialize-research', 'decide-action')
 		.edge('decide-action', 'search-web', { action: 'search' })
 		.edge('decide-action', 'answer-question', { action: 'answer' })
 		.edge('search-web', 'decide-action')
