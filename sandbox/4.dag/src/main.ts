@@ -113,7 +113,7 @@ async function main() {
 
 	console.log('\n--- Workflow Complete ---\n')
 	console.log('Final Output:\n')
-	console.log(result.context.final_output)
+	console.log(result.context.moderation_result)
 	console.log('\n--- Final Context State ---')
 	console.dir(result.context, { depth: null })
 }

@@ -11,5 +11,5 @@ export const agentNodeRegistry: NodeRegistry = {
 	'llm-condition': { implementation: llmCondition },
 	'llm-router': { implementation: llmRouter },
 	'output': { implementation: outputNode },
-	// 'subflow' and 'parallel-container' are built-in to the V2 runtime.
+	// The 'subflow' node is built-in to the v2 runtime, so it doesn't need to be registered here.
 }
