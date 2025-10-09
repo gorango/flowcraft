@@ -156,7 +156,6 @@ class DefaultConditionEvaluator implements IConditionEvaluator {
 }
 
 /**
- * The unified runtime engine for Flowcraft V2
  * Handles compilation, caching, and execution of workflow blueprints
  */
 export class FlowcraftRuntime<TContext extends Record<string, any> = Record<string, any>> {
@@ -661,15 +660,16 @@ class ExecutableFlow<TContext extends Record<string, any>> {
 
 		// Standard node implementation (function or class)
 		const nodeContext: NodeContext<TContext> = {
-			get: (key: keyof TContext) => context.get(key as string) as TContext[keyof TContext],
-			set: (key: keyof TContext, value: TContext[keyof TContext]) => context.set(key as string, value),
-			has: (key: keyof TContext) => context.has(key as string),
-			keys: () => context.keys() as (keyof TContext)[],
-			values: () => context.values() as any[],
-			entries: () => context.entries() as [keyof TContext, any][],
+			get: context.get.bind(context),
+			set: context.set.bind(context),
+			has: context.has.bind(context),
+			keys: context.keys.bind(context),
+			values: context.values.bind(context),
+			entries: context.entries.bind(context),
 			input: context.get('input' as any),
 			metadata: context.getMetadata(),
 			dependencies: this.runtime.getDependencies(),
+			params: node.params,
 		}
 
 		if (typeof node.implementation === 'function') {

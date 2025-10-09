@@ -1,10 +1,9 @@
-import type { Context } from 'flowcraft'
 import * as fs from 'node:fs/promises'
 import * as path from 'node:path'
 import process from 'node:process'
 import dotenv from 'dotenv'
-import { ConsoleLogger, TypedContext } from 'flowcraft'
-import { TranslateFlow } from './nodes'
+import { FlowcraftRuntime } from 'flowcraft/v2'
+import { createTranslateFlow } from './flow.js'
 
 dotenv.config()
 
@@ -17,6 +16,7 @@ async function main() {
 		.split('##')
 		.slice(0, 2)
 		.join('##')
+
 	const languages = [
 		'Chinese',
 		'Spanish',
@@ -28,17 +28,20 @@ async function main() {
 		// 'Korean',
 	]
 
-	const context: Context = new TypedContext([
-		['text', text],
-		['languages', languages],
-		['output_dir', outputDir],
-	])
+	const translateFlow = createTranslateFlow()
+	const blueprint = translateFlow.toBlueprint()
+	const functionRegistry = translateFlow.getFunctionRegistry()
 
-	const flow = new TranslateFlow()
+	const runtime = new FlowcraftRuntime({ registry: {} })
+
 	console.log(`Starting parallel translation into ${languages.length} languages...`)
 	const startTime = Date.now()
 
-	await flow.run(context, { logger: new ConsoleLogger() })
+	await runtime.run(
+		blueprint,
+		{ text, languages, output_dir: outputDir },
+		functionRegistry,
+	)
 
 	const duration = (Date.now() - startTime) / 1000
 	console.log(`\nTotal parallel translation time: ${duration.toFixed(2)} seconds`)

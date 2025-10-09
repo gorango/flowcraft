@@ -1,225 +1,146 @@
-import type { NodeJobPayload } from './types'
+import type { WorkflowBlueprint } from 'flowcraft/v2'
+import { promises as fs } from 'node:fs'
 import path from 'node:path'
 import process from 'node:process'
 import readline from 'node:readline'
-import { Queue, Worker } from 'bullmq'
-import { AbortError, ConsoleLogger, Flow, TypedContext } from 'flowcraft'
+import { Worker } from 'bullmq'
+import { FlowcraftRuntime } from 'flowcraft/v2'
 import IORedis from 'ioredis'
-import { WorkflowRegistry } from './registry'
-import { FINAL_ACTION, RUN_ID } from './types'
+import { agentNodeRegistry } from './registry.js'
 import 'dotenv/config'
 
-const QUEUE_NAME = 'distributed-flowcraft-queue'
-const CANCELLATION_KEY_PREFIX = 'workflow:cancel:'
+const QUEUE_NAME = 'flowcraft-v2-queue'
+const CANCELLATION_KEY_PREFIX = 'workflow:cancel:v2:'
 
-function getCancellationKey(runId: string) {
-	return `${CANCELLATION_KEY_PREFIX}${runId}`
-}
+// --- V1 to V2 Blueprint Loader (reused from sandbox/4.dag) ---
+async function loadBlueprint(filePath: string): Promise<WorkflowBlueprint> {
+	const fileContent = await fs.readFile(filePath, 'utf-8')
+	const v1Graph = JSON.parse(fileContent)
+	const blueprintId = path.basename(filePath, '.json')
 
-async function setupCancellationListener(redis: IORedis, logger: ConsoleLogger) {
-	readline.emitKeypressEvents(process.stdin)
-	if (process.stdin.isTTY)
-		process.stdin.setRawMode(true)
-
-	logger.info('... Press \'c\' to cancel a running workflow ...')
-
-	process.stdin.on('keypress', (_str, key) => {
-		if (key.ctrl && key.name === 'c') {
-			process.exit()
+	const v2Nodes = v1Graph.nodes.map((v1Node: any) => {
+		if (v1Node.type === 'sub-workflow') {
+			return {
+				id: v1Node.id,
+				uses: 'subflow',
+				params: { blueprintId: v1Node.data.workflowId, inputs: v1Node.data.inputs, outputs: v1Node.data.outputs },
+				config: v1Node.config,
+			}
 		}
-
-		if (key.name === 'c') {
-			const rl = readline.createInterface({
-				input: process.stdin,
-				output: process.stdout,
-			})
-
-			readline.clearLine(process.stdout, 0)
-			readline.cursorTo(process.stdout, 0)
-
-			rl.question('Enter Run ID to cancel: ', async (runId) => {
-				if (runId) {
-					logger.warn(`Signaling cancellation for Run ID: ${runId}`)
-					await redis.set(getCancellationKey(runId), 'true', 'EX', 3600)
-				}
-				rl.close()
-			})
+		return {
+			id: v1Node.id,
+			uses: v1Node.type,
+			params: v1Node.data,
+			config: v1Node.config,
 		}
 	})
+
+	const nodeIds = new Set(v2Nodes.map((n: any) => n.id))
+	const targetIds = new Set(v1Graph.edges.map((e: any) => e.target))
+	const startNodeIds = Array.from(nodeIds).filter(id => !targetIds.has(id))
+
+	if (startNodeIds.length > 1) {
+		const parallelContainerId = `__parallel_start_${blueprintId}`
+		v2Nodes.push({
+			id: parallelContainerId,
+			uses: 'parallel-container',
+			params: { branches: startNodeIds },
+		})
+		const newEdges = v1Graph.edges.filter((edge: any) => !startNodeIds.includes(edge.source))
+		const successors = new Set(v1Graph.edges.filter((edge: any) => startNodeIds.includes(edge.source)).map((edge: any) => edge.target))
+		successors.forEach((successorId) => {
+			newEdges.push({ source: parallelContainerId, target: successorId })
+		})
+		return { id: blueprintId, nodes: v2Nodes, edges: newEdges }
+	}
+
+	return { id: blueprintId, nodes: v2Nodes, edges: v1Graph.edges }
 }
 
+// --- Main Worker Logic ---
 async function main() {
-	const logger = new ConsoleLogger()
-	logger.info('--- Distributed Workflow Worker ---')
-
+	console.log('--- Distributed Workflow Worker V2 ---')
 	const redisConnection = new IORedis({ maxRetriesPerRequest: null })
-	const queue = new Queue(QUEUE_NAME, { connection: redisConnection })
 
-	// Define all use-case directories the worker should be aware of.
-	const useCaseDirectories = [
-		'1.blog-post',
-		'2.job-application',
-		'3.customer-review',
-		'4.content-moderation',
-	].map(dir => path.join(process.cwd(), 'data', dir))
+	const runtime = new FlowcraftRuntime({
+		registry: agentNodeRegistry,
+		environment: 'development',
+	})
 
-	// Create and initialize the registry from all directories in one clean call.
-	const masterRegistry = await WorkflowRegistry.create(useCaseDirectories)
+	// Load and register all blueprints from all use-case directories
+	const useCaseDirs = ['1.blog-post', '2.job-application', '3.customer-review', '4.content-moderation']
+	for (const dirName of useCaseDirs) {
+		const dirPath = path.join(process.cwd(), 'data', dirName)
+		const files = await fs.readdir(dirPath)
+		for (const file of files) {
+			if (file.endsWith('.json')) {
+				const blueprint = await loadBlueprint(path.join(dirPath, file))
+				runtime.registerBlueprint(blueprint)
+				console.log(`[Worker] Loaded blueprint: ${blueprint.id}`)
+			}
+		}
+	}
 
-	setupCancellationListener(redisConnection, logger)
-	logger.info(`Worker listening on queue: "${QUEUE_NAME}"`)
+	const worker = new Worker(QUEUE_NAME, async (job) => {
+		if (job.name !== 'runWorkflow')
+			return
 
-	const worker = new Worker<NodeJobPayload>(QUEUE_NAME, async (job) => {
-		const { runId, workflowId, nodeId, params } = job.data
+		const { runId, blueprintId, initialContext } = job.data
 		const statusKey = `workflow:status:${runId}`
-		const contextKey = `workflow:context:${runId}`
+		const cancellationKey = `${CANCELLATION_KEY_PREFIX}${runId}`
 
-		logger.info(`[Worker] Processing job: ${job.name} (Workflow: ${workflowId}, Run: ${runId})`)
+		console.log(`[Worker] Processing workflow '${blueprintId}' for Run ID: ${runId}`)
+
+		const blueprint = runtime.getBlueprint(blueprintId)
+		if (!blueprint)
+			throw new Error(`Blueprint '${blueprintId}' not found.`)
 
 		const controller = new AbortController()
 		const pollInterval = setInterval(async () => {
-			if (await redisConnection.get(getCancellationKey(runId)) === 'true') {
-				logger.warn(`[Worker] Abort signal received for Run ID ${runId}. Aborting...`)
+			if (await redisConnection.get(cancellationKey) === 'true') {
+				console.warn(`[Worker] Abort signal received for Run ID ${runId}. Aborting...`)
 				controller.abort()
 				clearInterval(pollInterval)
 			}
 		}, 500)
 
 		try {
-			if (controller.signal.aborted)
-				throw new AbortError(`Job for Run ID ${runId} was cancelled before starting.`)
-
-			const node = await masterRegistry.getNode(workflowId, nodeId)
-			if (!node)
-				throw new Error(`Node '${nodeId}' in workflow '${workflowId}' not found.`)
-
-			// Load the most up-to-date context from the Redis hash.
-			const contextData = await redisConnection.hgetall(contextKey)
-			const context = new TypedContext()
-
-			if (Object.keys(contextData).length === 0 && Object.keys(job.data.context).length > 0) {
-				// This is the first node for this run. Persist the initial context from the job payload.
-				const initialContextObject = job.data.context
-				for (const [key, value] of Object.entries(initialContextObject))
-					await context.set(key, value)
-
-				const serializedInitialContext = Object.entries(initialContextObject).flatMap(([key, value]) => [key, JSON.stringify(value)])
-				if (serializedInitialContext.length > 0)
-					await redisConnection.hset(contextKey, ...serializedInitialContext)
-			}
-			else {
-				// For subsequent nodes, hydrate the context from the Redis hash.
-				for (const [key, value] of Object.entries(contextData)) {
-					try {
-						await context.set(key, JSON.parse(value))
-					}
-					catch {
-						await context.set(key, value) // Fallback for non-JSON strings
-					}
-				}
-			}
-
-			await context.set(RUN_ID, runId)
-
-			const action = await node._run({
-				ctx: context,
-				params,
-				signal: controller.signal,
-				logger,
-			})
-
-			// Persist the entire updated context back to Redis for the next job.
-			const updatedContextObject = Object.fromEntries(context.entries())
-			const serializedUpdatedContext = Object.entries(updatedContextObject).flatMap(([key, value]) => {
-				if (typeof key === 'symbol')
-					return [] // Symbols cannot be keys in Redis hashes
-				return [key, JSON.stringify(value)]
-			})
-
-			if (serializedUpdatedContext.length > 0)
-				await redisConnection.hset(contextKey, ...serializedUpdatedContext)
-
-			if (action === FINAL_ACTION) {
-				logger.info(`[Worker] Final node executed for Run ID ${runId}. Reporting 'completed' status...`)
-				const finalPayload = await context.get('__final_payload')
-				const statusPayload = { status: 'completed', payload: finalPayload ?? null }
-				await redisConnection.set(statusKey, JSON.stringify(statusPayload), 'EX', 3600)
-				await redisConnection.del(contextKey) // Clean up context hash
-				return
-			}
-
-			if (controller.signal.aborted)
-				throw new AbortError('Job cancelled after execution, before enqueueing next step.')
-
-			const successorNodes = node.successors.get(action)
-			if (!successorNodes || successorNodes.length === 0) {
-				logger.info(`[Worker] Branch complete for run ${runId}. Node '${nodeId}' has no successor for action '${String(action)}'.`)
-				return
-			}
-
-			// Iterate over each potential successor node for the given action.
-			for (const successor of successorNodes) {
-				// Handle the case where the successor is a container like a ParallelFlow
-				const nodesToEnqueue = (successor instanceof Flow) ? (successor as any).nodesToRun : [successor]
-
-				for (const nextNode of nodesToEnqueue) {
-					const nextNodeId = nextNode.id!
-					if (!nextNodeId) {
-						logger.error(`[Worker] Successor node found for run ${runId} but it has no ID. Cannot enqueue.`, { successorDetails: nextNode })
-						continue
-					}
-
-					const predecessorCount = await masterRegistry.getPredecessorCount(workflowId, nextNodeId)
-
-					if (predecessorCount <= 1) {
-						logger.info(`[Worker] Enqueuing successor: ${nextNodeId} for run ${runId}.`)
-						await queue.add(nextNodeId, { runId, workflowId, nodeId: nextNodeId, context: {}, params })
-					}
-					else {
-						const joinKey = `workflow:join:${runId}:${nextNodeId}`
-						const completedCount = await redisConnection.incr(joinKey)
-						await redisConnection.expire(joinKey, 3600)
-
-						logger.info(`[Worker] Predecessor ${nodeId} completed for fan-in node ${nextNodeId}. (${completedCount}/${predecessorCount})`)
-
-						if (completedCount >= predecessorCount) {
-							logger.info(`[Worker] All ${predecessorCount} predecessors for ${nextNodeId} have completed. Enqueuing join node.`)
-							await queue.add(nextNodeId, { runId, workflowId, nodeId: nextNodeId, context: {}, params })
-							await redisConnection.del(joinKey)
-						}
-					}
-				}
-			}
+			const result = await runtime.run(blueprint, initialContext, undefined, controller.signal)
+			await redisConnection.set(statusKey, JSON.stringify({ status: 'completed', payload: result }), 'EX', 3600)
+			console.log(`[Worker] ✅ Finished workflow for Run ID: ${runId}`)
 		}
-		catch (error) {
-			if (error instanceof AbortError) {
-				logger.warn(`[Worker] Job for Run ID ${runId} was aborted. Reporting 'cancelled' status.`)
-				const statusPayload = { status: 'cancelled', reason: error.message }
-				if (await redisConnection.setnx(statusKey, JSON.stringify(statusPayload))) {
-					await redisConnection.expire(statusKey, 3600)
-					await redisConnection.del(contextKey)
-				}
-			}
-			else {
-				logger.error(`[Worker] Job for Run ID ${runId} failed. Reporting 'failed' status.`, { error })
-				const statusPayload = { status: 'failed', reason: (error as Error).message }
-				if (await redisConnection.setnx(statusKey, JSON.stringify(statusPayload))) {
-					await redisConnection.expire(statusKey, 3600)
-					await redisConnection.del(contextKey)
-				}
-				throw error
-			}
+		catch (error: any) {
+			const reason = error.message || 'Unknown error'
+			const status = error.name === 'CancelledWorkflowError' ? 'cancelled' : 'failed'
+			console.error(`[Worker] ❌ Workflow failed for Run ID ${runId}: ${reason}`)
+			await redisConnection.set(statusKey, JSON.stringify({ status, reason }), 'EX', 3600)
 		}
 		finally {
 			clearInterval(pollInterval)
+			await redisConnection.del(cancellationKey)
 		}
-	}, {
-		connection: redisConnection,
-		concurrency: 5,
-	})
+	}, { connection: redisConnection, concurrency: 5 })
 
-	worker.on('failed', (job, err) => {
-		logger.error(`Job ${job?.id} failed with error: ${err.message}`, { job, err })
+	console.log(`Worker listening on queue: "${QUEUE_NAME}"`)
+
+	// Setup cancellation listener
+	readline.emitKeypressEvents(process.stdin)
+	if (process.stdin.isTTY)
+		process.stdin.setRawMode(true)
+	console.log('... Press "c" to cancel a running workflow ...')
+	process.stdin.on('keypress', (_, key) => {
+		if (key.ctrl && key.name === 'c')
+			process.exit()
+		if (key.name === 'c') {
+			const rl = readline.createInterface({ input: process.stdin, output: process.stdout })
+			rl.question('Enter Run ID to cancel: ', async (runId) => {
+				if (runId) {
+					console.log(`Signaling cancellation for Run ID: ${runId}`)
+					await redisConnection.set(`${CANCELLATION_KEY_PREFIX}${runId}`, 'true', 'EX', 3600)
+				}
+				rl.close()
+			})
+		}
 	})
 }
 

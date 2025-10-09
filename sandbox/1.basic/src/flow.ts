@@ -1,20 +1,62 @@
-import { Flow } from 'flowcraft'
-import {
-	ApplyStyleNode,
-	AssembleDraftNode,
-	GenerateOutlineNode,
-	WriteContentNode,
-} from './nodes'
+import { createFlow } from 'flowcraft/v2'
+import yaml from 'yaml'
+import { callLLM } from './utils.js'
 
-export function createArticleFlow(): Flow {
-	const outlineNode = new GenerateOutlineNode()
-	const writeContentFlow = new WriteContentNode()
-	const assembleNode = new AssembleDraftNode()
-	const styleNode = new ApplyStyleNode()
+// Define the shape of the data that flows between nodes
+interface ArticleContext {
+	topic: string
+	outline: { sections: string[] }
+	draft: string
+	titles: string
+	final_output: string
+}
 
-	outlineNode.next(writeContentFlow)
-	writeContentFlow.next(assembleNode, null)
-	assembleNode.next(styleNode)
+export function createArticleFlow() {
+	return createFlow<ArticleContext>('article-generation')
+		.node('generate-outline', async ({ input }) => {
+			const topic = input as string
+			console.log('\n===== GENERATING OUTLINE =====')
+			const prompt = `
+				Create a simple outline for an article about "${topic}".
+				Include at most 3 main sections (no subsections).
+				Output the sections in YAML format as a list under the key "sections".
+			`.replace(/\t/g, '').trim()
+			const response = callLLM(prompt)
+			const structuredResult = yaml.parse(response)
+			console.log('==========================\n')
+			return { output: structuredResult }
+		})
+		.node('draft-post', async ({ input }) => {
+			const outline = (input as { sections: string[] }).sections.join('\n- ')
+			console.log('\n===== DRAFTING POST =====')
+			const prompt = `Write a full-length, engaging blog post based on the following outline:\n\n- ${outline}`
+			const draft = callLLM(prompt)
+			console.log('=========================\n')
+			return { output: draft }
+		})
+		.node('suggest-titles', async ({ input }) => {
+			const draft = input as string
+			console.log('\n===== SUGGESTING TITLES =====')
+			const prompt = `Suggest 5 catchy, SEO-friendly titles for the following blog post. Respond with a simple numbered list.\n\nPost:\n${draft}`
+			const titles = callLLM(prompt)
+			console.log('============================\n')
+			return { output: titles }
+		})
+		.node('apply-style', async ({ get }) => {
+			const draft = get('draft-post')
+			console.log('\n===== APPLYING STYLE =====')
+			const prompt = `
+				Rewrite the following draft in a conversational, engaging style.
+				Make it warm in tone, include rhetorical questions, and add a strong opening and conclusion.
 
-	return new Flow(outlineNode)
+				${draft}
+			`.replace(/\t/g, '').trim()
+			const finalArticle = callLLM(prompt)
+			console.log('=========================\n')
+			return { output: finalArticle }
+		})
+		// Define the sequence of execution
+		.edge('generate-outline', 'draft-post')
+		.edge('draft-post', 'suggest-titles')
+		.edge('suggest-titles', 'apply-style')
 }

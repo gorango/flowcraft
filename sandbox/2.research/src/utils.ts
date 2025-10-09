@@ -6,7 +6,18 @@ const openaiClient = new OpenAI({
 })
 
 /**
- * Synchronously calls the OpenAI Chat Completions API.
+ * Extracts a YAML code block from a string, removing markdown fences.
+ * @param text The text which may contain a YAML block.
+ * @returns The clean YAML string.
+ */
+function extractYaml(text: string): string {
+	// Match a YAML block and capture its content. If no block is found, use the whole string.
+	const match = text.match(/```(?:yaml)?\n([\s\S]*?)\n```/)
+	return (match ? match[1] : text).trim()
+}
+
+/**
+ * Asynchronously calls the OpenAI Chat Completions API.
  * @param prompt The user prompt to send to the LLM.
  * @returns The content of the LLM's response as a string.
  */
@@ -16,7 +27,10 @@ export async function callLLM(prompt: string): Promise<string> {
 			model: 'gpt-4o-mini',
 			messages: [{ role: 'user', content: prompt }],
 		})
-		return response.choices[0].message.content || ''
+		// Correctly access the first choice's message content
+		const content = response.choices[0]?.message?.content || ''
+		// Clean the response before returning
+		return extractYaml(content)
 	}
 	catch (error: any) {
 		console.error('Error calling OpenAI API:', error)
@@ -26,13 +40,11 @@ export async function callLLM(prompt: string): Promise<string> {
 
 /**
  * Placeholder for a synchronous web search function.
- * In a real application, using an async flow and an async search function is highly recommended.
  * @param query The search query.
  * @returns A formatted string of placeholder search results.
  */
 export function searchWeb(query: string): string {
 	console.log(`[SYNC PLACEHOLDER] Searching for: "${query}"`)
-	// In a real implementation, you would use a library that makes an async HTTP request.
 	return `
 Title: Placeholder Result for ${query}
 URL: http://example.com/search?q=${encodeURIComponent(query)}

@@ -1,15 +1,10 @@
-import type Redis from 'ioredis'
-import type { WorkflowStatus } from './types'
+import type { WorkflowResult } from 'flowcraft/v2'
+import type IORedis from 'ioredis'
 import OpenAI from 'openai'
 import 'dotenv/config'
 
 const openaiClient = new OpenAI()
 
-/**
- * Calls the OpenAI Chat Completions API.
- * @param prompt The user prompt to send to the LLM.
- * @returns The content of the LLM's response as a string.
- */
 export async function callLLM(prompt: string): Promise<string> {
 	try {
 		console.log(`\n--- Sending to LLM ---\n${prompt.substring(0, 300)}...\n---------------------\n`)
@@ -28,42 +23,27 @@ export async function callLLM(prompt: string): Promise<string> {
 	}
 }
 
-/**
- * Resolves a template string by replacing {{key}} with values from a data object.
- * This is crucial for dynamically constructing prompts.
- */
 export function resolveTemplate(template: string, data: Record<string, any>): string {
 	return template.replace(/\{\{(.*?)\}\}/g, (_, key) => {
 		const value = data[key.trim()]
-		if (value === undefined || value === null) {
-			console.warn(`Template variable '{{${key.trim()}}}' not found in data.`)
-			return `{{${key.trim()}}}`
-		}
-		return String(value)
+		return value !== undefined && value !== null ? String(value) : ''
 	})
 }
 
-/**
- * Polls Redis for the final status of a workflow run.
- * @param redis The IORedis client instance.
- * @param runId The unique ID of the workflow run to wait for.
- * @param timeoutMs The maximum time to wait in milliseconds.
- * @returns A promise that resolves with the final WorkflowStatus.
- */
-export async function waitForWorkflow(redis: Redis, runId: string, timeoutMs: number): Promise<WorkflowStatus> {
+export async function waitForWorkflow(redis: IORedis, runId: string, timeoutMs: number): Promise<{ status: string, payload?: WorkflowResult, reason?: string }> {
 	const statusKey = `workflow:status:${runId}`
 	const startTime = Date.now()
+
+	console.log(`Awaiting result for Run ID ${runId} on key: ${statusKey}`)
 
 	while (Date.now() - startTime < timeoutMs) {
 		const statusJson = await redis.get(statusKey)
 		if (statusJson) {
-			await redis.del(statusKey) // Clean up the key
-			return JSON.parse(statusJson) as WorkflowStatus
+			await redis.del(statusKey) // Clean up
+			return JSON.parse(statusJson)
 		}
-		// Wait a bit before polling again
 		await new Promise(resolve => setTimeout(resolve, 500))
 	}
 
-	// If the loop finishes, it's a timeout.
-	return { status: 'failed', reason: `Timeout: Workflow did not complete within ${timeoutMs}ms.` }
+	return { status: 'failed', reason: `Timeout: Client did not receive a result within ${timeoutMs}ms.` }
 }

@@ -1,11 +1,6 @@
 import type { NodeContext, NodeFunction, NodeRegistry, NodeResult, RuntimeDependencies } from './types.js'
 
 /**
- * Test utilities for Flowcraft V2
- * Provides mock nodes, registries, and dependencies for testing
- */
-
-/**
  * Mock node that adds a value to the context
  */
 export const addValue: NodeFunction = async (context: NodeContext): Promise<NodeResult> => {

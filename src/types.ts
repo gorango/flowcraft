@@ -1,92 +1,245 @@
-import type { Context } from './context'
-import type { IExecutor } from './executors/types'
-import type { Logger } from './logger'
-import type { AbstractNode } from './workflow/index'
-
-/** A generic type for key-value parameters. */
-export type Params = Record<string, any>
-
-/** The default action returned by a node for linear progression. */
-export const DEFAULT_ACTION = Symbol('default')
-
-/** The action returned by a `.filter()` node when the predicate fails. */
-export const FILTER_FAILED = Symbol('filter_failed')
-
 /**
- * The standard arguments object passed to a node's lifecycle methods.
- * @template PrepRes The type of the `prepRes` property.
- * @template ExecRes The type of the `execRes` property.
- * @template TParams The type for the node's static parameters.
+ * The central, serializable representation of any flow
+ * This is the single source of truth that can be persisted, distributed, or executed
  */
-export interface NodeArgs<
-	PrepRes = any,
-	ExecRes = any,
-	TParams extends Params = Params,
-	TContext extends Context = Context,
-> {
-	/** The shared, mutable context for the workflow run. */
-	ctx: TContext
-	/** The static parameters for the node, merged from the node and flow's `withParams`. */
-	params: TParams
-	/** An `AbortController` to gracefully cancel the workflow. */
-	controller?: AbortController
-	/** An `AbortSignal` for handling cancellation. */
-	signal?: AbortSignal
-	/** The logger instance for the workflow run. */
-	logger: Logger
-	/** The result of the `prep` phase. */
-	prepRes: PrepRes
-	/** The result of the `exec` phase. */
-	execRes: ExecRes
-	/** The final error object, available only in `execFallback`. */
-	error?: Error
-	/** The name of the Node's constructor, for logging. */
-	name?: string
-	/** A reference to the current `IExecutor` running the flow. */
-	executor?: IExecutor
-	/** The actual node instance being executed. */
-	node?: AbstractNode
-	/** A shared set to track visited nodes within a parallel block, preventing race conditions. @internal */
-	visitedInParallel?: Set<AbstractNode>
+export interface WorkflowBlueprint {
+	/** Unique identifier for this blueprint */
+	id: string
+	/** Metadata about the blueprint */
+	metadata?: {
+		name?: string
+		description?: string
+		version?: string
+		tags?: string[]
+	}
+	/** Node definitions that make up this workflow */
+	nodes: NodeDefinition[]
+	/** Edge definitions that connect the nodes */
+	edges: EdgeDefinition[]
+	/** Input schema for the workflow */
+	inputs?: Record<string, any>
+	/** Output schema for the workflow */
+	outputs?: Record<string, any>
 }
 
 /**
- * The context object passed to a node's internal `_run` method.
- * @internal
+ * Definition of a single node in the workflow
  */
-export interface NodeRunContext<TContext extends Context = Context> {
-	ctx: TContext
-	params: Params
-	signal?: AbortSignal
-	logger: Logger
-	executor?: IExecutor
-	/** A shared set to track visited nodes within a parallel block. @internal */
-	visitedInParallel?: Set<AbstractNode>
+export interface NodeDefinition {
+	/** Unique identifier for this node within the blueprint */
+	id: string
+	/** The type of node - either a registered node class or a function key */
+	uses: string
+	/** Static configuration/parameters for the node */
+	params?: Record<string, any>
+	/** Runtime configuration (retries, timeouts, etc.) */
+	config?: NodeConfig
+	/** Input mapping for this node */
+	inputs?: Record<string, string>
+	/** Output mapping for this node */
+	outputs?: Record<string, string>
 }
 
-/** Options for configuring a `Node` instance. */
-export interface NodeOptions {
-	/** The total number of times the `exec` phase will be attempted. Defaults to `1`. */
+/**
+ * Configuration options for a node's resiliency and behavior.
+ */
+export interface NodeConfig {
+	/** Maximum number of retry attempts (e.g., 3 means 1 initial try + 2 retries). Defaults to 1. */
 	maxRetries?: number
-	/** The time in milliseconds to wait between failed `exec` attempts. Defaults to `0`. */
-	wait?: number
+	/** Delay between retries in milliseconds. Defaults to 0. */
+	retryDelay?: number
+	/** Maximum execution time in milliseconds before the node fails. */
+	timeout?: number
+	/** The `uses` key of another node implementation to call if all retries fail. */
+	fallback?: string
 }
 
-/** Options for running a top-level `Flow`. */
-export interface RunOptions {
-	/** An `AbortController` to gracefully cancel the workflow. */
-	controller?: AbortController
-	/** An `AbortSignal` for handling cancellation. */
+/**
+ * Definition of an edge connecting two nodes
+ */
+export interface EdgeDefinition {
+	/** Source node ID */
+	source: string
+	/** Target node ID */
+	target: string
+	/** Optional action that triggers this edge */
+	action?: string
+	/** Optional condition for this edge */
+	condition?: string
+	/** Optional data transformation */
+	transform?: string
+}
+
+/**
+ * Context interface that nodes receive
+ * This is generic over the specific context type for type safety
+ */
+export interface NodeContext<TContext = any> {
+	/** Get a value from the context */
+	get: <K extends keyof TContext>(key: K) => TContext[K] | undefined
+	/** Set a value in the context */
+	set: <K extends keyof TContext>(key: K, value: TContext[K]) => void
+	/** Check if a key exists in the context */
+	has: (key: keyof TContext) => boolean
+	/** Get all context keys */
+	keys: () => (keyof TContext)[]
+	/** Get all context values */
+	values: () => TContext[]
+	/** Get all context entries */
+	entries: () => [keyof TContext, TContext][]
+	/** The input data from the previous node */
+	input?: any
+	/** Metadata about the current execution */
+	metadata: ExecutionMetadata
+	/** Shared runtime dependencies */
+	dependencies: RuntimeDependencies
+	/** Node-specific parameters */
+	params: any
+}
+
+/**
+ * Metadata about the current workflow execution
+ */
+export interface ExecutionMetadata {
+	/** Unique ID for this execution */
+	executionId: string
+	/** ID of the blueprint being executed */
+	blueprintId: string
+	/** Current node being executed */
+	currentNodeId: string
+	/** Timestamp when execution started */
+	startedAt: Date
+	/** Current execution environment */
+	environment: 'development' | 'staging' | 'production'
+	/** **[Task 1b]** Abort signal for graceful cancellation */
 	signal?: AbortSignal
-	/** A `Logger` instance to receive logs from the execution engine. */
-	logger?: Logger
-	/** Top-level parameters to be merged into the context for the entire run. */
-	params?: Params
-	/** A custom `IExecutor` instance to run the workflow. Defaults to `InMemoryExecutor`. */
-	executor?: IExecutor
 }
 
-/** The function signature for the `next` function passed to middleware. */
-export type MiddlewareNext<T = any> = (args: NodeArgs) => Promise<T>
-/** The function signature for a middleware function. */
-export type Middleware<T = any> = (args: NodeArgs, next: MiddlewareNext<T>) => Promise<T>
+/**
+ * The return type of a node function
+ */
+export interface NodeResult<TOutput = any> {
+	/** The primary output data */
+	output?: TOutput
+	/** Action to take (for branching) */
+	action?: string
+	/** Error information if the node failed */
+	error?: {
+		message: string
+		code?: string
+		details?: any
+	}
+	/** Additional metadata */
+	metadata?: Record<string, any>
+}
+
+/**
+ * Registry entry for nodes
+ */
+export interface NodeRegistryEntry {
+	/** The node implementation */
+	implementation: NodeImplementation
+	/** Schema for the node's parameters */
+	schema?: any
+	/** Description of what the node does */
+	description?: string
+	/** Tags for categorization */
+	tags?: string[]
+}
+
+/**
+ * Node implementation - can be a class or function
+ */
+export type NodeImplementation = NodeClass | NodeFunction
+
+/**
+ * Class-based node implementation (for complex, reusable nodes)
+ */
+export interface NodeClass {
+	new(params?: any): {
+		execute: (context: NodeContext) => Promise<NodeResult>
+	}
+}
+
+/**
+ * Function-based node implementation (for simple, inline nodes)
+ */
+export type NodeFunction = (context: NodeContext) => Promise<NodeResult>
+
+/**
+ * Registry for nodes and their implementations
+ */
+export interface NodeRegistry {
+	[key: string]: NodeRegistryEntry
+}
+
+/**
+ * **[Task 1a]** Interface for a pluggable serializer.
+ */
+export interface ISerializer {
+	serialize: (data: Record<string, any>) => string
+	deserialize: (text: string) => Record<string, any>
+}
+
+/**
+ * Interface for a pluggable event bus.
+ */
+export interface IEventBus {
+	emit: (eventName: string, payload: Record<string, any>) => Promise<void> | void
+}
+
+/**
+ * Runtime dependencies that can be injected
+ */
+export interface RuntimeDependencies {
+	[key: string]: any
+}
+
+/**
+ * Interface for a pluggable condition evaluator.
+ */
+export interface IConditionEvaluator {
+	evaluate: (condition: string, context: Record<string, any>) => Promise<boolean> | boolean
+}
+
+/**
+ * Options for the runtime
+ */
+export interface RuntimeOptions {
+	/** Global node registry */
+	registry: NodeRegistry
+	/** Shared dependencies for dependency injection */
+	dependencies?: RuntimeDependencies
+	/** Default node configuration */
+	defaultNodeConfig?: NodeConfig
+	/** Execution environment */
+	environment?: 'development' | 'staging' | 'production'
+	/** Pluggable event bus for observability */
+	eventBus?: IEventBus
+	/** Pluggable evaluator for edge conditions */
+	conditionEvaluator?: IConditionEvaluator
+	/** **[Task 1a]** Pluggable serializer for complex data types */
+	serializer?: ISerializer
+}
+
+/**
+ * Result of running a workflow
+ */
+export interface WorkflowResult<TContext = any> {
+	/** Final context state */
+	context: TContext
+	/** Execution metadata */
+	metadata: {
+		executionId: string
+		blueprintId: string
+		startedAt: Date
+		completedAt: Date
+		duration: number
+		status: 'completed' | 'failed' | 'cancelled'
+		error?: {
+			nodeId: string
+			message: string
+			details?: any
+		}
+	}
+}

@@ -1,127 +1,68 @@
-import type { NodeArgs } from 'flowcraft'
-import { DEFAULT_ACTION, Node } from 'flowcraft'
-import { callLLM, resolveTemplate } from './utils'
+import type { NodeContext, NodeResult } from 'flowcraft/v2'
+import { callLLM, resolveTemplate } from './utils.js'
 
 /**
- * A generic node that executes an LLM prompt.
- * The prompt is a template that gets resolved with inputs from the context.
+ * A generic context for our LLM nodes.
  */
-export class LLMProcessNode extends Node<string, string> {
-	private data: any
-
-	constructor(options: any) {
-		super(options)
-		this.data = options.data
+interface LlmNodeContext extends NodeContext {
+	params: {
+		promptTemplate: string
+		inputs: Record<string, string | string[]>
 	}
+}
 
-	async prep(args: NodeArgs): Promise<string> {
-		const template = this.data.promptTemplate
-		const inputMappings = this.data.inputs
-		const templateData: Record<string, any> = {}
-
-		for (const [templateKey, sourcePathOrPaths] of Object.entries(inputMappings)) {
-			const sourcePaths = Array.isArray(sourcePathOrPaths) ? sourcePathOrPaths : [sourcePathOrPaths]
-			let value: any
-
-			for (const sourcePath of sourcePaths) {
-				value = await args.ctx.get(sourcePath)
-				if (value !== undefined)
-					break
-			}
-
-			// If the value is still undefined after checking all sources, use an empty string.
-			// This prevents '{{placeholder}}' from appearing in the final output.
-			if (value === undefined) {
-				args.logger.warn(`[Node: ${this.data.nodeId}] Template variable '{{${templateKey}}}' could not be resolved. Using empty string.`)
-				templateData[templateKey] = ''
-			}
-			else {
-				templateData[templateKey] = value
+/**
+ * A helper to resolve input values from the context based on the node's `inputs` mapping.
+ * It now correctly handles converging paths where an input might not exist.
+ */
+async function resolveInputs(ctx: NodeContext, inputs: Record<string, string | string[]>): Promise<Record<string, any>> {
+	const resolved: Record<string, any> = {}
+	for (const [templateKey, sourceKeyOrKeys] of Object.entries(inputs)) {
+		const sourceKeys = Array.isArray(sourceKeyOrKeys) ? sourceKeyOrKeys : [sourceKeyOrKeys]
+		let valueFound = false
+		for (const sourceKey of sourceKeys) {
+			// In v2, the output of a previous node is stored in the context under its ID.
+			if (ctx.has(sourceKey as any)) {
+				resolved[templateKey] = ctx.get(sourceKey as any)
+				valueFound = true
+				break
 			}
 		}
-
-		const resolvedPrompt = resolveTemplate(template, templateData)
-		return Promise.resolve(resolvedPrompt)
+		if (!valueFound) {
+			// If an input isn't found (e.g., from an untaken branch), use an empty string.
+			resolved[templateKey] = ''
+		}
 	}
-
-	exec(args: NodeArgs<string>): Promise<string> {
-		args.logger.info(`[Node: ${this.data.nodeId}] Executing LLM process...`)
-		return callLLM(args.prepRes)
-	}
-
-	async post(args: NodeArgs<string, string>) {
-		const keyToSet = this.data.outputKey || this.data.nodeId
-		args.ctx.set(keyToSet, args.execRes)
-		args.logger.info(`[Node: ${this.data.nodeId}] ✓ Process complete. Result in context key '${keyToSet}'.`)
-	}
+	return resolved
 }
 
 /**
- * An LLM-powered node that evaluates a condition and returns 'true' or 'false'.
+ * All node functions now accept the enriched LlmNodeContext.
+ * They get their configuration directly from `ctx.params` instead of metadata.
  */
-export class LLMConditionNode extends Node<string, string, 'true' | 'false'> {
-	private data: any
-
-	constructor(options: any) {
-		super(options)
-		this.data = options.data
-	}
-
-	prep = LLMProcessNode.prototype.prep
-
-	exec(args: NodeArgs<string>): Promise<string> {
-		args.logger.info(`[Node: ${this.data.nodeId}] Evaluating condition...`)
-		return callLLM(args.prepRes)
-	}
-
-	async post(args: NodeArgs<string, string>): Promise<'true' | 'false'> {
-		const result = args.execRes.toLowerCase().includes('true') ? 'true' : 'false'
-		await args.ctx.set(this.data.nodeId, result)
-		args.logger.info(`[Node: ${this.data.nodeId}] ✓ Condition evaluated to: ${result}`)
-		return result
-	}
+export async function llmProcess(ctx: LlmNodeContext): Promise<NodeResult> {
+	const templateData = await resolveInputs(ctx, ctx.params.inputs)
+	const prompt = resolveTemplate(ctx.params.promptTemplate, templateData)
+	const result = await callLLM(prompt)
+	return { output: result }
 }
 
-/**
- * An LLM-powered node that returns its raw output as an action for dynamic routing.
- */
-export class LLMRouterNode extends Node<string, string, string> {
-	private data: any
-
-	constructor(options: any) {
-		super(options)
-		this.data = options.data
-	}
-
-	prep = LLMProcessNode.prototype.prep
-	exec = LLMProcessNode.prototype.exec
-
-	async post(args: NodeArgs<string, string>): Promise<string> {
-		const result = args.execRes.trim()
-		await args.ctx.set(this.data.nodeId, result)
-		args.logger.info(`[Node: ${this.data.nodeId}] ✓ Routing decision is: '${result}'`)
-		return result
-	}
+export async function llmCondition(ctx: LlmNodeContext): Promise<NodeResult> {
+	const result = await llmProcess(ctx)
+	const action = result.output?.toLowerCase().includes('true') ? 'true' : 'false'
+	return { action, output: result.output }
 }
 
-/**
- * Aggregates inputs and sets a final value in the context.
- */
-export class OutputNode extends Node<string, void> {
-	private data: any
+export async function llmRouter(ctx: LlmNodeContext): Promise<NodeResult> {
+	const result = await llmProcess(ctx)
+	const action = result.output?.trim() ?? 'default'
+	return { action, output: result.output }
+}
 
-	constructor(options: any) {
-		super(options)
-		this.data = options.data
-	}
-
-	prep = LLMProcessNode.prototype.prep
-
-	async post(args: NodeArgs<string, void>): Promise<string | typeof DEFAULT_ACTION> {
-		const finalResult = args.prepRes
-		const outputKey = this.data.outputKey
-		await args.ctx.set(outputKey, finalResult)
-		args.logger.info(`[Output] Workflow finished. Final value set to context key '${outputKey}'.`)
-		return this.data.returnAction || DEFAULT_ACTION
-	}
+export async function outputNode(ctx: LlmNodeContext): Promise<NodeResult> {
+	const templateData = await resolveInputs(ctx, ctx.params.inputs)
+	const finalOutput = resolveTemplate(ctx.params.promptTemplate, templateData)
+	// Set the final result to a predictable key for the main script to retrieve.
+	ctx.set('final_output' as any, finalOutput)
+	return { output: finalOutput }
 }

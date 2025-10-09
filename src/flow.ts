@@ -8,7 +8,6 @@ import type {
 } from './types.js'
 
 /**
- * Fluent builder for creating workflows in Flowcraft V2
  * Provides a type-safe, programmatic API that produces serializable blueprints
  */
 export class Flow<TContext extends Record<string, any> = Record<string, any>> {
