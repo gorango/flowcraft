@@ -52,6 +52,8 @@ export interface NodeConfig {
 	timeout?: number
 	/** The `uses` key of another node implementation to call if all retries fail. */
 	fallback?: string
+	/** Defines the condition under which a node with multiple inputs will execute. 'all' waits for all predecessors, 'any' executes on the first input. */
+	joinStrategy?: 'all' | 'any'
 }
 
 /**

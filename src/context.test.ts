@@ -71,18 +71,18 @@ describe('Context', () => {
 	})
 
 	describe('metadata and scoping', () => {
-		it('should manage metadata correctly with withMetadata()', () => {
+		it('should manage metadata correctly with setMetadata()', () => {
 			const context = new Context({ key: 'value' }, metadata)
 
-			const updatedContext = context.withMetadata({
+			context.setMetadata({
 				currentNodeId: 'updated-node',
 				environment: 'production',
 			})
 
-			expect(updatedContext.get('key')).toBe('value') // data preserved
-			expect(updatedContext.getMetadata().currentNodeId).toBe('updated-node')
-			expect(updatedContext.getMetadata().environment).toBe('production')
-			expect(updatedContext.getMetadata().executionId).toBe('test-execution') // original preserved
+			expect(context.get('key')).toBe('value') // data preserved
+			expect(context.getMetadata().currentNodeId).toBe('updated-node')
+			expect(context.getMetadata().environment).toBe('production')
+			expect(context.getMetadata().executionId).toBe('test-execution') // original preserved
 		})
 	})
 

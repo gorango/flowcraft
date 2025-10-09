@@ -88,16 +88,25 @@ class JsonSerializer implements ISerializer {
 class DefaultConditionEvaluator implements IConditionEvaluator {
 	private parseCondition(condition: string): { leftPath: string, operator: string, rightStr: string } | null {
 		condition = condition.trim()
-		const operators = ['===', '!==', '<=', '>=', '==', '!=', '<', '>', '=']
-		for (const op of operators) {
-			const index = condition.indexOf(op)
-			if (index > 0) {
-				const leftPath = condition.substring(0, index).trim()
-				const rightStr = condition.substring(index + op.length).trim()
-				return { leftPath, operator: op, rightStr }
-			}
+		// Use regex to find operators, ordered by length (longest first) to avoid partial matches
+		const operatorPattern = /(!==|===|<=|>=|==|!=|[<>=])/
+		const match = condition.match(operatorPattern)
+
+		if (!match) {
+			return null
 		}
-		return null
+
+		const operator = match[1]
+		const index = match.index!
+
+		if (index === 0) {
+			return null // Operator at start is invalid
+		}
+
+		const leftPath = condition.substring(0, index).trim()
+		const rightStr = condition.substring(index + operator.length).trim()
+
+		return { leftPath, operator, rightStr }
 	}
 
 	evaluate(condition: string, context: Record<string, any>): boolean {
@@ -255,10 +264,10 @@ export class FlowcraftRuntime<TContext extends Record<string, any> = Record<stri
 				status,
 				error: finalError
 					? {
-						nodeId: finalError instanceof NodeExecutionError ? finalError.nodeId : 'workflow_runtime',
-						message: finalError.message,
-						details: finalError,
-					}
+							nodeId: finalError instanceof NodeExecutionError ? finalError.nodeId : 'workflow_runtime',
+							message: finalError.message,
+							details: finalError,
+						}
 					: undefined,
 			},
 		}
@@ -566,13 +575,16 @@ class ExecutableFlow<TContext extends Record<string, any>> {
 					const predecessors = this.nodeMap.get(nextNode.id)?.predecessorIds ?? new Set()
 					const received = receivedInputs.get(nextNode.id)!
 
-					// A node is ready if all predecessors have sent input. An exception is made for loop controllers,
+					// A node is ready if all predecessors have sent input. An exception is made for nodes with 'any' join strategy,
 					// which can run as soon as *any* input is received. This breaks the fan-in deadlock for loops.
-					const isReady = nextNode.implementation === 'loop-controller' || Array.from(predecessors).every(p => received.has(p))
+					const joinStrategy = this.nodeMap.get(nextNode.id)?.config.joinStrategy || 'all'
+					const isReady
+						= (joinStrategy === 'any' && received.size > 0)
+							|| (joinStrategy === 'all' && Array.from(predecessors).every(p => received.has(p)))
 					if (isReady) {
 						nextFrontierSet.add(nextNode)
-						// Once a loop controller is scheduled, clear its inputs so it can be triggered again by the feedback edge.
-						if (nextNode.implementation === 'loop-controller')
+						// Once a node with 'any' join strategy is scheduled, clear its inputs so it can be triggered again by the feedback edge.
+						if (joinStrategy === 'any')
 							received.clear()
 					}
 				}
@@ -604,11 +616,11 @@ class ExecutableFlow<TContext extends Record<string, any>> {
 					const executionPromise = this.executeNode(node, context)
 					const result = timeout
 						? await Promise.race([
-							executionPromise,
-							new Promise<NodeResult>((_, reject) =>
-								setTimeout(() => reject(new Error('Node execution timed out')), timeout),
-							),
-						])
+								executionPromise,
+								new Promise<NodeResult>((_, reject) =>
+									setTimeout(() => reject(new Error('Node execution timed out')), timeout),
+								),
+							])
 						: await executionPromise
 
 					if (result.error) {
@@ -839,7 +851,7 @@ class ExecutableFlow<TContext extends Record<string, any>> {
 
 		const results: any[] = []
 		const semaphore = new Semaphore(concurrency)
-		const promises = inputArray.map(item =>
+		const promises = inputArray.map((item: any) =>
 			semaphore.acquire(async () => {
 				// Each item gets its own scope with the item set as 'input'
 				const itemContext = context.createScope({ input: item })
@@ -893,7 +905,7 @@ class ExecutableFlow<TContext extends Record<string, any>> {
 		}
 
 		// Increment iteration count for the next run
-		context.set('loop_iterations' as any, iterations + 1)
+		(context as any).set('loop_iterations', iterations + 1)
 
 		// Check condition if provided
 		if (condition) {

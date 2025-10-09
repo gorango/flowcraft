@@ -383,7 +383,7 @@ describe('FlowcraftRuntime', () => {
 				})
 				flow.node('loop-controller', 'loop-controller', {
 					maxIterations: 5,
-				})
+				}, { joinStrategy: 'any' })
 				flow.node('end', async () => ({ output: 'done' }))
 
 				flow.edge('start', 'loop-controller')
@@ -413,7 +413,7 @@ describe('FlowcraftRuntime', () => {
 				flow.node('loop-controller', 'loop-controller', {
 					maxIterations: 10, // Add a safety max
 					condition: 'counter < 3',
-				})
+				}, { joinStrategy: 'any' })
 				flow.node('end', async () => ({ output: 'done' }))
 
 				flow.edge('start', 'loop-controller')

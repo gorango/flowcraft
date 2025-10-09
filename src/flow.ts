@@ -140,26 +140,6 @@ export class Flow<TContext extends Record<string, any> = Record<string, any>> {
 	}
 
 	/**
-	 * Create a conditional branch
-	 */
-	conditional(
-		source: string,
-		branches: Array<{
-			action: string
-			target: string
-			condition?: string
-		}>,
-	): this {
-		for (const branch of branches) {
-			this.edge(source, branch.target, {
-				action: branch.action,
-				condition: branch.condition,
-			})
-		}
-		return this
-	}
-
-	/**
 	 * Defines a parallel execution block.
 	 * This creates a special 'parallel-container' node. You must create edges
 	 * from a predecessor node *to* this new parallel node, and from this node
@@ -247,7 +227,7 @@ export class Flow<TContext extends Record<string, any> = Record<string, any>> {
 			maxIterations: options?.maxIterations || 100,
 			condition: options?.condition,
 			timeout: options?.timeout,
-		})
+		}, { joinStrategy: 'any' })
 
 		this.edge(source, loopNodeId)
 		this.edge(loopNodeId, target, { action: 'continue' })

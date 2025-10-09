@@ -90,14 +90,6 @@ export class Context<TContext extends Record<string, any> = Record<string, any>>
 	}
 
 	/**
-	 * Create a new context with updated metadata.
-	 * @deprecated Use setMetadata for in-place updates to avoid losing context changes.
-	 */
-	withMetadata(metadata: Partial<ExecutionMetadata>): Context<TContext> {
-		return new Context<TContext>(Object.fromEntries(this.data) as Partial<TContext>, { ...this.metadata, ...metadata })
-	}
-
-	/**
 	 * Updates the metadata of the current context in-place.
 	 */
 	setMetadata(metadata: Partial<ExecutionMetadata>): this {
