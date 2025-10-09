@@ -1104,15 +1104,15 @@ class ExecutableFlow<TContext extends Record<string, any>> {
 	 * Executes a batch processor that processes items from an array.
 	 */
 	private async _executeBatchProcessor(node: CompiledNode, context: Context<TContext>): Promise<NodeResult> {
-		const { concurrency = 1, workerNodeId } = node.params
+		const { concurrency = 1, workerImplementationKey } = node.params
 		const inputArray = await context.get('input' as any)
 
-		if (!workerNodeId || typeof workerNodeId !== 'string')
-			return { error: { message: `Batch processor node '${node.id}' requires a 'workerNodeId' parameter.` } }
+		if (!workerImplementationKey || typeof workerImplementationKey !== 'string')
+			return { error: { message: `Batch processor node '${node.id}' requires a 'workerImplementationKey' parameter.` } }
 
-		const workerNode = this.nodeMap.get(workerNodeId)
-		if (!workerNode)
-			return { error: { message: `Batch processor could not find worker node with ID '${workerNodeId}'.` } }
+		const workerImplementation = this.functionRegistry.get(workerImplementationKey)
+		if (!workerImplementation)
+			return { error: { message: `Batch processor could not find worker implementation for key '${workerImplementationKey}'.` } }
 
 		if (!Array.isArray(inputArray))
 			return { error: { message: 'Batch processor expects an array as input' } }
@@ -1123,7 +1123,7 @@ class ExecutableFlow<TContext extends Record<string, any>> {
 			semaphore.acquire(async () => {
 				// each item gets its own scope with the item set as 'input'
 				const itemContext = context.createScope({ input: item }) as Context<TContext>
-				const itemResult = await this._processBatchItem(workerNode, itemContext)
+				const itemResult = await this._processBatchItemWithImplementation(workerImplementation, itemContext)
 
 				// after execution, merge any state changes from the item's scope back to the main context
 				context.mergeSync(itemContext)
@@ -1147,14 +1147,28 @@ class ExecutableFlow<TContext extends Record<string, any>> {
 	}
 
 	/**
-	 * Process a single item in a batch by executing the specified worker node.
+	 * Process a single item in a batch by executing the specified worker implementation.
 	 */
-	private async _processBatchItem(workerNode: CompiledNode, context: Context<TContext>): Promise<NodeResult> {
-		// a batch worker is a self-contained execution - we create a new mini-flow for it to run to completion.
-		const flow = new ExecutableFlow(workerNode, this.nodeMap, this.runtime, this.functionRegistry)
-		const finalContext = await flow.execute(context)
-		// the result of the batch item is the final 'input' value in its context
-		return { output: await finalContext.get('input' as any) }
+	private async _processBatchItemWithImplementation(workerImplementation: any, context: Context<TContext>): Promise<NodeResult> {
+		// Execute the worker directly
+		const nodeContext: NodeContext<TContext> = {
+			context,
+			input: await context.get('input' as any),
+			metadata: context.getMetadata(),
+			dependencies: this.runtime.getDependencies(),
+			params: {},
+		}
+		if (typeof workerImplementation === 'function') {
+			if (workerImplementation.prototype?.execute) {
+				// eslint-disable-next-line new-cap
+				const instance = new workerImplementation()
+				return await instance.execute(nodeContext)
+			}
+			else {
+				return await workerImplementation(nodeContext)
+			}
+		}
+		throw new Error(`Unknown worker implementation type`)
 	}
 
 	/**

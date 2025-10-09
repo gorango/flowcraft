@@ -57,18 +57,11 @@ export function createTranslateFlow() {
 	const flow = createFlow<TranslationContext>('parallel-translation')
 
 	flow.node('prepare-jobs', prepareJobs)
-	flow.node('translate-item', translateItem) // The "worker" function for the batch
+	// Don't register translate-item as a regular node - it's only used as a batch worker
 	flow.node('save-results', saveResults)
 
-	// Manually define the batch processor node
-	flow.node('batch-processor', 'batch-processor', {
-		workerNodeId: 'translate-item',
-		concurrency: 8,
-	})
-
-	// Manually wire the graph edges
-	flow.edge('prepare-jobs', 'batch-processor')
-	flow.edge('batch-processor', 'save-results')
+	// Use the new batch method with the worker function
+	flow.batch('prepare-jobs', 'save-results', translateItem, { concurrency: 8 })
 
 	return flow
 }

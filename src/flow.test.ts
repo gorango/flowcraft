@@ -196,7 +196,7 @@ describe('Flow Builder', () => {
 			flow.node('start', 'start-func')
 			flow.node('end', 'end-func')
 
-			flow.batch('start', 'end', { batchSize: 10, concurrency: 2 })
+			flow.batch('start', 'end', async context => ({ output: context.input }), { batchSize: 10, concurrency: 2 })
 
 			const blueprint = flow.toBlueprint()
 
@@ -407,7 +407,7 @@ describe('Flow Builder', () => {
 			expect(edges).toHaveLength(3)
 			expect(edges[0]).toEqual({ source: 'start', target: expect.stringMatching(/^start_transform_0_/) })
 			expect(edges[1]).toEqual({ source: expect.stringMatching(/^start_transform_0_/), target: expect.stringMatching(/^start_transform_1_/) })
- 			expect(edges[2]).toEqual({ source: expect.stringMatching(/^start_transform_1_/), target: 'end', condition: 'result !== undefined' })
+			expect(edges[2]).toEqual({ source: expect.stringMatching(/^start_transform_1_/), target: 'end', condition: 'result !== undefined' })
 		})
 
 		it('should register anonymous functions in the function registry', () => {
@@ -510,6 +510,174 @@ describe('Flow Builder', () => {
 			const runtime = new FlowcraftRuntime({ registry: {} })
 
 			await expect(runtime.run(blueprint, {}, flow.getFunctionRegistry())).rejects.toThrow('Transform error')
+		})
+	})
+
+	describe('batch method', () => {
+		describe('unit tests (blueprint structure validation)', () => {
+			it('should create a batch-processor node with an internal worker key', () => {
+				const flow = new Flow('test-flow')
+
+				flow.node('start', async () => ({ output: [1, 2, 3] }))
+				flow.node('end', async () => ({ output: null }))
+
+				flow.batch('start', 'end', async context => ({ output: context.input * 2 }), { concurrency: 5 })
+
+				const blueprint = flow.toBlueprint()
+
+				// Should have 3 nodes: start, batch-processor, end
+				expect(blueprint.nodes).toHaveLength(3)
+
+				const batchNode = blueprint.nodes.find(n => n.uses === 'batch-processor')
+				expect(batchNode).toBeDefined()
+				expect(batchNode?.params?.workerImplementationKey).toMatch(/^batch_worker_\d+_[a-z0-9]+/)
+				expect(batchNode?.params?.concurrency).toBe(5)
+
+				// Check edges
+				expect(blueprint.edges).toHaveLength(2)
+				expect(blueprint.edges).toEqual(expect.arrayContaining([
+					expect.objectContaining({ source: 'start', target: batchNode?.id }),
+					expect.objectContaining({ source: batchNode?.id, target: 'end' }),
+				]))
+			})
+
+			it('should add the inline worker function to the function registry', () => {
+				const flow = new Flow('test-flow')
+
+				flow.node('start', async () => ({ output: [1, 2, 3] }))
+				flow.node('end', async () => ({ output: null }))
+
+				const workerFn = async (context: any) => ({ output: context.input * 2 })
+				flow.batch('start', 'end', workerFn)
+
+				const registry = flow.getFunctionRegistry()
+				const batchNode = flow.toBlueprint().nodes.find(n => n.uses === 'batch-processor')
+				const workerKey = batchNode?.params?.workerImplementationKey
+
+				expect(registry.has(workerKey!)).toBe(true)
+				expect(registry.get(workerKey!)).toBe(workerFn)
+			})
+
+			it('should wire the graph correctly around the batch-processor node', () => {
+				const flow = new Flow('test-flow')
+
+				flow.node('source', async () => ({ output: [1, 2, 3] }))
+				flow.node('target', async () => ({ output: null }))
+
+				flow.batch('source', 'target', async context => ({ output: context.input * 2 }))
+
+				const blueprint = flow.toBlueprint()
+
+				const edges = blueprint.edges
+				expect(edges).toHaveLength(2)
+				expect(edges[0]).toEqual({ source: 'source', target: expect.stringMatching(/^batch_\d+$/) })
+				expect(edges[1]).toEqual({ source: expect.stringMatching(/^batch_\d+$/), target: 'target' })
+			})
+		})
+
+		describe('integration tests (runtime execution)', () => {
+			it('should execute the worker for every item in the input array', async () => {
+				const flow = new Flow('test-flow')
+
+				flow.node('getItems', async () => ({ output: [1, 2, 3] }))
+				flow.node('saveResults', async (context) => {
+					const input = context.input
+					return { output: `Saved: ${input.join(', ')}` }
+				})
+
+				flow.batch('getItems', 'saveResults', async context => ({ output: context.input * 10 }))
+
+				const blueprint = flow.toBlueprint()
+				const runtime = new FlowcraftRuntime({ registry: {} })
+				const result = await runtime.run(blueprint, {}, flow.getFunctionRegistry())
+
+				expect(result.metadata.status).toBe('completed')
+				expect(result.context.saveResults).toBe('Saved: 10, 20, 30')
+			})
+
+			it('should respect the concurrency option', async () => {
+				const flow = new Flow('test-flow')
+
+				flow.node('getItems', async () => ({ output: [1, 2, 3, 4] }))
+				flow.node('saveResults', async (context) => {
+					const input = context.input
+					return { output: `Saved: ${input.join(', ')}` }
+				})
+
+				const executionTimes: number[] = []
+				flow.batch('getItems', 'saveResults', async (context) => {
+					const start = Date.now()
+					await new Promise(resolve => setTimeout(resolve, 100)) // Simulate work
+					executionTimes.push(Date.now() - start)
+					return { output: context.input * 10 }
+				}, { concurrency: 2 })
+
+				const blueprint = flow.toBlueprint()
+				const runtime = new FlowcraftRuntime({ registry: {} })
+				const startTime = Date.now()
+				const result = await runtime.run(blueprint, {}, flow.getFunctionRegistry())
+				const totalTime = Date.now() - startTime
+
+				expect(result.metadata.status).toBe('completed')
+				// With concurrency 2, total time should be around 200ms (2 batches of 100ms each)
+				expect(totalTime).toBeLessThan(300) // Allow some margin
+			})
+
+			it('should aggregate results correctly', async () => {
+				const flow = new Flow('test-flow')
+
+				flow.node('getItems', async () => ({ output: [1, 2, 3] }))
+				flow.node('saveResults', async (context) => {
+					const input = context.input
+					return { output: `Results: ${input.join(', ')}` }
+				})
+
+				flow.batch('getItems', 'saveResults', async context => ({ output: `processed_${context.input}` }))
+
+				const blueprint = flow.toBlueprint()
+				const runtime = new FlowcraftRuntime({ registry: {} })
+				const result = await runtime.run(blueprint, {}, flow.getFunctionRegistry())
+
+				expect(result.metadata.status).toBe('completed')
+				expect(result.context.saveResults).toBe('Results: processed_1, processed_2, processed_3')
+			})
+
+			it('should fail the entire batch if a single worker throws an error', async () => {
+				const flow = new Flow('test-flow')
+
+				flow.node('getItems', async () => ({ output: [1, 2, 3] }))
+				flow.node('saveResults', async () => ({ output: 'Should not reach' }))
+
+				flow.batch('getItems', 'saveResults', async (context) => {
+					if (context.input === 2)
+						throw new Error('Worker error')
+					return { output: context.input * 10 }
+				})
+
+				const blueprint = flow.toBlueprint()
+				const runtime = new FlowcraftRuntime({ registry: {} })
+
+				await expect(runtime.run(blueprint, {}, flow.getFunctionRegistry())).rejects.toThrow('Worker error')
+			})
+
+			it('should handle an empty input array gracefully', async () => {
+				const flow = new Flow('test-flow')
+
+				flow.node('getItems', async () => ({ output: [] }))
+				flow.node('saveResults', async (context) => {
+					const input = context.input
+					return { output: `Empty: ${input.length}` }
+				})
+
+				flow.batch('getItems', 'saveResults', async context => ({ output: context.input * 10 }))
+
+				const blueprint = flow.toBlueprint()
+				const runtime = new FlowcraftRuntime({ registry: {} })
+				const result = await runtime.run(blueprint, {}, flow.getFunctionRegistry())
+
+				expect(result.metadata.status).toBe('completed')
+				expect(result.context.saveResults).toBe('Empty: 0')
+			})
 		})
 	})
 })

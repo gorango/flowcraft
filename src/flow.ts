@@ -188,14 +188,20 @@ export class Flow<TContext extends Record<string, any> = Record<string, any>, TN
 	batch(
 		source: string,
 		target: string,
+		worker: NodeFunction<TContext> | NodeClass | string,
 		options?: {
 			batchSize?: number
 			concurrency?: number
 			timeout?: number
 		},
 	): this {
+		const workerKey = `batch_worker_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+		if (typeof worker === 'function' && !isNodeClass(worker)) {
+			this.functionRegistry.set(workerKey, worker)
+		}
 		const batchNodeId = `batch_${Date.now()}`
 		this.node(batchNodeId, 'batch-processor', {
+			workerImplementationKey: workerKey,
 			batchSize: options?.batchSize || 10,
 			concurrency: options?.concurrency || 1,
 			timeout: options?.timeout,
@@ -281,16 +287,17 @@ export class Flow<TContext extends Record<string, any> = Record<string, any>, TN
 			const transformNodeId = transformNodeIds[i]
 			let transformFunction: NodeFunction<TContext>
 
- 			// Check if this is a filter
- 			let isFilter = false
- 			try {
- 				const testInput = { test: true } as any
- 				const testResult = transforms[i](testInput)
- 				isFilter = typeof testResult === 'boolean'
- 			} catch (error) {
- 				// If the transform throws during filter check, assume it's not a filter
- 				isFilter = false
- 			}
+			// Check if this is a filter
+			let isFilter = false
+			try {
+				const testInput = { test: true } as any
+				const testResult = transforms[i](testInput)
+				isFilter = typeof testResult === 'boolean'
+			}
+			catch {
+				// If the transform throws during filter check, assume it's not a filter
+				isFilter = false
+			}
 
 			if (isFilter) {
 				transformFunction = async (context) => {

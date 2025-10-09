@@ -18,10 +18,10 @@ async function main() {
 		.join('##')
 
 	const languages = [
-		'Chinese',
 		'Spanish',
-		'Japanese',
 		'German',
+		// 'Chinese',
+		// 'Japanese',
 		// 'Russian',
 		// 'Portuguese',
 		// 'French',

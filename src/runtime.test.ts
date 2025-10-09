@@ -313,26 +313,20 @@ describe('FlowcraftRuntime', () => {
 				const flow = createFlow('batch-sequential-flow')
 
 				flow.node('start', async () => ({ output: [{ id: 1 }, { id: 2 }, { id: 3 }] }))
-				flow.node('processor', async (context) => {
+
+				// Use the new batch method
+				flow.batch('start', 'end', async (context) => {
 					const item = context.input as { id: number }
 					processedItems.push(item)
 					return { output: item.id * 10 }
-				})
-				flow.node('end', async context => ({ output: context.input }))
+				}, { concurrency: 1 })
 
-				// Manually define the batch controller and wire the graph correctly
-				flow.node('batch-controller', 'batch-processor', {
-					workerNodeId: 'processor', // The worker is not in the main graph path
-					concurrency: 1,
-				})
-				flow.edge('start', 'batch-controller')
-				flow.edge('batch-controller', 'end')
+				flow.node('end', async context => ({ output: context.input }))
 
 				const blueprint = flow.toBlueprint()
 				const result = await runtime.run(blueprint, {}, flow.getFunctionRegistry())
 
 				expect(result.metadata.status).toBe('completed')
-				expect(result.context['batch-controller']).toEqual([10, 20, 30])
 				expect(result.context.end).toEqual([10, 20, 30])
 			})
 
@@ -342,22 +336,17 @@ describe('FlowcraftRuntime', () => {
 				const flow = createFlow('batch-concurrent-flow')
 
 				flow.node('start', async () => ({ output: [{ id: 1 }, { id: 2 }, { id: 3 }] }))
-				flow.node('processor', async (context) => {
+
+				// Use the new batch method
+				flow.batch('start', 'end', async (context) => {
 					const item = context.input as { id: number }
 					startTimes.push(Date.now())
 					await sleep(30 - item.id * 5) // Simulate variable processing time
 					finishTimes.push(Date.now())
 					return { output: item }
-				})
-				flow.node('end', async () => ({ output: 'done' }))
+				}, { concurrency: 3 })
 
-				// Manually define the batch controller
-				flow.node('batch-controller', 'batch-processor', {
-					workerNodeId: 'processor',
-					concurrency: 3,
-				})
-				flow.edge('start', 'batch-controller')
-				flow.edge('batch-controller', 'end')
+				flow.node('end', async context => ({ output: context.input }))
 
 				const blueprint = flow.toBlueprint()
 				const result = await runtime.run(blueprint, {}, flow.getFunctionRegistry())
@@ -365,7 +354,7 @@ describe('FlowcraftRuntime', () => {
 				// Check that processing started concurrently (start times overlap)
 				expect(Math.max(...startTimes) - Math.min(...startTimes)).toBeLessThan(20)
 				expect(finishTimes).toHaveLength(3)
-				expect(result.context['batch-controller']).toEqual([{ id: 1 }, { id: 2 }, { id: 3 }])
+				expect(result.context.end).toEqual([{ id: 1 }, { id: 2 }, { id: 3 }])
 			})
 		})
 
@@ -739,17 +728,11 @@ describe('FlowcraftRuntime', () => {
 			const flow = createFlow('batch-aggregation-test')
 			flow.node('start', async () => ({ output: [1, 2, 3] }))
 
-			// This worker node is executed for each item but is not part of the main graph sequence.
-			flow.node('worker', async ctx => ({ output: (ctx.input as number) * 10 }))
+			// Use the new batch method
+			flow.batch('start', 'end', async ctx => ({ output: (ctx.input as number) * 10 }), { concurrency: 2 })
 
-			flow.node('batch-controller', 'batch-processor', {
-				workerNodeId: 'worker', // Point to the worker node
-				concurrency: 2,
-			})
+			// Ensure 'end' node exists
 			flow.node('end', async ctx => ({ output: await ctx.context.get('input') }))
-
-			flow.edge('start', 'batch-controller')
-			flow.edge('batch-controller', 'end')
 
 			const blueprint = flow.toBlueprint()
 			const result = await runtime.run(blueprint, {}, flow.getFunctionRegistry())
