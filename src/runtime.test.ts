@@ -976,6 +976,112 @@ describe('FlowcraftRuntime', () => {
 
 			expect(capturedResult).toEqual({ output: { data: 'test-data' } })
 		})
+
+		it('should execute afterNode hooks even when node fails without fallback', async () => {
+			const executionLog: string[] = []
+
+			const middleware: Middleware = {
+				beforeNode: async (_ctx, _nodeId) => {
+					executionLog.push('before')
+				},
+				afterNode: async (_ctx, _nodeId, _result) => {
+					executionLog.push('after')
+				},
+			}
+
+			const runtimeWithMiddleware = new FlowcraftRuntime({
+				registry: mockNodeRegistry,
+				dependencies: mockDependencies,
+				middleware: [middleware],
+			})
+
+			const flow = createFlow('failure-no-fallback-test')
+			flow.node(
+				'failing-node',
+				async () => {
+					throw new Error('Node failed')
+				},
+				{},
+				{ maxRetries: 1 },
+			)
+			const blueprint = flow.toBlueprint()
+
+			await expect(runtimeWithMiddleware.run(blueprint, {}, flow.getFunctionRegistry())).rejects.toThrow('Node failed')
+
+			expect(executionLog).toEqual(['before', 'after'])
+		})
+
+		it('should execute afterNode hooks even when FatalNodeExecutionError occurs', async () => {
+			const executionLog: string[] = []
+
+			const middleware: Middleware = {
+				beforeNode: async (_ctx, _nodeId) => {
+					executionLog.push('before')
+				},
+				afterNode: async (_ctx, _nodeId, _result) => {
+					executionLog.push('after')
+				},
+			}
+
+			const runtimeWithMiddleware = new FlowcraftRuntime({
+				registry: mockNodeRegistry,
+				dependencies: mockDependencies,
+				middleware: [middleware],
+			})
+
+			const flow = createFlow('fatal-error-test')
+			flow.node(
+				'fatal-node',
+				async () => {
+					throw new FatalNodeExecutionError('Fatal error', 'fatal-node', 'fatal-error-test', 'test-execution-id')
+				},
+				{},
+				{ maxRetries: 1 },
+			)
+			const blueprint = flow.toBlueprint()
+
+			await expect(runtimeWithMiddleware.run(blueprint, {}, flow.getFunctionRegistry())).rejects.toThrow('Fatal error')
+
+			expect(executionLog).toEqual(['before', 'after'])
+		})
+
+		it('should execute afterNode hooks even when fallback succeeds', async () => {
+			const executionLog: string[] = []
+
+			const middleware: Middleware = {
+				beforeNode: async (_ctx, _nodeId) => {
+					executionLog.push('before')
+				},
+				afterNode: async (_ctx, _nodeId, _result) => {
+					executionLog.push('after')
+				},
+			}
+
+			const runtimeWithMiddleware = new FlowcraftRuntime({
+				registry: mockNodeRegistry,
+				dependencies: mockDependencies,
+				middleware: [middleware],
+			})
+
+			const flow = createFlow('fallback-success-test')
+			const fallbackFn = async (): Promise<NodeResult> => ({ output: 'fallback success' })
+			flow.node(
+				'failing-node',
+				async () => {
+					throw new Error('Node failed')
+				},
+				{},
+				{ maxRetries: 1, fallback: 'my-fallback' },
+			)
+			const functionRegistry = flow.getFunctionRegistry()
+			functionRegistry.set('my-fallback', fallbackFn)
+
+			const blueprint = flow.toBlueprint()
+			const result = await runtimeWithMiddleware.run(blueprint, {}, functionRegistry)
+
+			expect(result.metadata.status).toBe('completed')
+			expect(executionLog).toEqual(['before', 'after'])
+		})
 	})
 
 	describe('orchestrator', () => {
