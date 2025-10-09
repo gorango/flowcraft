@@ -1,12 +1,13 @@
 import type { NodeContext, NodeFunction, NodeRegistry, NodeResult, RuntimeDependencies } from './types'
+import { Context } from './context'
 
 /**
  * Mock node that adds a value to the context
  */
 export const addValue: NodeFunction = async (context: NodeContext): Promise<NodeResult> => {
-	const value = context.get('value') || 1
-	const current = context.get('counter') || 0
-	context.set('counter', current + value)
+	const value = await context.context.get('value') || 1
+	const current = await context.context.get('counter') || 0
+	await context.context.set('counter', current + value)
 	return { output: current + value }
 }
 
@@ -14,9 +15,9 @@ export const addValue: NodeFunction = async (context: NodeContext): Promise<Node
  * Mock node that logs to context
  */
 export const logToContext: NodeFunction = async (context: NodeContext): Promise<NodeResult> => {
-	const message = context.get('message') || 'Hello World'
-	const logs = context.get('logs') || []
-	context.set('logs', [...logs, message])
+	const message = await context.context.get('message') || 'Hello World'
+	const logs = await context.context.get('logs') || []
+	await context.context.set('logs', [...logs, message])
 	return { output: message }
 }
 
@@ -24,7 +25,7 @@ export const logToContext: NodeFunction = async (context: NodeContext): Promise<
  * Mock node that performs conditional branching
  */
 export const conditionalBranch: NodeFunction = async (context: NodeContext): Promise<NodeResult> => {
-	const condition = context.get('condition') || false
+	const condition = await context.context.get('condition') || false
 	return { action: condition ? 'true' : 'false' }
 }
 
@@ -32,7 +33,7 @@ export const conditionalBranch: NodeFunction = async (context: NodeContext): Pro
  * Mock node that throws an error
  */
 export const throwsError: NodeFunction = async (context: NodeContext): Promise<NodeResult> => {
-	const shouldThrow = context.get('shouldThrow') || false
+	const shouldThrow = await context.context.get('shouldThrow') || false
 	if (shouldThrow) {
 		throw new Error('Test error')
 	}
@@ -50,7 +51,7 @@ export const echoNode: NodeFunction = async (context: NodeContext): Promise<Node
  * Mock node that delays execution
  */
 export const delayNode: NodeFunction = async (context: NodeContext): Promise<NodeResult> => {
-	const delay = context.get('delay') || 100
+	const delay = await context.context.get('delay') || 100
 	await new Promise(resolve => setTimeout(resolve, delay))
 	return { output: `delayed ${delay}ms` }
 }
@@ -59,10 +60,10 @@ export const delayNode: NodeFunction = async (context: NodeContext): Promise<Nod
  * Mock node that accumulates values
  */
 export const accumulatorNode: NodeFunction = async (context: NodeContext): Promise<NodeResult> => {
-	const values = context.get('values') || []
+	const values = await context.context.get('values') || []
 	const newValue = context.input
 	const updated = [...values, newValue]
-	context.set('values', updated)
+	await context.context.set('values', updated)
 	return { output: updated }
 }
 
@@ -70,8 +71,8 @@ export const accumulatorNode: NodeFunction = async (context: NodeContext): Promi
  * Mock node that filters values
  */
 export const filterNode: NodeFunction = async (context: NodeContext): Promise<NodeResult> => {
-	const values = context.get('values') || []
-	const predicate = context.get('predicate') || ((x: any) => x > 0)
+	const values = await context.context.get('values') || []
+	const predicate = await context.context.get('predicate') || ((x: any) => x > 0)
 	const filtered = values.filter(predicate)
 	return { output: filtered }
 }
@@ -80,8 +81,8 @@ export const filterNode: NodeFunction = async (context: NodeContext): Promise<No
  * Mock node that transforms values
  */
 export const transformNode: NodeFunction = async (context: NodeContext): Promise<NodeResult> => {
-	const values = context.get('values') || []
-	const transform = context.get('transform') || ((x: any) => x * 2)
+	const values = await context.context.get('values') || []
+	const transform = await context.context.get('transform') || ((x: any) => x * 2)
 	const transformed = values.map(transform)
 	return { output: transformed }
 }
@@ -91,7 +92,7 @@ export const transformNode: NodeFunction = async (context: NodeContext): Promise
  */
 export const validatorNode: NodeFunction = async (context: NodeContext): Promise<NodeResult> => {
 	const data = context.input
-	const schema = context.get('schema') || {}
+	const schema = await context.context.get('schema') || {}
 
 	// Simple validation - check if required fields exist
 	const errors: string[] = []
@@ -149,22 +150,21 @@ export const mockDependencies: RuntimeDependencies = {
  * Helper function to create a test context
  */
 export function createTestContext(initialData: Record<string, any> = {}) {
+	const context = new Context(initialData, {
+		executionId: 'test-execution',
+		blueprintId: 'test-blueprint',
+		currentNodeId: 'test-node',
+		startedAt: new Date(),
+		environment: 'development' as const,
+	})
+
 	return {
-		get: (key: string) => initialData[key],
-		set: (key: string, value: any) => { initialData[key] = value },
-		has: (key: string) => key in initialData,
-		keys: () => Object.keys(initialData),
-		values: () => Object.values(initialData),
-		entries: () => Object.entries(initialData),
+		context,
 		input: initialData.input,
-		metadata: {
-			executionId: 'test-execution',
-			blueprintId: 'test-blueprint',
-			currentNodeId: 'test-node',
-			startedAt: new Date(),
-			environment: 'development' as const,
-		},
-	} as NodeContext
+		metadata: context.getMetadata(),
+		dependencies: {},
+		params: {},
+	}
 }
 
 /**

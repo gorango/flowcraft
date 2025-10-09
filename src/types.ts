@@ -76,19 +76,9 @@ export interface EdgeDefinition {
  * Context interface that nodes receive
  * This is generic over the specific context type for type safety
  */
-export interface NodeContext<TContext = any> {
-	/** Get a value from the context */
-	get: <K extends keyof TContext>(key: K) => TContext[K] | undefined
-	/** Set a value in the context */
-	set: <K extends keyof TContext>(key: K, value: TContext[K]) => void
-	/** Check if a key exists in the context */
-	has: (key: keyof TContext) => boolean
-	/** Get all context keys */
-	keys: () => (keyof TContext)[]
-	/** Get all context values */
-	values: () => TContext[]
-	/** Get all context entries */
-	entries: () => [keyof TContext, TContext][]
+export interface NodeContext<TContext extends Record<string, any> = Record<string, any>> {
+	/** The context object for getting/setting data */
+	context: IContext<TContext>
 	/** The input data from the previous node */
 	input?: any
 	/** Metadata about the current execution */
@@ -97,6 +87,22 @@ export interface NodeContext<TContext = any> {
 	dependencies: RuntimeDependencies
 	/** Node-specific parameters */
 	params: any
+}
+
+/**
+ * Interface for context that persists state and provides async operations
+ */
+export interface IContext<TContext extends Record<string, any> = Record<string, any>> {
+	get: <K extends keyof TContext>(key: K) => Promise<TContext[K] | undefined>
+	set: <K extends keyof TContext>(key: K, value: TContext[K]) => Promise<this>
+	has: (key: keyof TContext) => Promise<boolean>
+	delete: (key: keyof TContext) => Promise<boolean>
+	keys: () => Promise<string[]>
+	toJSON: () => Promise<Record<string, any>>
+	getMetadata: () => ExecutionMetadata
+	setMetadata: (metadata: Partial<ExecutionMetadata>) => this
+	createScope: (additionalData?: Record<string, any>) => IContext<TContext>
+	merge: (other: IContext<any>) => Promise<void>
 }
 
 /**

@@ -1,5 +1,10 @@
+import { promises as fs } from 'node:fs'
+import path from 'node:path'
+import process from 'node:process'
 import { Queue } from 'bullmq'
+import { FlowcraftRuntime } from 'flowcraft'
 import IORedis from 'ioredis'
+import { agentNodeRegistry } from './registry.js'
 import { waitForWorkflow } from './utils.js'
 import 'dotenv/config'
 
@@ -36,6 +41,11 @@ const config = {
 	},
 }
 
+async function loadBlueprint(blueprintPath: string) {
+	const blueprintContent = await fs.readFile(blueprintPath, 'utf-8')
+	return JSON.parse(blueprintContent)
+}
+
 async function main() {
 	console.log('--- Distributed Workflow Client ---')
 
@@ -44,15 +54,34 @@ async function main() {
 	const redisConnection = new IORedis({ maxRetriesPerRequest: null })
 	const queue = new Queue(QUEUE_NAME, { connection: redisConnection })
 
+	// Load the blueprint to find start nodes
+	const blueprintPath = path.join(process.cwd(), 'data', ACTIVE_USE_CASE, `${config[ACTIVE_USE_CASE].mainWorkflowId}.json`)
+	const blueprint = await loadBlueprint(blueprintPath)
+
+	// Use the official runtime method to find start nodes
+	const runtime = new FlowcraftRuntime({ registry: agentNodeRegistry })
+	const startNodes = runtime.findStartNodes(blueprint)
+
 	const useCase = config[ACTIVE_USE_CASE]
-	const jobPayload = {
+	const initialContextData = {
 		runId,
 		blueprintId: useCase.mainWorkflowId,
-		initialContext: useCase.initialContext,
+		...useCase.initialContext,
 	}
 
-	console.log(`🚀 Enqueuing workflow '${useCase.mainWorkflowId}' with Run ID: ${runId}`)
-	await queue.add('runWorkflow', jobPayload)
+	// Persist the initial context in Redis before starting any node
+	const stateKey = `workflow:state:${runId}`
+	for (const [key, value] of Object.entries(initialContextData)) {
+		await redisConnection.hset(stateKey, key, JSON.stringify(value))
+	}
+
+	const startJobs = startNodes.map((node: any) => ({
+		name: 'executeNode',
+		data: { runId, blueprintId: useCase.mainWorkflowId, nodeId: node.id },
+	}))
+
+	console.log(`🚀 Enqueuing ${startJobs.length} start job(s) for Run ID: ${runId}`)
+	await queue.addBulk(startJobs)
 
 	try {
 		const finalStatus = await waitForWorkflow(redisConnection, runId, 60000) // Wait for up to 60s

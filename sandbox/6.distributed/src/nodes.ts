@@ -10,19 +10,20 @@ interface LlmNodeContext extends NodeContext {
 		inputs: Record<string, string | string[]>
 		outputKey?: string
 	}
+	context: any // IContext
 }
 
 /**
  * Resolves input values from the context based on the node's `inputs` mapping.
  */
-async function resolveInputs(ctx: NodeContext, inputs: Record<string, string | string[]>): Promise<Record<string, any>> {
+async function resolveInputs(ctx: LlmNodeContext, inputs: Record<string, string | string[]>): Promise<Record<string, any>> {
 	const resolved: Record<string, any> = {}
 	for (const [templateKey, sourceKeyOrKeys] of Object.entries(inputs)) {
 		const sourceKeys = Array.isArray(sourceKeyOrKeys) ? sourceKeyOrKeys : [sourceKeyOrKeys]
 		let valueFound = false
 		for (const sourceKey of sourceKeys) {
-			if (ctx.has(sourceKey as any)) {
-				resolved[templateKey] = ctx.get(sourceKey as any)
+			if (await ctx.context.has(sourceKey as any)) {
+				resolved[templateKey] = await ctx.context.get(sourceKey as any)
 				valueFound = true
 			}
 		}
@@ -57,6 +58,6 @@ export async function outputNode(ctx: LlmNodeContext): Promise<NodeResult> {
 	const { outputKey = 'final_output' } = ctx.params
 	const templateData = await resolveInputs(ctx, ctx.params.inputs)
 	const finalOutput = resolveTemplate(ctx.params.promptTemplate, templateData)
-	ctx.set(outputKey as any, finalOutput)
+	await ctx.context.set(outputKey as any, finalOutput)
 	return { output: finalOutput }
 }

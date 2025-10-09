@@ -1,12 +1,13 @@
 import type { Job } from 'bullmq'
-import type { IEventBus, NodeDefinition, WorkflowBlueprint, WorkflowResult } from 'flowcraft'
+import type { IEventBus, NodeDefinition, WorkflowBlueprint } from 'flowcraft'
 import { promises as fs } from 'node:fs'
 import path from 'node:path'
 import process from 'node:process'
 import readline from 'node:readline'
-import { Worker } from 'bullmq'
+import { Queue, Worker } from 'bullmq'
 import { FlowcraftRuntime } from 'flowcraft'
 import IORedis from 'ioredis'
+import { BullMQContext } from './BullMQContext.js'
 import { agentNodeRegistry } from './registry.js'
 import 'dotenv/config'
 
@@ -34,7 +35,12 @@ async function loadBlueprint(filePath: string): Promise<WorkflowBlueprint> {
 				params: { blueprintId: v1Node.data.workflowId.toString(), inputs: v1Node.data.inputs, outputs: v1Node.data.outputs },
 			}
 		}
-		return { id: v1Node.id, uses: v1Node.type, params: v1Node.data }
+		return {
+			id: v1Node.id,
+			uses: v1Node.type,
+			params: v1Node.data,
+			config: v1Node.config,
+		}
 	})
 	return { id: blueprintId, nodes, edges: graph.edges }
 }
@@ -64,55 +70,104 @@ async function main() {
 	const worker = new Worker(QUEUE_NAME, async (job: Job) => {
 		console.log(`[Worker] ==> Picked up job ID: ${job.id}, Name: ${job.name}`)
 
-		if (job.name !== 'runWorkflow') {
+		if (job.name !== 'executeNode') {
 			console.log(`[Worker] Skipping job with unknown name: ${job.name}`)
 			return
 		}
 
-		const { runId, blueprintId, initialContext } = job.data
+		const { runId, blueprintId, nodeId } = job.data
 		const statusKey = `${STATUS_KEY_PREFIX}${runId}`
-		const cancellationKey = `${CANCELLATION_KEY_PREFIX}${runId}`
 
-		console.log(`[Orchestrator] Starting workflow '${blueprintId}' for Run ID: ${runId}`)
-
-		const mainBlueprint = runtime.getBlueprint(blueprintId)
-		if (!mainBlueprint) {
-			throw new Error(`[Orchestrator] Blueprint '${blueprintId}' not found.`)
+		const blueprint = runtime.getBlueprint(blueprintId)
+		if (!blueprint) {
+			throw new Error(`Blueprint '${blueprintId}' not found.`)
 		}
 
-		// Set up cancellation polling
-		const controller = new AbortController()
-		const pollInterval = setInterval(async () => {
-			if (await redisConnection.get(cancellationKey)) {
-				console.warn(`[Orchestrator] Abort signal received for Run ID ${runId}. Aborting...`)
-				controller.abort()
-				clearInterval(pollInterval)
-			}
-		}, 500)
+		// Create a new distributed context for this specific node execution
+		const metadata = {
+			executionId: runId,
+			blueprintId,
+			currentNodeId: nodeId,
+			startedAt: new Date(),
+			environment: 'development' as const,
+		}
+		const context = new BullMQContext(redisConnection, runId, metadata)
 
-		const startTime = new Date()
 		try {
-			const result: WorkflowResult = await runtime.run(mainBlueprint, initialContext, undefined, controller.signal)
-			await redisConnection.set(statusKey, JSON.stringify({ status: 'completed', payload: result }), 'EX', 3600)
-			console.log(`[Orchestrator] ✅ Finished workflow for Run ID: ${runId}`)
+			// 1. Execute the single node with full resiliency
+			const result = await runtime.executeNode(blueprint, nodeId, context)
+
+			// FIX: Only store the node's output if it's not undefined
+			if (result.output !== undefined) {
+				await context.set(nodeId as any, result.output)
+			}
+
+			// 2. Determine the next nodes to run
+			const nextNodes = await runtime.determineNextNodes(blueprint, nodeId, result, context)
+
+			if (nextNodes.length > 0) {
+				// 3. Enqueue jobs for the next nodes with corrected fan-in logic
+				const queue = new Queue(QUEUE_NAME, { connection: redisConnection })
+				for (const nextNode of nextNodes) {
+					// --- CORRECTED FAN-IN LOGIC ---
+					const nodeDef = blueprint.nodes.find((n: any) => n.id === nextNode.id)
+					const joinStrategy = nodeDef?.config?.joinStrategy || 'all' // Default to 'all'
+
+					let isReadyToEnqueue = false
+
+					if (joinStrategy === 'any') {
+						// For 'any' (used after a router), the first branch to arrive wins
+						const lockKey = `workflow:joinlock:${runId}:${nextNode.id}`
+						const lockAcquired = await redisConnection.set(lockKey, 'true', 'EX', 3600, 'NX')
+						if (lockAcquired) {
+							isReadyToEnqueue = true
+						}
+					}
+					else { // 'all' strategy
+						const predecessors = blueprint.edges.filter((e: any) => e.target === nextNode.id)
+						const fanInKey = `workflow:fanin:${runId}:${nextNode.id}`
+						const readyCount = await redisConnection.incr(fanInKey)
+						await redisConnection.expire(fanInKey, 3600) // Set expiration
+
+						if (readyCount >= predecessors.length) {
+							isReadyToEnqueue = true
+							await redisConnection.del(fanInKey) // Clean up counter
+						}
+						else {
+							console.log(`[Worker] Node ${nextNode.id} waiting for fan-in (${readyCount}/${predecessors.length} complete).`)
+						}
+					}
+
+					if (isReadyToEnqueue) {
+						const nextJob = { name: 'executeNode', data: { runId, blueprintId, nodeId: nextNode.id } }
+						await queue.add(nextJob.name, nextJob.data)
+						console.log(`[Worker] Enqueued job for node: ${nextNode.id}.`)
+					}
+					// --- END FAN-IN LOGIC ---
+				}
+				await queue.close()
+			}
+			else {
+				// 4. This is a terminal node (no outgoing edges)
+				console.log(`[Worker] Node ${nodeId} is a terminal node for Run ID ${runId}.`)
+				const nodeDef = blueprint.nodes.find((n: any) => n.id === nodeId)
+
+				// If it's the designated 'output' node, signal workflow completion
+				if (nodeDef?.uses === 'output') {
+					const finalContext = await context.toJSON()
+					await redisConnection.set(statusKey, JSON.stringify({ status: 'completed', payload: { context: finalContext } }), 'EX', 3600)
+					console.log(`[Worker] ✅ Workflow completed for Run ID: ${runId}`)
+				}
+			}
 		}
 		catch (error: any) {
 			const reason = error.message || 'Unknown error'
-			const status = error.name === 'CancelledWorkflowError' ? 'cancelled' : 'failed'
-			const finalError = {
-				metadata: { status, duration: Date.now() - startTime.getTime() },
-				error: { nodeId: error.nodeId || 'orchestrator', message: reason },
-			}
-			console.error(`[Orchestrator] ❌ Workflow failed for Run ID ${runId}: ${reason}`)
-			await redisConnection.set(statusKey, JSON.stringify({ status, reason, payload: finalError }), 'EX', 3600)
-		}
-		finally {
-			clearInterval(pollInterval)
-			await redisConnection.del(cancellationKey)
+			console.error(`[Worker] ❌ Node ${nodeId} failed for Run ID ${runId}: ${reason}`)
+			await redisConnection.set(statusKey, JSON.stringify({ status: 'failed', reason }), 'EX', 3600)
 		}
 	}, { connection: redisConnection, concurrency: 5 })
 
-	console.log(`Worker listening on queue: "${QUEUE_NAME}"`)
+	console.log(`Worker listening for 'executeNode' jobs on queue: "${QUEUE_NAME}"`)
 
 	// Setup cancellation listener
 	readline.emitKeypressEvents(process.stdin)

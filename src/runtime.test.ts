@@ -28,13 +28,13 @@ describe('FlowcraftRuntime', () => {
 		it('should execute a simple linear blueprint', async () => {
 			const flow = createFlow('linear-flow')
 			flow.node('start', async (context) => {
-				context.set('counter', 1)
+				await context.context.set('counter', 1)
 				return { output: 1 }
 			})
 			flow.node('increment', async (context) => {
-				const current = context.get('counter') || 0
+				const current = await context.context.get('counter') || 0
 				const newValue = current + 1
-				context.set('counter', newValue)
+				await context.context.set('counter', newValue)
 				return { output: newValue }
 			})
 			flow.edge('start', 'increment')
@@ -230,7 +230,7 @@ describe('FlowcraftRuntime', () => {
 				const flow = createFlow('state-prop-flow')
 				flow.node('producer', async () => ({ output: { data: 'important' } }))
 				flow.node('consumer', async (context) => {
-					const producerResult = context.get('producer') as { data: string }
+					const producerResult = await context.context.get('producer') as { data: string }
 					return { output: `Consumed: ${producerResult.data}` }
 				})
 				flow.edge('producer', 'consumer')
@@ -251,16 +251,16 @@ describe('FlowcraftRuntime', () => {
 				const flow = createFlow('fan-out-flow')
 				flow.node('start', async () => ({ output: 'start' }))
 				flow.node('branchB', async (ctx) => {
-					const startResult = ctx.get('start')
+					const startResult = await ctx.context.get('start')
 					return { output: `BranchB processed ${startResult}` }
 				})
 				flow.node('branchC', async (ctx) => {
-					const startResult = ctx.get('start')
+					const startResult = await ctx.context.get('start')
 					return { output: `BranchC processed ${startResult}` }
 				})
 				flow.node('end', async (ctx) => {
-					const bResult = ctx.get('branchB')
-					const cResult = ctx.get('branchC')
+					const bResult = await ctx.context.get('branchB')
+					const cResult = await ctx.context.get('branchC')
 					return { output: `Converged: [${bResult}] and [${cResult}]` }
 				})
 				// Fan-out from 'start' to 'branchB' and 'branchC' (default edges)
@@ -332,7 +332,7 @@ describe('FlowcraftRuntime', () => {
 				const result = await runtime.run(blueprint, {}, flow.getFunctionRegistry())
 
 				expect(result.metadata.status).toBe('completed')
-				expect(processedItems).toEqual([{ id: 1 }, { id: 2 }, { id: 3 }])
+				expect(result.context['batch-controller']).toEqual([10, 20, 30])
 				expect(result.context.end).toEqual([10, 20, 30])
 			})
 
@@ -360,11 +360,12 @@ describe('FlowcraftRuntime', () => {
 				flow.edge('batch-controller', 'end')
 
 				const blueprint = flow.toBlueprint()
-				await runtime.run(blueprint, {}, flow.getFunctionRegistry())
+				const result = await runtime.run(blueprint, {}, flow.getFunctionRegistry())
 
 				// Check that processing started concurrently (start times overlap)
 				expect(Math.max(...startTimes) - Math.min(...startTimes)).toBeLessThan(20)
 				expect(finishTimes).toHaveLength(3)
+				expect(result.context['batch-controller']).toEqual([{ id: 1 }, { id: 2 }, { id: 3 }])
 			})
 		})
 
@@ -373,12 +374,12 @@ describe('FlowcraftRuntime', () => {
 				const flow = createFlow('loop-max-iterations-flow')
 
 				flow.node('start', async (context) => {
-					context.set('counter', 0)
+					await context.context.set('counter', 0)
 					return { output: null }
 				})
 				flow.node('increment', async (context) => {
-					const current = context.get('counter') || 0
-					context.set('counter', current + 1)
+					const current = await context.context.get('counter') || 0
+					await context.context.set('counter', current + 1)
 					return { output: null }
 				})
 				flow.node('loop-controller', 'loop-controller', {
@@ -402,12 +403,12 @@ describe('FlowcraftRuntime', () => {
 				const flow = createFlow('loop-condition-flow')
 
 				flow.node('start', async (context) => {
-					context.set('counter', 0)
+					await context.context.set('counter', 0)
 					return { output: null }
 				})
 				flow.node('increment', async (context) => {
-					const current = context.get('counter') || 0
-					context.set('counter', current + 1)
+					const current = await context.context.get('counter') || 0
+					await context.context.set('counter', current + 1)
 					return { output: null }
 				})
 				flow.node('loop-controller', 'loop-controller', {
@@ -434,26 +435,26 @@ describe('FlowcraftRuntime', () => {
 				const flow = createFlow('diamond-convergence-flow')
 
 				flow.node('start', async (context) => {
-					context.set('shared_state', { branchA_complete: false, branchB_complete: false })
+					await context.context.set('shared_state', { branchA_complete: false, branchB_complete: false })
 					return { output: 'start' }
 				})
 				flow.node('branchA', async (context) => {
 					await sleep(10)
-					const state = context.get('shared_state') as any
+					const state = await context.context.get('shared_state') as any
 					state.branchA_complete = true
-					context.set('shared_state', state)
+					await context.context.set('shared_state', state)
 					return { output: 'A' }
 				})
 				flow.node('branchB', async (context) => {
 					await sleep(20)
-					const state = context.get('shared_state') as any
+					const state = await context.context.get('shared_state') as any
 					state.branchB_complete = true
-					context.set('shared_state', state)
+					await context.context.set('shared_state', state)
 					return { output: 'B' }
 				})
 				// This node will only run after the parallel block is fully merged
 				flow.node('end', async (context) => {
-					const state = context.get('shared_state') as any
+					const state = await context.context.get('shared_state') as any
 					if (state.branchA_complete && state.branchB_complete) {
 						return { output: 'success' }
 					}
@@ -479,7 +480,7 @@ describe('FlowcraftRuntime', () => {
 				// Create sub-workflow
 				const subFlow = createFlow('sub-isolator')
 				subFlow.node('modify', async (context) => {
-					context.set('shared_key', 'sub_value')
+					await context.context.set('shared_key', 'sub_value')
 					return { output: 'modified' }
 				})
 				runtime.registerBlueprint(subFlow.toBlueprint())
@@ -487,12 +488,12 @@ describe('FlowcraftRuntime', () => {
 				// Create parent workflow
 				const parentFlow = createFlow('parent-isolation-flow')
 				parentFlow.node('start', async (context) => {
-					context.set('shared_key', 'parent_value')
+					await context.context.set('shared_key', 'parent_value')
 					return { output: 'start' }
 				})
 				parentFlow.subflow('run-sub', 'sub-isolator')
 				parentFlow.node('end', async (context) => {
-					const value = context.get('shared_key')
+					const value = await context.context.get('shared_key')
 					return { output: value }
 				})
 
@@ -515,7 +516,7 @@ describe('FlowcraftRuntime', () => {
 				// Create child workflow
 				const childFlow = createFlow('child-math')
 				childFlow.node('add', async (context) => {
-					const val = context.get('child_in') || 0
+					const val = await context.context.get('child_in') || 0
 					return { output: val + 1 }
 				})
 				runtime.registerBlueprint(childFlow.toBlueprint())
@@ -523,7 +524,7 @@ describe('FlowcraftRuntime', () => {
 				// Create parent workflow that uses the child
 				const parentFlow = createFlow('parent-math')
 				parentFlow.node('start', async (context) => {
-					context.set('parent_in', 10)
+					await context.context.set('parent_in', 10)
 					return { output: 10 }
 				})
 				parentFlow.subflow('run-child', 'child-math', {
@@ -626,7 +627,7 @@ describe('FlowcraftRuntime', () => {
 			// 1. Create the sub-workflow
 			const subFlow = createFlow('sub-math')
 			subFlow.node('add', async (ctx) => {
-				const val = (ctx.get('sub_val') as number) || 0
+				const val = (await ctx.context.get('sub_val') as number) || 0
 				return { output: val + 10 }
 			})
 			const subBlueprint = subFlow.toBlueprint()
@@ -673,8 +674,8 @@ describe('FlowcraftRuntime', () => {
 		it('should execute a convergence node only once after all its parents have finished', async () => {
 			const convergenceFn = vi.fn(async (ctx) => {
 				// This is the critical check: ensure outputs from both parents are present when this node runs.
-				const branchA_Output = ctx.get('branchA')
-				const branchB_Output = ctx.get('branchB')
+				const branchA_Output = await ctx.context.get('branchA')
+				const branchB_Output = await ctx.context.get('branchB')
 				expect(branchA_Output).toBe('A done')
 				expect(branchB_Output).toBe('B done')
 				return { output: `Converged: ${branchA_Output} and ${branchB_Output}` }
@@ -708,15 +709,15 @@ describe('FlowcraftRuntime', () => {
 		it('should correctly execute a stateful loop for a fixed number of iterations', async () => {
 			const flow = createFlow('stateful-loop-test')
 			flow.node('start', async (ctx) => {
-				ctx.set('counter', 0)
+				await ctx.context.set('counter', 0)
 				return { output: 'started' }
 			})
 			flow.node('loop-controller', 'loop-controller', {
 				maxIterations: 5,
 			}, { joinStrategy: 'any' })
 			flow.node('increment', async (ctx) => {
-				const current = ctx.get('counter') || 0
-				ctx.set('counter', current + 1)
+				const current = await ctx.context.get('counter') || 0
+				await ctx.context.set('counter', current + 1)
 				return { output: `incremented to ${current + 1}` }
 			})
 			flow.node('end', async () => ({ output: 'done' }))
@@ -745,7 +746,7 @@ describe('FlowcraftRuntime', () => {
 				workerNodeId: 'worker', // Point to the worker node
 				concurrency: 2,
 			})
-			flow.node('end', async ctx => ({ output: ctx.input }))
+			flow.node('end', async ctx => ({ output: await ctx.context.get('input') }))
 
 			flow.edge('start', 'batch-controller')
 			flow.edge('batch-controller', 'end')
@@ -762,10 +763,10 @@ describe('FlowcraftRuntime', () => {
 			// 1. Define and register the sub-workflow
 			const subFlow = createFlow('sub-context-test')
 			subFlow.node('sub-node', async (ctx) => {
-				ctx.set('internal_state', 'should-not-leak')
-				ctx.set('final_data', 'important-result')
+				await ctx.context.set('internal_state', 'should-not-leak')
+				await ctx.context.set('final_data', 'important-result')
 				// The sub-workflow's final output is what gets mapped
-				return { output: ctx.get('final_data') }
+				return { output: await ctx.context.get('final_data') }
 			})
 			runtime.registerBlueprint(subFlow.toBlueprint())
 
