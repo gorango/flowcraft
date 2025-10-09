@@ -20,7 +20,7 @@ import type {
 } from './types'
 import { randomUUID } from 'node:crypto'
 import { createAsyncContext, createContext } from './context'
-import { CancelledWorkflowError, NodeExecutionError } from './errors'
+import { CancelledWorkflowError, FatalNodeExecutionError, NodeExecutionError } from './errors'
 import { DefaultOrchestrator } from './orchestrator'
 
 /**
@@ -602,6 +602,11 @@ export class FlowcraftRuntime<TContext extends Record<string, any> = Record<stri
 					if (error instanceof Error && (error.name === 'AbortError' || error.message === 'Operation aborted.')) {
 						throw error
 					}
+					// if it's a fatal error, bypass retries and fallbacks immediately.
+					if (error instanceof FatalNodeExecutionError) {
+						console.log('Fatal error detected in inner catch, re-throwing')
+						throw error
+					}
 					lastError = error instanceof Error ? error : new Error('Unknown error during node execution')
 					if (attempt < maxRetries) {
 						await this.eventBus.emit('node:retry', {
@@ -652,6 +657,11 @@ export class FlowcraftRuntime<TContext extends Record<string, any> = Record<stri
 			throw lastError
 		}
 		catch (error) {
+			// if it's a fatal error, bypass all processing and re-throw immediately
+			if (error instanceof FatalNodeExecutionError) {
+				throw error
+			}
+
 			// Execute afterNode middleware even on error (in reverse order)
 			try {
 				for (const mw of this.middleware.reverse()) {
@@ -988,6 +998,10 @@ export class ExecutableFlow<TContext extends Record<string, any>> {
 					if (error instanceof Error && (error.name === 'AbortError' || error.message === 'Operation aborted.')) {
 						throw error
 					}
+					// if it's a fatal error, bypass retries and fallbacks immediately.
+					if (error instanceof FatalNodeExecutionError) {
+						throw error
+					}
 					lastError = error instanceof Error ? error : new Error('Unknown error during node execution')
 					if (attempt < maxRetries) {
 						await this.eventBus.emit('node:retry', {
@@ -1040,6 +1054,11 @@ export class ExecutableFlow<TContext extends Record<string, any>> {
 			throw lastError
 		}
 		catch (error) {
+			// if it's a fatal error, bypass all processing and re-throw immediately
+			if (error instanceof FatalNodeExecutionError) {
+				throw error
+			}
+
 			// Execute afterNode middleware even on error (in reverse order)
 			try {
 				for (const mw of this.middleware.reverse()) {

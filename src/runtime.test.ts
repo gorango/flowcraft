@@ -1,6 +1,6 @@
 import type { IEventBus, IOrchestrator, Middleware, NodeResult } from './types'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { CancelledWorkflowError } from './errors'
+import { CancelledWorkflowError, FatalNodeExecutionError } from './errors'
 import { createFlow } from './flow'
 import { FlowcraftRuntime } from './runtime'
 import { mockDependencies, mockNodeRegistry, sleep } from './test-utils'
@@ -138,6 +138,75 @@ describe('FlowcraftRuntime', () => {
 			await expect(runtime.run(blueprint, {}, flow.getFunctionRegistry())).rejects.toThrow(
 				/Node execution timed out/,
 			)
+		})
+
+		it('should bypass retries when a FatalNodeExecutionError is thrown', async () => {
+			let attempts = 0
+			const flow = createFlow('fatal-error-flow')
+			flow.node(
+				'fatal-node',
+				async () => {
+					attempts++
+					throw new FatalNodeExecutionError('Critical validation failed: Missing userId.', 'fatal-node', 'fatal-error-flow', 'test-execution-id')
+				},
+				{},
+				{ maxRetries: 5 },
+			)
+			const blueprint = flow.toBlueprint()
+
+			await expect(runtime.run(blueprint, {}, flow.getFunctionRegistry())).rejects.toThrow('Critical validation failed: Missing userId.')
+			expect(attempts).toBe(1) // Should execute exactly once, no retries
+		})
+
+		it('should bypass the fallback when a FatalNodeExecutionError is thrown', async () => {
+			const flow = createFlow('fatal-fallback-flow')
+			const fallbackFn = async (): Promise<NodeResult> => ({ output: 'fallback success' })
+			flow.node(
+				'fatal-node',
+				async () => {
+					throw new FatalNodeExecutionError('Critical validation failed: Missing userId.', 'fatal-node', 'fatal-fallback-flow', 'test-execution-id')
+				},
+				{},
+				{ maxRetries: 3, fallback: 'my-fallback' },
+			)
+			// Manually add the fallback function to the registry for the test
+			const functionRegistry = flow.getFunctionRegistry()
+			functionRegistry.set('my-fallback', fallbackFn)
+
+			const blueprint = flow.toBlueprint()
+
+			await expect(runtime.run(blueprint, {}, functionRegistry)).rejects.toThrow('Critical validation failed: Missing userId.')
+			// Check that fallback was never called
+			const fallbackEvent = mockEventBus.events.find(e => e.eventName === 'node:fallback')
+			expect(fallbackEvent).toBeUndefined()
+		})
+
+		it('should attempt retries and call the fallback for a regular Error', async () => {
+			let attempts = 0
+			const flow = createFlow('regular-error-flow')
+			const fallbackFn = async (): Promise<NodeResult> => ({ output: 'fallback success' })
+			flow.node(
+				'regular-node',
+				async () => {
+					attempts++
+					throw new Error('Regular error')
+				},
+				{},
+				{ maxRetries: 3, fallback: 'my-fallback' },
+			)
+			// Manually add the fallback function to the registry for the test
+			const functionRegistry = flow.getFunctionRegistry()
+			functionRegistry.set('my-fallback', fallbackFn)
+
+			const blueprint = flow.toBlueprint()
+			const result = await runtime.run(blueprint, {}, functionRegistry)
+
+			expect(result.metadata.status).toBe('completed')
+			expect(result.context['regular-node']).toBe('fallback success')
+			expect(attempts).toBe(3) // Should attempt all retries
+			// Check that fallback was called
+			const fallbackEvent = mockEventBus.events.find(e => e.eventName === 'node:fallback')
+			expect(fallbackEvent).toBeDefined()
 		})
 	})
 
@@ -785,19 +854,19 @@ describe('FlowcraftRuntime', () => {
 			const executionLog: string[] = []
 
 			const middleware1: Middleware = {
-				beforeNode: async (ctx, nodeId) => {
+				beforeNode: async (_ctx, _nodeId) => {
 					executionLog.push('before-mw1')
 				},
-				afterNode: async (ctx, nodeId, result) => {
+				afterNode: async (_ctx, _nodeId, _result) => {
 					executionLog.push('after-mw1')
 				},
 			}
 
 			const middleware2: Middleware = {
-				beforeNode: async (ctx, nodeId) => {
+				beforeNode: async (_ctx, _nodeId) => {
 					executionLog.push('before-mw2')
 				},
-				afterNode: async (ctx, nodeId, result) => {
+				afterNode: async (_ctx, _nodeId, _result) => {
 					executionLog.push('after-mw2')
 				},
 			}
@@ -819,8 +888,8 @@ describe('FlowcraftRuntime', () => {
 
 		it('should allow beforeNode middleware to modify context visible to the node', async () => {
 			const middleware: Middleware = {
-				beforeNode: async (ctx, nodeId) => {
-					await ctx.set('middleware_added', 'middleware_value')
+				beforeNode: async (_ctx, _nodeId) => {
+					await _ctx.set('middleware_added', 'middleware_value')
 				},
 			}
 
@@ -888,8 +957,8 @@ describe('FlowcraftRuntime', () => {
 			let capturedResult: any = null
 
 			const middleware: Middleware = {
-				afterNode: async (ctx, nodeId, result) => {
-					capturedResult = result
+				afterNode: async (_ctx, _nodeId, _result) => {
+					capturedResult = _result
 				},
 			}
 

@@ -33,3 +33,20 @@ export class CancelledWorkflowError extends Error {
 		this.name = 'CancelledWorkflowError'
 	}
 }
+
+/**
+ * Error thrown when a node encounters a non-recoverable failure that should immediately halt the workflow,
+ * bypassing retries and fallbacks.
+ */
+export class FatalNodeExecutionError extends NodeExecutionError {
+	constructor(
+		message: string,
+		nodeId: string,
+		blueprintId: string,
+		executionId: string,
+		originalError?: Error,
+	) {
+		super(message, nodeId, blueprintId, executionId, originalError)
+		this.name = 'FatalNodeExecutionError'
+	}
+}
