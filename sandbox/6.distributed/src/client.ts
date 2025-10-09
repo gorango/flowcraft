@@ -1,13 +1,10 @@
-import { randomUUID } from 'node:crypto'
 import { Queue } from 'bullmq'
 import IORedis from 'ioredis'
 import { waitForWorkflow } from './utils.js'
 import 'dotenv/config'
 
-// --- CONFIGURATION ---
-const QUEUE_NAME = 'flowcraft-v2-queue'
+const QUEUE_NAME = 'flowcraft-queue'
 const ACTIVE_USE_CASE = '4.content-moderation' // Change this to test other scenarios
-// ---------------------
 
 const config = {
 	'1.blog-post': {
@@ -40,9 +37,10 @@ const config = {
 }
 
 async function main() {
-	console.log('--- Distributed Workflow Client V2 ---')
+	console.log('--- Distributed Workflow Client ---')
 
-	const runId = randomUUID()
+	// Generate a simple random run ID for this run
+	const runId = Math.floor(Math.random() * 10).toString()
 	const redisConnection = new IORedis({ maxRetriesPerRequest: null })
 	const queue = new Queue(QUEUE_NAME, { connection: redisConnection })
 

@@ -21,12 +21,9 @@ async function resolveInputs(ctx: NodeContext, inputs: Record<string, string | s
 		const sourceKeys = Array.isArray(sourceKeyOrKeys) ? sourceKeyOrKeys : [sourceKeyOrKeys]
 		let valueFound = false
 		for (const sourceKey of sourceKeys) {
-			// In v2, the output of a previous node is stored in the context under its ID.
 			if (ctx.has(sourceKey as any)) {
 				resolved[templateKey] = ctx.get(sourceKey as any)
 				valueFound = true
-				// Do not break here, allowing it to find the last available key,
-				// which is correct for converging, mutually exclusive paths.
 			}
 		}
 		if (!valueFound) {

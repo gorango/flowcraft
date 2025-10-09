@@ -99,9 +99,8 @@ export function createAgentFlow() {
 		.node('decide-action', decideAction)
 		.node('search-web', searchWebNode)
 		.node('answer-question', answerQuestion)
-		// The flow now has a clear, acyclic entry point.
 		.edge('start-research', 'decide-action')
 		.edge('decide-action', 'search-web', { action: 'search' })
 		.edge('decide-action', 'answer-question', { action: 'answer' })
-		.edge('search-web', 'decide-action') // The loop is now internal to the main graph.
+		.edge('search-web', 'decide-action')
 }

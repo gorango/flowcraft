@@ -27,9 +27,7 @@ export async function callLLM(prompt: string): Promise<string> {
 			model: 'gpt-4o-mini',
 			messages: [{ role: 'user', content: prompt }],
 		})
-		// Correctly access the first choice's message content
 		const content = response.choices[0]?.message?.content || ''
-		// Clean the response before returning
 		return extractYaml(content)
 	}
 	catch (error: any) {

@@ -65,10 +65,9 @@ export function createTranslateFlow() {
 	flow.batch(
 		'prepare-jobs', // Source node providing the array
 		'translate-item', // Node to execute for each item
-		{ concurrency: 5 }, // Run up to 5 translations at once
+		{ concurrency: 8 }, // Run up to 8 translations at once
 	)
 
-	// This is the key change: you define the edge from the logical worker.
 	// The runtime knows to execute this edge only after all batch items are done.
 	flow.edge('translate-item', 'save-results')
 

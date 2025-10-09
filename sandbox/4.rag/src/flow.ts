@@ -4,7 +4,6 @@ import { createFlow } from 'flowcraft'
 import { DocumentChunk, SearchResult } from './types.js'
 import { callLLM, cosineSimilarity, getEmbedding, resolveTemplate } from './utils.js'
 
-// Define the shape of the context for type safety
 interface RagContext {
 	document_path: string
 	question: string
@@ -14,8 +13,6 @@ interface RagContext {
 	search_results: SearchResult[]
 	final_answer: string
 }
-
-// --- Node Functions ---
 
 async function loadAndChunk(ctx: NodeContext<RagContext>): Promise<NodeResult> {
 	const path = ctx.get('document_path')!
@@ -35,7 +32,6 @@ async function loadAndChunk(ctx: NodeContext<RagContext>): Promise<NodeResult> {
 	return { output: Array.from(chunks.values()) }
 }
 
-// CORRECTED: The `input` is the DocumentChunk itself, not an object containing it.
 async function generateSingleEmbedding(ctx: NodeContext<DocumentChunk>): Promise<NodeResult> {
 	const chunk = ctx.input
 	if (!chunk || !chunk.text) {

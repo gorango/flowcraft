@@ -11,7 +11,7 @@ import { DocumentChunk, SearchResult } from './types.js'
 SuperJSON.registerClass(DocumentChunk)
 SuperJSON.registerClass(SearchResult)
 
-// Create a serializer adapter for the V2 runtime
+// Create a serializer adapter for the runtime
 class SuperJsonSerializer implements ISerializer {
 	serialize(data: Record<string, any>): string {
 		return SuperJSON.stringify(data)
@@ -23,7 +23,7 @@ class SuperJsonSerializer implements ISerializer {
 }
 
 async function main() {
-	console.log('--- RAG Agent Workflow V2 ---')
+	console.log('--- RAG Agent Workflow ---')
 
 	const ragFlow = createRagFlow()
 	const blueprint = ragFlow.toBlueprint()

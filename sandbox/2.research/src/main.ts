@@ -24,11 +24,10 @@ async function main() {
 		environment: 'development',
 	})
 
-	// The initial question is now passed directly as 'question' in the context
 	const result = await runtime.run(
 		blueprint,
 		{
-			input: question, // Set the 'question' key directly
+			input: question,
 			search_count: 0,
 			max_searches: MAX_SEARCHES,
 		},

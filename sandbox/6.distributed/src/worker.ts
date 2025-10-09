@@ -10,8 +10,8 @@ import IORedis from 'ioredis'
 import { agentNodeRegistry } from './registry.js'
 import 'dotenv/config'
 
-const QUEUE_NAME = 'flowcraft-v2-queue'
-const CANCELLATION_KEY_PREFIX = 'workflow:cancel:v2:'
+const QUEUE_NAME = 'flowcraft-queue'
+const CANCELLATION_KEY_PREFIX = 'workflow:cancel:'
 const STATUS_KEY_PREFIX = 'workflow:status:'
 
 // A simple event bus that logs to the console for observability inside the worker.
@@ -21,13 +21,12 @@ class ConsoleEventBus implements IEventBus {
 	}
 }
 
-// --- V1 to V2 Blueprint Loader (reused from sandbox/4.dag) ---
 async function loadBlueprint(filePath: string): Promise<WorkflowBlueprint> {
 	const fileContent = await fs.readFile(filePath, 'utf-8')
-	const v1Graph = JSON.parse(fileContent)
+	const graph = JSON.parse(fileContent)
 	const blueprintId = path.basename(filePath, '.json')
 
-	const v2Nodes: NodeDefinition[] = v1Graph.nodes.map((v1Node: any) => {
+	const nodes: NodeDefinition[] = graph.nodes.map((v1Node: any) => {
 		if (v1Node.type === 'sub-workflow') {
 			return {
 				id: v1Node.id,
@@ -37,16 +36,15 @@ async function loadBlueprint(filePath: string): Promise<WorkflowBlueprint> {
 		}
 		return { id: v1Node.id, uses: v1Node.type, params: v1Node.data }
 	})
-	return { id: blueprintId, nodes: v2Nodes, edges: v1Graph.edges }
+	return { id: blueprintId, nodes, edges: graph.edges }
 }
 
-// --- Main Worker Logic ---
 async function main() {
-	console.log('--- Distributed Workflow Worker V2 ---')
+	console.log('--- Distributed Workflow Worker ---')
 	const redisConnection = new IORedis({ maxRetriesPerRequest: null })
 	const runtime = new FlowcraftRuntime({
 		registry: agentNodeRegistry,
-		eventBus: new ConsoleEventBus(), // Add the console logger
+		eventBus: new ConsoleEventBus(),
 	})
 
 	// Load all blueprints into the runtime cache
@@ -64,7 +62,6 @@ async function main() {
 	console.log('[Worker] All blueprints loaded and registered.')
 
 	const worker = new Worker(QUEUE_NAME, async (job: Job) => {
-		// --- DIAGNOSTIC LOGGING ---
 		console.log(`[Worker] ==> Picked up job ID: ${job.id}, Name: ${job.name}`)
 
 		if (job.name !== 'runWorkflow') {

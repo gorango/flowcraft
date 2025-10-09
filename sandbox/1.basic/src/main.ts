@@ -7,7 +7,7 @@ dotenv.config()
 
 async function main() {
 	const topic = process.argv[2] || 'AI Safety'
-	console.log(`\n=== Starting Article Workflow V2 on Topic: ${topic} ===\n`)
+	console.log(`\n=== Starting Article Workflow on Topic: ${topic} ===\n`)
 
 	// 1. Create the workflow definition using the fluent builder.
 	const articleFlow = createArticleFlow()

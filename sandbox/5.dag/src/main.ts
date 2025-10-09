@@ -39,20 +39,18 @@ const config = {
 
 type UseCase = keyof typeof config
 
-const ACTIVE_USE_CASE: UseCase = '4.content-moderation'
+const ACTIVE_USE_CASE: UseCase = '4.content-moderation' // Change this to test other scenarios
 
 async function loadBlueprint(filePath: string): Promise<WorkflowBlueprint> {
 	const fileContent = await fs.readFile(filePath, 'utf-8')
 	const v1Graph = JSON.parse(fileContent)
 	const blueprintId = path.basename(filePath, '.json')
 
-	// Map the V1 node structure to the V2 NodeDefinition structure.
 	const v2Nodes: NodeDefinition[] = v1Graph.nodes.map((v1Node: any) => {
 		if (v1Node.type === 'sub-workflow') {
-			// Special handling for sub-workflows to match the v2 built-in 'subflow' node.
 			return {
 				id: v1Node.id,
-				uses: 'subflow', // Use the v2 built-in name
+				uses: 'subflow',
 				params: {
 					blueprintId: v1Node.data.workflowId.toString(),
 					inputs: v1Node.data.inputs,
@@ -75,7 +73,7 @@ async function loadBlueprint(filePath: string): Promise<WorkflowBlueprint> {
 }
 
 async function main() {
-	console.log(`--- Running V2 Use-Case (Data-First): ${ACTIVE_USE_CASE} ---\n`)
+	console.log(`--- Running Use-Case (Data-First): ${ACTIVE_USE_CASE} ---\n`)
 
 	const runtime = new FlowcraftRuntime({
 		registry: agentNodeRegistry,
