@@ -8,6 +8,7 @@ import type {
 	TransformFunction,
 	WorkflowBlueprint,
 } from './types'
+import { generateMermaid } from './analysis'
 
 /**
  * A custom type guard to definitively check if an implementation is a NodeClass.
@@ -388,6 +389,14 @@ export class Flow<TContext extends Record<string, any> = Record<string, any>, TN
 		}
 
 		return this.blueprint as WorkflowBlueprint
+	}
+
+	/**
+	 * Generate Mermaid diagram syntax for this flow
+	 */
+	toMermaid(): string {
+		const blueprint = this.toBlueprint()
+		return generateMermaid(blueprint)
 	}
 
 	/**
