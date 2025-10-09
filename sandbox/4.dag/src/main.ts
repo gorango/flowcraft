@@ -1,4 +1,4 @@
-import type { EdgeDefinition, NodeDefinition, WorkflowBlueprint } from 'flowcraft'
+import type { NodeDefinition, WorkflowBlueprint } from 'flowcraft'
 import { promises as fs } from 'node:fs'
 import path from 'node:path'
 import process from 'node:process'
@@ -32,22 +32,15 @@ const config = {
 		mainWorkflowId: 400,
 		getInitialContext: () => ({
 			userId: 'user-456',
-			userPost: `I don't want any dirty immigrants in my country, stealing, raping, and killing my people. They should all be eradicated!`,
+			userPost: 'Hi, I need help with my account. My email is test@example.com and my phone is 555-123-4567.',
 		}),
 	},
 } as const
 
 type UseCase = keyof typeof config
 
-// --- CONFIGURATION ---
-const ACTIVE_USE_CASE: UseCase = '2.job-application'
-// ---------------------
+const ACTIVE_USE_CASE: UseCase = '4.content-moderation'
 
-/**
- * Loads a V1-style JSON graph and correctly transforms it into a valid V2 WorkflowBlueprint.
- * @param filePath The full path to the JSON file.
- * @returns A valid WorkflowBlueprint object ready for the V2 runtime.
- */
 async function loadBlueprint(filePath: string): Promise<WorkflowBlueprint> {
 	const fileContent = await fs.readFile(filePath, 'utf-8')
 	const v1Graph = JSON.parse(fileContent)
@@ -61,7 +54,7 @@ async function loadBlueprint(filePath: string): Promise<WorkflowBlueprint> {
 				id: v1Node.id,
 				uses: 'subflow', // Use the v2 built-in name
 				params: {
-					blueprintId: v1Node.data.workflowId,
+					blueprintId: v1Node.data.workflowId.toString(),
 					inputs: v1Node.data.inputs,
 					outputs: v1Node.data.outputs,
 				},
@@ -77,44 +70,6 @@ async function loadBlueprint(filePath: string): Promise<WorkflowBlueprint> {
 			config: v1Node.config, // Pass 'config' through directly
 		}
 	})
-
-	const nodeIds = new Set(v2Nodes.map(n => n.id))
-	const targetIds = new Set(v1Graph.edges.map((e: any) => e.target))
-	const startNodeIds = Array.from(nodeIds).filter(id => !targetIds.has(id))
-
-	if (startNodeIds.length > 1) {
-		// More than one start node means this is a parallel fan-out graph.
-		const parallelContainerId = `__parallel_start_${blueprintId}`
-
-		// Add the synthetic parallel container node.
-		v2Nodes.push({
-			id: parallelContainerId,
-			uses: 'parallel-container',
-			params: {
-				branches: startNodeIds,
-			},
-		})
-
-		// Find the node(s) where all parallel branches converge (fan-in).
-		const successors = new Set<string>()
-		v1Graph.edges.forEach((edge: EdgeDefinition) => {
-			if (startNodeIds.includes(edge.source)) {
-				successors.add(edge.target)
-			}
-		})
-
-		// Rewire the graph: All convergent paths now originate from the container.
-		const newEdges = v1Graph.edges.filter((edge: EdgeDefinition) => !startNodeIds.includes(edge.source))
-		successors.forEach((successorId) => {
-			newEdges.push({
-				source: parallelContainerId,
-				target: successorId,
-			})
-		})
-
-		return { id: blueprintId, nodes: v2Nodes, edges: newEdges }
-	}
-	// --- End of Graph Analysis ---
 
 	return { id: blueprintId, nodes: v2Nodes, edges: v1Graph.edges }
 }

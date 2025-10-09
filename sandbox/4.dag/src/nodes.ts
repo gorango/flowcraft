@@ -8,6 +8,7 @@ interface LlmNodeContext extends NodeContext {
 	params: {
 		promptTemplate: string
 		inputs: Record<string, string | string[]>
+		outputKey?: string
 	}
 }
 
@@ -25,7 +26,8 @@ async function resolveInputs(ctx: NodeContext, inputs: Record<string, string | s
 			if (ctx.has(sourceKey as any)) {
 				resolved[templateKey] = ctx.get(sourceKey as any)
 				valueFound = true
-				break
+				// Do not break here, allowing it to find the last available key,
+				// which is correct for converging, mutually exclusive paths.
 			}
 		}
 		if (!valueFound) {
@@ -36,10 +38,6 @@ async function resolveInputs(ctx: NodeContext, inputs: Record<string, string | s
 	return resolved
 }
 
-/**
- * All node functions now accept the enriched LlmNodeContext.
- * They get their configuration directly from `ctx.params` instead of metadata.
- */
 export async function llmProcess(ctx: LlmNodeContext): Promise<NodeResult> {
 	const templateData = await resolveInputs(ctx, ctx.params.inputs)
 	const prompt = resolveTemplate(ctx.params.promptTemplate, templateData)
@@ -60,9 +58,9 @@ export async function llmRouter(ctx: LlmNodeContext): Promise<NodeResult> {
 }
 
 export async function outputNode(ctx: LlmNodeContext): Promise<NodeResult> {
+	const { outputKey = 'final_output' } = ctx.params
 	const templateData = await resolveInputs(ctx, ctx.params.inputs)
 	const finalOutput = resolveTemplate(ctx.params.promptTemplate, templateData)
-	// Set the final result to a predictable key for the main script to retrieve.
-	ctx.set('final_output' as any, finalOutput)
+	ctx.set(outputKey as any, finalOutput)
 	return { output: finalOutput }
 }
