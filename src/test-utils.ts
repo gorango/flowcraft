@@ -1,4 +1,4 @@
-import type { NodeContext, NodeFunction, NodeRegistry, NodeResult, RuntimeDependencies } from './types.js'
+import type { NodeContext, NodeFunction, NodeRegistry, NodeResult, RuntimeDependencies } from './types'
 
 /**
  * Mock node that adds a value to the context

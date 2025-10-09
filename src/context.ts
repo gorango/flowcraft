@@ -1,4 +1,4 @@
-import type { ExecutionMetadata } from './types.js'
+import type { ExecutionMetadata } from './types'
 
 /**
  * Synchronous context implementation. Provides type-safe access to workflow state.

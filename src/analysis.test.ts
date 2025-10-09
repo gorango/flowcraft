@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { checkForCycles } from './analysis.js'
-import { createFlow } from './flow.js'
+import { checkForCycles } from './analysis'
+import { createFlow } from './flow'
 
 describe('Graph Analysis', () => {
 	describe('checkForCycles', () => {

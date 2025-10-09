@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { Context, createContext } from './context.js'
+import { Context, createContext } from './context'
 
 describe('Context', () => {
 	const metadata = {

@@ -1,9 +1,9 @@
-import type { IEventBus, NodeResult } from './types.js'
+import type { IEventBus, NodeResult } from './types'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { CancelledWorkflowError } from './errors.js'
-import { createFlow } from './flow.js'
-import { FlowcraftRuntime } from './runtime.js'
-import { mockDependencies, mockNodeRegistry, sleep } from './test-utils.js'
+import { CancelledWorkflowError } from './errors'
+import { createFlow } from './flow'
+import { FlowcraftRuntime } from './runtime'
+import { mockDependencies, mockNodeRegistry, sleep } from './test-utils'
 
 describe('FlowcraftRuntime', () => {
 	let runtime: FlowcraftRuntime
@@ -739,13 +739,13 @@ describe('FlowcraftRuntime', () => {
 			flow.node('start', async () => ({ output: [1, 2, 3] }))
 
 			// This worker node is executed for each item but is not part of the main graph sequence.
-			flow.node('worker', async (ctx) => ({ output: (ctx.input as number) * 10 }))
+			flow.node('worker', async ctx => ({ output: (ctx.input as number) * 10 }))
 
 			flow.node('batch-controller', 'batch-processor', {
 				workerNodeId: 'worker', // Point to the worker node
 				concurrency: 2,
 			})
-			flow.node('end', async (ctx) => ({ output: ctx.input }))
+			flow.node('end', async ctx => ({ output: ctx.input }))
 
 			flow.edge('start', 'batch-controller')
 			flow.edge('batch-controller', 'end')

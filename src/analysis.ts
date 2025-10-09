@@ -1,4 +1,4 @@
-import type { WorkflowBlueprint } from './types.js'
+import type { WorkflowBlueprint } from './types'
 
 /**
  * A list of cycles found in the graph. Each cycle is an array of node IDs.

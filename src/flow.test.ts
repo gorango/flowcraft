@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { createFlow, Flow } from './flow.js'
+import { createFlow, Flow } from './flow'
 
 describe('Flow Builder', () => {
 	describe('basic construction', () => {

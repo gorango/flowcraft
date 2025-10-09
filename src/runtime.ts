@@ -1,4 +1,4 @@
-import type { Context } from './context.js'
+import type { Context } from './context'
 import type {
 	ExecutionMetadata,
 	IConditionEvaluator,
@@ -12,10 +12,10 @@ import type {
 	RuntimeOptions,
 	WorkflowBlueprint,
 	WorkflowResult,
-} from './types.js'
+} from './types'
 import { randomUUID } from 'node:crypto'
-import { createContext } from './context.js'
-import { CancelledWorkflowError, NodeExecutionError } from './errors.js'
+import { createContext } from './context'
+import { CancelledWorkflowError, NodeExecutionError } from './errors'
 
 /**
  * Simple semaphore for controlling concurrency

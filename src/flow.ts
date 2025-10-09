@@ -5,7 +5,7 @@ import type {
 	NodeDefinition,
 	NodeFunction,
 	WorkflowBlueprint,
-} from './types.js'
+} from './types'
 
 /**
  * Provides a type-safe, programmatic API that produces serializable blueprints
