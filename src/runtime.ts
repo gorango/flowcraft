@@ -506,37 +506,42 @@ class ExecutableFlow<TContext extends Record<string, any>> {
 	}
 
 	/**
-	 * Execute the flow
+	 * Execute the flow using a frontier-based approach that supports DAGs and cycles.
 	 */
 	async execute(context: Context<TContext>): Promise<Context<TContext>> {
-		let currentNode: CompiledNode | undefined = this.startNode
-		let currentContext = context
+		let frontier: CompiledNode[] = [this.startNode]
 
-		while (currentNode) {
-			// Check for cancellation before each node
-			if (currentContext.getMetadata().signal?.aborted) {
-				throw new CancelledWorkflowError('Workflow execution cancelled.', currentContext.getMetadata().executionId)
+		while (frontier.length > 0) {
+			if (context.getMetadata().signal?.aborted) {
+				throw new CancelledWorkflowError('Workflow execution cancelled.', context.getMetadata().executionId)
 			}
 
-			// update metadata for the current node
-			currentContext = currentContext.withMetadata({
-				currentNodeId: currentNode.id,
+			const executionPromises = frontier.map(async (node) => {
+				const nodeContext = context.withMetadata({ currentNodeId: node.id })
+				const result = await this._executeNodeWithResiliency(node, nodeContext)
+				return { node, result, context: nodeContext }
 			})
 
-			// execute the node with resiliency
-			const result = await this._executeNodeWithResiliency(currentNode, currentContext)
+			const results = await Promise.all(executionPromises)
+			const nextNodeSet = new Set<CompiledNode>()
 
-			// The default input for the next node is the output of this one.
-			// getNextNode may modify this if a transform is present.
-			if (result.output !== undefined) {
-				currentContext.set('input' as any, result.output)
+			for (const { node, result, context: resultingContext } of results) {
+				context.merge(resultingContext)
+				context.set(node.id as any, result.output)
+
+				if (result.output !== undefined) {
+					context.set('input' as any, result.output)
+				}
+
+				const nextNodes = await this.getNextNodes(node, result, context)
+				for (const nextNode of nextNodes) {
+					nextNodeSet.add(nextNode)
+				}
 			}
-
-			// determine next node based on result
-			currentNode = await this.getNextNode(currentNode, result, currentContext)
+			frontier = Array.from(nextNodeSet)
 		}
 
-		return currentContext
+		return context
 	}
 
 	/**
@@ -751,7 +756,7 @@ class ExecutableFlow<TContext extends Record<string, any>> {
 
 		// Use shared context for all branches to allow communication between them
 		const promises = branchNodes.map(branchNode =>
-			new ExecutableFlow(branchNode, this.nodeMap, this.runtime, this.functionRegistry).execute(context),
+			new ExecutableFlow(branchNode, this.nodeMap, this.runtime, this.functionRegistry).execute(context.createScope()),
 		)
 
 		const settledResults = await Promise.allSettled(promises)
@@ -762,8 +767,12 @@ class ExecutableFlow<TContext extends Record<string, any>> {
 				// If any branch fails, the whole container fails.
 				throw result.reason
 			}
-			// The final "input" value in the context of the branch is its result.
-			outputs.push(result.value.get('input' as any))
+			const branchContext = result.value
+			// The conventional output of a branch is the final value of the 'input' key.
+			outputs.push(branchContext.get('input' as any))
+
+			// Merge the results from the branch scope back into the main context.
+			context.merge(branchContext)
 		}
 
 		// The output of the container is an array of the outputs of its branches.
@@ -890,74 +899,56 @@ class ExecutableFlow<TContext extends Record<string, any>> {
 	}
 
 	/**
-	 * Get the next node based on execution result and conditional edges.
+	 * Get all next nodes based on execution result and conditional edges.
 	 */
-	private async getNextNode(
+	private async getNextNodes(
 		currentNode: CompiledNode,
 		result: NodeResult,
 		context: Context<TContext>,
-	): Promise<CompiledNode | undefined> {
+	): Promise<CompiledNode[]> {
 		if (currentNode.implementation === 'batch-processor') {
-			// The batch processor's "next node" is the item processor. We have already executed it.
-			// The real next node is whatever comes after the item processor.
 			const itemProcessorEdge = currentNode.nextNodes.find(edge => !edge.action && !edge.condition)
 			if (itemProcessorEdge) {
-				// Recursively call getNextNode, starting from the item processor, to find the true next step.
-				// The aggregated result of the batch is used for evaluating conditions.
-				return this.getNextNode(itemProcessorEdge.node, result, context)
+				return this.getNextNodes(itemProcessorEdge.node, result, context)
 			}
-			return undefined // Batch processor is the end of this path.
+			return []
 		}
 
 		if (!currentNode.nextNodes || currentNode.nextNodes.length === 0) {
-			return undefined
+			return []
 		}
 
 		const candidates = currentNode.nextNodes
+		let matchingEdges: typeof candidates = []
 
-		// 1. Find a direct match on the node's returned action
 		if (result.action) {
-			const actionMatch = candidates.find(edge => edge.action === result.action)
-			if (actionMatch) {
-				// Apply transformation if present
-				if (actionMatch.transform) {
-					const transformedOutput = await this._applyTransform(actionMatch.transform, result.output, context)
-					context.set('input' as any, transformedOutput)
+			matchingEdges = candidates.filter(edge => edge.action === result.action)
+		}
+
+		if (matchingEdges.length === 0) {
+			const conditionalEdges = candidates.filter(edge => edge.condition)
+			for (const edge of conditionalEdges) {
+				const evalContext = { ...context.toJSON(), result: result.output }
+				if (await this.conditionEvaluator.evaluate(edge.condition!, evalContext)) {
+					matchingEdges.push(edge)
 				}
-				return actionMatch.node
 			}
 		}
 
-		// 2. Evaluate conditional edges
-		const conditionalEdges = candidates.filter(edge => edge.condition)
-		for (const edge of conditionalEdges) {
-			// Create the context for the evaluator
-			const evalContext = {
-				...context.toJSON(), // Make all context values available
-				result: result.output, // Make the direct output of the node available as `result`
-			}
-			if (await this.conditionEvaluator.evaluate(edge.condition!, evalContext)) {
-				// Apply transformation if present
-				if (edge.transform) {
-					const transformedOutput = await this._applyTransform(edge.transform, result.output, context)
-					context.set('input' as any, transformedOutput)
-				}
-				return edge.node
-			}
+		if (matchingEdges.length === 0) {
+			matchingEdges = candidates.filter(edge => !edge.action && !edge.condition)
 		}
 
-		// 3. Fallback to the default edge (no action, no condition)
-		const defaultEdge = candidates.find(edge => !edge.action && !edge.condition)
-		if (defaultEdge) {
-			// Apply transformation if present
-			if (defaultEdge.transform) {
-				const transformedOutput = await this._applyTransform(defaultEdge.transform, result.output, context)
+		const nextNodes: CompiledNode[] = []
+		for (const edge of matchingEdges) {
+			if (edge.transform) {
+				const transformedOutput = await this._applyTransform(edge.transform, result.output, context)
 				context.set('input' as any, transformedOutput)
 			}
-			return defaultEdge.node
+			nextNodes.push(edge.node)
 		}
 
-		return undefined
+		return nextNodes
 	}
 
 	/**

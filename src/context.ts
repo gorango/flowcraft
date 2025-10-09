@@ -106,6 +106,15 @@ export class Context<TContext extends Record<string, any> = Record<string, any>>
 	}
 
 	/**
+	 * Merges data from another context into this one, overwriting existing keys.
+	 */
+	merge(other: Context<any>): void {
+		for (const [key, value] of other.entries()) {
+			this.data.set(key, value)
+		}
+	}
+
+	/**
 	 * Get execution metadata
 	 */
 	getMetadata(): ExecutionMetadata {

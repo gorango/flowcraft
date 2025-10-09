@@ -67,7 +67,7 @@ describe('FlowcraftRuntime', () => {
 			const result = await runtime.run(blueprint, {}, flow.getFunctionRegistry())
 
 			expect(result.metadata.status).toBe('completed')
-			expect(result.context.input).toBe('success')
+			expect(result.context.flaky).toBe('success')
 			expect(attempts).toBe(3)
 			// Check for retry events
 			const retryEvents = mockEventBus.events.filter(e => e.eventName === 'node:retry')
@@ -95,7 +95,7 @@ describe('FlowcraftRuntime', () => {
 			const result = await runtime.run(blueprint, {}, functionRegistry)
 
 			expect(result.metadata.status).toBe('completed')
-			expect(result.context.input).toBe('fallback success')
+			expect(result.context['always-fails']).toBe('fallback success')
 			// Check for fallback event
 			const fallbackEvent = mockEventBus.events.find(e => e.eventName === 'node:fallback')
 			expect(fallbackEvent).toBeDefined()
@@ -222,6 +222,65 @@ describe('FlowcraftRuntime', () => {
 	})
 
 	describe('advanced control flow', () => {
+		/**
+		 * **[NEW]** Tests for State Propagation
+		 */
+		describe('State Propagation', () => {
+			it('should automatically save a node\'s output to the context using its ID', async () => {
+				const flow = createFlow('state-prop-flow')
+				flow.node('producer', async () => ({ output: { data: 'important' } }))
+				flow.node('consumer', async (context) => {
+					const producerResult = context.get('producer') as { data: string }
+					return { output: `Consumed: ${producerResult.data}` }
+				})
+				flow.edge('producer', 'consumer')
+				const blueprint = flow.toBlueprint()
+				const result = await runtime.run(blueprint, {}, flow.getFunctionRegistry())
+
+				expect(result.metadata.status).toBe('completed')
+				expect(result.context.producer).toEqual({ data: 'important' })
+				expect(result.context.consumer).toBe('Consumed: important')
+			})
+		})
+
+		/**
+		 * Tests for DAG (Fan-out / Fan-in)
+		 */
+		describe('DAG Execution (Fan-out / Fan-in)', () => {
+			it('should execute a mid-flow fan-out and fan-in correctly', async () => {
+				const flow = createFlow('fan-out-flow')
+				flow.node('start', async () => ({ output: 'start' }))
+				flow.node('branchB', async (ctx) => {
+					const startResult = ctx.get('start')
+					return { output: `BranchB processed ${startResult}` }
+				})
+				flow.node('branchC', async (ctx) => {
+					const startResult = ctx.get('start')
+					return { output: `BranchC processed ${startResult}` }
+				})
+				flow.node('end', async (ctx) => {
+					const bResult = ctx.get('branchB')
+					const cResult = ctx.get('branchC')
+					return { output: `Converged: [${bResult}] and [${cResult}]` }
+				})
+				// Fan-out from 'start' to 'branchB' and 'branchC' (default edges)
+				flow.edge('start', 'branchB')
+				flow.edge('start', 'branchC')
+				// Fan-in from branches to 'end'
+				flow.edge('branchB', 'end')
+				flow.edge('branchC', 'end')
+
+				const blueprint = flow.toBlueprint()
+				const result = await runtime.run(blueprint, {}, flow.getFunctionRegistry())
+
+				expect(result.metadata.status).toBe('completed')
+				expect(result.context.start).toBe('start')
+				expect(result.context.branchB).toBe('BranchB processed start')
+				expect(result.context.branchC).toBe('BranchC processed start')
+				expect(result.context.end).toBe('Converged: [BranchB processed start] and [BranchC processed start]')
+			})
+		})
+
 		it('should correctly execute a parallel fan-out/fan-in and aggregate results', async () => {
 			const flow = createFlow('parallel-join-flow')
 
@@ -244,7 +303,8 @@ describe('FlowcraftRuntime', () => {
 			const result = await runtime.run(blueprint, {}, flow.getFunctionRegistry())
 
 			expect(result.metadata.status).toBe('completed')
-			expect(result.context.input).toBe('Joined: A,B')
+			expect(result.context['parallel-block']).toEqual(['A', 'B'])
+			expect(result.context.end).toBe('Joined: A,B')
 		})
 
 		describe('Batch Processing', () => {
@@ -267,7 +327,7 @@ describe('FlowcraftRuntime', () => {
 
 				expect(result.metadata.status).toBe('completed')
 				expect(processedItems).toEqual([{ id: 1 }, { id: 2 }, { id: 3 }])
-				expect(Array.isArray(result.context.input)).toBe(true)
+				expect(Array.isArray(result.context.end)).toBe(true)
 			})
 
 			it('should process items concurrently', async () => {
@@ -398,7 +458,7 @@ describe('FlowcraftRuntime', () => {
 				const result = await runtime.run(blueprint, {}, flow.getFunctionRegistry())
 
 				expect(result.metadata.status).toBe('completed')
-				expect(result.context.input).toBe('success')
+				expect(result.context.end).toBe('success')
 			})
 		})
 
@@ -436,7 +496,7 @@ describe('FlowcraftRuntime', () => {
 				const result = await runtime.run(blueprint, {}, functionRegistry)
 
 				expect(result.metadata.status).toBe('completed')
-				expect(result.context.input).toBe('parent_value')
+				expect(result.context.end).toBe('parent_value')
 			})
 
 			it('should correctly map data and propagate results through nested sub-workflows', async () => {
@@ -456,7 +516,7 @@ describe('FlowcraftRuntime', () => {
 				})
 				parentFlow.subflow('run-child', 'child-math', {
 					inputs: { child_in: 'parent_in' },
-					outputs: { result: 'input' },
+					outputs: { result: 'add' }, // map child 'add' output to parent 'result'
 				})
 				parentFlow.edge('start', 'run-child')
 				runtime.registerBlueprint(parentFlow.toBlueprint())
@@ -475,7 +535,6 @@ describe('FlowcraftRuntime', () => {
 				])
 
 				const result = await runtime.run(blueprint, {}, functionRegistry)
-
 				expect(result.metadata.status).toBe('completed')
 				expect(result.context.grandparent_result).toBe(11) // 10 -> child(11) -> parent(11)
 			})
@@ -487,15 +546,13 @@ describe('FlowcraftRuntime', () => {
 
 				flow.node('source', async () => ({ output: 10 }))
 				flow.node('target', async context => ({ output: context.input }))
-				flow.node('end', async context => ({ output: context.input }))
 				flow.edge('source', 'target', { transform: 'input * 2' })
-				flow.edge('target', 'end')
 
 				const blueprint = flow.toBlueprint()
 				const result = await runtime.run(blueprint, {}, flow.getFunctionRegistry())
 
 				expect(result.metadata.status).toBe('completed')
-				expect(result.context.input).toBe(20)
+				expect(result.context.target).toBe(20)
 			})
 		})
 
@@ -515,7 +572,7 @@ describe('FlowcraftRuntime', () => {
 
 			// Test path A (role is admin)
 			const resultA = await runtime.run(blueprint, {}, flow.getFunctionRegistry())
-			expect(resultA.context.input).toBe('A')
+			expect(resultA.context.pathA).toBe('A')
 
 			// Test path B (value is 5)
 			const blueprintB = flow.clone('b-test').toBlueprint() // Use a clone for a clean run
@@ -525,7 +582,7 @@ describe('FlowcraftRuntime', () => {
 			const funcRegistry = flow.getFunctionRegistry()
 			funcRegistry.set(startNode.uses, async () => ({ output: { value: 5, user: { role: 'guest' } } }))
 			const resultB_run = await runtime.run(blueprintB, {}, funcRegistry)
-			expect(resultB_run.context.input).toBe('B')
+			expect(resultB_run.context.pathB).toBe('B')
 		})
 
 		it('should use a custom condition evaluator if provided', async () => {
@@ -567,8 +624,8 @@ describe('FlowcraftRuntime', () => {
 			const parentFlow = createFlow('parent-flow')
 			parentFlow.node('start', async () => ({ output: 5 }))
 			parentFlow.subflow('run-math', 'sub-math', {
-				inputs: { sub_val: 'input' }, // map parent `input` to sub `sub_val`
-				outputs: { final_result: 'input' }, // map sub `input` to parent `final_result`
+				inputs: { sub_val: 'start' }, // map parent `start` output to sub `sub_val`
+				outputs: { final_result: 'add' }, // map sub `add` output to parent `final_result`
 			})
 			parentFlow.edge('start', 'run-math')
 			const parentBlueprint = parentFlow.toBlueprint()
