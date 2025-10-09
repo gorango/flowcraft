@@ -668,4 +668,131 @@ describe('FlowcraftRuntime', () => {
 			await expect(runtime.run(blueprint, {}, registry)).rejects.toThrow('sub-workflow failed')
 		})
 	})
+
+	describe('Advanced Graph Patterns', () => {
+		it('should execute a convergence node only once after all its parents have finished', async () => {
+			const convergenceFn = vi.fn(async (ctx) => {
+				// This is the critical check: ensure outputs from both parents are present when this node runs.
+				const branchA_Output = ctx.get('branchA')
+				const branchB_Output = ctx.get('branchB')
+				expect(branchA_Output).toBe('A done')
+				expect(branchB_Output).toBe('B done')
+				return { output: `Converged: ${branchA_Output} and ${branchB_Output}` }
+			})
+
+			const flow = createFlow('fan-in-test')
+			flow.node('start', async () => ({ output: 'start' }))
+			flow.node('branchA', async () => {
+				await sleep(20) // Slower branch
+				return { output: 'A done' }
+			})
+			flow.node('branchB', async () => {
+				await sleep(10) // Faster branch
+				return { output: 'B done' }
+			})
+			flow.node('converge', convergenceFn)
+
+			flow.edge('start', 'branchA')
+			flow.edge('start', 'branchB')
+			flow.edge('branchA', 'converge')
+			flow.edge('branchB', 'converge')
+
+			const blueprint = flow.toBlueprint()
+			const result = await runtime.run(blueprint, {}, flow.getFunctionRegistry())
+
+			// Assert that the convergence node was called exactly one time.
+			expect(convergenceFn).toHaveBeenCalledTimes(1)
+			expect(result.context.converge).toBe('Converged: A done and B done')
+		})
+
+		it('should correctly execute a stateful loop for a fixed number of iterations', async () => {
+			const flow = createFlow('stateful-loop-test')
+			flow.node('start', async (ctx) => {
+				ctx.set('counter', 0)
+				return { output: 'started' }
+			})
+			flow.node('loop-controller', 'loop-controller', {
+				maxIterations: 5,
+			}, { joinStrategy: 'any' })
+			flow.node('increment', async (ctx) => {
+				const current = ctx.get('counter') || 0
+				ctx.set('counter', current + 1)
+				return { output: `incremented to ${current + 1}` }
+			})
+			flow.node('end', async () => ({ output: 'done' }))
+
+			flow.edge('start', 'loop-controller')
+			flow.edge('loop-controller', 'increment', { action: 'continue' })
+			flow.edge('increment', 'loop-controller')
+			flow.edge('loop-controller', 'end', { action: 'break' })
+
+			const blueprint = flow.toBlueprint()
+			const result = await runtime.run(blueprint, {}, flow.getFunctionRegistry())
+
+			expect(result.metadata.status).toBe('completed')
+			// Assert that the state was correctly modified across all iterations.
+			expect(result.context.counter).toBe(5)
+		})
+
+		it('should process all items in a batch and aggregate the results for the next node', async () => {
+			const flow = createFlow('batch-aggregation-test')
+			flow.node('start', async () => ({ output: [1, 2, 3] }))
+
+			// This worker node is executed for each item but is not part of the main graph sequence.
+			flow.node('worker', async (ctx) => ({ output: (ctx.input as number) * 10 }))
+
+			flow.node('batch-controller', 'batch-processor', {
+				workerNodeId: 'worker', // Point to the worker node
+				concurrency: 2,
+			})
+			flow.node('end', async (ctx) => ({ output: ctx.input }))
+
+			flow.edge('start', 'batch-controller')
+			flow.edge('batch-controller', 'end')
+
+			const blueprint = flow.toBlueprint()
+			const result = await runtime.run(blueprint, {}, flow.getFunctionRegistry())
+
+			expect(result.metadata.status).toBe('completed')
+			// Assert that the 'end' node received an array of the processed results.
+			expect(result.context.end).toEqual([10, 20, 30])
+		})
+
+		it('should correctly map outputs from a sub-workflow without leaking context', async () => {
+			// 1. Define and register the sub-workflow
+			const subFlow = createFlow('sub-context-test')
+			subFlow.node('sub-node', async (ctx) => {
+				ctx.set('internal_state', 'should-not-leak')
+				ctx.set('final_data', 'important-result')
+				// The sub-workflow's final output is what gets mapped
+				return { output: ctx.get('final_data') }
+			})
+			runtime.registerBlueprint(subFlow.toBlueprint())
+
+			// 2. Define the parent workflow
+			const parentFlow = createFlow('parent-context-test')
+			parentFlow.node('start', async () => ({ output: 'start' }))
+			parentFlow.subflow('run-sub', 'sub-context-test', {
+				outputs: {
+					// Map the sub-workflow's 'sub-node' output to 'parent_key' in this context
+					parent_key: 'sub-node',
+				},
+			})
+			parentFlow.edge('start', 'run-sub')
+
+			const blueprint = parentFlow.toBlueprint()
+			const result = await runtime.run(
+				blueprint,
+				{},
+				new Map([...parentFlow.getFunctionRegistry(), ...subFlow.getFunctionRegistry()]),
+			)
+
+			expect(result.metadata.status).toBe('completed')
+			// Assert that the mapped key exists and has the correct value
+			expect(result.context.parent_key).toBe('important-result')
+			// Assert that the unmapped internal state did not leak into the parent context
+			expect(result.context).not.toHaveProperty('internal_state')
+			expect(result.context).not.toHaveProperty('final_data')
+		})
+	})
 })
