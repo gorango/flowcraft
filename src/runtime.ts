@@ -106,7 +106,7 @@ export class FlowcraftRuntime<TContext extends Record<string, any>, TDependencie
 				frontier.clear()
 
 				const promises = currentJobs.map(nodeId =>
-					this.executeNode(dynamicBlueprint, nodeId, context, functionRegistry, executionId, signal)
+					this.executeNode(dynamicBlueprint, nodeId, context, allPredecessors, functionRegistry, executionId, signal)
 						.then(result => ({ status: 'fulfilled' as const, value: { nodeId, result } }))
 						.catch(error => ({ status: 'rejected' as const, reason: { nodeId, error } })),
 				)
@@ -125,6 +125,11 @@ export class FlowcraftRuntime<TContext extends Record<string, any>, TDependencie
 
 					const { nodeId, result } = promiseResult.value
 					completedNodes.add(nodeId)
+
+					if (result.output !== undefined) {
+						context.set(nodeId as any, result.output)
+					}
+
 					completedThisTurn.add(nodeId)
 
 					if (result.dynamicNodes && result.dynamicNodes.length > 0) {
@@ -187,14 +192,14 @@ export class FlowcraftRuntime<TContext extends Record<string, any>, TDependencie
 		}
 	}
 
-	async executeNode(blueprint: WorkflowBlueprint, nodeId: string, context: ContextImplementation<TContext>, functionRegistry?: Map<string, any>, executionId?: string, signal?: AbortSignal): Promise<NodeResult> {
+	async executeNode(blueprint: WorkflowBlueprint, nodeId: string, context: ContextImplementation<TContext>, allPredecessors?: Map<string, Set<string>>, functionRegistry?: Map<string, any>, executionId?: string, signal?: AbortSignal): Promise<NodeResult> {
 		const nodeDef = blueprint.nodes.find(n => n.id === nodeId)
 		if (!nodeDef) {
 			throw new NodeExecutionError(`Node '${nodeId}' not found in blueprint.`, nodeId, blueprint.id, undefined, executionId)
 		}
 
 		const executionFn = async (def: NodeDefinition): Promise<NodeResult> => {
-			return this._orchestrateNodeExecution(blueprint.id, def, context, functionRegistry, executionId, signal)
+			return this._orchestrateNodeExecution(blueprint.id, def, context, allPredecessors, functionRegistry, executionId, signal)
 		}
 
 		const executionWithFallbackFn = async (): Promise<NodeResult> => {
@@ -311,19 +316,33 @@ export class FlowcraftRuntime<TContext extends Record<string, any>, TDependencie
 	}
 
 	/** Resolves the 'inputs' mapping for a node before execution. */
-	private async _resolveNodeInput(nodeDef: NodeDefinition, context: IAsyncContext<TContext>): Promise<any> {
-		if (!nodeDef.inputs)
-			return undefined
-		if (typeof nodeDef.inputs === 'string')
-			return await context.get(nodeDef.inputs as any)
-		if (typeof nodeDef.inputs === 'object') {
-			const input: Record<string, any> = {}
-			for (const key in nodeDef.inputs) {
-				const contextKey = nodeDef.inputs[key]
-				input[key] = await context.get(contextKey as any)
+	private async _resolveNodeInput(nodeDef: NodeDefinition, context: IAsyncContext<TContext>, allPredecessors?: Map<string, Set<string>>): Promise<any> {
+		// 1. Handle explicit `inputs` mapping first. This always takes precedence.
+		if (nodeDef.inputs) {
+			if (typeof nodeDef.inputs === 'string')
+				return await context.get(nodeDef.inputs as any)
+
+			if (typeof nodeDef.inputs === 'object') {
+				const input: Record<string, any> = {}
+				for (const key in nodeDef.inputs) {
+					const contextKey = nodeDef.inputs[key]
+					input[key] = await context.get(contextKey as any)
+				}
+				return input
 			}
-			return input
 		}
+
+		// 2. If no explicit mapping, apply the default convention.
+		// This runs only if the node has exactly one predecessor.
+		if (allPredecessors) {
+			const predecessors = allPredecessors.get(nodeDef.id)
+			if (predecessors && predecessors.size === 1) {
+				const singlePredecessorId = predecessors.values().next().value
+				return await context.get(singlePredecessorId as any)
+			}
+		}
+
+		// 3. If no explicit mapping and the convention doesn't apply, there is no input.
 		return undefined
 	}
 
@@ -332,7 +351,7 @@ export class FlowcraftRuntime<TContext extends Record<string, any>, TDependencie
 	 * This method correctly implements the `prep`/`exec`/`post` lifecycle,
 	 * ensuring that only the `exec` phase is retried.
 	 */
-	private async _orchestrateNodeExecution(blueprintId: string, nodeDef: NodeDefinition, contextImpl: ContextImplementation<TContext>, functionRegistry?: Map<string, any>, executionId?: string, signal?: AbortSignal): Promise<NodeResult> {
+	private async _orchestrateNodeExecution(blueprintId: string, nodeDef: NodeDefinition, contextImpl: ContextImplementation<TContext>, allPredecessors?: Map<string, Set<string>>, functionRegistry?: Map<string, any>, executionId?: string, signal?: AbortSignal): Promise<NodeResult> {
 		signal?.throwIfAborted()
 
 		// --- Built-in Node Logic ---
@@ -348,7 +367,7 @@ export class FlowcraftRuntime<TContext extends Record<string, any>, TDependencie
 		const nodeApiContext = contextImpl.type === 'sync' ? new AsyncContextView(contextImpl) : contextImpl
 		const nodeContext: NodeContext<TContext, TDependencies> = {
 			context: nodeApiContext,
-			input: await this._resolveNodeInput(nodeDef, nodeApiContext),
+			input: await this._resolveNodeInput(nodeDef, nodeApiContext, allPredecessors),
 			params: nodeDef.params || {},
 			dependencies: this.dependencies,
 			signal,
