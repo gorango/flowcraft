@@ -7,11 +7,9 @@ import type {
 	IEventBus,
 	ISerializer,
 	Middleware,
-	NodeClass,
 	NodeContext,
 	NodeDefinition,
 	NodeFunction,
-	NodeImplementation,
 	NodeResult,
 	RuntimeOptions,
 	WorkflowBlueprint,
@@ -22,12 +20,8 @@ import { analyzeBlueprint } from './analysis'
 import { AsyncContextView, Context } from './context'
 import { CancelledWorkflowError, FatalNodeExecutionError, NodeExecutionError } from './errors'
 import { SimpleEvaluator } from './evaluator'
+import { isNodeClass } from './node'
 import { JsonSerializer } from './serializer'
-
-/** A type guard to reliably distinguish a NodeClass from a NodeFunction. */
-function isNodeClass(impl: NodeImplementation): impl is NodeClass {
-	return typeof impl === 'function' && !!impl.prototype?.exec
-}
 
 class NullEventBus implements IEventBus {
 	emit() { }

@@ -3,8 +3,11 @@ import type { IEvaluator } from './types'
 /**
  * A simple, safe, placeholder expression evaluator.
  * It provides a sandboxed environment for evaluating edge conditions and transforms.
- * In a production system, this should be replaced with a more robust and feature-rich
- * library like `jexl` or `expr-eval`.
+ *
+ * @warning This implementation uses `new Function()` which, while sandboxed from the global
+ * scope, can be a security risk if expressions are provided by end-users. It is NOT
+ * recommended for production systems. Please replace this with a more robust and secure
+ * library like `jsep` by providing your own implementation in the runtime options.
  *
  * This implementation can only access properties on a single context object.
  * Example expressions:

@@ -1,9 +1,5 @@
 import type { EdgeDefinition, NodeClass, NodeDefinition, NodeFunction, WorkflowBlueprint } from './types'
-
-/** A type guard to reliably distinguish a NodeClass from a NodeFunction. */
-function isNodeClass(impl: any): impl is NodeClass {
-	return typeof impl === 'function' && !!impl.prototype?.exec
-}
+import { isNodeClass } from './node'
 
 /**
  * A fluent API for programmatically constructing a WorkflowBlueprint.

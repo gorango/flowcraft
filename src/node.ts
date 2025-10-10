@@ -1,6 +1,11 @@
 /** eslint-disable unused-imports/no-unused-vars */
 
-import type { NodeContext, NodeResult, RuntimeDependencies } from './types'
+import type { NodeClass, NodeContext, NodeResult, RuntimeDependencies } from './types'
+
+/** A type guard to reliably distinguish a NodeClass from a NodeFunction. */
+export function isNodeClass(impl: any): impl is NodeClass {
+	return typeof impl === 'function' && !!impl.prototype?.exec
+}
 
 /**
  * A structured, class-based node for complex logic with a safe, granular lifecycle.
