@@ -140,6 +140,8 @@ export interface RuntimeOptions<TDependencies extends RuntimeDependencies = Runt
 	middleware?: Middleware[]
 	/** A pluggable serializer for handling complex data types in the context. */
 	serializer?: ISerializer
+	/** A flag to enforce strictness in the workflow. */
+	strict?: boolean
 }
 
 /** Interface for a pluggable expression evaluator for conditions and transforms. */
