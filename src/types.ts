@@ -57,6 +57,8 @@ export interface NodeResult<TOutput = any> {
 	output?: TOutput
 	action?: string
 	error?: { message: string, [key: string]: any }
+	/** Allows a node to dynamically schedule new nodes for the orchestrator to execute. */
+	dynamicNodes?: NodeDefinition[]
 }
 
 /** The context object passed to every node's execution logic. */
@@ -72,6 +74,8 @@ export interface NodeContext<
 	params: Record<string, any>
 	/** Shared, runtime-level dependencies (e.g., database clients, loggers). */
 	dependencies: TDependencies
+	/** A signal to gracefully cancel long-running node operations. */
+	signal?: AbortSignal
 }
 
 /** A simple function-based node implementation. */
@@ -80,10 +84,7 @@ export type NodeFunction<
 	TDependencies extends RuntimeDependencies = RuntimeDependencies,
 > = (context: NodeContext<TContext, TDependencies>) => Promise<NodeResult>
 
-/**
- * Represents a constructor for any concrete class that extends the abstract BaseNode.
- * This is the corrected type for a class-based node implementation.
- */
+/** Represents a constructor for any concrete class that extends the abstract BaseNode. */
 export type NodeClass = new (params?: any) => BaseNode<any, any>
 
 /** A union of all possible node implementation types. */
@@ -141,12 +142,6 @@ export interface RuntimeOptions<TDependencies extends RuntimeDependencies = Runt
 
 /** Interface for a pluggable expression evaluator for conditions and transforms. */
 export interface IEvaluator {
-	/**
-	 * Evaluates a string expression against a data context.
-	 * @param expression The string expression to evaluate.
-	 * @param context A key-value object of data to be used in the expression.
-	 * @returns The result of the evaluation.
-	 */
 	evaluate: (expression: string, context: Record<string, any>) => any
 }
 
@@ -163,21 +158,9 @@ export interface ISerializer {
 
 /** Interface for middleware to handle cross-cutting concerns. */
 export interface Middleware<TContext extends Record<string, any> = Record<string, any>> {
-	beforeNode?: (
-		ctx: ContextImplementation<TContext>,
-		nodeId: string,
-	) => void | Promise<void>
-	afterNode?: (
-		ctx: ContextImplementation<TContext>,
-		nodeId: string,
-		result: NodeResult | undefined,
-		error: Error | undefined,
-	) => void | Promise<void>
-	aroundNode?: (
-		ctx: ContextImplementation<TContext>,
-		nodeId: string,
-		next: () => Promise<NodeResult>
-	) => Promise<NodeResult>
+	beforeNode?: (ctx: ContextImplementation<TContext>, nodeId: string) => void | Promise<void>
+	afterNode?: (ctx: ContextImplementation<TContext>, nodeId: string, result: NodeResult | undefined, error: Error | undefined) => void | Promise<void>
+	aroundNode?: (ctx: ContextImplementation<TContext>, nodeId: string, next: () => Promise<NodeResult>) => Promise<NodeResult>
 }
 
 /** A structured error object returned from a failed workflow execution. */
@@ -189,12 +172,8 @@ export interface WorkflowError {
 
 /** The final result of a workflow execution. */
 export interface WorkflowResult<TContext = any> {
-	/** The final state of the workflow's context. */
 	context: TContext
-	/** The final context state, serialized as a string. */
 	serializedContext: string
-	/** The final status of the workflow. */
-	status: 'completed' | 'failed' | 'stalled'
-	/** An array of errors that occurred during execution. Present if status is 'failed'. */
+	status: 'completed' | 'failed' | 'stalled' | 'cancelled'
 	errors?: WorkflowError[]
 }

@@ -55,42 +55,85 @@ export class Flow<
 	 * @param id The base ID for this batch operation.
 	 * @param worker The node implementation to run on each item.
 	 * @param options Configuration for the batch operation.
+	 * @param options.inputKey The key in the context that holds the input array for the batch.
+	 * @param options.outputKey The key in the context where the array of results will be stored.
 	 * @returns The Flow instance for chaining.
 	 */
-	batch(id: string, worker: NodeFunction<TContext, TDependencies> | NodeClass, options?: {
+	batch(id: string, worker: NodeFunction<TContext, TDependencies> | NodeClass, options: {
 		/** The key in the context that holds the input array for the batch. */
 		inputKey: string
 		/** The key in the context where the array of results will be stored. */
 		outputKey: string
 	}): this {
-		const { inputKey, outputKey } = options ?? { inputKey: `${id}_input`, outputKey: `${id}_output` }
-
+		const { inputKey, outputKey } = options
 		const scatterId = `${id}_scatter`
-		const workerId = `${id}_worker`
 		const gatherId = `${id}_gather`
 
-		// 1. Scatter Node: A built-in node that takes an array and prepares the batch operation.
-		this.node(scatterId, () => Promise.resolve({}), {
+		// Register the user's worker implementation under a unique key.
+		let workerUsesKey: string
+		if (isNodeClass(worker)) {
+			workerUsesKey = (worker.name && worker.name !== 'BaseNode') ? worker.name : `class_batch_worker_${globalThis.crypto.randomUUID()}`
+			this.functionRegistry.set(workerUsesKey, worker)
+		}
+		else {
+			workerUsesKey = `fn_batch_worker_${globalThis.crypto.randomUUID()}`
+			this.functionRegistry.set(workerUsesKey, worker as NodeFunction)
+		}
+
+		// Scatter Node: A built-in node that takes an array and dynamically schedules worker nodes.
+		this.blueprint.nodes!.push({
+			id: scatterId,
 			uses: 'batch-scatter', // This is a special, built-in node type
-			params: { inputKey, workerId, outputKey },
+			inputs: inputKey,
+			params: { workerUsesKey, outputKey, gatherNodeId: gatherId },
 		})
 
-		// 2. Worker Node: The user-provided logic that will be dynamically executed for each item.
-		this.node(workerId, worker)
-
-		// 3. Gather Node: A built-in node that waits for all workers to finish and collects the results.
-		this.node(gatherId, () => Promise.resolve({}), {
-			uses: 'batch-gather', // This is a special, built-in node type
+		// Gather Node: A built-in node that waits for all workers to finish and collects the results.
+		this.blueprint.nodes!.push({
+			id: gatherId,
+			uses: 'batch-gather', // built-in node type
 			params: { outputKey },
 			config: { joinStrategy: 'all' }, // Important: Must wait for all scattered jobs
 		})
 
+		// Edge to connect the scatter and gather nodes. The orchestrator will manage the dynamic workers.
+		this.edge(scatterId, gatherId)
+
 		return this
 	}
 
-	loop(startNode: string, endNode: string, options?: any): this {
-		// TODO: Implement logic to generate a 'loop-controller' node and edges.
-		console.warn('`.loop()` is not yet implemented.')
+	/**
+	 * Creates a loop pattern in the workflow graph.
+	 * @param id A unique identifier for the loop construct.
+	 * @param options Defines the start, end, and continuation condition of the loop.
+	 * @param options.startNodeId The ID of the first node inside the loop body.
+	 * @param options.endNodeId The ID of the last node inside the loop body.
+	 * @param options.condition An expression that, if true, causes the loop to run again.
+	 */
+	loop(id: string, options: {
+		/** The ID of the first node inside the loop body. */
+		startNodeId: string
+		/** The ID of the last node inside the loop body. */
+		endNodeId: string
+		/** An expression that, if true, causes the loop to run again. */
+		condition: string
+	}): this {
+		const { startNodeId, endNodeId, condition } = options
+		const controllerId = `${id}_loop_controller`
+
+		// Add the controller node, which evaluates the loop condition.
+		this.blueprint.nodes!.push({
+			id: controllerId,
+			uses: 'loop-controller', // Special built-in node type
+			params: { condition },
+		})
+
+		// Connect the end of the loop body to the controller.
+		this.edge(endNodeId, controllerId)
+
+		// Connect the controller back to the start of the loop if the condition is met.
+		this.edge(controllerId, startNodeId, { action: 'continue' })
+
 		return this
 	}
 

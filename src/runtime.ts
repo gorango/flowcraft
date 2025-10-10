@@ -20,7 +20,7 @@ import type {
 } from './types'
 import { analyzeBlueprint } from './analysis'
 import { AsyncContextView, Context } from './context'
-import { FatalNodeExecutionError, NodeExecutionError } from './errors'
+import { CancelledWorkflowError, FatalNodeExecutionError, NodeExecutionError } from './errors'
 import { SimpleEvaluator } from './evaluator'
 import { JsonSerializer } from './serializer'
 
@@ -50,151 +50,163 @@ export class FlowcraftRuntime<TContext extends Record<string, any>, TDependencie
 		this.evaluator = options.evaluator || new SimpleEvaluator()
 	}
 
-	/** Mode 1: Acts as a local orchestrator to run a full blueprint. */
 	async run(
 		blueprint: WorkflowBlueprint,
 		initialState: Partial<TContext> | string = {},
 		options?: {
 			functionRegistry?: Map<string, any>
 			strict?: boolean
+			signal?: AbortSignal
 		},
 	): Promise<WorkflowResult<TContext>> {
 		const executionId = globalThis.crypto?.randomUUID()
 		const functionRegistry = options?.functionRegistry
+		const signal = options?.signal
 
-		const contextData = typeof initialState === 'string'
-			? this.serializer.deserialize(initialState) as Partial<TContext>
-			: initialState
-
-		const context = new Context<TContext>(contextData)
-		await this.eventBus.emit('workflow:start', { blueprintId: blueprint.id, executionId })
-
-		const analysis = analyzeBlueprint(blueprint)
-		if (!analysis.isDag) {
-			if (options?.strict) {
-				throw new Error(`Workflow '${blueprint.id}' failed strictness check: Cycles are not allowed.`)
+		const throwIfCancelled = () => {
+			if (signal?.aborted) {
+				throw new CancelledWorkflowError('Workflow execution was cancelled.', executionId)
 			}
-			console.warn(`Workflow '${blueprint.id}' contains cycles, which may lead to infinite loops if not handled correctly by edge conditions.`)
 		}
 
-		const allPredecessors = new Map<string, Set<string>>()
-		blueprint.nodes.forEach(node => allPredecessors.set(node.id, new Set()))
-		blueprint.edges.forEach((edge) => {
-			allPredecessors.get(edge.target)?.add(edge.source)
-		})
+		try {
+			throwIfCancelled()
 
-		const completedNodes = new Set<string>()
-		const frontier = new Set<string>(analysis.startNodeIds)
-		const allNodeIds = new Set(blueprint.nodes.map(n => n.id))
-		const errors: WorkflowError[] = []
+			const contextData = typeof initialState === 'string'
+				? this.serializer.deserialize(initialState) as Partial<TContext>
+				: initialState
 
-		while (frontier.size > 0) {
-			const currentJobs = Array.from(frontier)
-			frontier.clear()
+			const context = new Context<TContext>(contextData)
+			await this.eventBus.emit('workflow:start', { blueprintId: blueprint.id, executionId })
 
-			const promises = currentJobs.map(nodeId =>
-				this.executeNode(blueprint, nodeId, context, functionRegistry, executionId)
-					.then(result => ({ status: 'fulfilled' as const, value: { nodeId, result } }))
-					.catch(error => ({ status: 'rejected' as const, reason: { nodeId, error } })),
-			)
-
-			const settledResults = await Promise.all(promises)
-			const completedThisTurn = new Set<string>()
-
-			for (const promiseResult of settledResults) {
-				if (promiseResult.status === 'rejected') {
-					const { nodeId, error } = promiseResult.reason
-					errors.push({
-						nodeId,
-						message: error.message,
-						originalError: error.originalError || error,
-					})
-					console.error(`Path halted at node '${nodeId}' due to error:`, error.originalError || error)
-					continue
+			const analysis = analyzeBlueprint(blueprint)
+			if (!analysis.isDag) {
+				if (options?.strict) {
+					throw new Error(`Workflow '${blueprint.id}' failed strictness check: Cycles are not allowed.`)
 				}
+				console.warn(`Workflow '${blueprint.id}' contains cycles.`)
+			}
 
-				const { nodeId, result } = promiseResult.value
-				completedNodes.add(nodeId)
-				completedThisTurn.add(nodeId)
+			const dynamicBlueprint = JSON.parse(JSON.stringify(blueprint)) as WorkflowBlueprint
+			const allPredecessors = new Map<string, Set<string>>()
+			dynamicBlueprint.nodes.forEach(node => allPredecessors.set(node.id, new Set()))
+			dynamicBlueprint.edges.forEach((edge) => {
+				allPredecessors.get(edge.target)?.add(edge.source)
+			})
 
-				const nextNodeCandidates = await this.determineNextNodes(blueprint, nodeId, result, context)
+			const completedNodes = new Set<string>()
+			const frontier = new Set<string>(analysis.startNodeIds)
+			const allNodeIds = new Set(dynamicBlueprint.nodes.map(n => n.id))
+			const errors: WorkflowError[] = []
 
-				for (const { node: nextNode, edge } of nextNodeCandidates) {
-					if (completedNodes.has(nextNode.id))
+			while (frontier.size > 0) {
+				throwIfCancelled()
+
+				const currentJobs = Array.from(frontier)
+				frontier.clear()
+
+				const promises = currentJobs.map(nodeId =>
+					this.executeNode(dynamicBlueprint, nodeId, context, functionRegistry, executionId, signal)
+						.then(result => ({ status: 'fulfilled' as const, value: { nodeId, result } }))
+						.catch(error => ({ status: 'rejected' as const, reason: { nodeId, error } })),
+				)
+
+				const settledResults = await Promise.all(promises)
+				const completedThisTurn = new Set<string>()
+
+				for (const promiseResult of settledResults) {
+					if (promiseResult.status === 'rejected') {
+						const { nodeId, error } = promiseResult.reason
+						if (error instanceof CancelledWorkflowError)
+							throw error
+						errors.push({ nodeId, message: error.message, originalError: error.originalError || error })
 						continue
-
-					await this._applyEdgeTransform(edge, result, nextNode, context)
-
-					const requiredPredecessors = allPredecessors.get(nextNode.id)!
-					const joinStrategy = nextNode.config?.joinStrategy || 'all'
-
-					let isReady = false
-					if (joinStrategy === 'any') {
-						isReady = [...requiredPredecessors].some(p => completedThisTurn.has(p))
-					}
-					else {
-						isReady = [...requiredPredecessors].every(p => completedNodes.has(p))
 					}
 
-					if (isReady) {
-						frontier.add(nextNode.id)
+					const { nodeId, result } = promiseResult.value
+					completedNodes.add(nodeId)
+					completedThisTurn.add(nodeId)
+
+					if (result.dynamicNodes && result.dynamicNodes.length > 0) {
+						const gatherNodeId = result.output?.gatherNodeId
+						for (const dynamicNode of result.dynamicNodes) {
+							dynamicBlueprint.nodes.push(dynamicNode)
+							allNodeIds.add(dynamicNode.id)
+							allPredecessors.set(dynamicNode.id, new Set([nodeId]))
+							if (gatherNodeId) {
+								allPredecessors.get(gatherNodeId)?.add(dynamicNode.id)
+							}
+							frontier.add(dynamicNode.id)
+						}
+					}
+
+					const nextNodeCandidates = await this.determineNextNodes(dynamicBlueprint, nodeId, result, context)
+					for (const { node: nextNode, edge } of nextNodeCandidates) {
+						if (completedNodes.has(nextNode.id))
+							continue
+
+						await this._applyEdgeTransform(edge, result, nextNode, context)
+						const requiredPredecessors = allPredecessors.get(nextNode.id)!
+						const joinStrategy = nextNode.config?.joinStrategy || 'all'
+						const isReady = joinStrategy === 'any'
+							? [...requiredPredecessors].some(p => completedThisTurn.has(p))
+							: [...requiredPredecessors].every(p => completedNodes.has(p))
+
+						if (isReady)
+							frontier.add(nextNode.id)
 					}
 				}
 			}
-		}
 
-		let finalStatus: WorkflowResult['status'] = 'completed'
-		if (errors.length > 0) {
-			finalStatus = 'failed'
-		}
-		else if (completedNodes.size < allNodeIds.size) {
-			const remainingNodes = [...allNodeIds].filter(id => !completedNodes.has(id))
-			console.warn(`Workflow '${blueprint.id}' finished, but some nodes were not executed (deadlock or failed branch).`, remainingNodes)
-			await this.eventBus.emit('workflow:stall', { blueprintId: blueprint.id, executionId, remainingNodes })
-			finalStatus = 'stalled'
-		}
+			let finalStatus: WorkflowResult['status'] = 'completed'
+			if (errors.length > 0) {
+				finalStatus = 'failed'
+			}
+			else if (completedNodes.size < allNodeIds.size) {
+				const remainingNodes = [...allNodeIds].filter(id => !completedNodes.has(id))
+				console.warn(`Workflow '${blueprint.id}' finished, but some nodes were not executed (deadlock or failed branch).`, remainingNodes)
+				await this.eventBus.emit('workflow:stall', { blueprintId: blueprint.id, executionId, remainingNodes })
+				finalStatus = 'stalled'
+			}
 
-		await this.eventBus.emit('workflow:finish', { blueprintId: blueprint.id, executionId, status: finalStatus, errors })
-
-		const finalContextJSON = context.toJSON() as TContext
-		return {
-			context: finalContextJSON,
-			serializedContext: this.serializer.serialize(finalContextJSON),
-			status: finalStatus,
-			errors: errors.length > 0 ? errors : undefined,
+			await this.eventBus.emit('workflow:finish', { blueprintId: blueprint.id, executionId, status: finalStatus, errors })
+			const finalContextJSON = context.toJSON() as TContext
+			return {
+				context: finalContextJSON,
+				serializedContext: this.serializer.serialize(finalContextJSON),
+				status: finalStatus,
+				errors: errors.length > 0 ? errors : undefined,
+			}
+		}
+		catch (error) {
+			if (error instanceof CancelledWorkflowError) {
+				await this.eventBus.emit('workflow:finish', { blueprintId: blueprint.id, executionId, status: 'cancelled', error })
+				return { context: {} as TContext, serializedContext: '{}', status: 'cancelled' }
+			}
+			throw error
 		}
 	}
 
-	/** Mode 2: Acts as a distributed worker to execute a single node. */
-	async executeNode(blueprint: WorkflowBlueprint, nodeId: string, context: ContextImplementation<TContext>, functionRegistry?: Map<string, any>, executionId?: string): Promise<NodeResult> {
+	async executeNode(blueprint: WorkflowBlueprint, nodeId: string, context: ContextImplementation<TContext>, functionRegistry?: Map<string, any>, executionId?: string, signal?: AbortSignal): Promise<NodeResult> {
 		const nodeDef = blueprint.nodes.find(n => n.id === nodeId)
 		if (!nodeDef) {
 			throw new NodeExecutionError(`Node '${nodeId}' not found in blueprint.`, nodeId, blueprint.id, undefined, executionId)
 		}
 
-		// This function contains the core execution logic, including retries and internal fallbacks.
-		// It is wrapped by the external fallback handler and then by middleware.
 		const executionFn = async (def: NodeDefinition): Promise<NodeResult> => {
-			return this._orchestrateNodeExecution(blueprint.id, def, context, functionRegistry, executionId)
+			return this._orchestrateNodeExecution(blueprint.id, def, context, functionRegistry, executionId, signal)
 		}
 
-		// This function adds the runtime-level (external) fallback mechanism. If the primary
-		// execution fails, it will attempt to run a different node implementation.
 		const executionWithFallbackFn = async (): Promise<NodeResult> => {
 			try {
 				return await executionFn(nodeDef)
 			}
 			catch (error) {
-				// The primary execution (including all its retries and internal fallbacks) failed.
-				// Now, check for an external, swappable fallback node.
 				if (nodeDef.config?.fallback) {
 					await this.eventBus.emit('node:fallback', { blueprintId: blueprint.id, nodeId, executionId, fallback: nodeDef.config.fallback })
-					// Define the fallback node. Ensure it does not retry.
 					const fallbackNodeDef: NodeDefinition = { ...nodeDef, uses: nodeDef.config.fallback, config: { maxRetries: 1 } }
-					// Execute the fallback node. If this fails, the error will propagate.
 					return executionFn(fallbackNodeDef)
 				}
-				// No external fallback was defined, so re-throw the final error.
 				throw error
 			}
 		}
@@ -203,8 +215,6 @@ export class FlowcraftRuntime<TContext extends Record<string, any>, TDependencie
 		const afterHooks = this.middleware.map(m => m.afterNode).filter((hook): hook is NonNullable<Middleware['afterNode']> => !!hook)
 		const aroundHooks = this.middleware.map(m => m.aroundNode).filter((hook): hook is NonNullable<Middleware['aroundNode']> => !!hook)
 
-		// The core function that will be wrapped by the `aroundNode` middleware.
-		// It includes before/after hooks and the execution with its fallback.
 		const coreExecutionFn = async (): Promise<NodeResult> => {
 			let result: NodeResult | undefined
 			let error: Error | undefined
@@ -222,7 +232,6 @@ export class FlowcraftRuntime<TContext extends Record<string, any>, TDependencie
 			}
 		}
 
-		// Compose the `aroundNode` middleware hooks into a chain.
 		let executionChain: () => Promise<NodeResult> = coreExecutionFn
 		for (let i = aroundHooks.length - 1; i >= 0; i--) {
 			const hook = aroundHooks[i]
@@ -323,13 +332,12 @@ export class FlowcraftRuntime<TContext extends Record<string, any>, TDependencie
 	 * This method correctly implements the `prep`/`exec`/`post` lifecycle,
 	 * ensuring that only the `exec` phase is retried.
 	 */
-	private async _orchestrateNodeExecution(blueprintId: string, nodeDef: NodeDefinition, contextImpl: ContextImplementation<TContext>, functionRegistry?: Map<string, any>, executionId?: string): Promise<NodeResult> {
-		if (nodeDef.uses === 'batch-scatter' || nodeDef.uses === 'batch-gather') {
-			console.log(`[Runtime] Executing built-in: ${nodeDef.uses} for node ${nodeDef.id}`)
-			// Placeholder logic for built-in nodes
-			return nodeDef.uses === 'batch-scatter'
-				? { output: { status: 'scattered', count: 0 } }
-				: { output: [] }
+	private async _orchestrateNodeExecution(blueprintId: string, nodeDef: NodeDefinition, contextImpl: ContextImplementation<TContext>, functionRegistry?: Map<string, any>, executionId?: string, signal?: AbortSignal): Promise<NodeResult> {
+		signal?.throwIfAborted()
+
+		// --- Built-in Node Logic ---
+		if (nodeDef.uses.startsWith('batch-') || nodeDef.uses.startsWith('loop-')) {
+			return this._executeBuiltInNode(nodeDef, contextImpl)
 		}
 
 		const implementation = (functionRegistry?.get(nodeDef.uses) || this.registry[nodeDef.uses])
@@ -343,12 +351,12 @@ export class FlowcraftRuntime<TContext extends Record<string, any>, TDependencie
 			input: await this._resolveNodeInput(nodeDef, nodeApiContext),
 			params: nodeDef.params || {},
 			dependencies: this.dependencies,
+			signal,
 		}
 
 		const maxRetries = nodeDef.config?.maxRetries ?? 1
 		let lastError: any
 
-		// --- NodeFunction Execution ---
 		if (!isNodeClass(implementation)) {
 			for (let attempt = 1; attempt <= maxRetries; attempt++) {
 				try {
@@ -366,19 +374,15 @@ export class FlowcraftRuntime<TContext extends Record<string, any>, TDependencie
 			throw lastError
 		}
 
-		// --- BaseNode Execution Lifecycle ---
 		const instance = new implementation(nodeDef.params) // eslint-disable-line new-cap
-
-		// Prep
 		const prepResult = await instance.prep(nodeContext)
 		let execResult: Omit<NodeResult, 'error'>
 
-		// Exec (retried)
 		for (let attempt = 1; attempt <= maxRetries; attempt++) {
 			try {
 				execResult = await instance.exec(prepResult, nodeContext)
-				lastError = undefined // Clear error on success
-				break // Exit retry loop on success
+				lastError = undefined
+				break
 			}
 			catch (error) {
 				lastError = error
@@ -390,13 +394,54 @@ export class FlowcraftRuntime<TContext extends Record<string, any>, TDependencie
 			}
 		}
 
-		// Fallback (runs if all exec attempts failed)
 		if (lastError) {
-			// If the fallback itself throws, the error will propagate naturally
 			execResult = await instance.fallback(lastError, nodeContext)
 		}
 
-		// Post (runs once with the result of a successful exec or fallback)
 		return await instance.post(execResult!, nodeContext)
+	}
+
+	private async _executeBuiltInNode(nodeDef: NodeDefinition, contextImpl: ContextImplementation<TContext>): Promise<NodeResult> {
+		const context = contextImpl.type === 'sync' ? new AsyncContextView(contextImpl) : contextImpl
+		const { params = {}, id, inputs } = nodeDef
+
+		switch (nodeDef.uses) {
+			case 'batch-scatter': {
+				const inputArray = (await context.get(inputs as any)) || []
+				if (!Array.isArray(inputArray))
+					throw new Error(`Input for batch-scatter node '${id}' must be an array.`)
+
+				const batchId = globalThis.crypto.randomUUID()
+				const dynamicNodes: NodeDefinition[] = []
+
+				for (let i = 0; i < inputArray.length; i++) {
+					const item = inputArray[i]
+					const itemInputKey = `${id}_${batchId}_item_${i}`
+					await context.set(itemInputKey as any, item)
+					dynamicNodes.push({
+						id: `${params.workerUsesKey}_${batchId}_${i}`,
+						uses: params.workerUsesKey,
+						inputs: itemInputKey,
+					})
+				}
+				const gatherNodeId = params.gatherNodeId
+				return { dynamicNodes, output: { gatherNodeId } }
+			}
+
+			case 'batch-gather': {
+				// This node is primarily a synchronization point. The orchestrator's join logic
+				// does the heavy lifting. It can be extended to aggregate results in the future.
+				return { output: {} }
+			}
+
+			case 'loop-controller': {
+				const contextData = await context.toJSON()
+				const shouldContinue = !!this.evaluator.evaluate(params.condition, contextData)
+				return { action: shouldContinue ? 'continue' : 'break' }
+			}
+
+			default:
+				throw new FatalNodeExecutionError(`Unknown built-in node type: '${nodeDef.uses}'`, id, '')
+		}
 	}
 }
