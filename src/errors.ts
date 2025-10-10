@@ -1,52 +1,35 @@
-/**
- * Error thrown when a node in a workflow fails during execution.
- * Provides detailed information about which node failed and the context.
- */
+/** Error thrown when a node fails during execution. */
 export class NodeExecutionError extends Error {
 	constructor(
 		message: string,
 		public readonly nodeId: string,
 		public readonly blueprintId: string,
-		public readonly executionId: string,
 		public readonly originalError?: Error,
+		public readonly executionId?: string,
 	) {
-		const combinedMessage = originalError
-			? `${message}: ${originalError.message}`
-			: message
-
-		super(combinedMessage)
+		super(message)
 		this.name = 'NodeExecutionError'
-		if (originalError?.stack)
-			this.stack = `${this.stack}\nCaused by: ${originalError.stack}`
 	}
 }
 
-/**
- * Error thrown when a workflow is gracefully aborted via an AbortSignal.
- */
+/** Error thrown when a workflow is gracefully aborted. */
 export class CancelledWorkflowError extends Error {
-	constructor(
-		message = 'Workflow execution was cancelled',
-		public readonly executionId: string,
-	) {
+	constructor(message = 'Workflow execution was cancelled.', public readonly executionId?: string) {
 		super(message)
 		this.name = 'CancelledWorkflowError'
 	}
 }
 
-/**
- * Error thrown when a node encounters a non-recoverable failure that should immediately halt the workflow,
- * bypassing retries and fallbacks.
- */
+/** Error thrown for a non-recoverable failure that should halt the workflow immediately. */
 export class FatalNodeExecutionError extends NodeExecutionError {
 	constructor(
 		message: string,
 		nodeId: string,
 		blueprintId: string,
-		executionId: string,
 		originalError?: Error,
+		executionId?: string,
 	) {
-		super(message, nodeId, blueprintId, executionId, originalError)
+		super(message, nodeId, blueprintId, originalError, executionId)
 		this.name = 'FatalNodeExecutionError'
 	}
 }
