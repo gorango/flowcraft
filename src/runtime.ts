@@ -186,7 +186,15 @@ export class FlowcraftRuntime<TContext extends Record<string, any>, TDependencie
 		}
 	}
 
-	async executeNode(blueprint: WorkflowBlueprint, nodeId: string, context: ContextImplementation<TContext>, allPredecessors?: Map<string, Set<string>>, functionRegistry?: Map<string, any>, executionId?: string, signal?: AbortSignal): Promise<NodeResult> {
+	async executeNode(
+		blueprint: WorkflowBlueprint,
+		nodeId: string,
+		context: ContextImplementation<TContext>,
+		allPredecessors?: Map<string, Set<string>>,
+		functionRegistry?: Map<string, any>,
+		executionId?: string,
+		signal?: AbortSignal,
+	): Promise<NodeResult> {
 		const nodeDef = blueprint.nodes.find(n => n.id === nodeId)
 		if (!nodeDef) {
 			throw new NodeExecutionError(`Node '${nodeId}' not found in blueprint.`, nodeId, blueprint.id, undefined, executionId)
@@ -254,7 +262,12 @@ export class FlowcraftRuntime<TContext extends Record<string, any>, TDependencie
 	}
 
 	/** Determines the next nodes to execute based on the result of the current node. */
-	async determineNextNodes(blueprint: WorkflowBlueprint, nodeId: string, result: NodeResult, context: ContextImplementation<TContext>): Promise<{ node: NodeDefinition, edge: EdgeDefinition }[]> {
+	async determineNextNodes(
+		blueprint: WorkflowBlueprint,
+		nodeId: string,
+		result: NodeResult,
+		context: ContextImplementation<TContext>,
+	): Promise<{ node: NodeDefinition, edge: EdgeDefinition }[]> {
 		const outgoingEdges = blueprint.edges.filter(edge => edge.source === nodeId)
 		const matched: { node: NodeDefinition, edge: EdgeDefinition }[] = []
 
@@ -292,14 +305,19 @@ export class FlowcraftRuntime<TContext extends Record<string, any>, TDependencie
 	}
 
 	/** Applies an edge's transform expression to the data flow. */
-	private async _applyEdgeTransform(edge: EdgeDefinition, sourceResult: NodeResult, targetNode: NodeDefinition, context: ContextImplementation<TContext>): Promise<void> {
+	private async _applyEdgeTransform(
+		edge: EdgeDefinition,
+		sourceResult: NodeResult,
+		targetNode: NodeDefinition,
+		context: ContextImplementation<TContext>,
+	): Promise<void> {
 		const asyncContext = context.type === 'sync' ? new AsyncContextView(context) : context
 
 		const finalInput = edge.transform
 			? this.evaluator.evaluate(edge.transform, {
-					input: sourceResult.output,
-					context: await asyncContext.toJSON(),
-				})
+				input: sourceResult.output,
+				context: await asyncContext.toJSON(),
+			})
 			: sourceResult.output
 
 		if (!targetNode.inputs) {
@@ -310,7 +328,11 @@ export class FlowcraftRuntime<TContext extends Record<string, any>, TDependencie
 	}
 
 	/** Resolves the 'inputs' mapping for a node before execution. */
-	private async _resolveNodeInput(nodeDef: NodeDefinition, context: IAsyncContext<TContext>, allPredecessors?: Map<string, Set<string>>): Promise<any> {
+	private async _resolveNodeInput(
+		nodeDef: NodeDefinition,
+		context: IAsyncContext<TContext>,
+		allPredecessors?: Map<string, Set<string>>,
+	): Promise<any> {
 		// 1. Handle explicit `inputs` mapping first. This always takes precedence.
 		if (nodeDef.inputs) {
 			if (typeof nodeDef.inputs === 'string')
@@ -345,7 +367,15 @@ export class FlowcraftRuntime<TContext extends Record<string, any>, TDependencie
 	 * This method correctly implements the `prep`/`exec`/`post` lifecycle,
 	 * ensuring that only the `exec` phase is retried.
 	 */
-	private async _orchestrateNodeExecution(blueprintId: string, nodeDef: NodeDefinition, contextImpl: ContextImplementation<TContext>, allPredecessors?: Map<string, Set<string>>, functionRegistry?: Map<string, any>, executionId?: string, signal?: AbortSignal): Promise<NodeResult> {
+	private async _orchestrateNodeExecution(
+		blueprintId: string,
+		nodeDef: NodeDefinition,
+		contextImpl: ContextImplementation<TContext>,
+		allPredecessors?: Map<string, Set<string>>,
+		functionRegistry?: Map<string, any>,
+		executionId?: string,
+		signal?: AbortSignal,
+	): Promise<NodeResult> {
 		signal?.throwIfAborted()
 
 		// --- Built-in Node Logic ---
@@ -414,7 +444,10 @@ export class FlowcraftRuntime<TContext extends Record<string, any>, TDependencie
 		return await instance.post(execResult!, nodeContext)
 	}
 
-	private async _executeBuiltInNode(nodeDef: NodeDefinition, contextImpl: ContextImplementation<TContext>): Promise<NodeResult> {
+	private async _executeBuiltInNode(
+		nodeDef: NodeDefinition,
+		contextImpl: ContextImplementation<TContext>,
+	): Promise<NodeResult> {
 		const context = contextImpl.type === 'sync' ? new AsyncContextView(contextImpl) : contextImpl
 		const { params = {}, id, inputs } = nodeDef
 

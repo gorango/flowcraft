@@ -1,12 +1,168 @@
-import { describe, it } from 'vitest'
+import type { ISyncContext, NodeContext, NodeResult } from '../src/types'
+import { describe, expect, it } from 'vitest'
+import { AsyncContextView } from '../src/context'
+import { BaseNode } from '../src/node'
 
-describe('BaseNode Lifecycle', () => {
-	it('should call `prep`, `exec`, and `post` in order for a successful execution', () => { })
-	it('should call `prep` only once, even if `exec` fails', () => { })
-	it('should not call `post` if `exec` fails and there is no fallback', () => { })
-	it('should call `fallback` if `exec` fails after all retries', () => { })
-	it('should call `post` with the result of `fallback` if it succeeds', () => { })
-	it('should re-throw the original error from fallback by default', () => { })
-	it('should receive correct `params` in the constructor', () => { })
-	it('should receive the result of `prep` as the first argument to `exec`', () => { })
+class MockSyncContext implements ISyncContext {
+	readonly type = 'sync' as const
+	private data = new Map<string, any>()
+
+	get<K extends string | number>(key: K): any {
+		return this.data.get(String(key))
+	}
+
+	set<K extends string | number>(key: K, value: any): void {
+		this.data.set(String(key), value)
+	}
+
+	has(key: string | number): boolean {
+		return this.data.has(String(key))
+	}
+
+	delete(key: string | number): boolean {
+		return this.data.delete(String(key))
+	}
+
+	toJSON(): Record<string, any> {
+		return Object.fromEntries(this.data)
+	}
+}
+
+describe('BaseNode', () => {
+	class TestNode extends BaseNode {
+		prepCalled = false
+		execCalled = false
+		postCalled = false
+		fallbackCalled = false
+
+		async prep(_context: NodeContext) {
+			this.prepCalled = true
+			return 'prepResult'
+		}
+
+		async exec(_prepResult: any, _context: NodeContext): Promise<Omit<NodeResult, 'error'>> {
+			this.execCalled = true
+			return { output: 'execResult' }
+		}
+
+		async post(_execResult: Omit<NodeResult, 'error'>, _context: NodeContext): Promise<NodeResult> {
+			this.postCalled = true
+			return _execResult
+		}
+
+		async fallback(_error: Error, _context: NodeContext): Promise<Omit<NodeResult, 'error'>> {
+			this.fallbackCalled = true
+			return { output: 'fallbackResult' }
+		}
+	}
+
+	class FailingPrepNode extends BaseNode {
+		postCalled = false
+
+		async prep(_context: NodeContext) {
+			throw new Error('Prep failed')
+		}
+
+		async exec(_prepResult: any, _context: NodeContext): Promise<Omit<NodeResult, 'error'>> {
+			return { output: 'exec' }
+		}
+
+		async post(_execResult: Omit<NodeResult, 'error'>, _context: NodeContext): Promise<NodeResult> {
+			this.postCalled = true
+			throw new Error('Should not be called')
+		}
+	}
+
+	class FailingExecNode extends BaseNode {
+		postCalled = false
+
+		async prep(_context: NodeContext) {
+			return 'prep'
+		}
+
+		async exec(_prepResult: any, _context: NodeContext): Promise<Omit<NodeResult, 'error'>> {
+			throw new Error('Exec failed')
+		}
+
+		async post(_execResult: Omit<NodeResult, 'error'>, _context: NodeContext): Promise<NodeResult> {
+			this.postCalled = true
+			throw new Error('Should not be called')
+		}
+	}
+
+	class FailingExecWithFallbackNode extends BaseNode {
+		fallbackCalled = false
+
+		async prep(_context: NodeContext) {
+			return 'prep'
+		}
+
+		async exec(_prepResult: any, _context: NodeContext): Promise<Omit<NodeResult, 'error'>> {
+			throw new Error('Exec failed')
+		}
+
+		async post(_execResult: Omit<NodeResult, 'error'>, _context: NodeContext): Promise<NodeResult> {
+			return _execResult
+		}
+
+		async fallback(_error: Error, _context: NodeContext): Promise<Omit<NodeResult, 'error'>> {
+			this.fallbackCalled = true
+			return { output: 'fallback' }
+		}
+	}
+
+	it('should call prep, exec, and post in the correct order on success', async () => {
+		const node = new TestNode({})
+		const syncContext = new MockSyncContext()
+		const asyncContext = new AsyncContextView(syncContext)
+		const context: NodeContext = { context: asyncContext, input: {}, params: {}, dependencies: {} }
+		const prepResult = await node.prep(context)
+		await node.exec(prepResult, context)
+		await node.post({ output: 'test' }, context)
+		expect(node.prepCalled).toBe(true)
+		expect(node.execCalled).toBe(true)
+		expect(node.postCalled).toBe(true)
+	})
+
+	it('should not call post if prep fails', async () => {
+		const node = new FailingPrepNode({})
+		const syncContext = new MockSyncContext()
+		const asyncContext = new AsyncContextView(syncContext)
+		const context: NodeContext = { context: asyncContext, input: {}, params: {}, dependencies: {} }
+		await expect(node.prep(context)).rejects.toThrow('Prep failed')
+		expect(node.postCalled).toBe(false)
+	})
+
+	it('should not call post if exec fails and there is no fallback', async () => {
+		const node = new FailingExecNode({})
+		const syncContext = new MockSyncContext()
+		const asyncContext = new AsyncContextView(syncContext)
+		const context: NodeContext = { context: asyncContext, input: {}, params: {}, dependencies: {} }
+		const prepResult = await node.prep(context)
+		await expect(node.exec(prepResult, context)).rejects.toThrow('Exec failed')
+		expect(node.postCalled).toBe(false)
+	})
+
+	it('should call post with the fallback result if exec fails and fallback succeeds', async () => {
+		const node = new FailingExecWithFallbackNode({})
+		const syncContext = new MockSyncContext()
+		const asyncContext = new AsyncContextView(syncContext)
+		const context: NodeContext = { context: asyncContext, input: {}, params: {}, dependencies: {} }
+		const prepResult = await node.prep(context)
+		await expect(node.exec(prepResult, context)).rejects.toThrow('Exec failed')
+		await node.fallback(new Error('Exec failed'), context)
+		const postResult = await node.post({ output: 'fallback' }, context)
+		expect(node.fallbackCalled).toBe(true)
+		expect(postResult.output).toBe('fallback')
+	})
+
+	it('should re-throw the original error if the default fallback is used', async () => {
+		const node = new FailingExecNode({})
+		const syncContext = new MockSyncContext()
+		const asyncContext = new AsyncContextView(syncContext)
+		const context: NodeContext = { context: asyncContext, input: {}, params: {}, dependencies: {} }
+		const prepResult = await node.prep(context)
+		await expect(node.exec(prepResult, context)).rejects.toThrow('Exec failed')
+		await expect(node.fallback(new Error('Exec failed'), context)).rejects.toThrow('Exec failed')
+	})
 })
