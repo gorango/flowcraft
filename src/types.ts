@@ -44,6 +44,8 @@ export interface NodeConfig {
 	timeout?: number
 	/** The `uses` key of another node implementation for fallback. */
 	fallback?: string
+	/** Determines how a node with multiple incoming edges should be triggered. */
+	joinStrategy?: 'all' | 'any'
 }
 
 // =================================================================================

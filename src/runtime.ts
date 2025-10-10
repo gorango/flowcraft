@@ -58,7 +58,6 @@ export class FlowcraftRuntime<TContext extends Record<string, any>, TDependencie
 			console.warn(`Workflow '${blueprint.id}' contains cycles, which may lead to infinite loops if not handled correctly by edge conditions.`)
 		}
 
-		// Pre-process to get all predecessors for each node to handle fan-in correctly.
 		const allPredecessors = new Map<string, Set<string>>()
 		blueprint.nodes.forEach(node => allPredecessors.set(node.id, new Set()))
 		blueprint.edges.forEach((edge) => {
@@ -72,7 +71,7 @@ export class FlowcraftRuntime<TContext extends Record<string, any>, TDependencie
 
 		while (frontier.size > 0) {
 			const currentJobs = Array.from(frontier)
-			frontier.clear() // Consume the current frontier
+			frontier.clear()
 
 			const promises = currentJobs.map(nodeId =>
 				this.executeNode(blueprint, nodeId, context, functionRegistry, executionId)
@@ -81,6 +80,7 @@ export class FlowcraftRuntime<TContext extends Record<string, any>, TDependencie
 			)
 
 			const settledResults = await Promise.all(promises)
+			const completedThisTurn = new Set<string>()
 
 			for (const promiseResult of settledResults) {
 				if (promiseResult.status === 'rejected') {
@@ -93,6 +93,7 @@ export class FlowcraftRuntime<TContext extends Record<string, any>, TDependencie
 
 				const { nodeId, result } = promiseResult.value
 				completedNodes.add(nodeId)
+				completedThisTurn.add(nodeId) // Track nodes completed in the current iteration
 
 				const nextNodes = await this.determineNextNodes(blueprint, nodeId, result, context)
 
@@ -101,9 +102,19 @@ export class FlowcraftRuntime<TContext extends Record<string, any>, TDependencie
 						continue // Already processed
 
 					const requiredPredecessors = allPredecessors.get(nextNode.id)!
-					const areAllPredecessorsDone = [...requiredPredecessors].every(p => completedNodes.has(p))
+					const joinStrategy = nextNode.config?.joinStrategy || 'all'
 
-					if (areAllPredecessorsDone) {
+					let isReady = false
+					if (joinStrategy === 'any') {
+						// Ready if ANY predecessor has just completed. This enables loops and conditional merges.
+						isReady = [...requiredPredecessors].some(p => completedThisTurn.has(p))
+					}
+					else { // Default 'all' strategy
+						// Ready if ALL predecessors have completed over the workflow's lifetime.
+						isReady = [...requiredPredecessors].every(p => completedNodes.has(p))
+					}
+
+					if (isReady) {
 						frontier.add(nextNode.id)
 					}
 				}
@@ -138,44 +149,35 @@ export class FlowcraftRuntime<TContext extends Record<string, any>, TDependencie
 		}
 
 		const isClassBased = isNodeClass(implementation)
-
-		// The single attempt function that will be wrapped by resiliency and middleware.
-		const singleExecutionAttempt = () => this._executeNodeLogic(
-			blueprint.id,
-			nodeDef,
-			context,
-			functionRegistry,
-			executionId,
-		)
+		const singleExecutionAttempt = () => this._executeNodeLogic(blueprint.id, nodeDef, context, functionRegistry, executionId)
 
 		const resilientExecutionFn = async (): Promise<NodeResult> => {
-			// For class-based nodes, resiliency (retry/fallback) is handled inside _executeNodeLogic's exec loop.
-			// For function-based nodes, this wrapper provides the resiliency.
-			const maxRetries = isClassBased ? 1 : (nodeDef.config?.maxRetries ?? 1)
-			let lastError: any
+			// If it's a class, its internal logic in _executeNodeLogic already handles the prep/exec/post
+			// lifecycle and retries ONLY the exec part. The wrapper's job is to call it once.
+			if (isClassBased) {
+				return singleExecutionAttempt()
+			}
 
+			// For simple functions, this wrapper provides the resiliency.
+			const maxRetries = nodeDef.config?.maxRetries ?? 1
+			let lastError: any
 			for (let attempt = 1; attempt <= maxRetries; attempt++) {
 				try {
 					return await singleExecutionAttempt()
 				}
 				catch (error) {
 					lastError = error
-					// Abort retries for fatal errors
-					if (error instanceof FatalNodeExecutionError) {
+					if (error instanceof FatalNodeExecutionError)
 						break
-					}
-					// For class-based nodes, the internal logic emits its own more granular retry events.
-					if (!isClassBased && attempt < maxRetries) {
+					if (attempt < maxRetries) {
 						await this.eventBus.emit('node:retry', { blueprintId: blueprint.id, nodeId, attempt, error, executionId })
 					}
 				}
 			}
 
-			// All retries failed. The fallback logic here only applies to function-based nodes,
-			// as BaseNode has its own internal `fallback()` method handled in _executeNodeLogic.
-			if (!isClassBased && nodeDef.config?.fallback) {
+			if (nodeDef.config?.fallback) {
 				await this.eventBus.emit('node:fallback', { blueprintId: blueprint.id, nodeId, executionId, fallback: nodeDef.config.fallback })
-				const fallbackNodeDef: NodeDefinition = { ...nodeDef, uses: nodeDef.config.fallback, config: { maxRetries: 1 } } // Prevent fallback loops
+				const fallbackNodeDef: NodeDefinition = { ...nodeDef, uses: nodeDef.config.fallback, config: { maxRetries: 1 } }
 				return this._executeNodeLogic(blueprint.id, fallbackNodeDef, context, functionRegistry, executionId)
 			}
 
@@ -251,9 +253,8 @@ export class FlowcraftRuntime<TContext extends Record<string, any>, TDependencie
 			for (const edge of actionSpecificEdges) {
 				if (await evaluateEdge(edge)) {
 					const targetNode = blueprint.nodes.find(n => n.id === edge.target)
-					if (targetNode) {
+					if (targetNode)
 						matchedNodes.push(targetNode)
-					}
 				}
 			}
 		}
@@ -264,9 +265,8 @@ export class FlowcraftRuntime<TContext extends Record<string, any>, TDependencie
 			for (const edge of defaultEdges) {
 				if (await evaluateEdge(edge)) {
 					const targetNode = blueprint.nodes.find(n => n.id === edge.target)
-					if (targetNode) {
+					if (targetNode)
 						matchedNodes.push(targetNode)
-					}
 				}
 			}
 		}
@@ -276,14 +276,10 @@ export class FlowcraftRuntime<TContext extends Record<string, any>, TDependencie
 
 	/** Resolves the 'inputs' mapping for a node before execution. */
 	private async _resolveNodeInput(nodeDef: NodeDefinition, context: IAsyncContext<TContext>): Promise<any> {
-		if (!nodeDef.inputs) {
+		if (!nodeDef.inputs)
 			return undefined
-		}
-		// Case 1: 'inputs' is a string key for a single context value.
-		if (typeof nodeDef.inputs === 'string') {
+		if (typeof nodeDef.inputs === 'string')
 			return await context.get(nodeDef.inputs as any)
-		}
-		// Case 2: 'inputs' is a record mapping input names to context keys.
 		if (typeof nodeDef.inputs === 'object') {
 			const input: Record<string, any> = {}
 			for (const key in nodeDef.inputs) {
@@ -298,10 +294,8 @@ export class FlowcraftRuntime<TContext extends Record<string, any>, TDependencie
 	/** The internal logic that resolves and runs a SINGLE ATTEMPT of the node's implementation. */
 	private async _executeNodeLogic(blueprintId: string, nodeDef: NodeDefinition, contextImpl: ContextImplementation<TContext>, functionRegistry?: Map<string, any>, executionId?: string): Promise<NodeResult> {
 		const implementation = (functionRegistry?.get(nodeDef.uses) || this.registry[nodeDef.uses])
-		if (!implementation) {
-			// This check is redundant due to the check in executeNode, but good for safety.
+		if (!implementation)
 			throw new Error(`Implementation for '${nodeDef.uses}' not found.`)
-		}
 
 		const nodeApiContext = contextImpl.type === 'sync' ? new AsyncContextView(contextImpl) : contextImpl
 
@@ -315,10 +309,8 @@ export class FlowcraftRuntime<TContext extends Record<string, any>, TDependencie
 		if (isNodeClass(implementation)) {
 			const instance = new implementation(nodeDef.params) // eslint-disable-line new-cap
 
-			// Phase 1: prep() runs ONCE.
 			const prepResult = await instance.prep(nodeContext)
 
-			// Phase 2: The retry/fallback logic for the core `exec` method.
 			const maxRetries = nodeDef.config?.maxRetries ?? 1
 			let execResult: Omit<NodeResult, 'error'> | undefined
 			let lastError: any
@@ -326,8 +318,8 @@ export class FlowcraftRuntime<TContext extends Record<string, any>, TDependencie
 			for (let attempt = 1; attempt <= maxRetries; attempt++) {
 				try {
 					execResult = await instance.exec(prepResult, nodeContext)
-					lastError = undefined // Clear error on success
-					break // Exit loop on success
+					lastError = undefined
+					break
 				}
 				catch (error) {
 					lastError = error
@@ -338,16 +330,14 @@ export class FlowcraftRuntime<TContext extends Record<string, any>, TDependencie
 			}
 
 			if (lastError) {
-				// All retries failed, try the instance's own fallback method.
 				execResult = await instance.fallback(lastError, nodeContext)
 			}
 
-			// Phase 3: post() runs ONCE after a successful exec or fallback.
 			return await instance.post(execResult!, nodeContext)
 		}
 		else {
-			// For simple functions, resiliency is handled by the calling `executeNode` method.
-			// This method just performs a single attempt.
+			// For simple functions, this method correctly performs just a single attempt.
+			// The calling `executeNode` method provides the resiliency wrapper.
 			return await implementation(nodeContext)
 		}
 	}

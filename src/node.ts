@@ -35,18 +35,18 @@ export abstract class BaseNode<
 	/**
 	 * Phase 3: Processes the result and saves state. This phase is NOT retried.
 	 * @param execResult The successful result from the `exec` or `fallback` phase.
-	 * @param context The node's execution context.
+	 * @param _context The node's execution context.
 	 */
-	async post(execResult: Omit<NodeResult, 'error'>, context: NodeContext<TContext, TDependencies>): Promise<NodeResult> {
+	async post(execResult: Omit<NodeResult, 'error'>, _context: NodeContext<TContext, TDependencies>): Promise<NodeResult> {
 		return execResult
 	}
 
 	/**
 	 * An optional safety net that runs if all `exec` retries fail.
 	 * @param error The final error from the last `exec` attempt.
-	 * @param context The node's execution context.
+	 * @param _context The node's execution context.
 	 */
-	async fallback(error: Error, context: NodeContext<TContext, TDependencies>): Promise<Omit<NodeResult, 'error'>> {
+	async fallback(error: Error, _context: NodeContext<TContext, TDependencies>): Promise<Omit<NodeResult, 'error'>> {
 		// By default, re-throw the error, failing the node.
 		throw error
 	}

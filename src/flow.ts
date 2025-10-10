@@ -1,11 +1,18 @@
 import type { EdgeDefinition, NodeClass, NodeDefinition, NodeFunction, WorkflowBlueprint } from './types'
 
 /** A type guard to reliably distinguish a NodeClass from a NodeFunction. */
-function isNodeClass(impl: NodeFunction | NodeClass): impl is NodeClass {
+function isNodeClass(impl: any): impl is NodeClass {
 	return typeof impl === 'function' && !!impl.prototype?.exec
 }
 
-export class Flow {
+/**
+ * A fluent API for programmatically constructing a WorkflowBlueprint.
+ * This class is now generic to enable end-to-end type safety.
+ */
+export class Flow<
+	TContext extends Record<string, any> = Record<string, any>,
+	TDependencies extends Record<string, any> = Record<string, any>,
+> {
 	private blueprint: Partial<WorkflowBlueprint>
 	private functionRegistry: Map<string, NodeFunction | NodeClass>
 
@@ -14,21 +21,23 @@ export class Flow {
 		this.functionRegistry = new Map()
 	}
 
-	node(id: string, implementation: NodeFunction | NodeClass, params?: Record<string, any>): this {
+	node(
+		id: string,
+		implementation: NodeFunction<TContext, TDependencies> | NodeClass,
+		params?: Record<string, any>,
+	): this {
 		let usesKey: string
 
 		if (isNodeClass(implementation)) {
-			// Use the class name if available and not a generic name, otherwise generate a stable key.
-			// This is robust against minification and anonymous classes.
 			usesKey = (implementation.name && implementation.name !== 'BaseNode')
 				? implementation.name
 				: `class_${id}_${this.functionRegistry.size}`
 			this.functionRegistry.set(usesKey, implementation)
 		}
 		else {
-			// For functions, we generate a unique key and store the implementation locally.
 			usesKey = `fn_${id}_${this.functionRegistry.size}`
-			this.functionRegistry.set(usesKey, implementation)
+			// use type assertion to store the specific function in the general registry
+			this.functionRegistry.set(usesKey, implementation as NodeFunction)
 		}
 
 		const nodeDef: NodeDefinition = { id, uses: usesKey, params }
@@ -67,7 +76,13 @@ export class Flow {
 	}
 }
 
-/** Helper function to create a new Flow builder instance. */
-export function createFlow(id: string): Flow {
+/**
+ * Helper function to create a new Flow builder instance.
+ * This function is now generic to enable end-to-end type safety.
+ */
+export function createFlow<
+	TContext extends Record<string, any> = Record<string, any>,
+	TDependencies extends Record<string, any> = Record<string, any>,
+>(id: string): Flow<TContext, TDependencies> {
 	return new Flow(id)
 }
