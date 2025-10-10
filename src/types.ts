@@ -131,12 +131,23 @@ export interface RuntimeOptions<TDependencies extends RuntimeDependencies = Runt
 	dependencies?: TDependencies
 	/** A pluggable event bus for observability. */
 	eventBus?: IEventBus
-	/** A pluggable evaluator for edge conditions. */
-	conditionEvaluator?: IConditionEvaluator
+	/** A pluggable evaluator for edge conditions and transforms. */
+	evaluator?: IEvaluator
 	/** An array of middleware to wrap node execution. */
 	middleware?: Middleware[]
 	/** A pluggable serializer for handling complex data types in the context. */
 	serializer?: ISerializer
+}
+
+/** Interface for a pluggable expression evaluator for conditions and transforms. */
+export interface IEvaluator {
+	/**
+	 * Evaluates a string expression against a data context.
+	 * @param expression The string expression to evaluate.
+	 * @param context A key-value object of data to be used in the expression.
+	 * @returns The result of the evaluation.
+	 */
+	evaluate: (expression: string, context: Record<string, any>) => any
 }
 
 /** Interface for a pluggable event bus. */
@@ -148,11 +159,6 @@ export interface IEventBus {
 export interface ISerializer {
 	serialize: (data: Record<string, any>) => string
 	deserialize: (text: string) => Record<string, any>
-}
-
-/** Interface for a pluggable condition evaluator. */
-export interface IConditionEvaluator {
-	evaluate: (condition: string, context: Record<string, any>) => Promise<boolean> | boolean
 }
 
 /** Interface for middleware to handle cross-cutting concerns. */
@@ -174,10 +180,21 @@ export interface Middleware<TContext extends Record<string, any> = Record<string
 	) => Promise<NodeResult>
 }
 
+/** A structured error object returned from a failed workflow execution. */
+export interface WorkflowError {
+	nodeId: string
+	message: string
+	originalError?: any
+}
+
 /** The final result of a workflow execution. */
 export interface WorkflowResult<TContext = any> {
+	/** The final state of the workflow's context. */
 	context: TContext
 	/** The final context state, serialized as a string. */
 	serializedContext: string
-	// ... metadata, status, etc.
+	/** The final status of the workflow. */
+	status: 'completed' | 'failed' | 'stalled'
+	/** An array of errors that occurred during execution. Present if status is 'failed'. */
+	errors?: WorkflowError[]
 }

@@ -1,8 +1,27 @@
 import type { BaseNode } from './node'
-import type { ContextImplementation, EdgeDefinition, IAsyncContext, IConditionEvaluator, IEventBus, ISerializer, Middleware, NodeClass, NodeContext, NodeDefinition, NodeFunction, NodeImplementation, NodeResult, RuntimeOptions, WorkflowBlueprint } from './types'
+import type {
+	ContextImplementation,
+	EdgeDefinition,
+	IAsyncContext,
+	IEvaluator,
+	IEventBus,
+	ISerializer,
+	Middleware,
+	NodeClass,
+	NodeContext,
+	NodeDefinition,
+	NodeFunction,
+	NodeImplementation,
+	NodeResult,
+	RuntimeOptions,
+	WorkflowBlueprint,
+	WorkflowError,
+	WorkflowResult,
+} from './types'
 import { analyzeBlueprint } from './analysis'
 import { AsyncContextView, Context } from './context'
 import { FatalNodeExecutionError, NodeExecutionError } from './errors'
+import { SimpleEvaluator } from './evaluator'
 import { JsonSerializer } from './serializer'
 
 /** A type guard to reliably distinguish a NodeClass from a NodeFunction. */
@@ -20,7 +39,7 @@ export class FlowcraftRuntime<TContext extends Record<string, any>, TDependencie
 	private eventBus: IEventBus
 	private serializer: ISerializer
 	private middleware: Middleware[]
-	private conditionEvaluator?: IConditionEvaluator
+	private evaluator: IEvaluator
 
 	constructor(options: RuntimeOptions<TDependencies>) {
 		this.registry = options.registry || {}
@@ -28,7 +47,7 @@ export class FlowcraftRuntime<TContext extends Record<string, any>, TDependencie
 		this.eventBus = options.eventBus || new NullEventBus()
 		this.serializer = options.serializer || new JsonSerializer()
 		this.middleware = options.middleware || []
-		this.conditionEvaluator = options.conditionEvaluator
+		this.evaluator = options.evaluator || new SimpleEvaluator()
 	}
 
 	/** Mode 1: Acts as a local orchestrator to run a full blueprint. */
@@ -39,7 +58,7 @@ export class FlowcraftRuntime<TContext extends Record<string, any>, TDependencie
 			functionRegistry?: Map<string, any>
 			strict?: boolean
 		},
-	): Promise<any> {
+	): Promise<WorkflowResult<TContext>> {
 		const executionId = globalThis.crypto?.randomUUID()
 		const functionRegistry = options?.functionRegistry
 
@@ -67,7 +86,7 @@ export class FlowcraftRuntime<TContext extends Record<string, any>, TDependencie
 		const completedNodes = new Set<string>()
 		const frontier = new Set<string>(analysis.startNodeIds)
 		const allNodeIds = new Set(blueprint.nodes.map(n => n.id))
-		let executionHasFailed = false
+		const errors: WorkflowError[] = []
 
 		while (frontier.size > 0) {
 			const currentJobs = Array.from(frontier)
@@ -84,33 +103,37 @@ export class FlowcraftRuntime<TContext extends Record<string, any>, TDependencie
 
 			for (const promiseResult of settledResults) {
 				if (promiseResult.status === 'rejected') {
-					executionHasFailed = true
 					const { nodeId, error } = promiseResult.reason
+					errors.push({
+						nodeId,
+						message: error.message,
+						originalError: error.originalError || error,
+					})
 					console.error(`Path halted at node '${nodeId}' due to error:`, error.originalError || error)
-					// Do not add successors for failed nodes.
 					continue
 				}
 
 				const { nodeId, result } = promiseResult.value
 				completedNodes.add(nodeId)
-				completedThisTurn.add(nodeId) // Track nodes completed in the current iteration
+				completedThisTurn.add(nodeId)
 
-				const nextNodes = await this.determineNextNodes(blueprint, nodeId, result, context)
+				const nextNodeCandidates = await this.determineNextNodes(blueprint, nodeId, result, context)
 
-				for (const nextNode of nextNodes) {
+				for (const { node: nextNode, edge } of nextNodeCandidates) {
 					if (completedNodes.has(nextNode.id))
-						continue // Already processed
+						continue
+
+					// Phase 3 Change: Apply edge transform before checking join readiness
+					await this._applyEdgeTransform(edge, result, nextNode, context)
 
 					const requiredPredecessors = allPredecessors.get(nextNode.id)!
 					const joinStrategy = nextNode.config?.joinStrategy || 'all'
 
 					let isReady = false
 					if (joinStrategy === 'any') {
-						// Ready if ANY predecessor has just completed. This enables loops and conditional merges.
 						isReady = [...requiredPredecessors].some(p => completedThisTurn.has(p))
 					}
-					else { // Default 'all' strategy
-						// Ready if ALL predecessors have completed over the workflow's lifetime.
+					else {
 						isReady = [...requiredPredecessors].every(p => completedNodes.has(p))
 					}
 
@@ -121,18 +144,25 @@ export class FlowcraftRuntime<TContext extends Record<string, any>, TDependencie
 			}
 		}
 
-		if (completedNodes.size < allNodeIds.size && !executionHasFailed) {
+		let finalStatus: WorkflowResult['status'] = 'completed'
+		if (errors.length > 0) {
+			finalStatus = 'failed'
+		}
+		else if (completedNodes.size < allNodeIds.size) {
 			const remainingNodes = [...allNodeIds].filter(id => !completedNodes.has(id))
 			console.warn(`Workflow '${blueprint.id}' finished, but some nodes were not executed (deadlock or failed branch).`, remainingNodes)
 			await this.eventBus.emit('workflow:stall', { blueprintId: blueprint.id, executionId, remainingNodes })
+			finalStatus = 'stalled'
 		}
 
-		await this.eventBus.emit('workflow:finish', { blueprintId: blueprint.id, executionId, status: executionHasFailed ? 'failed' : 'completed' })
+		await this.eventBus.emit('workflow:finish', { blueprintId: blueprint.id, executionId, status: finalStatus, errors })
 
-		const finalContextJSON = context.toJSON()
+		const finalContextJSON = context.toJSON() as TContext
 		return {
 			context: finalContextJSON,
 			serializedContext: this.serializer.serialize(finalContextJSON),
+			status: finalStatus,
+			errors: errors.length > 0 ? errors : undefined,
 		}
 	}
 
@@ -143,34 +173,22 @@ export class FlowcraftRuntime<TContext extends Record<string, any>, TDependencie
 			throw new NodeExecutionError(`Node '${nodeId}' not found in blueprint.`, nodeId, blueprint.id, undefined, executionId)
 		}
 
-		const implementation = (functionRegistry?.get(nodeDef.uses) || this.registry[nodeDef.uses])
-		if (!implementation) {
-			throw new NodeExecutionError(`Implementation for '${nodeDef.uses}' not found for node '${nodeId}'.`, nodeId, blueprint.id, undefined, executionId)
-		}
-
-		const isClassBased = isNodeClass(implementation)
-		const singleExecutionAttempt = () => this._executeNodeLogic(blueprint.id, nodeDef, context, functionRegistry, executionId)
-
 		const resilientExecutionFn = async (): Promise<NodeResult> => {
-			// If it's a class, its internal logic in _executeNodeLogic already handles the prep/exec/post
-			// lifecycle and retries ONLY the exec part. The wrapper's job is to call it once.
-			if (isClassBased) {
-				return singleExecutionAttempt()
-			}
-
-			// For simple functions, this wrapper provides the resiliency.
 			const maxRetries = nodeDef.config?.maxRetries ?? 1
 			let lastError: any
+
 			for (let attempt = 1; attempt <= maxRetries; attempt++) {
 				try {
-					return await singleExecutionAttempt()
+					return await this._executeNodeLogic(blueprint.id, nodeDef, context, functionRegistry, executionId)
 				}
 				catch (error) {
 					lastError = error
-					if (error instanceof FatalNodeExecutionError)
+					if (error instanceof FatalNodeExecutionError) {
 						break
+					}
 					if (attempt < maxRetries) {
 						await this.eventBus.emit('node:retry', { blueprintId: blueprint.id, nodeId, attempt, error, executionId })
+						// NOTE: In a real implementation, a `retryDelay` from nodeDef.config would be awaited here.
 					}
 				}
 			}
@@ -181,7 +199,7 @@ export class FlowcraftRuntime<TContext extends Record<string, any>, TDependencie
 				return this._executeNodeLogic(blueprint.id, fallbackNodeDef, context, functionRegistry, executionId)
 			}
 
-			throw lastError // Re-throw final error if no fallback
+			throw lastError
 		}
 
 		const beforeHooks = this.middleware.map(m => m.beforeNode).filter((hook): hook is NonNullable<Middleware['beforeNode']> => !!hook)
@@ -220,58 +238,70 @@ export class FlowcraftRuntime<TContext extends Record<string, any>, TDependencie
 		}
 		catch (error: any) {
 			await this.eventBus.emit('node:error', { blueprintId: blueprint.id, nodeId, error, executionId })
-			if (error instanceof Error) {
-				throw new NodeExecutionError(`Node '${nodeId}' failed execution.`, nodeId, blueprint.id, error, executionId)
-			}
-			throw new NodeExecutionError(`Node '${nodeId}' failed with an unknown error.`, nodeId, blueprint.id, undefined, executionId)
+			const executionError = error instanceof NodeExecutionError
+				? error
+				: new NodeExecutionError(`Node '${nodeId}' failed execution.`, nodeId, blueprint.id, error, executionId)
+			throw executionError
 		}
 	}
 
 	/** Determines the next nodes to execute based on the result of the current node. */
-	async determineNextNodes(blueprint: WorkflowBlueprint, nodeId: string, result: NodeResult, context: ContextImplementation<TContext>): Promise<NodeDefinition[]> {
+	async determineNextNodes(blueprint: WorkflowBlueprint, nodeId: string, result: NodeResult, context: ContextImplementation<TContext>): Promise<{ node: NodeDefinition, edge: EdgeDefinition }[]> {
 		const outgoingEdges = blueprint.edges.filter(edge => edge.source === nodeId)
-		const matchedNodes: NodeDefinition[] = []
+		const matched: { node: NodeDefinition, edge: EdgeDefinition }[] = []
 
 		const evaluateEdge = async (edge: EdgeDefinition): Promise<boolean> => {
-			let conditionMatch = true
-			if (edge.condition) {
-				if (!this.conditionEvaluator) {
-					console.warn(`Edge has condition '${edge.condition}' but no condition evaluator is configured. Skipping.`)
-					conditionMatch = false
-				}
-				else {
-					const contextData = context.type === 'sync' ? context.toJSON() : await context.toJSON()
-					conditionMatch = await this.conditionEvaluator.evaluate(edge.condition, { ...contextData, result })
-				}
-			}
-			return conditionMatch
+			if (!edge.condition)
+				return true
+
+			const contextData = context.type === 'sync' ? context.toJSON() : await context.toJSON()
+			return !!this.evaluator.evaluate(edge.condition, { ...contextData, result })
 		}
 
-		// Pass 1: Look for edges that match the specific action from the result.
 		if (result.action) {
-			const actionSpecificEdges = outgoingEdges.filter(edge => edge.action === result.action)
-			for (const edge of actionSpecificEdges) {
+			const actionEdges = outgoingEdges.filter(edge => edge.action === result.action)
+			for (const edge of actionEdges) {
 				if (await evaluateEdge(edge)) {
 					const targetNode = blueprint.nodes.find(n => n.id === edge.target)
 					if (targetNode)
-						matchedNodes.push(targetNode)
+						matched.push({ node: targetNode, edge })
 				}
 			}
 		}
 
-		// Pass 2: If no action-specific edges were taken, check for "default" edges (no action).
-		if (matchedNodes.length === 0) {
+		if (matched.length === 0) {
 			const defaultEdges = outgoingEdges.filter(edge => !edge.action)
 			for (const edge of defaultEdges) {
 				if (await evaluateEdge(edge)) {
 					const targetNode = blueprint.nodes.find(n => n.id === edge.target)
 					if (targetNode)
-						matchedNodes.push(targetNode)
+						matched.push({ node: targetNode, edge })
 				}
 			}
 		}
 
-		return matchedNodes
+		return matched
+	}
+
+	/** Applies an edge's transform expression to the data flow. */
+	private async _applyEdgeTransform(edge: EdgeDefinition, sourceResult: NodeResult, targetNode: NodeDefinition, context: ContextImplementation<TContext>): Promise<void> {
+		const asyncContext = context.type === 'sync' ? new AsyncContextView(context) : context
+
+		const finalInput = edge.transform
+			? this.evaluator.evaluate(edge.transform, {
+					input: sourceResult.output,
+					context: await asyncContext.toJSON(),
+				})
+			: sourceResult.output
+
+		if (!targetNode.inputs) {
+			const inputKey = `${targetNode.id}_input`
+			await asyncContext.set(inputKey as any, finalInput)
+
+			// Mutate the node definition in memory for this run to add the mapping.
+			// NOTE: This is a simplification; a more robust approach might pass inputs separately.
+			targetNode.inputs = inputKey
+		}
 	}
 
 	/** Resolves the 'inputs' mapping for a node before execution. */
@@ -293,9 +323,22 @@ export class FlowcraftRuntime<TContext extends Record<string, any>, TDependencie
 
 	/** The internal logic that resolves and runs a SINGLE ATTEMPT of the node's implementation. */
 	private async _executeNodeLogic(blueprintId: string, nodeDef: NodeDefinition, contextImpl: ContextImplementation<TContext>, functionRegistry?: Map<string, any>, executionId?: string): Promise<NodeResult> {
+		if (nodeDef.uses === 'batch-scatter' || nodeDef.uses === 'batch-gather') {
+			console.log(`[Runtime] Executing built-in: ${nodeDef.uses} for node ${nodeDef.id}`)
+			if (nodeDef.uses === 'batch-scatter') {
+				// Placeholder logic
+				return { output: { status: 'scattered', count: 0 } }
+			}
+			if (nodeDef.uses === 'batch-gather') {
+				// Placeholder logic
+				return { output: [] }
+			}
+		}
+
 		const implementation = (functionRegistry?.get(nodeDef.uses) || this.registry[nodeDef.uses])
-		if (!implementation)
-			throw new Error(`Implementation for '${nodeDef.uses}' not found.`)
+		if (!implementation) {
+			throw new FatalNodeExecutionError(`Implementation for '${nodeDef.uses}' not found for node '${nodeDef.id}'.`, nodeDef.id, blueprintId, undefined, executionId)
+		}
 
 		const nodeApiContext = contextImpl.type === 'sync' ? new AsyncContextView(contextImpl) : contextImpl
 
@@ -311,33 +354,17 @@ export class FlowcraftRuntime<TContext extends Record<string, any>, TDependencie
 
 			const prepResult = await instance.prep(nodeContext)
 
-			const maxRetries = nodeDef.config?.maxRetries ?? 1
-			let execResult: Omit<NodeResult, 'error'> | undefined
-			let lastError: any
-
-			for (let attempt = 1; attempt <= maxRetries; attempt++) {
-				try {
-					execResult = await instance.exec(prepResult, nodeContext)
-					lastError = undefined
-					break
-				}
-				catch (error) {
-					lastError = error
-					if (attempt < maxRetries) {
-						await this.eventBus.emit('node:retry', { blueprintId, nodeId: nodeDef.id, attempt, error, executionId })
-					}
-				}
+			let execResult: Omit<NodeResult, 'error'>
+			try {
+				execResult = await instance.exec(prepResult, nodeContext)
+			}
+			catch (error: any) {
+				execResult = await instance.fallback(error, nodeContext)
 			}
 
-			if (lastError) {
-				execResult = await instance.fallback(lastError, nodeContext)
-			}
-
-			return await instance.post(execResult!, nodeContext)
+			return await instance.post(execResult, nodeContext)
 		}
 		else {
-			// For simple functions, this method correctly performs just a single attempt.
-			// The calling `executeNode` method provides the resiliency wrapper.
 			return await implementation(nodeContext)
 		}
 	}
