@@ -312,7 +312,9 @@ describe('Flowcraft Runtime', () => {
 
 		it('should call the fallback implementation if all retries are exhausted', async () => {
 			const flow = createFlow('fallback')
-			flow.node('A', async () => { throw new Error('Fail') }, { config: { maxRetries: 2, fallback: 'FallbackNode' } })
+			flow.node('A', async () => {
+				throw new Error('Fail')
+			}, { config: { maxRetries: 2, fallback: 'FallbackNode' } })
 				.node('FallbackNode', async () => ({ output: 'fallback success' }))
 				.edge('A', 'B') // This edge should not be taken
 				.node('B', async () => ({ output: 'B' }))

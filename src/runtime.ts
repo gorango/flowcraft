@@ -89,9 +89,35 @@ export class FlowcraftRuntime<TContext extends Record<string, any>, TDependencie
 			})
 
 			const completedNodes = new Set<string>()
-			const frontier = new Set<string>(analysis.startNodeIds)
+
+			// Collect all nodes that are referenced as fallbacks
+			const fallbackNodeIds = new Set<string>()
+			for (const node of dynamicBlueprint.nodes) {
+				if (node.config?.fallback) {
+					fallbackNodeIds.add(node.config.fallback)
+				}
+			}
+
+			// Handle case where there are no start nodes due to cycles
+			let startNodes = analysis.startNodeIds
+				// Exclude nodes that are only used as fallbacks
+				.filter(nodeId => !fallbackNodeIds.has(nodeId))
+
+			if (startNodes.length === 0 && analysis.cycles.length > 0 && !options?.strict) {
+				// Pick the first node from each cycle to break the deadlock
+				const uniqueStartNodes = new Set<string>()
+				for (const cycle of analysis.cycles) {
+					if (cycle.length > 0) {
+						uniqueStartNodes.add(cycle[0])
+					}
+				}
+				startNodes = Array.from(uniqueStartNodes)
+			}
+
+			const frontier = new Set<string>(startNodes)
 			const allNodeIds = new Set(dynamicBlueprint.nodes.map(n => n.id))
 			const errors: WorkflowError[] = []
+			let anyFallbackExecuted = false
 
 			while (frontier.size > 0) {
 				throwIfCancelled()
@@ -120,11 +146,14 @@ export class FlowcraftRuntime<TContext extends Record<string, any>, TDependencie
 					const { nodeId, result } = promiseResult.value
 					completedNodes.add(nodeId)
 
-					if (result.output !== undefined) {
-						context.set(nodeId as any, result.output)
-					}
+					context.set(nodeId as any, result.output)
 
 					completedThisTurn.add(nodeId)
+
+					// Track if any fallback was executed
+					if (result._fallbackExecuted) {
+						anyFallbackExecuted = true
+					}
 
 					if (result.dynamicNodes && result.dynamicNodes.length > 0) {
 						const gatherNodeId = result.output?.gatherNodeId
@@ -139,20 +168,45 @@ export class FlowcraftRuntime<TContext extends Record<string, any>, TDependencie
 						}
 					}
 
+					// Skip following edges if this result came from a fallback
+					if (result._fallbackExecuted) {
+						continue
+					}
+
 					const nextNodeCandidates = await this.determineNextNodes(dynamicBlueprint, nodeId, result, context)
 					for (const { node: nextNode, edge } of nextNodeCandidates) {
-						if (completedNodes.has(nextNode.id))
-							continue
-
-						await this._applyEdgeTransform(edge, result, nextNode, context)
-						const requiredPredecessors = allPredecessors.get(nextNode.id)!
 						const joinStrategy = nextNode.config?.joinStrategy || 'all'
+
+						// Allow nodes with 'any' join strategy to execute multiple times (for loops)
+						if (joinStrategy !== 'any' && completedNodes.has(nextNode.id)) {
+							continue
+						}
+
+						await this._applyEdgeTransform(edge, result, nextNode, context, allPredecessors)
+						const requiredPredecessors = allPredecessors.get(nextNode.id)!
 						const isReady = joinStrategy === 'any'
 							? [...requiredPredecessors].some(p => completedThisTurn.has(p))
 							: [...requiredPredecessors].every(p => completedNodes.has(p))
 
 						if (isReady)
 							frontier.add(nextNode.id)
+					}
+
+					// For dynamic nodes (which have no outgoing edges), check if any nodes
+					// that list this node as a predecessor are now ready
+					if (nextNodeCandidates.length === 0) {
+						for (const [potentialNextId, predecessors] of allPredecessors) {
+							if (predecessors.has(nodeId) && !completedNodes.has(potentialNextId)) {
+								const joinStrategy = dynamicBlueprint.nodes.find(n => n.id === potentialNextId)?.config?.joinStrategy || 'all'
+								const isReady = joinStrategy === 'any'
+									? [...predecessors].some(p => completedThisTurn.has(p))
+									: [...predecessors].every(p => completedNodes.has(p))
+
+								if (isReady) {
+									frontier.add(potentialNextId)
+								}
+							}
+						}
 					}
 				}
 			}
@@ -162,10 +216,14 @@ export class FlowcraftRuntime<TContext extends Record<string, any>, TDependencie
 				finalStatus = 'failed'
 			}
 			else if (completedNodes.size < allNodeIds.size) {
-				const remainingNodes = [...allNodeIds].filter(id => !completedNodes.has(id))
-				console.warn(`Workflow '${blueprint.id}' finished, but some nodes were not executed (deadlock or failed branch).`, remainingNodes)
-				await this.eventBus.emit('workflow:stall', { blueprintId: blueprint.id, executionId, remainingNodes })
-				finalStatus = 'stalled'
+				// Exclude fallback-only nodes from the stall check
+				const remainingNodes = [...allNodeIds].filter(id => !completedNodes.has(id) && !fallbackNodeIds.has(id))
+				// If a fallback was executed, some nodes may be unreachable - don't mark as stalled
+				if (remainingNodes.length > 0 && !anyFallbackExecuted) {
+					console.warn(`Workflow '${blueprint.id}' finished, but some nodes were not executed (deadlock or failed branch).`, remainingNodes)
+					await this.eventBus.emit('workflow:stall', { blueprintId: blueprint.id, executionId, remainingNodes })
+					finalStatus = 'stalled'
+				}
 			}
 
 			await this.eventBus.emit('workflow:finish', { blueprintId: blueprint.id, executionId, status: finalStatus, errors })
@@ -209,10 +267,26 @@ export class FlowcraftRuntime<TContext extends Record<string, any>, TDependencie
 				return await executionFn(nodeDef)
 			}
 			catch (error) {
-				if (nodeDef.config?.fallback) {
-					await this.eventBus.emit('node:fallback', { blueprintId: blueprint.id, nodeId, executionId, fallback: nodeDef.config.fallback })
-					const fallbackNodeDef: NodeDefinition = { ...nodeDef, uses: nodeDef.config.fallback, config: { maxRetries: 1 } }
-					return executionFn(fallbackNodeDef)
+				// Skip fallback for FatalNodeExecutionError
+				// Check the error itself and any wrapped originalError
+				const isFatal = error instanceof FatalNodeExecutionError
+					|| (error instanceof NodeExecutionError && error.originalError instanceof FatalNodeExecutionError)
+
+				if (isFatal) {
+					throw error
+				}
+
+				const fallbackNodeId = nodeDef.config?.fallback
+				if (fallbackNodeId) {
+					await this.eventBus.emit('node:fallback', { blueprintId: blueprint.id, nodeId, executionId, fallback: fallbackNodeId })
+					const fallbackNode = blueprint.nodes.find(n => n.id === fallbackNodeId)
+					if (!fallbackNode) {
+						throw new NodeExecutionError(`Fallback node '${fallbackNodeId}' not found in blueprint.`, nodeId, blueprint.id, undefined, executionId)
+					}
+					const fallbackNodeDef: NodeDefinition = { ...fallbackNode, config: { ...fallbackNode.config, maxRetries: fallbackNode.config?.maxRetries ?? 1 } }
+					const fallbackResult = await executionFn(fallbackNodeDef)
+					// Mark that this result came from a fallback so we don't follow the original node's outgoing edges
+					return { ...fallbackResult, _fallbackExecuted: true }
 				}
 				throw error
 			}
@@ -310,20 +384,30 @@ export class FlowcraftRuntime<TContext extends Record<string, any>, TDependencie
 		sourceResult: NodeResult,
 		targetNode: NodeDefinition,
 		context: ContextImplementation<TContext>,
+		allPredecessors?: Map<string, Set<string>>,
 	): Promise<void> {
 		const asyncContext = context.type === 'sync' ? new AsyncContextView(context) : context
 
 		const finalInput = edge.transform
-			? this.evaluator.evaluate(edge.transform, {
-				input: sourceResult.output,
-				context: await asyncContext.toJSON(),
-			})
+			? this.evaluator.evaluate(edge.transform, { input: sourceResult.output, context: await asyncContext.toJSON() })
 			: sourceResult.output
 
-		if (!targetNode.inputs) {
-			const inputKey = `${targetNode.id}_input`
-			await asyncContext.set(inputKey as any, finalInput)
+		// Always set the input key for this edge, even if the node has multiple predecessors
+		// For nodes with 'any' join strategy (like loop start nodes), this allows the input
+		// to be updated on each iteration
+		const inputKey = `${targetNode.id}_input`
+		await asyncContext.set(inputKey as any, finalInput)
+
+		// Set inputs for nodes with single predecessor or 'any' join strategy
+		if (targetNode.config?.joinStrategy === 'any') {
+			// For 'any' join strategy, always update inputs (allows re-execution with new input)
 			targetNode.inputs = inputKey
+		}
+		else if (!targetNode.inputs) {
+			const predecessors = allPredecessors?.get(targetNode.id)
+			if (!predecessors || predecessors.size === 1) {
+				targetNode.inputs = inputKey
+			}
 		}
 	}
 

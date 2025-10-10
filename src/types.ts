@@ -59,6 +59,8 @@ export interface NodeResult<TOutput = any> {
 	error?: { message: string, [key: string]: any }
 	/** Allows a node to dynamically schedule new nodes for the orchestrator to execute. */
 	dynamicNodes?: NodeDefinition[]
+	/** Internal flag: Indicates that this result came from a fallback execution. */
+	_fallbackExecuted?: boolean
 }
 
 /** The context object passed to every node's execution logic. */

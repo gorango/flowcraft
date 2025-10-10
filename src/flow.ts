@@ -19,7 +19,7 @@ export class Flow<
 	node(
 		id: string,
 		implementation: NodeFunction<TContext, TDependencies> | NodeClass,
-		params?: Record<string, any>,
+		options?: Omit<NodeDefinition, 'id' | 'uses'>,
 	): this {
 		let usesKey: string
 
@@ -34,7 +34,7 @@ export class Flow<
 			this.functionRegistry.set(usesKey, implementation as NodeFunction)
 		}
 
-		const nodeDef: NodeDefinition = { id, uses: usesKey, params }
+		const nodeDef: NodeDefinition = { id, uses: usesKey, ...options }
 		this.blueprint.nodes!.push(nodeDef)
 		return this
 	}
@@ -118,17 +118,32 @@ export class Flow<
 		const controllerId = `${id}_loop_controller`
 
 		// Add the controller node, which evaluates the loop condition.
+		// Set joinStrategy='any' to allow re-execution on each loop iteration
 		this.blueprint.nodes!.push({
 			id: controllerId,
 			uses: 'loop-controller', // Special built-in node type
 			params: { condition },
+			config: { joinStrategy: 'any' },
 		})
 
 		// Connect the end of the loop body to the controller.
 		this.edge(endNodeId, controllerId)
 
 		// Connect the controller back to the start of the loop if the condition is met.
-		this.edge(controllerId, startNodeId, { action: 'continue' })
+		// Use a transform to pass the end node's value to the start node for the next iteration.
+		this.edge(controllerId, startNodeId, { action: 'continue', transform: `context.${endNodeId}` })
+
+		// Set the start and end nodes to use 'any' join strategy so they can re-execute
+		// Start node: executes when either its initial predecessor OR the loop controller completes
+		// End node: needs to re-execute on each loop iteration
+		const startNode = this.blueprint.nodes!.find(n => n.id === startNodeId)
+		if (startNode) {
+			startNode.config = { ...startNode.config, joinStrategy: 'any' }
+		}
+		const endNode = this.blueprint.nodes!.find(n => n.id === endNodeId)
+		if (endNode) {
+			endNode.config = { ...endNode.config, joinStrategy: 'any' }
+		}
 
 		return this
 	}

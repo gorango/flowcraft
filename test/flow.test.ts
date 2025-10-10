@@ -152,7 +152,7 @@ describe('Flow Builder', () => {
 			const blueprint = flow.toBlueprint()
 			expect(blueprint.edges).toHaveLength(3)
 			expect(blueprint.edges[1]).toEqual({ source: 'end', target: 'loop1_loop_controller' })
-			expect(blueprint.edges[2]).toEqual({ source: 'loop1_loop_controller', target: 'start', action: 'continue' })
+			expect(blueprint.edges[2]).toEqual({ source: 'loop1_loop_controller', target: 'start', action: 'continue', transform: 'context.end' })
 		})
 	})
 })
