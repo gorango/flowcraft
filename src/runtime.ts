@@ -123,7 +123,6 @@ export class FlowcraftRuntime<TContext extends Record<string, any>, TDependencie
 					if (completedNodes.has(nextNode.id))
 						continue
 
-					// Phase 3 Change: Apply edge transform before checking join readiness
 					await this._applyEdgeTransform(edge, result, nextNode, context)
 
 					const requiredPredecessors = allPredecessors.get(nextNode.id)!
@@ -173,45 +172,45 @@ export class FlowcraftRuntime<TContext extends Record<string, any>, TDependencie
 			throw new NodeExecutionError(`Node '${nodeId}' not found in blueprint.`, nodeId, blueprint.id, undefined, executionId)
 		}
 
-		const resilientExecutionFn = async (): Promise<NodeResult> => {
-			const maxRetries = nodeDef.config?.maxRetries ?? 1
-			let lastError: any
+		// This function contains the core execution logic, including retries and internal fallbacks.
+		// It is wrapped by the external fallback handler and then by middleware.
+		const executionFn = async (def: NodeDefinition): Promise<NodeResult> => {
+			return this._orchestrateNodeExecution(blueprint.id, def, context, functionRegistry, executionId)
+		}
 
-			for (let attempt = 1; attempt <= maxRetries; attempt++) {
-				try {
-					return await this._executeNodeLogic(blueprint.id, nodeDef, context, functionRegistry, executionId)
-				}
-				catch (error) {
-					lastError = error
-					if (error instanceof FatalNodeExecutionError) {
-						break
-					}
-					if (attempt < maxRetries) {
-						await this.eventBus.emit('node:retry', { blueprintId: blueprint.id, nodeId, attempt, error, executionId })
-						// NOTE: In a real implementation, a `retryDelay` from nodeDef.config would be awaited here.
-					}
-				}
+		// This function adds the runtime-level (external) fallback mechanism. If the primary
+		// execution fails, it will attempt to run a different node implementation.
+		const executionWithFallbackFn = async (): Promise<NodeResult> => {
+			try {
+				return await executionFn(nodeDef)
 			}
-
-			if (nodeDef.config?.fallback) {
-				await this.eventBus.emit('node:fallback', { blueprintId: blueprint.id, nodeId, executionId, fallback: nodeDef.config.fallback })
-				const fallbackNodeDef: NodeDefinition = { ...nodeDef, uses: nodeDef.config.fallback, config: { maxRetries: 1 } }
-				return this._executeNodeLogic(blueprint.id, fallbackNodeDef, context, functionRegistry, executionId)
+			catch (error) {
+				// The primary execution (including all its retries and internal fallbacks) failed.
+				// Now, check for an external, swappable fallback node.
+				if (nodeDef.config?.fallback) {
+					await this.eventBus.emit('node:fallback', { blueprintId: blueprint.id, nodeId, executionId, fallback: nodeDef.config.fallback })
+					// Define the fallback node. Ensure it does not retry.
+					const fallbackNodeDef: NodeDefinition = { ...nodeDef, uses: nodeDef.config.fallback, config: { maxRetries: 1 } }
+					// Execute the fallback node. If this fails, the error will propagate.
+					return executionFn(fallbackNodeDef)
+				}
+				// No external fallback was defined, so re-throw the final error.
+				throw error
 			}
-
-			throw lastError
 		}
 
 		const beforeHooks = this.middleware.map(m => m.beforeNode).filter((hook): hook is NonNullable<Middleware['beforeNode']> => !!hook)
 		const afterHooks = this.middleware.map(m => m.afterNode).filter((hook): hook is NonNullable<Middleware['afterNode']> => !!hook)
 		const aroundHooks = this.middleware.map(m => m.aroundNode).filter((hook): hook is NonNullable<Middleware['aroundNode']> => !!hook)
 
+		// The core function that will be wrapped by the `aroundNode` middleware.
+		// It includes before/after hooks and the execution with its fallback.
 		const coreExecutionFn = async (): Promise<NodeResult> => {
 			let result: NodeResult | undefined
 			let error: Error | undefined
 			try {
 				for (const hook of beforeHooks) await hook(context, nodeId)
-				result = await resilientExecutionFn()
+				result = await executionWithFallbackFn()
 				return result
 			}
 			catch (e: any) {
@@ -223,6 +222,7 @@ export class FlowcraftRuntime<TContext extends Record<string, any>, TDependencie
 			}
 		}
 
+		// Compose the `aroundNode` middleware hooks into a chain.
 		let executionChain: () => Promise<NodeResult> = coreExecutionFn
 		for (let i = aroundHooks.length - 1; i >= 0; i--) {
 			const hook = aroundHooks[i]
@@ -297,9 +297,6 @@ export class FlowcraftRuntime<TContext extends Record<string, any>, TDependencie
 		if (!targetNode.inputs) {
 			const inputKey = `${targetNode.id}_input`
 			await asyncContext.set(inputKey as any, finalInput)
-
-			// Mutate the node definition in memory for this run to add the mapping.
-			// NOTE: This is a simplification; a more robust approach might pass inputs separately.
 			targetNode.inputs = inputKey
 		}
 	}
@@ -321,18 +318,18 @@ export class FlowcraftRuntime<TContext extends Record<string, any>, TDependencie
 		return undefined
 	}
 
-	/** The internal logic that resolves and runs a SINGLE ATTEMPT of the node's implementation. */
-	private async _executeNodeLogic(blueprintId: string, nodeDef: NodeDefinition, contextImpl: ContextImplementation<TContext>, functionRegistry?: Map<string, any>, executionId?: string): Promise<NodeResult> {
+	/**
+	 * Orchestrates the complete, resilient execution of a single node implementation.
+	 * This method correctly implements the `prep`/`exec`/`post` lifecycle,
+	 * ensuring that only the `exec` phase is retried.
+	 */
+	private async _orchestrateNodeExecution(blueprintId: string, nodeDef: NodeDefinition, contextImpl: ContextImplementation<TContext>, functionRegistry?: Map<string, any>, executionId?: string): Promise<NodeResult> {
 		if (nodeDef.uses === 'batch-scatter' || nodeDef.uses === 'batch-gather') {
 			console.log(`[Runtime] Executing built-in: ${nodeDef.uses} for node ${nodeDef.id}`)
-			if (nodeDef.uses === 'batch-scatter') {
-				// Placeholder logic
-				return { output: { status: 'scattered', count: 0 } }
-			}
-			if (nodeDef.uses === 'batch-gather') {
-				// Placeholder logic
-				return { output: [] }
-			}
+			// Placeholder logic for built-in nodes
+			return nodeDef.uses === 'batch-scatter'
+				? { output: { status: 'scattered', count: 0 } }
+				: { output: [] }
 		}
 
 		const implementation = (functionRegistry?.get(nodeDef.uses) || this.registry[nodeDef.uses])
@@ -341,7 +338,6 @@ export class FlowcraftRuntime<TContext extends Record<string, any>, TDependencie
 		}
 
 		const nodeApiContext = contextImpl.type === 'sync' ? new AsyncContextView(contextImpl) : contextImpl
-
 		const nodeContext: NodeContext<TContext, TDependencies> = {
 			context: nodeApiContext,
 			input: await this._resolveNodeInput(nodeDef, nodeApiContext),
@@ -349,23 +345,58 @@ export class FlowcraftRuntime<TContext extends Record<string, any>, TDependencie
 			dependencies: this.dependencies,
 		}
 
-		if (isNodeClass(implementation)) {
-			const instance = new implementation(nodeDef.params) // eslint-disable-line new-cap
+		const maxRetries = nodeDef.config?.maxRetries ?? 1
+		let lastError: any
 
-			const prepResult = await instance.prep(nodeContext)
+		// --- NodeFunction Execution ---
+		if (!isNodeClass(implementation)) {
+			for (let attempt = 1; attempt <= maxRetries; attempt++) {
+				try {
+					return await implementation(nodeContext)
+				}
+				catch (error) {
+					lastError = error
+					if (error instanceof FatalNodeExecutionError)
+						break
+					if (attempt < maxRetries) {
+						await this.eventBus.emit('node:retry', { blueprintId, nodeId: nodeDef.id, attempt, error, executionId })
+					}
+				}
+			}
+			throw lastError
+		}
 
-			let execResult: Omit<NodeResult, 'error'>
+		// --- BaseNode Execution Lifecycle ---
+		const instance = new implementation(nodeDef.params) // eslint-disable-line new-cap
+
+		// Prep
+		const prepResult = await instance.prep(nodeContext)
+		let execResult: Omit<NodeResult, 'error'>
+
+		// Exec (retried)
+		for (let attempt = 1; attempt <= maxRetries; attempt++) {
 			try {
 				execResult = await instance.exec(prepResult, nodeContext)
+				lastError = undefined // Clear error on success
+				break // Exit retry loop on success
 			}
-			catch (error: any) {
-				execResult = await instance.fallback(error, nodeContext)
+			catch (error) {
+				lastError = error
+				if (error instanceof FatalNodeExecutionError)
+					break
+				if (attempt < maxRetries) {
+					await this.eventBus.emit('node:retry', { blueprintId, nodeId: nodeDef.id, attempt, error, executionId })
+				}
 			}
+		}
 
-			return await instance.post(execResult, nodeContext)
+		// Fallback (runs if all exec attempts failed)
+		if (lastError) {
+			// If the fallback itself throws, the error will propagate naturally
+			execResult = await instance.fallback(lastError, nodeContext)
 		}
-		else {
-			return await implementation(nodeContext)
-		}
+
+		// Post (runs once with the result of a successful exec or fallback)
+		return await instance.post(execResult!, nodeContext)
 	}
 }
