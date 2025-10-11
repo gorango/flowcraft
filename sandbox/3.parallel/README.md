@@ -1,6 +1,6 @@
 # Parallel Batch Translation
 
-This project demonstrates using `flowcraft`'s `ParallelBatchFlow` to translate a document into multiple languages concurrently, showcasing significant performance improvements for I/O-bound tasks.
+This project demonstrates using `flowcraft`'s `.batch()` helper to translate a document into multiple languages concurrently, showcasing significant performance improvements for I/O-bound tasks.
 
 ## Goal
 
@@ -8,20 +8,20 @@ Translate a source `README.md` file into multiple languages (Chinese, Spanish, e
 
 ## How to Run
 
-1. **Install dependencies**:
+1.  **Install dependencies**:
 
     ```bash
     npm install
     ```
 
-2. **Set your OpenAI API key**:
+2.  **Set your OpenAI API key**:
     Create a `.env` file in this directory:
 
     ```
     OPENAI_API_KEY="your-api-key-here"
     ```
 
-3. **Run the translation process**:
+3.  **Run the translation process**:
 
     ```bash
     npm start
@@ -29,31 +29,18 @@ Translate a source `README.md` file into multiple languages (Chinese, Spanish, e
 
 ## How It Works
 
-The implementation uses an `ParallelBatchFlow` to process translation requests for all languages at the same time.
+The implementation uses the `.batch()` method on the `Flow` builder to process translation requests for all languages at the same time.
 
 ```mermaid
 graph TD
-    A[Load README.md] --> B["ParallelBatchFlow"]
-    subgraph "Concurrent Translation"
-        B -- "Chinese" --> T1[TranslateNode]
-        B -- "Spanish" --> T2[TranslateNode]
-        B -- "Japanese" --> T3[TranslateNode]
-        B -- "German" --> T4[TranslateNode]
-    end
-    T1 --> S1[Save Chinese.md]
-    T2 --> S2[Save Spanish.md]
-    T3 --> S3[Save Japanese.md]
-    T4 --> S4[Save German.md]
+    A[Prepare Jobs] --> B{Batch Translation};
+    B --> C[Save Results];
 ```
 
-1. **`TranslateFlow` (extends `ParallelBatchFlow`)**: The `prep` method prepares a list of parameters, one for each language.
-
-    ```typescript
-    // prep returns: [{ language: 'Chinese' }, { language: 'Spanish' }, ...]
-    ```
-
-2. **`TranslateNode` (extends `Node`)**: This node is executed in parallel for each set of parameters. Its `exec` method calls the LLM for a single translation.
-3. **File I/O**: The results are written to disk asynchronously.
+1.  **`prepare-jobs` Node**: This first node runs, reads the list of languages from the context, and produces an array of "job" objects (e.g., `[{ language: 'Spanish', text: '...' }, ...]`).
+2.  **`.batch()` Helper**: The flow is configured with a batch operation. It is told to read its input from the output of the `prepare-jobs` node. It then executes a special "worker" function (`translateItem`) in parallel for each job in the array.
+3.  **`translateItem` Worker**: This function is not a regular node in the graph but the logic for the batch processor. It takes a single job, calls the LLM for translation, and returns the result.
+4.  **`save-results` Node**: Once all parallel worker functions are complete, their results are gathered into a single array. This final node takes that array and writes all the translations to the disk.
 
 ## Performance Comparison
 
@@ -62,4 +49,4 @@ Running translations in parallel dramatically reduces the total execution time c
 - **Sequential**: ~60 seconds
 - **Parallel (this example)**: ~10 seconds
 
-*(Actual times will vary based on API response speed and system.)*
+_(Actual times will vary based on API response speed and system.)_

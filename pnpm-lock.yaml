@@ -99,7 +99,32 @@ importers:
         specifier: ^5.9.3
         version: 5.9.3
 
-  sandbox/4.dag:
+  sandbox/4.rag:
+    dependencies:
+      dotenv:
+        specifier: ^17.2.3
+        version: 17.2.3
+      flowcraft:
+        specifier: workspace:*
+        version: link:../..
+      openai:
+        specifier: ^6.2.0
+        version: 6.2.0
+      superjson:
+        specifier: ^2.2.2
+        version: 2.2.2
+    devDependencies:
+      '@types/node':
+        specifier: ^24.7.0
+        version: 24.7.0
+      tsx:
+        specifier: ^4.20.6
+        version: 4.20.6
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
+
+  sandbox/5.dag:
     dependencies:
       dotenv:
         specifier: ^17.2.3
@@ -127,7 +152,7 @@ importers:
         specifier: ^5.9.3
         version: 5.9.3
 
-  sandbox/5.distributed:
+  sandbox/6.distributed:
     dependencies:
       bullmq:
         specifier: ^5.61.0
@@ -144,31 +169,6 @@ importers:
       openai:
         specifier: ^6.2.0
         version: 6.2.0
-    devDependencies:
-      '@types/node':
-        specifier: ^24.7.0
-        version: 24.7.0
-      tsx:
-        specifier: ^4.20.6
-        version: 4.20.6
-      typescript:
-        specifier: ^5.9.3
-        version: 5.9.3
-
-  sandbox/6.rag:
-    dependencies:
-      dotenv:
-        specifier: ^17.2.3
-        version: 17.2.3
-      flowcraft:
-        specifier: workspace:*
-        version: link:../..
-      openai:
-        specifier: ^6.2.0
-        version: 6.2.0
-      superjson:
-        specifier: ^2.2.2
-        version: 2.2.2
     devDependencies:
       '@types/node':
         specifier: ^24.7.0

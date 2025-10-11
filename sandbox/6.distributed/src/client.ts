@@ -2,14 +2,12 @@ import { promises as fs } from 'node:fs'
 import path from 'node:path'
 import process from 'node:process'
 import { Queue } from 'bullmq'
-import { FlowcraftRuntime } from 'flowcraft'
+import { analyzeBlueprint } from 'flowcraft'
 import IORedis from 'ioredis'
-import { agentNodeRegistry } from './registry.js'
-import { waitForWorkflow } from './utils.js'
 import 'dotenv/config'
 
 const QUEUE_NAME = 'flowcraft-queue'
-const ACTIVE_USE_CASE = '4.content-moderation' // Change this to test other scenarios
+const ACTIVE_USE_CASE = '4.content-moderation'
 
 const config = {
 	'1.blog-post': {
@@ -41,6 +39,24 @@ const config = {
 	},
 }
 
+export async function waitForWorkflow(redis: IORedis, runId: string, timeoutMs: number): Promise<{ status: string, payload?: WorkflowResult, reason?: string }> {
+	const statusKey = `workflow:status:${runId}`
+	const startTime = Date.now()
+
+	console.log(`Awaiting result for Run ID ${runId} on key: ${statusKey}`)
+
+	while (Date.now() - startTime < timeoutMs) {
+		const statusJson = await redis.get(statusKey)
+		if (statusJson) {
+			await redis.del(statusKey) // Clean up
+			return JSON.parse(statusJson)
+		}
+		await new Promise(resolve => setTimeout(resolve, 500))
+	}
+
+	return { status: 'failed', reason: `Timeout: Client did not receive a result within ${timeoutMs}ms.` }
+}
+
 async function loadBlueprint(blueprintPath: string) {
 	const blueprintContent = await fs.readFile(blueprintPath, 'utf-8')
 	return JSON.parse(blueprintContent)
@@ -49,42 +65,34 @@ async function loadBlueprint(blueprintPath: string) {
 async function main() {
 	console.log('--- Distributed Workflow Client ---')
 
-	// Generate a simple random run ID for this run
 	const runId = Math.floor(Math.random() * 10).toString()
 	const redisConnection = new IORedis({ maxRetriesPerRequest: null })
 	const queue = new Queue(QUEUE_NAME, { connection: redisConnection })
 
-	// Load the blueprint to find start nodes
-	const blueprintPath = path.join(process.cwd(), 'data', ACTIVE_USE_CASE, `${config[ACTIVE_USE_CASE].mainWorkflowId}.json`)
+	const useCase = config[ACTIVE_USE_CASE]
+	const blueprintPath = path.join(process.cwd(), '..', '5.dag', 'data', ACTIVE_USE_CASE, `${useCase.mainWorkflowId}.json`)
 	const blueprint = await loadBlueprint(blueprintPath)
 
-	// Use the official runtime method to find start nodes
-	const runtime = new FlowcraftRuntime({ registry: agentNodeRegistry })
-	const startNodes = runtime.findStartNodes(blueprint)
+	const analysis = analyzeBlueprint(blueprint)
+	const startNodeIds = analysis.startNodeIds
 
-	const useCase = config[ACTIVE_USE_CASE]
-	const initialContextData = {
-		runId,
-		blueprintId: useCase.mainWorkflowId,
-		...useCase.initialContext,
-	}
+	const initialContextData = useCase.initialContext
 
-	// Persist the initial context in Redis before starting any node
 	const stateKey = `workflow:state:${runId}`
 	for (const [key, value] of Object.entries(initialContextData)) {
 		await redisConnection.hset(stateKey, key, JSON.stringify(value))
 	}
 
-	const startJobs = startNodes.map((node: any) => ({
+	const startJobs = startNodeIds.map((nodeId: any) => ({
 		name: 'executeNode',
-		data: { runId, blueprintId: useCase.mainWorkflowId, nodeId: node.id },
+		data: { runId, blueprintId: useCase.mainWorkflowId, nodeId },
 	}))
 
 	console.log(`🚀 Enqueuing ${startJobs.length} start job(s) for Run ID: ${runId}`)
 	await queue.addBulk(startJobs)
 
 	try {
-		const finalStatus = await waitForWorkflow(redisConnection, runId, 60000) // Wait for up to 60s
+		const finalStatus = await waitForWorkflow(redisConnection, runId, 60000)
 		console.log('\n=============================================================')
 
 		switch (finalStatus.status) {

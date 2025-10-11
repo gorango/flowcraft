@@ -2,7 +2,7 @@ import * as fs from 'node:fs/promises'
 import * as path from 'node:path'
 import process from 'node:process'
 import dotenv from 'dotenv'
-import { FlowcraftRuntime } from 'flowcraft'
+import { FlowRuntime } from 'flowcraft'
 import { createTranslateFlow } from './flow.js'
 
 dotenv.config()
@@ -32,7 +32,7 @@ async function main() {
 	const blueprint = translateFlow.toBlueprint()
 	const functionRegistry = translateFlow.getFunctionRegistry()
 
-	const runtime = new FlowcraftRuntime({ registry: {} })
+	const runtime = new FlowRuntime({})
 
 	console.log(`Starting parallel translation into ${languages.length} languages...`)
 	const startTime = Date.now()
@@ -40,7 +40,7 @@ async function main() {
 	await runtime.run(
 		blueprint,
 		{ text, languages, output_dir: outputDir },
-		functionRegistry,
+		{ functionRegistry },
 	)
 
 	const duration = (Date.now() - startTime) / 1000

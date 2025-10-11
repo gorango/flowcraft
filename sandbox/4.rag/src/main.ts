@@ -2,7 +2,7 @@ import type { ISerializer } from 'flowcraft'
 import * as fs from 'node:fs/promises'
 import * as path from 'node:path'
 import process from 'node:process'
-import { FlowcraftRuntime } from 'flowcraft'
+import { FlowRuntime } from 'flowcraft'
 import SuperJSON from 'superjson'
 import { createRagFlow } from './flow.js'
 import { DocumentChunk, SearchResult } from './types.js'
@@ -29,8 +29,7 @@ async function main() {
 	const blueprint = ragFlow.toBlueprint()
 	const functionRegistry = ragFlow.getFunctionRegistry()
 
-	const runtime = new FlowcraftRuntime({
-		registry: {}, // No pre-registered nodes
+	const runtime = new FlowRuntime({
 		serializer: new SuperJsonSerializer(), // Plug in the custom serializer
 	})
 
@@ -40,7 +39,7 @@ async function main() {
 		question: 'How does Flowcraft handle conditional branching?',
 	}
 
-	const result = await runtime.run(blueprint, initialContext, functionRegistry)
+	const result = await runtime.run(blueprint, initialContext, { functionRegistry })
 
 	console.log('\n--- Workflow Complete ---\n')
 	console.log('Final Answer:\n', result.context.final_answer)
@@ -49,8 +48,7 @@ async function main() {
 	const outputFilePath = path.join(process.cwd(), 'tmp', 'final-context-v2.json')
 	await fs.mkdir(path.dirname(outputFilePath), { recursive: true })
 
-	// The runtime's serializer can be used to manually serialize for inspection
-	const serializedContext = runtime.getSerializer().serialize(result.context)
+	const serializedContext = result.serializedContext
 	await fs.writeFile(outputFilePath, JSON.stringify(JSON.parse(serializedContext), null, 2), 'utf-8')
 
 	console.log(`Full context saved to: ${outputFilePath}\n`)

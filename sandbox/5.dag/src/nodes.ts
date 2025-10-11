@@ -1,34 +1,35 @@
-import type { NodeContext, NodeResult, ISyncContext } from 'flowcraft'
+import type { IAsyncContext, NodeContext, NodeResult, RuntimeDependencies } from 'flowcraft'
 import { callLLM, resolveTemplate } from './utils.js'
 
 /**
  * A generic context for our LLM nodes.
  */
-interface LlmNodeContext {
-	context: any
-	input?: any
-	metadata: any
-	dependencies: any
+interface LlmNodeContext extends NodeContext<Record<string, any>, RuntimeDependencies> {
 	params: {
 		promptTemplate: string
 		inputs: Record<string, string | string[]>
 		outputKey?: string
 	}
+	context: IAsyncContext
 }
 
 /**
  * Resolves input values from the context based on the node's `inputs` mapping.
  */
-async function resolveInputs(ctx: NodeContext, inputs: Record<string, string | string[]>): Promise<Record<string, any>> {
-	const syncContext = ctx.context as ISyncContext<any>
+async function resolveInputs(context: IAsyncContext<any>, inputs: Record<string, string | string[]>): Promise<Record<string, any>> {
 	const resolved: Record<string, any> = {}
 	for (const [templateKey, sourceKeyOrKeys] of Object.entries(inputs)) {
 		const sourceKeys = Array.isArray(sourceKeyOrKeys) ? sourceKeyOrKeys : [sourceKeyOrKeys]
 		let valueFound = false
 		for (const sourceKey of sourceKeys) {
-			if (syncContext.has(sourceKey)) {
-				resolved[templateKey] = syncContext.get(sourceKey)
-				valueFound = true
+			if (await context.has(sourceKey)) {
+				const value = await context.get(sourceKey)
+				// Ensure we don't pass 'undefined' if the key exists but has no value
+				if (value !== undefined) {
+					resolved[templateKey] = value
+					valueFound = true
+					break // Found a value, no need to check other keys for this template variable
+				}
 			}
 		}
 		if (!valueFound) {
@@ -39,30 +40,31 @@ async function resolveInputs(ctx: NodeContext, inputs: Record<string, string | s
 	return resolved
 }
 
-export async function llmProcess(ctx: LlmNodeContext): Promise<NodeResult> {
-	const templateData = await resolveInputs(ctx, ctx.params.inputs)
-	const prompt = resolveTemplate(ctx.params.promptTemplate, templateData)
+export async function llmProcess(ctx: NodeContext<Record<string, any>, RuntimeDependencies>): Promise<NodeResult> {
+	const llmCtx = ctx as any as LlmNodeContext
+	const templateData = await resolveInputs(ctx.context, llmCtx.params.inputs)
+	const prompt = resolveTemplate(llmCtx.params.promptTemplate, templateData)
 	const result = await callLLM(prompt)
 	return { output: result }
 }
 
-export async function llmCondition(ctx: LlmNodeContext): Promise<NodeResult> {
+export async function llmCondition(ctx: NodeContext<Record<string, any>, RuntimeDependencies>): Promise<NodeResult> {
 	const result = await llmProcess(ctx)
 	const action = result.output?.toLowerCase().includes('true') ? 'true' : 'false'
 	return { action, output: result.output }
 }
 
-export async function llmRouter(ctx: LlmNodeContext): Promise<NodeResult> {
+export async function llmRouter(ctx: NodeContext<Record<string, any>, RuntimeDependencies>): Promise<NodeResult> {
 	const result = await llmProcess(ctx)
 	const action = result.output?.trim() ?? 'default'
 	return { action, output: result.output }
 }
 
-export async function outputNode(ctx: LlmNodeContext): Promise<NodeResult> {
-	const { outputKey = 'final_output' } = ctx.params
-	const syncContext = ctx.context as ISyncContext<any>
-	const templateData = await resolveInputs(ctx, ctx.params.inputs)
-	const finalOutput = resolveTemplate(ctx.params.promptTemplate, templateData)
-	syncContext.set(outputKey, finalOutput)
+export async function outputNode(ctx: NodeContext<Record<string, any>, RuntimeDependencies>): Promise<NodeResult> {
+	const llmCtx = ctx as any as LlmNodeContext
+	const { outputKey = 'final_output' } = llmCtx.params
+	const templateData = await resolveInputs(ctx.context, llmCtx.params.inputs)
+	const finalOutput = resolveTemplate(llmCtx.params.promptTemplate, templateData)
+	await ctx.context.set(outputKey as any, finalOutput)
 	return { output: finalOutput }
 }

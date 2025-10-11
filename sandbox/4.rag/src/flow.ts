@@ -1,4 +1,4 @@
-import type { NodeContext, NodeResult, ISyncContext } from 'flowcraft'
+import type { NodeContext, NodeResult } from 'flowcraft'
 import * as fs from 'node:fs/promises'
 import { createFlow } from 'flowcraft'
 import { DocumentChunk, SearchResult } from './types.js'
@@ -8,15 +8,16 @@ interface RagContext {
 	document_path: string
 	question: string
 	chunks: Map<string, DocumentChunk>
-	embeddings: Map<string, number[]>
 	vector_db: Map<string, { chunk: DocumentChunk, vector: number[] }>
 	search_results: SearchResult[]
 	final_answer: string
+	// For batch processing
+	load_and_chunk: DocumentChunk[]
+	embedding_results: { chunkId: string, vector: number[] }[]
 }
 
 async function loadAndChunk(ctx: NodeContext<RagContext>): Promise<NodeResult> {
-	const syncContext = ctx.context as ISyncContext<RagContext>
-	const path = syncContext.get('document_path')!
+	const path = (await ctx.context.get('document_path'))!
 	console.log(`[Node] Reading and chunking file: ${path}`)
 
 	const content = await fs.readFile(path!, 'utf-8')
@@ -28,13 +29,14 @@ async function loadAndChunk(ctx: NodeContext<RagContext>): Promise<NodeResult> {
 		const chunk = new DocumentChunk(chunkId, paragraph.trim(), path!)
 		chunks.set(chunkId, chunk)
 	}
-	syncContext.set('chunks', chunks)
+	await ctx.context.set('chunks', chunks)
 	console.log(`[Node] Created ${chunks.size} chunks.`)
+	// The runtime will store this output array in the context under the key 'load_and_chunk'.
 	return { output: Array.from(chunks.values()) }
 }
 
 async function generateSingleEmbedding(ctx: NodeContext<RagContext>): Promise<NodeResult> {
-	const chunk = ctx.input
+	const chunk = ctx.input as DocumentChunk
 	if (!chunk || !chunk.text) {
 		throw new TypeError('Batch worker for embeddings received an invalid chunk.')
 	}
@@ -44,10 +46,15 @@ async function generateSingleEmbedding(ctx: NodeContext<RagContext>): Promise<No
 
 async function storeInVectorDB(ctx: NodeContext<RagContext>): Promise<NodeResult> {
 	console.log('[Node] Simulating storage of chunks and vectors.')
+	// This node's input is now explicitly mapped from the context.
 	const embeddingResults = ctx.input as { chunkId: string, vector: number[] }[]
-	const syncContext = ctx.context as ISyncContext<RagContext>
-	const chunks = syncContext.get('chunks') as Map<string, DocumentChunk>
+	const chunks = (await ctx.context.get('chunks'))!
 	const db = new Map<string, { chunk: DocumentChunk, vector: number[] }>()
+
+	if (!embeddingResults || embeddingResults.length === 0) {
+		console.warn('[Node] No embedding results to store in DB. Upstream might have failed.')
+		return { output: 'DB Ready (empty)' }
+	}
 
 	for (const { chunkId, vector } of embeddingResults) {
 		const chunk = chunks.get(chunkId)
@@ -55,16 +62,20 @@ async function storeInVectorDB(ctx: NodeContext<RagContext>): Promise<NodeResult
 			db.set(chunkId, { chunk, vector })
 		}
 	}
-	syncContext.set('vector_db', db)
+	await ctx.context.set('vector_db', db)
 	console.log(`[Node] DB is ready with ${db.size} entries.`)
 	return { output: 'DB Ready' }
 }
 
 async function vectorSearch(ctx: NodeContext<RagContext>): Promise<NodeResult> {
-	const syncContext = ctx.context as ISyncContext<RagContext>
-	const question = syncContext.get('question')!
-	const db = syncContext.get('vector_db') as Map<string, { chunk: DocumentChunk, vector: number[] }>
+	const question = (await ctx.context.get('question'))
+	const db = (await ctx.context.get('vector_db'))
 	console.log(`[Node] Performing vector search for question: "${question}"`)
+
+	if (!db || db.size === 0) {
+		console.error('[Node] Vector DB is empty. Cannot perform search.')
+		return { output: [] }
+	}
 
 	const questionVector = await getEmbedding(question!)
 	const similarities: { id: string, score: number }[] = []
@@ -80,22 +91,21 @@ async function vectorSearch(ctx: NodeContext<RagContext>): Promise<NodeResult> {
 		const chunk = db.get(id)!.chunk
 		return new SearchResult(chunk, score)
 	})
-	syncContext.set('search_results', searchResults)
+	await ctx.context.set('search_results', searchResults)
 	console.log(`[Node] Found ${searchResults.length} relevant results.`)
 	return { output: searchResults }
 }
 
 async function generateFinalAnswer(ctx: NodeContext<RagContext>): Promise<NodeResult> {
 	const searchResults = ctx.input as SearchResult[]
-	const contextText = searchResults?.map(r => r.chunk.text).join('\n\n---\n\n') ?? ''
-	const syncContext = ctx.context as ISyncContext<RagContext>
-	const question = syncContext.get('question')!
+	const contextText = searchResults?.map(r => r.chunk.text).join('\n\n---\n\n') ?? 'No context found.'
+	const question = (await ctx.context.get('question'))!
 	const prompt = resolveTemplate(
 		'Based on the following context, please provide a clear and concise answer to the user\'s question.\n\n**CONTEXT**\n\n{{context}}\n\n**QUESTION**\n\n{{question}}\n\n**ANSWER**',
 		{ context: contextText, question },
 	)
 	const answer = await callLLM(prompt)
-	syncContext.set('final_answer', answer)
+	await ctx.context.set('final_answer', answer)
 	return { output: answer }
 }
 
@@ -103,15 +113,25 @@ async function generateFinalAnswer(ctx: NodeContext<RagContext>): Promise<NodeRe
 
 export function createRagFlow() {
 	return createFlow<RagContext>('advanced-rag-agent')
+		// 1. Define the standard nodes
 		.node('load_and_chunk', loadAndChunk)
-		.node('store_in_db', storeInVectorDB)
+		.node('store_in_db', storeInVectorDB, { inputs: 'embedding_results' })
 		.node('vector_search', vectorSearch)
 		.node('generate_final_answer', generateFinalAnswer)
 
-		// Use the batch method to process embeddings in parallel
-		.batch('load_and_chunk', 'store_in_db', generateSingleEmbedding, { concurrency: 5 })
+		// 2. Define the parallel batch processing step
+		.batch('generate-embeddings', generateSingleEmbedding, {
+			// This tells the batch scatter node where to find the input array
+			inputKey: 'load_and_chunk',
+			// This tells the batch gather node where to save the final results array
+			outputKey: 'embedding_results',
+		})
 
-		// Wire the graph edges
+		// 3. Wire the graph edges to connect the steps
+		.edge('load_and_chunk', 'generate-embeddings_scatter')
+		// Connect the batch gatherer to the next step. The data flow is now
+		// handled by the `inputs` mapping on the 'store_in_db' node itself.
+		.edge('generate-embeddings_gather', 'store_in_db')
 		.edge('store_in_db', 'vector_search')
 		.edge('vector_search', 'generate_final_answer')
 }

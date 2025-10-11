@@ -4,11 +4,11 @@ import { callLLM } from './utils.js'
 
 // Define the shape of the data that flows between nodes
 interface ArticleContext {
-	topic: string
-	outline: { sections: string[] }
-	draft: string
-	titles: string
-	final_output: string
+	'topic': string
+	'generate-outline': { sections: string[] }
+	'draft-post': string
+	'suggest-titles': string
+	'apply-style': string
 }
 
 export function createArticleFlow() {
@@ -16,17 +16,16 @@ export function createArticleFlow() {
 		.node('generate-outline', async (ctx) => {
 			const topic = ctx.input as string
 			console.log('\n===== GENERATING OUTLINE =====')
-			const prompt
-				= `
+			const prompt = `
 				Create a simple outline for an article about "${topic}".
 				Include at most 3 main sections (no subsections).
 				Output the sections in YAML format as a list under the key "sections".
-			`.replace(/\t/g, '').trim()
+			`.trim()
 			const response = await callLLM(prompt)
 			const structuredResult = yaml.parse(response)
 			console.log('==========================\n')
 			return { output: structuredResult }
-		})
+		}, { inputs: 'topic' }) // Explicitly map 'topic' from context to this node's input
 		.node('draft-post', async (ctx) => {
 			const outline = (ctx.input as { sections: string[] }).sections.join('\n- ')
 			console.log('\n===== DRAFTING POST =====')
@@ -44,15 +43,15 @@ export function createArticleFlow() {
 			return { output: titles }
 		})
 		.node('apply-style', async (ctx) => {
-			const draft = await ctx.context.get('draft')
+			// Get data from a previous step via the context
+			const draft = await ctx.context.get('draft-post')
 			console.log('\n===== APPLYING STYLE =====')
-			const prompt
-				= `
+			const prompt = `
 				Rewrite the following draft in a conversational, engaging style.
 				Make it warm in tone, include rhetorical questions, and add a strong opening and conclusion.
 
 				${draft}
-			`.replace(/\t/g, '').trim()
+			`.trim()
 			const finalArticle = await callLLM(prompt)
 			console.log('=========================\n')
 			return { output: finalArticle }

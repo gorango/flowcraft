@@ -1,6 +1,6 @@
 import process from 'node:process'
 import dotenv from 'dotenv'
-import { FlowcraftRuntime } from 'flowcraft'
+import { FlowRuntime } from 'flowcraft'
 import { createAgentFlow } from './flow.js'
 
 dotenv.config()
@@ -19,10 +19,7 @@ async function main() {
 	const blueprint = agentFlow.toBlueprint()
 	const functionRegistry = agentFlow.getFunctionRegistry()
 
-	const runtime = new FlowcraftRuntime({
-		registry: {},
-		environment: 'development',
-	})
+	const runtime = new FlowRuntime({})
 
 	// Provide the initial state needed by the 'initialize-research' node.
 	const initialContext = {
@@ -33,7 +30,7 @@ async function main() {
 	const result = await runtime.run(
 		blueprint,
 		initialContext,
-		functionRegistry,
+		{ functionRegistry },
 	)
 
 	console.log('\n🎯 Final Answer:')

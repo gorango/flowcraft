@@ -1,5 +1,3 @@
-import type { WorkflowResult } from 'flowcraft'
-import type IORedis from 'ioredis'
 import OpenAI from 'openai'
 import 'dotenv/config'
 
@@ -28,22 +26,4 @@ export function resolveTemplate(template: string, data: Record<string, any>): st
 		const value = data[key.trim()]
 		return value !== undefined && value !== null ? String(value) : ''
 	})
-}
-
-export async function waitForWorkflow(redis: IORedis, runId: string, timeoutMs: number): Promise<{ status: string, payload?: WorkflowResult, reason?: string }> {
-	const statusKey = `workflow:status:${runId}`
-	const startTime = Date.now()
-
-	console.log(`Awaiting result for Run ID ${runId} on key: ${statusKey}`)
-
-	while (Date.now() - startTime < timeoutMs) {
-		const statusJson = await redis.get(statusKey)
-		if (statusJson) {
-			await redis.del(statusKey) // Clean up
-			return JSON.parse(statusJson)
-		}
-		await new Promise(resolve => setTimeout(resolve, 500))
-	}
-
-	return { status: 'failed', reason: `Timeout: Client did not receive a result within ${timeoutMs}ms.` }
 }

@@ -1,6 +1,6 @@
 import process from 'node:process'
 import dotenv from 'dotenv'
-import { FlowcraftRuntime } from 'flowcraft'
+import { FlowRuntime } from 'flowcraft'
 import { createArticleFlow } from './flow.js'
 
 dotenv.config()
@@ -16,22 +16,19 @@ async function main() {
 	const blueprint = articleFlow.toBlueprint()
 	const functionRegistry = articleFlow.getFunctionRegistry()
 
-	// 3. Create a runtime with the necessary node implementations.
-	const runtime = new FlowcraftRuntime({
-		registry: {}, // No pre-registered nodes needed for this example
-		environment: 'development',
-	})
+	// 3. Create a runtime.
+	const runtime = new FlowRuntime({})
 
-	// 4. Run the workflow with an initial context. The topic is passed as 'input'.
+	// 4. Run the workflow with an initial context.
 	const result = await runtime.run(
 		blueprint,
-		{ input: topic }, // The first node receives this as its `input`
-		functionRegistry,
+		{ topic }, // The first node is configured to read from the 'topic' key.
+		{ functionRegistry },
 	)
 
 	console.log('\n=== Workflow Completed ===\n')
 	console.log(`Topic: ${topic}`)
-	console.log(`Final Article Length: ${result.context.input?.length || 0} characters`)
+	console.log(`Final Article Length: ${result.context['apply-style']?.length || 0} characters`)
 	console.log(`\nFull final context:\n`, result.context)
 }
 
