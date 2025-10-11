@@ -170,6 +170,9 @@ importers:
 
   sandbox/6.distributed:
     dependencies:
+      '@flowcraft/bullmq-adapter':
+        specifier: workspace:*
+        version: link:../../packages/bullmq-adapter
       bullmq:
         specifier: ^5.61.0
         version: 5.61.0

@@ -1,7 +1,7 @@
 {
 	"name": "@flowcraft/bullmq-adapter",
-	"version": "1.0.0",
 	"type": "module",
+	"version": "1.0.0",
 	"main": "dist/index.js",
 	"types": "dist/index.d.ts",
 	"files": [
