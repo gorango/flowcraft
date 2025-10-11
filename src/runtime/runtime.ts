@@ -18,6 +18,7 @@ import type {
 	WorkflowResult,
 } from '../types'
 import type { ExecutionStrategy } from './executors'
+import type { IRuntime } from './types'
 import { analyzeBlueprint } from '../analysis'
 import { AsyncContextView } from '../context'
 import { CancelledWorkflowError, FatalNodeExecutionError, NodeExecutionError } from '../errors'
@@ -30,7 +31,7 @@ import { BuiltInNodeExecutor, ClassNodeExecutor, FunctionNodeExecutor } from './
 import { WorkflowState } from './state'
 import { GraphTraverser } from './traverser'
 
-export class FlowRuntime<TContext extends Record<string, any>, TDependencies extends Record<string, any>> {
+export class FlowRuntime<TContext extends Record<string, any>, TDependencies extends Record<string, any>> implements IRuntime<TContext, TDependencies> {
 	private registry: Record<string, NodeFunction | typeof BaseNode>
 	private dependencies: TDependencies
 	private logger: ILogger

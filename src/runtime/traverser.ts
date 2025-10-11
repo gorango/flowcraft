@@ -1,16 +1,17 @@
 import type { NodeResult, WorkflowBlueprint } from '../types'
 import type { WorkflowState } from './state'
+import type { IRuntime } from './types'
 import { analyzeBlueprint } from '../analysis'
 import { CancelledWorkflowError } from '../errors'
 
-export class GraphTraverser<TContext extends Record<string, any>, _TDependencies extends Record<string, any>> {
+export class GraphTraverser<TContext extends Record<string, any>, TDependencies extends Record<string, any>> {
 	private frontier = new Set<string>()
 	private allPredecessors: Map<string, Set<string>>
 	private dynamicBlueprint: WorkflowBlueprint
 
 	constructor(
 		private blueprint: WorkflowBlueprint,
-		private runtime: any, // FlowRuntime<TContext, TDependencies>
+		private runtime: IRuntime<TContext, TDependencies>,
 		private state: WorkflowState<TContext>,
 		private functionRegistry: Map<string, any> | undefined,
 		private executionId: string,
@@ -68,7 +69,7 @@ export class GraphTraverser<TContext extends Record<string, any>, _TDependencies
 						const { nodeId, error } = promiseResult.reason
 						if (error instanceof CancelledWorkflowError)
 							throw error
-						this.state.addError(nodeId, error)
+						this.state.addError(nodeId, error as Error)
 						continue
 					}
 					const { nodeId, result } = promiseResult.value
