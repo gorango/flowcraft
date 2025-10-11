@@ -92,6 +92,9 @@ export type NodeClass = new (params?: any) => BaseNode<any, any>
 /** A union of all possible node implementation types. */
 export type NodeImplementation = NodeFunction | NodeClass
 
+/** A registry mapping node types to their implementations. */
+export type NodeRegistry = Record<string, NodeImplementation>
+
 // =================================================================================
 // Context Interfaces (State Management)
 // =================================================================================
@@ -130,6 +133,8 @@ export interface RuntimeDependencies { [key: string]: any }
 export interface RuntimeOptions<TDependencies extends RuntimeDependencies = RuntimeDependencies> {
 	/** A registry of globally available node implementations. */
 	registry?: Record<string, NodeFunction | NodeClass>
+	/** A registry of all available workflow blueprints for subflow execution. */
+	blueprints?: Record<string, WorkflowBlueprint>
 	/** Shared dependencies to be injected into every node. */
 	dependencies?: TDependencies
 	/** A pluggable logger for consistent output. */

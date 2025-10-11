@@ -33,6 +33,7 @@ import { GraphTraverser } from './traverser'
 
 export class FlowRuntime<TContext extends Record<string, any>, TDependencies extends Record<string, any>> implements IRuntime<TContext, TDependencies> {
 	private registry: Record<string, NodeFunction | typeof BaseNode>
+	private blueprints: Record<string, WorkflowBlueprint>
 	private dependencies: TDependencies
 	private logger: ILogger
 	private eventBus: IEventBus
@@ -43,6 +44,7 @@ export class FlowRuntime<TContext extends Record<string, any>, TDependencies ext
 
 	constructor(options: RuntimeOptions<TDependencies>) {
 		this.registry = options.registry || {}
+		this.blueprints = options.blueprints || {}
 		this.dependencies = options.dependencies || ({} as TDependencies)
 		this.logger = options.logger || new NullLogger()
 		this.eventBus = options.eventBus || { emit: () => { } }
@@ -354,6 +356,41 @@ export class FlowRuntime<TContext extends Record<string, any>, TDependencies ext
 				const contextData = await context.toJSON()
 				const shouldContinue = !!this.evaluator.evaluate(params.condition, contextData)
 				return { action: shouldContinue ? 'continue' : 'break' }
+			}
+			case 'subflow': {
+				const { blueprintId, inputs: inputMapping, outputs: outputMapping } = params
+				if (!blueprintId)
+					throw new FatalNodeExecutionError(`Subflow node '${id}' is missing the 'blueprintId' parameter.`, id, '')
+
+				const subBlueprint = this.blueprints[blueprintId]
+				if (!subBlueprint)
+					throw new FatalNodeExecutionError(`Sub-blueprint with ID '${blueprintId}' not found in runtime registry.`, id, '')
+
+				const subflowInitialContext: Record<string, any> = {}
+
+				if (inputMapping) {
+					for (const [targetKey, sourceKey] of Object.entries(inputMapping)) {
+						if (await context.has(sourceKey as any)) {
+							subflowInitialContext[targetKey] = await context.get(sourceKey as any)
+						}
+					}
+				}
+
+				const subflowResult = await this.run(subBlueprint, subflowInitialContext as Partial<TContext>)
+
+				if (subflowResult.status !== 'completed')
+					throw new NodeExecutionError(`Sub-workflow '${blueprintId}' did not complete successfully. Status: ${subflowResult.status}`, id, subBlueprint.id)
+
+				if (outputMapping) {
+					for (const [parentKey, subKey] of Object.entries(outputMapping)) {
+						const subflowFinalContext = subflowResult.context as Record<string, any>
+						if (Object.prototype.hasOwnProperty.call(subflowFinalContext, subKey as string)) {
+							await context.set(parentKey as any, subflowFinalContext[subKey as string])
+						}
+					}
+				}
+
+				return { output: subflowResult.context }
 			}
 			default:
 				throw new FatalNodeExecutionError(`Unknown built-in node type: '${nodeDef.uses}'`, id, '')
