@@ -37,7 +37,20 @@ export class GraphTraverser<TContext extends Record<string, any>, _TDependencies
 	}
 
 	async traverse(): Promise<void> {
+		try {
+			this.signal?.throwIfAborted()
+		}
+		catch (error) {
+			if (error instanceof DOMException && error.name === 'AbortError')
+				throw new CancelledWorkflowError('Workflow cancelled')
+			throw error
+		}
+		let iterations = 0
+		const maxIterations = 10000
 		while (this.frontier.size > 0) {
+			if (++iterations > maxIterations)
+				throw new Error('Traversal exceeded maximum iterations, possible infinite loop')
+
 			try {
 				this.signal?.throwIfAborted()
 				const currentJobs = Array.from(this.frontier)
@@ -45,8 +58,8 @@ export class GraphTraverser<TContext extends Record<string, any>, _TDependencies
 				const promises = currentJobs.map(nodeId =>
 					this.runtime
 						.executeNode(this.dynamicBlueprint, nodeId, this.state, this.allPredecessors, this.functionRegistry, this.executionId, this.signal)
-						.then(result => ({ status: 'fulfilled' as const, value: { nodeId, result } }))
-						.catch(error => ({ status: 'rejected' as const, reason: { nodeId, error } })),
+						.then((result: NodeResult) => ({ status: 'fulfilled' as const, value: { nodeId, result } }))
+						.catch((error: unknown) => ({ status: 'rejected' as const, reason: { nodeId, error } })),
 				)
 				const settledResults = await Promise.all(promises)
 				const completedThisTurn = new Set<string>()
