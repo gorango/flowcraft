@@ -6,6 +6,7 @@
 		"worker": "tsx --watch src/worker.ts"
 	},
 	"dependencies": {
+		"@flowcraft/bullmq-adapter": "workspace:*",
 		"bullmq": "^5.61.0",
 		"dotenv": "^17.2.3",
 		"flowcraft": "workspace:*",

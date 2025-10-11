@@ -1,0 +1,21 @@
+{
+	"name": "@flowcraft/bullmq-adapter",
+	"version": "1.0.0",
+	"type": "module",
+	"main": "dist/index.js",
+	"types": "dist/index.d.ts",
+	"files": [
+		"dist"
+	],
+	"scripts": {
+		"build": "tsup src/index.ts --format esm --dts"
+	},
+	"dependencies": {
+		"bullmq": "^5.61.0",
+		"flowcraft": "workspace:*",
+		"ioredis": "^5.8.1"
+	},
+	"devDependencies": {
+		"typescript": "^5.9.3"
+	}
+}

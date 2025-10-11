@@ -1,2 +1,3 @@
 packages:
   - 'sandbox/*'
+  - 'packages/*'
