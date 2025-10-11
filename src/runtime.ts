@@ -5,6 +5,7 @@ import type {
 	IAsyncContext,
 	IEvaluator,
 	IEventBus,
+	ILogger,
 	ISerializer,
 	ISyncContext,
 	Middleware,
@@ -21,6 +22,7 @@ import { analyzeBlueprint } from './analysis'
 import { AsyncContextView, Context } from './context'
 import { CancelledWorkflowError, FatalNodeExecutionError, NodeExecutionError } from './errors'
 import { SimpleEvaluator } from './evaluator'
+import { NullLogger } from './logger'
 import { isNodeClass } from './node'
 import { sanitizeBlueprint } from './sanitizer'
 import { JsonSerializer } from './serializer'
@@ -110,7 +112,11 @@ class FunctionNodeExecutor implements ExecutionStrategy {
 		for (let attempt = 1; attempt <= this.maxRetries; attempt++) {
 			try {
 				signal?.throwIfAborted()
-				return await this.implementation(context)
+				const result = await this.implementation(context)
+				if (attempt > 1) {
+					context.dependencies.logger.info(`Node execution succeeded after retry`, { nodeId: nodeDef.id, attempt, executionId })
+				}
+				return result
 			}
 			catch (error) {
 				lastError = error
@@ -120,7 +126,11 @@ class FunctionNodeExecutor implements ExecutionStrategy {
 				if (error instanceof FatalNodeExecutionError)
 					break
 				if (attempt < this.maxRetries) {
+					context.dependencies.logger.warn(`Node execution failed, retrying`, { nodeId: nodeDef.id, attempt, maxRetries: this.maxRetries, error: error instanceof Error ? error.message : String(error), executionId })
 					await this.eventBus.emit('node:retry', { blueprintId: context.dependencies.blueprint?.id || '', nodeId: nodeDef.id, attempt, executionId })
+				}
+				else {
+					context.dependencies.logger.error(`Node execution failed after all retries`, { nodeId: nodeDef.id, attempts: this.maxRetries, error: error instanceof Error ? error.message : String(error), executionId })
 				}
 			}
 		}
@@ -152,6 +162,9 @@ class ClassNodeExecutor implements ExecutionStrategy {
 					signal?.throwIfAborted()
 					execResult = await instance.exec(prepResult, context)
 					lastError = undefined
+					if (attempt > 1) {
+						context.dependencies.logger.info(`Node execution succeeded after retry`, { nodeId: nodeDef.id, attempt, executionId })
+					}
 					break
 				}
 				catch (error) {
@@ -162,7 +175,11 @@ class ClassNodeExecutor implements ExecutionStrategy {
 					if (error instanceof FatalNodeExecutionError)
 						break
 					if (attempt < this.maxRetries) {
+						context.dependencies.logger.warn(`Node execution failed, retrying`, { nodeId: nodeDef.id, attempt, maxRetries: this.maxRetries, error: error instanceof Error ? error.message : String(error), executionId })
 						await this.eventBus.emit('node:retry', { blueprintId: context.dependencies.blueprint?.id || '', nodeId: nodeDef.id, attempt, executionId })
+					}
+					else {
+						context.dependencies.logger.error(`Node execution failed after all retries`, { nodeId: nodeDef.id, attempts: this.maxRetries, error: error instanceof Error ? error.message : String(error), executionId })
 					}
 				}
 			}
@@ -329,6 +346,7 @@ class GraphTraverser<TContext extends Record<string, any>, TDependencies extends
 export class FlowRuntime<TContext extends Record<string, any>, TDependencies extends Record<string, any>> {
 	private registry: Record<string, NodeFunction | typeof BaseNode>
 	private dependencies: TDependencies
+	private logger: ILogger
 	private eventBus: IEventBus
 	private serializer: ISerializer
 	private middleware: Middleware[]
@@ -338,6 +356,7 @@ export class FlowRuntime<TContext extends Record<string, any>, TDependencies ext
 	constructor(options: RuntimeOptions<TDependencies>) {
 		this.registry = options.registry || {}
 		this.dependencies = options.dependencies || ({} as TDependencies)
+		this.logger = options.logger || new NullLogger()
 		this.eventBus = options.eventBus || { emit: () => { } }
 		this.serializer = options.serializer || new JsonSerializer()
 		this.middleware = options.middleware || []
@@ -355,11 +374,14 @@ export class FlowRuntime<TContext extends Record<string, any>, TDependencies ext
 		},
 	): Promise<WorkflowResult<TContext>> {
 		const executionId = globalThis.crypto?.randomUUID()
+		const startTime = Date.now()
 		const contextData = typeof initialState === 'string'
 			? this.serializer.deserialize(initialState) as Partial<TContext>
 			: initialState
 		blueprint = sanitizeBlueprint(blueprint)
 		const state = new WorkflowState<TContext>(contextData)
+
+		this.logger.info(`Starting workflow execution`, { blueprintId: blueprint.id, executionId })
 
 		try {
 			await this.eventBus.emit('workflow:start', { blueprintId: blueprint.id, executionId })
@@ -368,7 +390,7 @@ export class FlowRuntime<TContext extends Record<string, any>, TDependencies ext
 				throw new Error(`Workflow '${blueprint.id}' failed strictness check: Cycles are not allowed.`)
 			}
 			if (!analysis.isDag) {
-				console.warn(`Workflow '${blueprint.id}' contains cycles.`)
+				this.logger.warn(`Workflow contains cycles`, { blueprintId: blueprint.id })
 			}
 			const traverser = new GraphTraverser<TContext, TDependencies>(
 				blueprint,
@@ -382,14 +404,22 @@ export class FlowRuntime<TContext extends Record<string, any>, TDependencies ext
 			const status = state.getStatus(traverser.getAllNodeIds(), traverser.getFallbackNodeIds())
 			const result = state.toResult(this.serializer)
 			result.status = status
+			const duration = Date.now() - startTime
+			if (status === 'stalled') {
+				await this.eventBus.emit('workflow:stall', { blueprintId: blueprint.id, executionId, remainingNodes: traverser.getAllNodeIds().size - state.getCompletedNodes().size })
+			}
+			this.logger.info(`Workflow execution completed`, { blueprintId: blueprint.id, executionId, status, duration, errors: result.errors?.length || 0 })
 			await this.eventBus.emit('workflow:finish', { blueprintId: blueprint.id, executionId, status, errors: result.errors })
 			return result
 		}
 		catch (error) {
+			const duration = Date.now() - startTime
 			if (error instanceof DOMException ? error.name === 'AbortError' : error instanceof CancelledWorkflowError) {
+				this.logger.info(`Workflow execution cancelled`, { blueprintId: blueprint.id, executionId, duration })
 				await this.eventBus.emit('workflow:finish', { blueprintId: blueprint.id, executionId, status: 'cancelled', error })
 				return { context: {} as TContext, serializedContext: '{}', status: 'cancelled' }
 			}
+			this.logger.error(`Workflow execution failed`, { blueprintId: blueprint.id, executionId, duration, error: error instanceof Error ? error.message : String(error) })
 			throw error
 		}
 	}
@@ -414,7 +444,7 @@ export class FlowRuntime<TContext extends Record<string, any>, TDependencies ext
 			context: asyncContext,
 			input: await this._resolveNodeInput(nodeDef, asyncContext, allPredecessors),
 			params: nodeDef.params || {},
-			dependencies: this.dependencies,
+			dependencies: { ...this.dependencies, logger: this.logger },
 			signal,
 		}
 
@@ -498,6 +528,7 @@ export class FlowRuntime<TContext extends Record<string, any>, TDependencies ext
 				throw error
 			const fallbackNodeId = nodeDef.config?.fallback
 			if (fallbackNodeId && state) {
+				context.dependencies.logger.warn(`Executing fallback for node`, { nodeId: nodeDef.id, fallbackNodeId, error: error instanceof Error ? error.message : String(error), executionId })
 				await this.eventBus.emit('node:fallback', { blueprintId: blueprint.id, nodeId: nodeDef.id, executionId, fallback: fallbackNodeId })
 				const fallbackNode = blueprint.nodes.find((n: NodeDefinition) => n.id === fallbackNodeId)
 				if (!fallbackNode) {
@@ -506,6 +537,7 @@ export class FlowRuntime<TContext extends Record<string, any>, TDependencies ext
 				const fallbackExecutor = this.getExecutor(fallbackNode, functionRegistry)
 				const fallbackResult = await fallbackExecutor.execute(fallbackNode, context, executionId, signal)
 				state.markFallbackExecuted()
+				context.dependencies.logger.info(`Fallback execution completed`, { nodeId: nodeDef.id, fallbackNodeId, executionId })
 				return { ...fallbackResult, _fallbackExecuted: true }
 			}
 			throw error
@@ -546,6 +578,7 @@ export class FlowRuntime<TContext extends Record<string, any>, TDependencies ext
 				}
 			}
 		}
+		this.logger.debug(`Determined next nodes for ${nodeId}`, { matchedNodes: matched.map(m => m.node.id), action: result.action })
 		return matched
 	}
 

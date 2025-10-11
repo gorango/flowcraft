@@ -132,6 +132,8 @@ export interface RuntimeOptions<TDependencies extends RuntimeDependencies = Runt
 	registry?: Record<string, NodeFunction | NodeClass>
 	/** Shared dependencies to be injected into every node. */
 	dependencies?: TDependencies
+	/** A pluggable logger for consistent output. */
+	logger?: ILogger
 	/** A pluggable event bus for observability. */
 	eventBus?: IEventBus
 	/** A pluggable evaluator for edge conditions and transforms. */
@@ -147,6 +149,14 @@ export interface RuntimeOptions<TDependencies extends RuntimeDependencies = Runt
 /** Interface for a pluggable expression evaluator for conditions and transforms. */
 export interface IEvaluator {
 	evaluate: (expression: string, context: Record<string, any>) => any
+}
+
+/** Interface for a pluggable logger. */
+export interface ILogger {
+	debug: (message: string, meta?: Record<string, any>) => void
+	info: (message: string, meta?: Record<string, any>) => void
+	warn: (message: string, meta?: Record<string, any>) => void
+	error: (message: string, meta?: Record<string, any>) => void
 }
 
 /** Interface for a pluggable event bus. */
