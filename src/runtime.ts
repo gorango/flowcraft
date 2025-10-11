@@ -22,6 +22,7 @@ import { AsyncContextView, Context } from './context'
 import { CancelledWorkflowError, FatalNodeExecutionError, NodeExecutionError } from './errors'
 import { SimpleEvaluator } from './evaluator'
 import { isNodeClass } from './node'
+import { sanitizeBlueprint } from './sanitizer'
 import { JsonSerializer } from './serializer'
 
 class WorkflowState<TContext extends Record<string, any>> {
@@ -357,6 +358,7 @@ export class FlowRuntime<TContext extends Record<string, any>, TDependencies ext
 		const contextData = typeof initialState === 'string'
 			? this.serializer.deserialize(initialState) as Partial<TContext>
 			: initialState
+		blueprint = sanitizeBlueprint(blueprint)
 		const state = new WorkflowState<TContext>(contextData)
 
 		try {
