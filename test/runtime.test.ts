@@ -524,7 +524,8 @@ describe('Flowcraft Runtime', () => {
 			const runtime = new FlowRuntime({ dependencies: deps })
 			await runtime.run(flow.toBlueprint(), {}, { functionRegistry: flow.getFunctionRegistry() })
 
-			expect(capturedDeps).toBe(deps)
+			expect(capturedDeps.db).toBe(deps.db)
+			expect(capturedDeps.logger).toBeDefined()
 		})
 	})
 
