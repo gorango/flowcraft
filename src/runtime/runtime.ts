@@ -185,7 +185,7 @@ export class FlowRuntime<TContext extends Record<string, any>, TDependencies ext
 	}
 
 	private getExecutor(nodeDef: NodeDefinition, functionRegistry?: Map<string, any>): ExecutionStrategy {
-		if (nodeDef.uses.startsWith('batch-') || nodeDef.uses.startsWith('loop-')) {
+		if (nodeDef.uses.startsWith('batch-') || nodeDef.uses.startsWith('loop-') || nodeDef.uses === 'subflow') {
 			return new BuiltInNodeExecutor((nodeDef, context) => this._executeBuiltInNode(nodeDef, context))
 		}
 		const implementation = (functionRegistry?.get(nodeDef.uses) || this.registry[nodeDef.uses])
