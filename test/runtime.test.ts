@@ -1,8 +1,6 @@
 import type { IEventBus, Middleware } from '../src/types'
 import { describe, expect, it, vi } from 'vitest'
-import { FatalNodeExecutionError } from '../src/errors'
 import { createFlow } from '../src/flow'
-import { BaseNode } from '../src/node'
 import { FlowRuntime } from '../src/runtime'
 
 // A mock event bus for testing observability
@@ -18,7 +16,10 @@ class MockEventBus implements IEventBus {
 	}
 }
 
-describe('Flowcraft Runtime', () => {
+describe('Flowcraft Runtime - Integration Tests', () => {
+	// These are high-level integration tests that verify the overall runtime behavior
+	// Unit tests for individual components are in test/runtime/
+
 	describe('Core Execution', () => {
 		it('should execute a simple linear blueprint', async () => {
 			const flow = createFlow('linear')
@@ -254,166 +255,6 @@ describe('Flowcraft Runtime', () => {
 
 			expect(result.context.B).toBeUndefined()
 			expect(result.context.C).toBe('C')
-		})
-	})
-
-	describe('Resilience (`executeNode`)', () => {
-		it('should retry a failing NodeFunction the specified number of times', async () => {
-			let attempts = 0
-			const flow = createFlow('retry-fn')
-			flow.node('A', async () => {
-				attempts++
-				if (attempts < 3)
-					throw new Error('Fail')
-				return { output: 'success' }
-			}, { config: { maxRetries: 3 } })
-
-			const runtime = new FlowRuntime({})
-			const result = await runtime.run(flow.toBlueprint(), {}, { functionRegistry: flow.getFunctionRegistry() })
-
-			expect(result.status).toBe('completed')
-			expect(result.context.A).toBe('success')
-			expect(attempts).toBe(3)
-		})
-
-		it('should retry only the `exec` phase of a failing BaseNode', async () => {
-			let prepCalls = 0
-			let execAttempts = 0
-			let postCalls = 0
-
-			class RetryNode extends BaseNode {
-				async prep() {
-					prepCalls++
-					return null
-				}
-
-				async exec() {
-					execAttempts++
-					if (execAttempts < 3)
-						throw new Error('Fail')
-					return { output: 'success' }
-				}
-
-				async post() {
-					postCalls++
-					return { output: 'success' }
-				}
-			}
-
-			const flow = createFlow('retry-class').node('A', RetryNode, { config: { maxRetries: 3 } })
-			const runtime = new FlowRuntime({})
-			const result = await runtime.run(flow.toBlueprint(), {}, { functionRegistry: flow.getFunctionRegistry() })
-
-			expect(result.status).toBe('completed')
-			expect(prepCalls).toBe(1)
-			expect(execAttempts).toBe(3)
-			expect(postCalls).toBe(1)
-		})
-
-		it('should call the fallback implementation if all retries are exhausted', async () => {
-			const flow = createFlow('fallback')
-			flow.node('A', async () => {
-				throw new Error('Fail')
-			}, { config: { maxRetries: 2, fallback: 'FallbackNode' } })
-				.node('FallbackNode', async () => ({ output: 'fallback success' }))
-				.edge('A', 'B') // This edge should not be taken
-				.node('B', async () => ({ output: 'B' }))
-
-			const runtime = new FlowRuntime({})
-			const result = await runtime.run(flow.toBlueprint(), {}, { functionRegistry: flow.getFunctionRegistry() })
-
-			expect(result.status).toBe('completed')
-			expect(result.context.A).toBe('fallback success')
-			expect(result.context.B).toBeUndefined()
-		})
-
-		it('should fail the workflow if retries fail and no fallback is provided', async () => {
-			let attempts = 0
-			const flow = createFlow('error')
-			flow.node('A', async () => {
-				attempts++
-				throw new Error('Fail')
-			}, { config: { maxRetries: 2 } })
-
-			const runtime = new FlowRuntime({})
-			const result = await runtime.run(flow.toBlueprint(), {}, { functionRegistry: flow.getFunctionRegistry() })
-
-			expect(result.status).toBe('failed')
-			expect(attempts).toBe(2)
-			expect(result.errors).toBeDefined()
-			expect(result.errors?.[0].nodeId).toBe('A')
-		})
-
-		it('should immediately fail and bypass retries on FatalNodeExecutionError', async () => {
-			let attempts = 0
-			const flow = createFlow('fatal')
-			flow.node('A', async () => {
-				attempts++
-				throw new FatalNodeExecutionError('Fatal', 'A', 'fatal')
-			}, { config: { maxRetries: 5, fallback: 'B' } })
-				.node('B', async () => ({ output: 'fallback' }))
-
-			const runtime = new FlowRuntime({})
-			const result = await runtime.run(flow.toBlueprint(), {}, { functionRegistry: flow.getFunctionRegistry() })
-
-			expect(result.status).toBe('failed')
-			expect(attempts).toBe(1) // No retries
-			expect(result.context.B).toBeUndefined() // Fallback skipped
-		})
-	})
-
-	describe('High-Level Pattern Execution', () => {
-		// Note: The current runtime's built-in `batch-gather` node is only a synchronization point.
-		// It does not automatically aggregate results. This test verifies the pattern runs to completion.
-		it('should execute the batch pattern and all dynamic workers to completion', async () => {
-			const flow = createFlow('batch')
-			flow.node('start', async () => ({ output: ['item1', 'item2', 'item3'] }))
-				.batch('process-items', async ctx => ({ output: `${ctx.input}_processed` }), {
-					inputKey: 'start',
-					outputKey: 'results', // Note: `outputKey` is not used by the built-in gather node
-				})
-				.edge('start', 'process-items_scatter')
-				.node('final', async () => ({ output: 'done' }))
-				.edge('process-items_gather', 'final')
-
-			const runtime = new FlowRuntime({})
-			const result = await runtime.run(flow.toBlueprint(), {}, { functionRegistry: flow.getFunctionRegistry() })
-
-			expect(result.status).toBe('completed')
-			expect(result.context.final).toBe('done')
-			// We can't easily check for dynamic node outputs without knowing their generated IDs,
-			// but we can confirm the final node ran, proving the gather node worked as a join point.
-		})
-
-		it('should correctly execute a loop until the condition is false', async () => {
-			const flow = createFlow('loop')
-			// Set initial value
-			flow.node('A', async () => ({ output: 0 }))
-				// Loop Body Start: Increment the value
-				.node('B', async ctx => ({ output: (ctx.input as number) + 1 }))
-				// Loop Body End: Copy value for condition check
-				.node('C', async ctx => ({ output: ctx.input }))
-				// Connect initial value to loop start
-				.edge('A', 'B')
-				// Connect loop body nodes
-				.edge('B', 'C')
-				// Define the loop construct
-				.loop('my-loop', {
-					startNodeId: 'B',
-					endNodeId: 'C',
-					condition: 'C < 3', // Note: The runtime implicitly uses `context.C`
-				})
-				// After the loop breaks, continue to a final node
-				.node('D', async () => ({ output: 'finished' }))
-				.edge('my-loop_loop_controller', 'D', { action: 'break' })
-
-			const runtime = new FlowRuntime({})
-			const result = await runtime.run(flow.toBlueprint(), {}, { functionRegistry: flow.getFunctionRegistry() })
-
-			expect(result.status).toBe('completed')
-			// The loop runs for values 1, 2, 3. It breaks when C becomes 3.
-			expect(result.context.C).toBe(3)
-			expect(result.context.D).toBe('finished')
 		})
 	})
 
