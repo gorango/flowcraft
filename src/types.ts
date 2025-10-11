@@ -126,7 +126,7 @@ export interface IAsyncContext<TContext extends Record<string, any> = Record<str
 /** Generic for any set of dependencies. */
 export interface RuntimeDependencies { [key: string]: any }
 
-/** Configuration options for the FlowcraftRuntime. */
+/** Configuration options for the FlowRuntime. */
 export interface RuntimeOptions<TDependencies extends RuntimeDependencies = RuntimeDependencies> {
 	/** A registry of globally available node implementations. */
 	registry?: Record<string, NodeFunction | NodeClass>

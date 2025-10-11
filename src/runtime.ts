@@ -201,7 +201,7 @@ class GraphTraverser<TContext extends Record<string, any>, TDependencies extends
 
 	constructor(
 		private blueprint: WorkflowBlueprint,
-		private runtime: FlowcraftRuntime<TContext, TDependencies>,
+		private runtime: FlowRuntime<TContext, TDependencies>,
 		private state: WorkflowState<TContext>,
 		private functionRegistry: Map<string, any> | undefined,
 		private executionId: string,
@@ -325,7 +325,7 @@ class GraphTraverser<TContext extends Record<string, any>, TDependencies extends
 	}
 }
 
-export class FlowcraftRuntime<TContext extends Record<string, any>, TDependencies extends Record<string, any>> {
+export class FlowRuntime<TContext extends Record<string, any>, TDependencies extends Record<string, any>> {
 	private registry: Record<string, NodeFunction | typeof BaseNode>
 	private dependencies: TDependencies
 	private eventBus: IEventBus
