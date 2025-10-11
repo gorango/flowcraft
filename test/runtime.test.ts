@@ -317,7 +317,9 @@ describe('Flowcraft Runtime - Integration Tests', () => {
 		it('should call `afterNode` even if the node fails', async () => {
 			const afterSpy = vi.fn()
 			const middleware: Middleware[] = [{ afterNode: afterSpy }]
-			const flow = createFlow('mw-after-fail').node('A', async () => { throw new Error('Fail') })
+			const flow = createFlow('mw-after-fail').node('A', async () => {
+				throw new Error('Fail')
+			})
 			const runtime = new FlowRuntime({ middleware })
 			await runtime.run(flow.toBlueprint(), {}, { functionRegistry: flow.getFunctionRegistry() })
 

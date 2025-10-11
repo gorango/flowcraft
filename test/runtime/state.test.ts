@@ -19,7 +19,7 @@ describe('WorkflowState', () => {
 		const state = new WorkflowState({})
 		const error = new Error('Test error')
 		state.addError('node1', error)
-		const errors = state.errors
+		const errors = state.getErrors()
 		expect(errors).toHaveLength(1)
 		expect(errors[0].nodeId).toBe('node1')
 		expect(errors[0].message).toBe('Test error')
@@ -30,14 +30,14 @@ describe('WorkflowState', () => {
 		const error = new Error('Test error')
 		state.addError('node1', error)
 		state.clearError('node1')
-		expect(state.errors).toHaveLength(0)
+		expect(state.getErrors()).toHaveLength(0)
 	})
 
 	it('should mark fallback as executed', () => {
 		const state = new WorkflowState({})
-		expect(state.anyFallbackExecuted).toBe(false)
+		expect(state.getAnyFallbackExecuted()).toBe(false)
 		state.markFallbackExecuted()
-		expect(state.anyFallbackExecuted).toBe(true)
+		expect(state.getAnyFallbackExecuted()).toBe(true)
 	})
 
 	it('should return correct status for completed workflow', () => {

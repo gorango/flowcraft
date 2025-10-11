@@ -40,6 +40,14 @@ export class WorkflowState<TContext extends Record<string, any>> {
 		return new Set(this._completedNodes)
 	}
 
+	getErrors(): WorkflowError[] {
+		return this.errors
+	}
+
+	getAnyFallbackExecuted(): boolean {
+		return this.anyFallbackExecuted
+	}
+
 	getStatus(allNodeIds: Set<string>, fallbackNodeIds: Set<string>): WorkflowResult['status'] {
 		if (this.anyFallbackExecuted)
 			return 'completed'

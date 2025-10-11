@@ -35,25 +35,25 @@ npm install flowcraft
 Use the `createFlow` API to define a workflow programmatically:
 
 ```typescript
-import { createFlow, FlowRuntime, ConsoleLogger } from "flowcraft";
+import { ConsoleLogger, createFlow, FlowRuntime } from "flowcraft";
 
 const flow = createFlow("simple-workflow")
-	.node("start", async () => ({ output: 42 }))
-	.node("double", async ({ input }) => ({ output: input * 2 }), {
-		inputs: "start",
-	})
-	.edge("start", "double")
-	.toBlueprint();
+  .node("start", async () => ({ output: 42 }))
+  .node("double", async ({ input }) => ({ output: input * 2 }), {
+    inputs: "start",
+  })
+  .edge("start", "double")
+  .toBlueprint();
 
 const runtime = new FlowRuntime({
-	logger: new ConsoleLogger(),
-	registry: flow.getFunctionRegistry(),
+  logger: new ConsoleLogger(),
+  registry: flow.getFunctionRegistry(),
 });
 
 async function run() {
-	const result = await runtime.run(flow, {});
-	console.log(result);
-	// Output: { context: { start: 42, double: 84 }, serializedContext: '{"start":42,"double":84}', status: 'completed' }
+  const result = await runtime.run(flow, {});
+  console.log(result);
+  // Output: { context: { start: 42, double: 84 }, serializedContext: '{"start":42,"double":84}', status: 'completed' }
 }
 
 run();
@@ -99,10 +99,10 @@ A `WorkflowBlueprint` is a JSON-serializable object defining the workflow:
 
 ```typescript
 interface WorkflowBlueprint {
-	id: string;
-	nodes: NodeDefinition[];
-	edges: EdgeDefinition[];
-	metadata?: Record<string, any>;
+  id: string;
+  nodes: NodeDefinition[];
+  edges: EdgeDefinition[];
+  metadata?: Record<string, any>;
 }
 ```
 
@@ -122,12 +122,12 @@ Example class-based node:
 import { BaseNode } from "flowcraft";
 
 class MyNode extends BaseNode {
-	async exec(
-		prepResult: any,
-		context: NodeContext,
-	): Promise<Omit<NodeResult, "error">> {
-		return { output: prepResult * 2 };
-	}
+  async exec(
+    prepResult: any,
+    context: NodeContext,
+  ): Promise<Omit<NodeResult, "error">> {
+    return { output: prepResult * 2 };
+  }
 }
 ```
 
@@ -146,18 +146,18 @@ The `FlowRuntime` orchestrates execution, supporting:
 ### Advanced Patterns
 
 - **Batch Processing**: Process arrays in parallel using `.batch()`:
-    ```typescript:disable-run
-    flow.batch('process', async ({ input }) => ({ output: input * 2 }), {
-      inputKey: 'start',
-      outputKey: 'results',
+    ```typescript
+    flow.batch("process", async ({ input }) => ({ output: input * 2 }), {
+      inputKey: "start",
+      outputKey: "results",
     });
     ```
 - **Loops**: Create iterative workflows with `.loop()`:
     ```typescript
     flow.loop("my-loop", {
-    	startNodeId: "start",
-    	endNodeId: "end",
-    	condition: "context.count < 5",
+      startNodeId: "start",
+      endNodeId: "end",
+      condition: "context.count < 5",
     });
     ```
 
@@ -171,23 +171,23 @@ Customize Flowcraft with pluggable components:
 - **Middleware**: Add cross-cutting concerns like transactions or tracing:
     ```typescript
     const transactionMiddleware: Middleware = {
-    	aroundNode: async (ctx, nodeId, next) => {
-    		await db.query("BEGIN");
-    		try {
-    			const result = await next();
-    			await db.query("COMMIT");
-    			return result;
-    		} catch (e) {
-    			await db.query("ROLLBACK");
-    			throw e;
-    		}
-    	},
+      aroundNode: async (ctx, nodeId, next) => {
+        await db.query("BEGIN");
+        try {
+          const result = await next();
+          await db.query("COMMIT");
+          return result;
+        } catch (e) {
+          await db.query("ROLLBACK");
+          throw e;
+        }
+      },
     };
     ```
 
 ## Documentation
 
-Dive into the documentation to explore advanced features like middleware, dependency injection, high-level patterns, and static analysis.
+Dive into the documentation to for guides and more advanced features like middleware, dependency injection, high-level patterns, and static analysis.
 
 [Read the docs](https://gorango.github.io/flowcraft/guide/)
 
