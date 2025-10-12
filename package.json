@@ -36,13 +36,13 @@
 		"dist"
 	],
 	"scripts": {
-		"dev": "tsup --watch --config config/tsup.config.ts",
-		"build": "tsup --config config/tsup.config.ts",
+		"dev": "tsup --watch",
+		"build": "tsup",
 		"lint": "eslint --fix --ext .ts",
-		"typecheck": "tsc --noEmit -p config/tsconfig.json",
-		"test": "vitest run --config config/vitest.config.ts",
-		"test:watch": "vitest --config config/vitest.config.ts",
-		"test:coverage": "vitest run --coverage --config config/vitest.config.ts",
+		"typecheck": "tsc --noEmit",
+		"test": "vitest run",
+		"test:watch": "vitest",
+		"test:coverage": "vitest run --coverage",
 		"docs:dev": "vitepress dev docs",
 		"docs:build": "vitepress build docs",
 		"docs:preview": "vitepress preview docs"
