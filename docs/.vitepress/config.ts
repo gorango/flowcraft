@@ -84,9 +84,12 @@ export default defineConfig({
 				{
 					text: 'Examples',
 					items: [
-						{ text: 'Simple Workflow', link: '/guide/examples/simple-workflow' },
-						{ text: 'ETL Pipeline', link: '/guide/examples/etl-pipeline' },
-						{ text: 'AI Agent Orchestration', link: '/guide/examples/ai-agent-orchestration' },
+						{ text: 'Basic Workflow', link: '/examples/1.basic' },
+						{ text: 'Parallel Workflow', link: '/examples/2.parallel' },
+						{ text: 'Research Agent', link: '/examples/3.research' },
+						{ text: 'RAG Agent', link: '/examples/4.rag' },
+						{ text: 'DAG Workflow', link: '/examples/5.dag' },
+						{ text: 'Distributed Workflow', link: '/examples/6.distributed' },
 					],
 				},
 			],

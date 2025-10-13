@@ -1,4 +1,4 @@
-# Article Writing Workflow
+# Basic Workflow
 
 A `workflow` example that demonstrates an article writing workflow using a sequence of `Node`s and `Flow`.
 

@@ -128,7 +128,7 @@ describe('Flowcraft Runtime - Integration Tests', () => {
 				.loop('research', {
 					startNodeId: 'decide',
 					endNodeId: 'search',
-					condition: 'loop_count < 2 && last_action !== \'answer\''
+					condition: 'loop_count < 2 && last_action !== \'answer\'',
 				})
 				.edge('initialize', 'decide')
 				.edge('decide', 'search', { action: 'search' })
