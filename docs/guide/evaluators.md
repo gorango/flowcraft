@@ -11,10 +11,12 @@ Flowcraft ships with `SimpleEvaluator`, which uses `new Function()` to execute J
 flow.edge('A', 'B', { condition: 'result.output.status === \'SUCCESS\'' })
 ```
 
-<div class="warning">
-  <strong>Security Warning</strong><br>
-  The default `SimpleEvaluator` is powerful but can be a security risk if the expressions in your `WorkflowBlueprint` are provided by untrusted users. It creates a sandbox, but a determined attacker could potentially escape it. For production systems handling user-defined workflows, it is **highly recommended** to replace it with a more secure, sandboxed library.
-</div>
+> [!CAUTION]
+> **Security Warning**
+>
+> This class can execute arbitrary JavaScript code. Do not use it in production if your workflow blueprints can be defined by untrusted users. Replace it with a secure, sandboxed evaluator implementation.
+>
+> The default `SimpleEvaluator` is powerful but can be a security risk if the expressions in your `WorkflowBlueprint` are provided by untrusted users. It creates a sandbox, but a determined attacker could potentially escape it. For production systems handling user-defined workflows, it is **highly recommended** to replace it with a more secure, sandboxed library.
 
 ### Replacing the Evaluator
 
@@ -55,10 +57,10 @@ function evaluateAst(node: jsep.Expression, context: Record<string, any>): any {
 			switch (binaryNode.operator) {
 				case '===': return left === right
 				case '>': return left > right
-        // ... handle other operators
+			// ... handle other operators
 			}
 			break
-    // ... handle MemberExpression for `result.output`, etc.
+			// ... handle MemberExpression for `result.output`, etc.
 	}
 	throw new Error(`Unsupported expression type: ${node.type}`)
 }

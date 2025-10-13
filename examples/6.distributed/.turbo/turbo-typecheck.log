@@ -1,0 +1,5 @@
+
+
+> distributed-workflow@ typecheck /home/g/m/flowcraft/examples/6.distributed
+> tsc --noEmit
+

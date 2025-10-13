@@ -1,0 +1,54 @@
+{
+	"name": "flowcraft",
+	"type": "module",
+	"version": "1.0.0",
+	"description": "A flexible workflow framework",
+	"license": "MIT",
+	"homepage": "https://github.com/gorango/flowcraft",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/gorango/flowcraft.git"
+	},
+	"bugs": "https://github.com/gorango/flowcraft/issues",
+	"keywords": [
+		"agentic-workflows",
+		"ai-agent",
+		"background-jobs",
+		"dag",
+		"data-pipelines",
+		"declarative-workflows",
+		"distributed-systems",
+		"etl",
+		"llm-orchestration",
+		"orchestration",
+		"rag",
+		"state-machine",
+		"workflow-engine"
+	],
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"import": "./dist/index.js"
+		}
+	},
+	"files": [
+		"dist"
+	],
+	"scripts": {
+		"dev": "tsup --watch",
+		"build": "tsup",
+		"lint": "eslint --fix --ext .ts",
+		"typecheck": "tsc --noEmit",
+		"test": "vitest run",
+		"test:watch": "vitest",
+		"test:coverage": "vitest run --coverage"
+	},
+	"devDependencies": {
+		"@types/node": "^24.7.0",
+		"@vitest/coverage-v8": "3.2.4",
+		"eslint": "^9.37.0",
+		"tsup": "^8.5.0",
+		"typescript": "^5.9.3",
+		"vitest": "^3.2.4"
+	}
+}

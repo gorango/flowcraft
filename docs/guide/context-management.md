@@ -8,11 +8,11 @@ The context is a simple key-value store. By convention, when a node completes, t
 
 ```typescript
 const flow = createFlow('state-example')
-// This node's output will be saved as `context.initial_data`
+	// This node's output will be saved as `context.initial_data`
 	.node('initial_data', async () => ({ output: { value: 100 } }))
 
-// This node has no direct input from its predecessor, but it can still
-// access the data from the context.
+	// This node has no direct input from its predecessor, but it can still
+	// access the data from the context.
 	.node('process_data', async ({ context }) => {
 		// We can read the output of the 'initial_data' node
 		const data = await context.get('initial_data') // { value: 100 }

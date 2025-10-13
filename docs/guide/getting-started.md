@@ -28,14 +28,14 @@ import { ConsoleLogger, createFlow, FlowRuntime } from 'flowcraft'
 
 // 1. Define the workflow structure
 const flow = createFlow('simple-workflow')
-// The first node, 'start', takes no input and outputs the number 42.
+	// The first node, 'start', takes no input and outputs the number 42.
 	.node('start', async () => ({ output: 42 }))
-// The second node, 'double', depends on 'start'.
-// Its input is automatically the output of its single predecessor.
+	// The second node, 'double', depends on 'start'.
+	// Its input is automatically the output of its single predecessor.
 	.node('double', async ({ input }) => ({ output: input * 2 }))
-// Define the dependency: 'start' must run before 'double'.
+	// Define the dependency: 'start' must run before 'double'.
 	.edge('start', 'double')
-// Finalize the definition into a serializable blueprint.
+	// Finalize the definition into a serializable blueprint.
 	.toBlueprint()
 
 // 2. Set up the runtime

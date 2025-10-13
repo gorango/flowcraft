@@ -7,7 +7,7 @@ A simple workflow might look like this:
 ```mermaid
 flowchart TD
     start["Start"] --> process["Process Data"]
-    process --> end["End"]
+    process --> finish["End"]
 ```
 
 ### Core Philosophy
@@ -24,7 +24,3 @@ Unlike heavy platforms like Temporal or Airflow, or domain-specific libraries li
 -   **Extensibility**: Pluggable loggers, evaluators, serializers, and middleware for custom behavior.
 -   **Static Analysis**: Tools to detect cycles, validate blueprints, and generate Mermaid diagrams for visualization.
 -   **Type-Safe API**: Fully typed with TypeScript for a robust developer experience.
-
-Ready to start building?
-
-[Get Started →](/guide/getting-started)

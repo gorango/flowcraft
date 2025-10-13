@@ -8,7 +8,8 @@
 		"dist"
 	],
 	"scripts": {
-		"build": "tsup src/index.ts --format esm --dts"
+		"build": "tsup src/index.ts --format esm --dts",
+		"typecheck": "tsc --noEmit"
 	},
 	"dependencies": {
 		"bullmq": "^5.61.0",

@@ -1,0 +1,5 @@
+
+
+> @flowcraft/bullmq-adapter@1.0.0 typecheck /home/g/m/flowcraft/packages/bullmq-adapter
+> tsc --noEmit
+

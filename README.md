@@ -35,28 +35,28 @@ npm install flowcraft
 Use the `createFlow` API to define a workflow programmatically:
 
 ```typescript
-import { ConsoleLogger, createFlow, FlowRuntime } from "flowcraft";
+import { ConsoleLogger, createFlow, FlowRuntime } from 'flowcraft'
 
-const flow = createFlow("simple-workflow")
-  .node("start", async () => ({ output: 42 }))
-  .node("double", async ({ input }) => ({ output: input * 2 }), {
-    inputs: "start",
-  })
-  .edge("start", "double")
-  .toBlueprint();
+const flow = createFlow('simple-workflow')
+	.node('start', async () => ({ output: 42 }))
+	.node('double', async ({ input }) => ({ output: input * 2 }), {
+		inputs: 'start',
+	})
+	.edge('start', 'double')
+	.toBlueprint()
 
 const runtime = new FlowRuntime({
-  logger: new ConsoleLogger(),
-  registry: flow.getFunctionRegistry(),
-});
+	logger: new ConsoleLogger(),
+	registry: flow.getFunctionRegistry(),
+})
 
 async function run() {
-  const result = await runtime.run(flow, {});
-  console.log(result);
-  // Output: { context: { start: 42, double: 84 }, serializedContext: '{"start":42,"double":84}', status: 'completed' }
+	const result = await runtime.run(flow, {})
+	console.log(result)
+	// Output: { context: { start: 42, double: 84 }, serializedContext: '{"start":42,"double":84}', status: 'completed' }
 }
 
-run();
+run()
 ```
 
 ### Analyzing a Workflow
@@ -64,14 +64,14 @@ run();
 Validate and visualize your workflow before execution:
 
 ```typescript
-import { analyzeBlueprint, generateMermaid } from "flowcraft";
+import { analyzeBlueprint, generateMermaid } from 'flowcraft'
 
-const analysis = analyzeBlueprint(flow);
-console.log(analysis);
+const analysis = analyzeBlueprint(flow)
+console.log(analysis)
 // Output: { cycles: [], startNodeIds: ['start'], terminalNodeIds: ['double'], nodeCount: 2, edgeCount: 1, isDag: true }
 
-const mermaid = generateMermaid(flow);
-console.log(mermaid);
+const mermaid = generateMermaid(flow)
+console.log(mermaid)
 // Output:
 // flowchart TD
 //     start["start"]
@@ -84,10 +84,10 @@ console.log(mermaid);
 Check for common errors in your blueprint:
 
 ```typescript
-import { lintBlueprint } from "flowcraft";
+import { lintBlueprint } from 'flowcraft'
 
-const result = lintBlueprint(flow, flow.getFunctionRegistry());
-console.log(result);
+const result = lintBlueprint(flow, flow.getFunctionRegistry())
+console.log(result)
 // Output: { isValid: true, issues: [] }
 ```
 
@@ -99,10 +99,10 @@ A `WorkflowBlueprint` is a JSON-serializable object defining the workflow:
 
 ```typescript
 interface WorkflowBlueprint {
-  id: string;
-  nodes: NodeDefinition[];
-  edges: EdgeDefinition[];
-  metadata?: Record<string, any>;
+	id: string
+	nodes: NodeDefinition[]
+	edges: EdgeDefinition[]
+	metadata?: Record<string, any>
 }
 ```
 
@@ -119,15 +119,15 @@ Nodes encapsulate logic and can be:
 Example class-based node:
 
 ```typescript
-import { BaseNode } from "flowcraft";
+import { BaseNode } from 'flowcraft'
 
 class MyNode extends BaseNode {
-  async exec(
-    prepResult: any,
-    context: NodeContext,
-  ): Promise<Omit<NodeResult, "error">> {
-    return { output: prepResult * 2 };
-  }
+	async exec(
+		prepResult: any,
+		context: NodeContext,
+	): Promise<Omit<NodeResult, 'error'>> {
+		return { output: prepResult * 2 }
+	}
 }
 ```
 
@@ -147,18 +147,18 @@ The `FlowRuntime` orchestrates execution, supporting:
 
 - **Batch Processing**: Process arrays in parallel using `.batch()`:
     ```typescript
-    flow.batch("process", async ({ input }) => ({ output: input * 2 }), {
-      inputKey: "start",
-      outputKey: "results",
-    });
+    flow.batch('process', async ({ input }) => ({ output: input * 2 }), {
+    	inputKey: 'start',
+    	outputKey: 'results',
+    })
     ```
 - **Loops**: Create iterative workflows with `.loop()`:
     ```typescript
-    flow.loop("my-loop", {
-      startNodeId: "start",
-      endNodeId: "end",
-      condition: "context.count < 5",
-    });
+    flow.loop('my-loop', {
+    	startNodeId: 'start',
+    	endNodeId: 'end',
+    	condition: 'context.count < 5',
+    })
     ```
 
 ## Extensibility
@@ -171,18 +171,19 @@ Customize Flowcraft with pluggable components:
 - **Middleware**: Add cross-cutting concerns like transactions or tracing:
     ```typescript
     const transactionMiddleware: Middleware = {
-      aroundNode: async (ctx, nodeId, next) => {
-        await db.query("BEGIN");
-        try {
-          const result = await next();
-          await db.query("COMMIT");
-          return result;
-        } catch (e) {
-          await db.query("ROLLBACK");
-          throw e;
-        }
-      },
-    };
+    	aroundNode: async (ctx, nodeId, next) => {
+    		await db.query('BEGIN')
+    		try {
+    			const result = await next()
+    			await db.query('COMMIT')
+    			return result
+    		}
+    		catch (e) {
+    			await db.query('ROLLBACK')
+    			throw e
+    		}
+    	},
+    }
     ```
 
 ## Documentation

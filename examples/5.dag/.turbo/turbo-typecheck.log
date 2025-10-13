@@ -1,0 +1,5 @@
+
+
+> dag-workflow@ typecheck /home/g/m/flowcraft/examples/5.dag
+> tsc --noEmit
+

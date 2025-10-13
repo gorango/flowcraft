@@ -11,9 +11,9 @@ Here's the method signature:
 flow.loop(
   id: string, // A unique ID for the loop construct
   options: {
-    startNodeId: string,  // The ID of the first node in the loop body
-    endNodeId: string,    // The ID of the last node in the loop body
-    condition: string     // An expression to evaluate. If true, the loop continues.
+	startNodeId: string,	// The ID of the first node in the loop body
+	endNodeId: string,		// The ID of the last node in the loop body
+	condition: string		// An expression to evaluate. If true, the loop continues.
   }
 )
 ```
@@ -26,13 +26,13 @@ Let's build a workflow that increments a counter from 0 to 5.
 import { createFlow } from 'flowcraft'
 
 const flow = createFlow('loop-workflow')
-// 1. Initialize the counter in the context before the loop starts.
+	// 1. Initialize the counter in the context before the loop starts.
 	.node('initialize', async ({ context }) => {
 		await context.set('count', 0)
 		return { output: 'Initialized' }
 	})
 
-// 2. This is the body of our loop. It reads, increments, and saves the counter.
+	// 2. This is the body of our loop. It reads, increments, and saves the counter.
 	.node('increment', async ({ context }) => {
 		const currentCount = await context.get('count') || 0
 		const newCount = currentCount + 1
@@ -41,14 +41,14 @@ const flow = createFlow('loop-workflow')
 		return { output: newCount }
 	})
 
-// 3. Define the loop.
+	// 3. Define the loop.
 	.loop('counter-loop', {
 		startNodeId: 'increment',
 		endNodeId: 'increment', // The loop body is just one node.
 		condition: 'context.count < 5' // Continue as long as this is true.
 	})
 
-// 4. Define the edges.
+	// 4. Define the edges.
 	.edge('initialize', 'increment')
 	.toBlueprint()
 ```
@@ -59,10 +59,10 @@ The `.loop()` method intelligently wires the graph for you. It adds a `loop-cont
 
 ```mermaid
 flowchart TD
-    initialize["initialize"] --> increment["increment"]
-    increment --> controller["counter-loop_loop_controller"]
-    controller -- "continue (context.count < 5)" --> increment
-    controller -- "break" --> exit((Exit Loop))
+	initialize["initialize"] --> increment["increment"]
+	increment --> controller["counter-loop_loop_controller"]
+	controller -- "continue (context.count < 5)" --> increment
+	controller -- "break" --> exit((Exit Loop))
 ```
 
 1.  `initialize` runs once, setting `count` to 0.

@@ -22,12 +22,12 @@ You add tasks to your workflow using the `.node()` method. It takes three argume
 
 ```typescript
 const flowBuilder = createFlow('user-processing')
-// A simple function-based node
+	// A simple function-based node
 	.node('fetch-user', async () => {
 		const user = { id: 1, name: 'Alice' }
 		return { output: user }
 	})
-// A node with options
+	// A node with options
 	.node('validate-user', async ({ input }) => {
 		const isValid = input.name === 'Alice'
 		return {
@@ -52,10 +52,10 @@ const flowBuilder = createFlow('user-processing')
 	.node('process-valid', /* ... */)
 	.node('handle-invalid', /* ... */)
 
-// Basic edge: runs 'validate-user' after 'fetch-user'
+	// Basic edge: runs 'validate-user' after 'fetch-user'
 	.edge('fetch-user', 'validate-user')
 
-// Conditional edges based on the 'action' returned by 'validate-user'
+	// Conditional edges based on the 'action' returned by 'validate-user'
 	.edge('validate-user', 'process-valid', { action: 'valid' })
 	.edge('validate-user', 'handle-invalid', { action: 'invalid' })
 ```

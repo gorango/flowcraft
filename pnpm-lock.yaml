@@ -11,24 +11,15 @@ importers:
       '@antfu/eslint-config':
         specifier: ^5.4.1
         version: 5.4.1(@vue/compiler-sfc@3.5.22)(eslint@9.37.0(jiti@2.6.1))(typescript@5.9.3)(vitest@3.2.4(@types/debug@4.1.12)(@types/node@24.7.0)(jiti@2.6.1)(tsx@4.20.6)(yaml@2.8.1))
-      '@types/node':
-        specifier: ^24.7.0
-        version: 24.7.0
-      '@vitest/coverage-v8':
-        specifier: 3.2.4
-        version: 3.2.4(vitest@3.2.4(@types/debug@4.1.12)(@types/node@24.7.0)(jiti@2.6.1)(tsx@4.20.6)(yaml@2.8.1))
-      eslint:
-        specifier: ^9.37.0
-        version: 9.37.0(jiti@2.6.1)
       jiti:
         specifier: ^2.6.1
         version: 2.6.1
       mermaid:
         specifier: ^11.12.0
         version: 11.12.0
-      tsup:
-        specifier: ^8.5.0
-        version: 8.5.0(jiti@2.6.1)(postcss@8.5.6)(tsx@4.20.6)(typescript@5.9.3)(yaml@2.8.1)
+      turbo:
+        specifier: ^2.5.8
+        version: 2.5.8
       typescript:
         specifier: ^5.9.3
         version: 5.9.3
@@ -38,37 +29,28 @@ importers:
       vitepress-plugin-mermaid:
         specifier: ^2.0.17
         version: 2.0.17(mermaid@11.12.0)(vitepress@1.6.4(@algolia/client-search@5.40.0)(@types/node@24.7.0)(change-case@5.4.4)(postcss@8.5.6)(search-insights@2.17.3)(typescript@5.9.3))
-      vitest:
-        specifier: ^3.2.4
-        version: 3.2.4(@types/debug@4.1.12)(@types/node@24.7.0)(jiti@2.6.1)(tsx@4.20.6)(yaml@2.8.1)
 
-  packages/bullmq-adapter:
+  examples/1.basic:
     dependencies:
-      bullmq:
-        specifier: ^5.61.0
-        version: 5.61.0
       flowcraft:
         specifier: workspace:*
-        version: link:../..
-      ioredis:
-        specifier: ^5.8.1
-        version: 5.8.1
+        version: link:../../packages/flowcraft
     devDependencies:
       typescript:
         specifier: ^5.9.3
         version: 5.9.3
 
-  sandbox/1.basic:
+  examples/2.parallel:
     dependencies:
       dotenv:
         specifier: ^17.2.3
         version: 17.2.3
       flowcraft:
         specifier: workspace:*
-        version: link:../..
+        version: link:../../packages/flowcraft
       openai:
         specifier: ^6.2.0
-        version: 6.2.0
+        version: 6.3.0
       yaml:
         specifier: ^2.8.1
         version: 2.8.1
@@ -77,17 +59,20 @@ importers:
         specifier: ^5.9.3
         version: 5.9.3
 
-  sandbox/2.research:
+  examples/3.ai-agent:
     dependencies:
       dotenv:
         specifier: ^17.2.3
         version: 17.2.3
       flowcraft:
         specifier: workspace:*
-        version: link:../..
+        version: link:../../packages/flowcraft
       openai:
         specifier: ^6.2.0
-        version: 6.2.0
+        version: 6.3.0
+      serpapi:
+        specifier: ^2.1.0
+        version: 2.2.1
       yaml:
         specifier: ^2.8.1
         version: 2.8.1
@@ -96,36 +81,17 @@ importers:
         specifier: ^5.9.3
         version: 5.9.3
 
-  sandbox/3.parallel:
+  examples/4.rag:
     dependencies:
       dotenv:
         specifier: ^17.2.3
         version: 17.2.3
       flowcraft:
         specifier: workspace:*
-        version: link:../..
+        version: link:../../packages/flowcraft
       openai:
         specifier: ^6.2.0
-        version: 6.2.0
-      yaml:
-        specifier: ^2.8.1
-        version: 2.8.1
-    devDependencies:
-      typescript:
-        specifier: ^5.9.3
-        version: 5.9.3
-
-  sandbox/4.rag:
-    dependencies:
-      dotenv:
-        specifier: ^17.2.3
-        version: 17.2.3
-      flowcraft:
-        specifier: workspace:*
-        version: link:../..
-      openai:
-        specifier: ^6.2.0
-        version: 6.2.0
+        version: 6.3.0
       superjson:
         specifier: ^2.2.2
         version: 2.2.2
@@ -140,20 +106,20 @@ importers:
         specifier: ^5.9.3
         version: 5.9.3
 
-  sandbox/5.dag:
+  examples/5.dag:
     dependencies:
       dotenv:
         specifier: ^17.2.3
         version: 17.2.3
       flowcraft:
         specifier: workspace:*
-        version: link:../..
+        version: link:../../packages/flowcraft
       lodash-es:
         specifier: ^4.17.21
         version: 4.17.21
       openai:
         specifier: ^6.2.0
-        version: 6.2.0
+        version: 6.3.0
       yaml:
         specifier: ^2.8.1
         version: 2.8.1
@@ -168,7 +134,7 @@ importers:
         specifier: ^5.9.3
         version: 5.9.3
 
-  sandbox/6.distributed:
+  examples/6.distributed:
     dependencies:
       '@flowcraft/bullmq-adapter':
         specifier: workspace:*
@@ -181,13 +147,13 @@ importers:
         version: 17.2.3
       flowcraft:
         specifier: workspace:*
-        version: link:../..
+        version: link:../../packages/flowcraft
       ioredis:
         specifier: ^5.8.1
         version: 5.8.1
       openai:
         specifier: ^6.2.0
-        version: 6.2.0
+        version: 6.3.0
     devDependencies:
       '@types/node':
         specifier: ^24.7.0
@@ -198,6 +164,43 @@ importers:
       typescript:
         specifier: ^5.9.3
         version: 5.9.3
+
+  packages/bullmq-adapter:
+    dependencies:
+      bullmq:
+        specifier: ^5.61.0
+        version: 5.61.0
+      flowcraft:
+        specifier: workspace:*
+        version: link:../flowcraft
+      ioredis:
+        specifier: ^5.8.1
+        version: 5.8.1
+    devDependencies:
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
+
+  packages/flowcraft:
+    devDependencies:
+      '@types/node':
+        specifier: ^24.7.0
+        version: 24.7.0
+      '@vitest/coverage-v8':
+        specifier: 3.2.4
+        version: 3.2.4(vitest@3.2.4(@types/debug@4.1.12)(@types/node@24.7.0)(jiti@2.6.1)(tsx@4.20.6)(yaml@2.8.1))
+      eslint:
+        specifier: ^9.37.0
+        version: 9.37.0(jiti@2.6.1)
+      tsup:
+        specifier: ^8.5.0
+        version: 8.5.0(jiti@2.6.1)(postcss@8.5.6)(tsx@4.20.6)(typescript@5.9.3)(yaml@2.8.1)
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.4
+        version: 3.2.4(@types/debug@4.1.12)(@types/node@24.7.0)(jiti@2.6.1)(tsx@4.20.6)(yaml@2.8.1)
 
 packages:
 
@@ -2642,8 +2645,8 @@ packages:
   oniguruma-to-es@3.1.1:
     resolution: {integrity: sha512-bUH8SDvPkH3ho3dvwJwfonjlQ4R80vjyvrU8YpxuROddv55vAEJrTuCuCVUhhsHbtlD9tGGbaNApGQckXhS8iQ==}
 
-  openai@6.2.0:
-    resolution: {integrity: sha512-qqjzHls7F5xkXNGy9P1Ei1rorI5LWupUUFWP66zPU8FlZbiITX8SFcHMKNZg/NATJ0LpIZcMUFxSwQmdeQPwSw==}
+  openai@6.3.0:
+    resolution: {integrity: sha512-E6vOGtZvdcb4yXQ5jXvDlUG599OhIkb/GjBLZXS+qk0HF+PJReIldEc9hM8Ft81vn+N6dRdFRb7BZNK8bbvXrw==}
     hasBin: true
     peerDependencies:
       ws: ^8.18.0
@@ -2878,6 +2881,9 @@ packages:
     engines: {node: '>=10'}
     hasBin: true
 
+  serpapi@2.2.1:
+    resolution: {integrity: sha512-1HXXaIwDmYueFPauAggIkzozMi5P/a4/yRUxB8Z1kad0VQE/7ohf9a6xRQ99aXR252itDChfmJUfBdCA4phCYA==}
+
   shebang-command@2.0.0:
     resolution: {integrity: sha512-kHxr2zZpYtdmrN1qDjrrX/Z1rR1kG8Dx+gkpK1G4eXmvXswmcE1hTWBWYUzlraYw1/yZp6YuDY77YtvbN0dmDA==}
     engines: {node: '>=8'}
@@ -3087,6 +3093,40 @@ packages:
   tsx@4.20.6:
     resolution: {integrity: sha512-ytQKuwgmrrkDTFP4LjR0ToE2nqgy886GpvRSpU0JAnrdBYppuY5rLkRUYPU1yCryb24SsKBTL/hlDQAEFVwtZg==}
     engines: {node: '>=18.0.0'}
+    hasBin: true
+
+  turbo-darwin-64@2.5.8:
+    resolution: {integrity: sha512-Dh5bCACiHO8rUXZLpKw+m3FiHtAp2CkanSyJre+SInEvEr5kIxjGvCK/8MFX8SFRjQuhjtvpIvYYZJB4AGCxNQ==}
+    cpu: [x64]
+    os: [darwin]
+
+  turbo-darwin-arm64@2.5.8:
+    resolution: {integrity: sha512-f1H/tQC9px7+hmXn6Kx/w8Jd/FneIUnvLlcI/7RGHunxfOkKJKvsoiNzySkoHQ8uq1pJnhJ0xNGTlYM48ZaJOQ==}
+    cpu: [arm64]
+    os: [darwin]
+
+  turbo-linux-64@2.5.8:
+    resolution: {integrity: sha512-hMyvc7w7yadBlZBGl/bnR6O+dJTx3XkTeyTTH4zEjERO6ChEs0SrN8jTFj1lueNXKIHh1SnALmy6VctKMGnWfw==}
+    cpu: [x64]
+    os: [linux]
+
+  turbo-linux-arm64@2.5.8:
+    resolution: {integrity: sha512-LQELGa7bAqV2f+3rTMRPnj5G/OHAe2U+0N9BwsZvfMvHSUbsQ3bBMWdSQaYNicok7wOZcHjz2TkESn1hYK6xIQ==}
+    cpu: [arm64]
+    os: [linux]
+
+  turbo-windows-64@2.5.8:
+    resolution: {integrity: sha512-3YdcaW34TrN1AWwqgYL9gUqmZsMT4T7g8Y5Azz+uwwEJW+4sgcJkIi9pYFyU4ZBSjBvkfuPZkGgfStir5BBDJQ==}
+    cpu: [x64]
+    os: [win32]
+
+  turbo-windows-arm64@2.5.8:
+    resolution: {integrity: sha512-eFC5XzLmgXJfnAK3UMTmVECCwuBcORrWdewoiXBnUm934DY6QN8YowC/srhNnROMpaKaqNeRpoB5FxCww3eteQ==}
+    cpu: [arm64]
+    os: [win32]
+
+  turbo@2.5.8:
+    resolution: {integrity: sha512-5c9Fdsr9qfpT3hA0EyYSFRZj1dVVsb6KIWubA9JBYZ/9ZEAijgUEae0BBR/Xl/wekt4w65/lYLTFaP3JmwSO8w==}
     hasBin: true
 
   type-check@0.4.0:
@@ -6071,7 +6111,7 @@ snapshots:
       regex: 6.0.1
       regex-recursion: 6.0.2
 
-  openai@6.2.0: {}
+  openai@6.3.0: {}
 
   optionator@0.9.4:
     dependencies:
@@ -6286,6 +6326,8 @@ snapshots:
 
   semver@7.7.3: {}
 
+  serpapi@2.2.1: {}
+
   shebang-command@2.0.0:
     dependencies:
       shebang-regex: 3.0.0
@@ -6491,6 +6533,33 @@ snapshots:
       get-tsconfig: 4.12.0
     optionalDependencies:
       fsevents: 2.3.3
+
+  turbo-darwin-64@2.5.8:
+    optional: true
+
+  turbo-darwin-arm64@2.5.8:
+    optional: true
+
+  turbo-linux-64@2.5.8:
+    optional: true
+
+  turbo-linux-arm64@2.5.8:
+    optional: true
+
+  turbo-windows-64@2.5.8:
+    optional: true
+
+  turbo-windows-arm64@2.5.8:
+    optional: true
+
+  turbo@2.5.8:
+    optionalDependencies:
+      turbo-darwin-64: 2.5.8
+      turbo-darwin-arm64: 2.5.8
+      turbo-linux-64: 2.5.8
+      turbo-linux-arm64: 2.5.8
+      turbo-windows-64: 2.5.8
+      turbo-windows-arm64: 2.5.8
 
   type-check@0.4.0:
     dependencies:

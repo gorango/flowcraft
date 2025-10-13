@@ -2,62 +2,28 @@
 	"name": "flowcraft",
 	"type": "module",
 	"version": "1.0.0",
-	"packageManager": "pnpm@10.18.1",
-	"description": "A flexible workflow framework",
-	"license": "MIT",
-	"homepage": "https://github.com/gorango/flowcraft",
-	"repository": {
-		"type": "git",
-		"url": "https://github.com/gorango/flowcraft.git"
-	},
-	"bugs": "https://github.com/gorango/flowcraft/issues",
-	"keywords": [
-		"agentic-workflows",
-		"ai-agent",
-		"background-jobs",
-		"dag",
-		"data-pipelines",
-		"declarative-workflows",
-		"distributed-systems",
-		"etl",
-		"llm-orchestration",
-		"orchestration",
-		"rag",
-		"state-machine",
-		"workflow-engine"
-	],
-	"exports": {
-		".": {
-			"types": "./dist/index.d.ts",
-			"import": "./dist/index.js"
-		}
-	},
-	"files": [
-		"dist"
-	],
+	"packageManager": "pnpm@10.4.1",
+	"description": "",
+	"main": "index.js",
 	"scripts": {
-		"dev": "tsup --watch",
-		"build": "tsup",
-		"lint": "eslint --fix --ext .ts",
-		"typecheck": "tsc --noEmit",
-		"test": "vitest run",
-		"test:watch": "vitest",
-		"test:coverage": "vitest run --coverage",
+		"lint": "eslint --fix",
 		"docs:dev": "vitepress dev docs",
 		"docs:build": "vitepress build docs",
 		"docs:preview": "vitepress preview docs"
 	},
+	"workspaces": {
+		"packages": [
+			"examples/*",
+			"packages/*"
+		]
+	},
 	"devDependencies": {
 		"@antfu/eslint-config": "^5.4.1",
-		"@types/node": "^24.7.0",
-		"@vitest/coverage-v8": "3.2.4",
-		"eslint": "^9.37.0",
 		"jiti": "^2.6.1",
 		"mermaid": "^11.12.0",
-		"tsup": "^8.5.0",
+		"turbo": "^2.5.8",
 		"typescript": "^5.9.3",
 		"vitepress": "^1.6.4",
-		"vitepress-plugin-mermaid": "^2.0.17",
-		"vitest": "^3.2.4"
+		"vitepress-plugin-mermaid": "^2.0.17"
 	}
 }

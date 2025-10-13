@@ -1,0 +1,5 @@
+
+
+> basic-workflow@ typecheck /home/g/m/flowcraft/examples/1.basic
+> tsc --noEmit
+

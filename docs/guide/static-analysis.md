@@ -83,14 +83,12 @@ const result = lintBlueprint(blueprint, registry)
 
 console.log(result)
 // {
-//   isValid: false,
-//   issues: [
-//     {
-//       code: 'INVALID_EDGE_TARGET',
-//       message: "Edge target 'C' does not correspond to a valid node ID.",
-//       relatedId: 'A'
-//     }
-//   ]
+//		isValid: false,
+//		issues: [{
+//			code: 'INVALID_EDGE_TARGET',
+//			message: "Edge target 'C' does not correspond to a valid node ID.",
+//			relatedId: 'A'
+//		}]
 // }
 ```
 

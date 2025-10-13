@@ -1,0 +1,15 @@
+
+
+> @flowcraft/bullmq-adapter@1.0.0 build /home/g/m/flowcraft/packages/bullmq-adapter
+> tsup src/index.ts --format esm --dts
+
+[34mCLI[39m Building entry: src/index.ts
+[34mCLI[39m Using tsconfig: tsconfig.json
+[34mCLI[39m tsup v8.5.0
+[34mCLI[39m Target: esnext
+[34mESM[39m Build start
+[32mESM[39m [1mdist/index.js [22m[32m2.62 KB[39m
+[32mESM[39m ⚡️ Build success in 28ms
+DTS Build start
+DTS ⚡️ Build success in 1168ms
+DTS dist/index.d.ts 1.69 KB

@@ -23,7 +23,8 @@ export default defineConfig({
 		},
 		nav: [
 			{ text: 'Guide', link: '/guide/', activeMatch: '/guide/' },
-			{ text: 'API Reference', link: '/api-reference/', activeMatch: '/api-reference/' },
+			{ text: 'Examples', link: '/examples/', activeMatch: '/examples/' },
+			{ text: 'API', link: '/api-reference/', activeMatch: '/api-reference/' },
 			{ text: 'GitHub', link: 'https://github.com/gorango/flowcraft' },
 		],
 		footer: {
@@ -78,9 +79,10 @@ export default defineConfig({
 						{ text: 'Error Handling', link: '/guide/error-handling' },
 					],
 				},
+			],
+			'/examples/': [
 				{
 					text: 'Examples',
-					collapsed: false,
 					items: [
 						{ text: 'Simple Workflow', link: '/guide/examples/simple-workflow' },
 						{ text: 'ETL Pipeline', link: '/guide/examples/etl-pipeline' },

@@ -55,7 +55,7 @@ const flow = createFlow('fallback-workflow')
 		// This node will receive the output from whichever predecessor ran.
 		return { output: `Processed: ${input}` }
 	})
-// Edges from both the primary and fallback nodes
+	// Edges from both the primary and fallback nodes
 	.edge('primary-api', 'process-data')
 	.edge('secondary-api', 'process-data')
 	.toBlueprint()

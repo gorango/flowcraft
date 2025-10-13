@@ -1,0 +1,19 @@
+{
+	"name": "rag-workflow",
+	"type": "module",
+	"scripts": {
+		"start": "npx tsx src/main.ts",
+		"typecheck": "tsc --noEmit"
+	},
+	"dependencies": {
+		"dotenv": "^17.2.3",
+		"flowcraft": "workspace:*",
+		"openai": "^6.2.0",
+		"superjson": "^2.2.2"
+	},
+	"devDependencies": {
+		"@types/node": "^24.7.0",
+		"tsx": "^4.20.6",
+		"typescript": "^5.9.3"
+	}
+}

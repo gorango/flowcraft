@@ -2,30 +2,6 @@
 
 Flowcraft is built on a few simple but powerful concepts. Understanding them is key to building effective workflows.
 
-```mermaid
-graph TD
-    subgraph "WorkflowBlueprint (The Plan)"
-        direction LR
-        A(Node A) --> B(Node B)
-        A --> C(Node C)
-    end
-
-    subgraph "FlowRuntime (The Engine)"
-        direction TB
-        R[Executes Nodes]
-        M[Manages State]
-    end
-
-    subgraph "Context (The State)"
-        direction TB
-        S[key: value]
-    end
-
-    WorkflowBlueprint -- Is Executed By --> FlowRuntime
-    FlowRuntime -- Manages --> Context
-    Context -- Is Accessed By --> WorkflowBlueprint
-```
-
 ### 1. Workflow Blueprint
 
 A `WorkflowBlueprint` is a JSON-serializable object that declaratively defines your workflow's structure. It's the "data" part of the "functions as data" philosophy.

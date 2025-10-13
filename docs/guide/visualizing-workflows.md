@@ -32,26 +32,26 @@ console.log(mermaidSyntax)
 The output of `generateMermaid` will be:
 ```
 flowchart TD
-    fetch["fetch"]
-    check["check"]
-    process-big["process-big"]
-    process-small["process-small"]
-    fetch --> check
-    check -- "big | result.output > 0" --> process-big
-    check -- "small" --> process-small
+	fetch["fetch"]
+	check["check"]
+	process-big["process-big"]
+	process-small["process-small"]
+	fetch --> check
+	check -- "big | result.output > 0" --> process-big
+	check -- "small" --> process-small
 ```
 
 When this syntax is rendered by a tool that supports Mermaid (like this documentation site, GitHub markdown, or the Mermaid Live Editor), you get a clear visual representation of your workflow:
 
 ```mermaid
 flowchart TD
-    fetch["fetch"]
-    check["check"]
-    process-big["process-big"]
-    process-small["process-small"]
-    fetch --> check
-    check -- "big | result.output > 0" --> process-big
-    check -- "small" --> process-small
+	fetch["fetch"]
+	check["check"]
+	process-big["process-big"]
+	process-small["process-small"]
+	fetch --> check
+	check -- "big | result.output > 0" --> process-big
+	check -- "small" --> process-small
 ```
 Notice how the `action` and `condition` from the edges are automatically added as labels to the connections in the diagram.
 
