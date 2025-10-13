@@ -57,7 +57,9 @@ async function answer(ctx: NodeContext): Promise<NodeResult> {
 // --- The Workflow Definition ---
 
 export function createAgentFlow() {
-	return createFlow('research-agent')
+	const flow = createFlow('research-agent')
+
+	flow
 		.node('initialize', async ({ context }) => {
 			// Set up the initial state for the loop
 			await context.set('search_context', '')
@@ -70,15 +72,22 @@ export function createAgentFlow() {
 		.node('answer', answer)
 
 		// The main loop
-		.loop('research-loop', {
+		.loop('research', {
 			startNodeId: 'decide',
 			endNodeId: 'search', // The loop body includes 'decide' and 'search'
-			condition: 'console.log({loop_count, last_action}); return loop_count < 2 && last_action !== \'answer\'', // Exit condition
+			condition: 'loop_count < 2 && last_action !== \'answer\'', // Exit condition
 		})
+		// If the loop breaks, go to the answer node
+		.edge('research-loop', 'answer', { action: 'break' })
+		// NOTE: loop controllers get '-loop' appended to their IDs
+		// Either use a string reference like above or more explicitly:
+		// .edge(flow.getLoopControllerId('research'), 'answer', { action: 'break' })
 
 		// Edges
 		.edge('initialize', 'decide')
 		.edge('decide', 'search', { action: 'search' }) // Conditional path
 		.edge('decide', 'answer', { action: 'answer' }) // Conditional path
 		.edge('search', 'decide') // Loop back after searching
+
+	return flow
 }
