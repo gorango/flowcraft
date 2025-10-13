@@ -33,8 +33,17 @@ The implementation uses the `.batch()` method on the `Flow` builder to process t
 
 ```mermaid
 graph TD
-    A[Prepare Jobs] --> B{Batch Translation};
-    B --> C[Save Results];
+    A[Prepare Jobs] --> B["Translate Items"]
+    subgraph "Parallel Process"
+        B -- "Spanish" --> T2[TranslateNode]
+        B -- "German" --> T4[TranslateNode]
+        B -- "Chinese" --> T1[TranslateNode]
+        B -- "Japanese" --> T3[TranslateNode]
+	end
+	T1 --> C[Save Results]
+	T2 --> C[Save Results]
+	T3 --> C[Save Results]
+	T4 --> C[Save Results]
 ```
 
 1.  **`prepare-jobs` Node**: This first node runs, reads the list of languages from the context, and produces an array of "job" objects (e.g., `[{ language: 'Spanish', text: '...' }, ...]`).

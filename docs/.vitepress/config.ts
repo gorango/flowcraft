@@ -84,12 +84,18 @@ export default defineConfig({
 				{
 					text: 'Examples',
 					items: [
+						{ text: 'Overview', link: '/examples/' },
 						{ text: 'Basic Workflow', link: '/examples/1.basic' },
-						{ text: 'Parallel Workflow', link: '/examples/2.parallel' },
-						{ text: 'Research Agent', link: '/examples/3.research' },
-						{ text: 'RAG Agent', link: '/examples/4.rag' },
-						{ text: 'DAG Workflow', link: '/examples/5.dag' },
-						{ text: 'Distributed Workflow', link: '/examples/6.distributed' },
+						{ text: 'RAG Agent', link: '/examples/2.rag' },
+						{ text: 'Parallel Workflow', link: '/examples/3.parallel' },
+						{ text: 'Research Agent', link: '/examples/4.research' },
+						{
+							text: 'Declarative Workflow',
+							items: [
+								{ text: 'In-Memory', link: '/examples/5.1.declarative' },
+								{ text: 'Distributed', link: '/examples/5.2.distributed' },
+							],
+						},
 					],
 				},
 			],

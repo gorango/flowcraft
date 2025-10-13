@@ -16,7 +16,7 @@ flow.batch(
 	worker: NodeFunction | NodeClass, // The implementation for the worker node
 	options: {
 		inputKey: string, // The context key holding the source array
-		outputKey: string // The context key where the results array will be saved
+		outputKey: string, // The context key where the results array will be saved
 	}
 )
 ```
@@ -39,7 +39,7 @@ const flow = createFlow("batch-workflow")
 		{
 			inputKey: "start",		// Read the array from the output of the 'start' node.
 			outputKey: "doubled",	// Save the results array to `context.doubled`.
-		}
+		},
 	)
 
 	// 3. A final node runs after the batch is complete.
@@ -49,7 +49,7 @@ const flow = createFlow("batch-workflow")
 			const sum = input.reduce((acc, val) => acc + val, 0); // 20 + 40 + 60 = 120
 			return { output: sum };
 		},
-		{ inputs: "doubled" } // Map the batch output to this node's input.
+		{ inputs: "doubled" }, // Map the batch output to this node's input.
 	)
 
 	// 4. Wire the dependencies.

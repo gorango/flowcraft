@@ -9,12 +9,12 @@ hero:
     - theme: brand
       text: Get Started
       link: /guide/
+    - theme: brand
+      text: Examples
+      link: /examples/
     - theme: alt
       text: View on GitHub
       link: https://github.com/gorango/flowcraft
-    - theme: alt
-      text: Explore Sandbox
-      link: https://github.com/gorango/flowcraft/tree/master/sandbox
 
 features:
   - title: Zero Dependencies

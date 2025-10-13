@@ -1,5 +1,5 @@
 
 
-> rag-workflow@ typecheck /home/g/m/flowcraft/examples/4.rag
+> rag-workflow@ typecheck /home/g/m/flowcraft.v2/examples/4.rag
 > tsc --noEmit
 

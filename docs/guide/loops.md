@@ -9,12 +9,12 @@ The `.loop()` method creates a special `loop-controller` node that manages the i
 Here's the method signature:
 ```typescript
 flow.loop(
-  id: string, // A unique ID for the loop construct
-  options: {
-	startNodeId: string,	// The ID of the first node in the loop body
-	endNodeId: string,		// The ID of the last node in the loop body
-	condition: string		// An expression to evaluate. If true, the loop continues.
-  }
+	id: string, // A unique ID for the loop construct
+	options: {
+		startNodeId: string,	// The ID of the first node in the loop body
+		endNodeId: string,		// The ID of the last node in the loop body
+		condition: string,		// An expression to evaluate. If true, the loop continues.
+	}
 )
 ```
 

@@ -46,7 +46,6 @@ async function generateSingleEmbedding(ctx: NodeContext<RagContext>): Promise<No
 
 async function storeInVectorDB(ctx: NodeContext<RagContext>): Promise<NodeResult> {
 	console.log('[Node] Simulating storage of chunks and vectors.')
-	// This node's input is now explicitly mapped from the context.
 	const embeddingResults = ctx.input as { chunkId: string, vector: number[] }[]
 	const chunks = (await ctx.context.get('chunks'))!
 	const db = new Map<string, { chunk: DocumentChunk, vector: number[] }>()

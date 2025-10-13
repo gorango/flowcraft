@@ -1,8 +1,6 @@
 import { ConsoleLogger, FlowRuntime } from 'flowcraft'
 import { createGreetingFlow } from './flow.js'
 
-// --- 3. Run the Workflow ---
-
 async function main() {
 	const greetingFlow = createGreetingFlow()
 

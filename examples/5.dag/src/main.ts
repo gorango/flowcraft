@@ -6,34 +6,34 @@ import { FlowRuntime } from 'flowcraft'
 import { agentNodeRegistry } from './registry.js'
 import 'dotenv/config'
 
-// The configuration object defines the different scenarios this sandbox can run.
+// The configuration object defines the different scenarios this example can run.
 const config = {
 	'1.blog-post': {
 		mainWorkflowId: '100',
-		getInitialContext: () => ({
+		initialContext: {
 			topic: 'The rise of AI-powered workflow automation in modern software development.',
-		}),
+		},
 	},
 	'2.job-application': {
 		mainWorkflowId: '200',
-		getInitialContext: () => ({
+		initialContext: {
 			applicantName: 'Jane Doe',
 			resume: 'Experienced developer with a background in TypeScript, Node.js, and building complex DAG workflow systems. Also proficient in React and SQL.',
 			coverLetter: 'To Whom It May Concern, I am writing to express my interest in the Senior Developer position.',
-		}),
+		},
 	},
 	'3.customer-review': {
 		mainWorkflowId: '300',
-		getInitialContext: () => ({
+		initialContext: {
 			initial_review: 'The new dashboard is a huge improvement, but I noticed that the export-to-PDF feature is really slow and sometimes crashes the app on large datasets. It would be great if you could look into this.',
-		}),
+		},
 	},
 	'4.content-moderation': {
 		mainWorkflowId: '400',
-		getInitialContext: () => ({
+		initialContext: {
 			userId: 'user-456',
 			userPost: 'Hi, I need help with my account. My email is test@example.com and my phone is 555-123-4567.',
-		}),
+		},
 	},
 } as const
 
@@ -47,34 +47,32 @@ const ACTIVE_USE_CASE: UseCase = '4.content-moderation' // Change this to test o
  */
 async function loadAndProcessBlueprint(filePath: string): Promise<WorkflowBlueprint> {
 	const fileContent = await fs.readFile(filePath, 'utf-8')
-	const v1Graph = JSON.parse(fileContent)
+	const graph = JSON.parse(fileContent)
 	const blueprintId = path.basename(filePath, '.json')
 
-	const nodes: NodeDefinition[] = v1Graph.nodes.map((v1Node: any) => {
-		// Map the legacy format to the new format
+	const nodes: NodeDefinition[] = graph.nodes.map((n: any) => {
+		// Map the data format to the framework format
 		const node: NodeDefinition = {
-			id: v1Node.id,
-			uses: v1Node.type,
-			params: v1Node.data,
-			config: v1Node.config,
+			id: n.id,
+			uses: n.type,
+			params: n.data,
+			config: n.config,
 		}
 
-		// **UPGRADE**: If the old format uses 'sub-workflow', map it to the built-in 'subflow'
 		if (node.uses === 'sub-workflow') {
 			node.uses = 'subflow'
 			node.params = {
-				blueprintId: v1Node.data.workflowId.toString(),
-				inputs: v1Node.data.inputs,
-				outputs: v1Node.data.outputs,
+				blueprintId: n.data.workflowId.toString(),
+				inputs: n.data.inputs,
+				outputs: n.data.outputs,
 			}
 		}
 
 		return node
 	})
 
-	const edges = v1Graph.edges
+	const edges = graph.edges
 
-	// --- **NEW**: Smartly configure joinStrategy for router convergence points ---
 	const nodePredecessorMap = new Map<string, string[]>()
 	edges.forEach((edge: any) => {
 		if (!nodePredecessorMap.has(edge.target))
@@ -93,7 +91,6 @@ async function loadAndProcessBlueprint(filePath: string): Promise<WorkflowBluepr
 			}
 		}
 	}
-	// --- End of smart configuration ---
 
 	return { id: blueprintId, nodes, edges }
 }
@@ -126,13 +123,12 @@ async function main() {
 	if (!mainBlueprint)
 		throw new Error(`Main workflow blueprint with ID '${mainWorkflowId}' was not found.`)
 
-	const initialContext = config[ACTIVE_USE_CASE].getInitialContext()
+	const { initialContext } = config[ACTIVE_USE_CASE]
 
 	const result = await runtime.run(mainBlueprint, initialContext)
 
 	console.log('\n--- Workflow Complete ---\n')
 	console.log('Final Output:\n')
-	// **FIXED**: The final output is stored under the 'outputKey' from the final node.
 	console.log(result.context.final_output)
 	console.log('\n--- Final Context State ---')
 	console.dir(result.context, { depth: null })

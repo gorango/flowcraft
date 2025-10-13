@@ -2,7 +2,7 @@
 
 Nodes and edges are the core components of any workflow. Nodes define *what* happens, and edges define *when* it happens.
 
-## Nodes: The Units of Work
+## Node: The Unit of Work
 
 A node is a single, executable task. Flowcraft offers two primary ways to implement a node's logic.
 
@@ -60,7 +60,7 @@ class MultiplyNode extends BaseNode {
 // .node("multiply", MultiplyNode, { params: { factor: 3 } })
 ```
 
-## Edges: Defining Control Flow
+## Edge: Defining Control Flow
 
 Edges connect nodes, creating the directed graph. They can be simple dependencies or include powerful control flow logic.
 

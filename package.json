@@ -1,14 +1,14 @@
 {
 	"name": "flowcraft",
 	"type": "module",
-	"version": "1.0.0",
+	"private": true,
 	"packageManager": "pnpm@10.4.1",
-	"description": "",
 	"main": "index.js",
 	"scripts": {
 		"lint": "eslint --fix",
-		"build": "turbo run build",
-		"test": "turbo run test",
+		"build": "turbo build",
+		"test": "turbo test",
+		"typecheck": "turbo typecheck",
 		"docs:dev": "vitepress dev docs",
 		"docs:build": "vitepress build docs",
 		"docs:preview": "vitepress preview docs"
@@ -21,10 +21,8 @@
 	},
 	"devDependencies": {
 		"@antfu/eslint-config": "^5.4.1",
-		"jiti": "^2.6.1",
 		"mermaid": "^11.12.0",
 		"turbo": "^2.5.8",
-		"typescript": "^5.9.3",
 		"vitepress": "^1.6.4",
 		"vitepress-plugin-mermaid": "^2.0.17"
 	}

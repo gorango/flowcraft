@@ -39,12 +39,25 @@ A sophisticated RAG agent that ingests documents, generates embeddings, performs
 
 ```mermaid
 graph TD
-    subgraph "Advanced RAG Agent"
-        A[Load & Chunk Document] --> B[Generate Embeddings in Parallel]
-        B --> C[Store in Vector DB]
-        C --> D[Vector Search for Question]
-        D --> E[Generate Final Answer]
+    subgraph "Workflow Definition"
+        Blueprint["JSON Blueprint <br><small>(e.g., 200.json)</small>"]
     end
+
+    subgraph "Execution Logic"
+        Runtime("FlowRuntime")
+        Registry["Node Registry"]
+        Functions["Node Functions"]
+    end
+
+    Main("Entry")
+
+    Main -- "1. Loads" --> Blueprint
+    Main -- "2. Creates & Configures" --> Runtime
+
+    Runtime -- "Reads graph from" --> Blueprint
+    Runtime -- "Uses" --> Registry
+
+    Registry -- "Maps string types to" --> Functions
 ```
 
 ## Dynamic AI Agent from Visual Graphs
@@ -53,11 +66,29 @@ A runtime engine for executing graph-based AI workflows defined as JSON files, w
 
 ```mermaid
 graph TD
-    subgraph "Blog Post Generation (ID: 100)"
-        A[generate_outline] --> B[draft_post]
-        B --> C[suggest_titles]
-        C --> D[final_output]
+    subgraph "Client Application"
+        Client("Client")
     end
+
+    subgraph "Redis"
+        direction LR
+        Queue[("BullMQ Queue")]
+        State[("State Store")]
+    end
+
+    subgraph "Worker Service(s)"
+        Worker("Worker")
+    end
+
+    Client -- "1. Enqueues Start Job" --> Queue
+    Client -- "2. Writes Initial Context" --> State
+
+    Worker -- "3. Dequeues Job" --> Queue
+    Worker -- "4. Reads/Writes Workflow State" --> State
+    Worker -- "5. Enqueues Next Job(s)" --> Queue
+
+    State -- "6. Final result is written" --> Worker
+    State -- "7. Client reads final result" --> Client
 ```
 
 ## Distributed AI Agent with a Pluggable Executor
