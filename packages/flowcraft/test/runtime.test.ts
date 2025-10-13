@@ -101,6 +101,51 @@ describe('Flowcraft Runtime - Integration Tests', () => {
 			expect(result.status).toBe('completed')
 		})
 
+		it('should correctly break out of a loop when the condition is met', async () => {
+			let executionCount = 0
+			const flow = createFlow('loop-test')
+			flow.node('initialize', async ({ context }) => {
+				await context.set('loop_count', 0)
+				await context.set('last_action', null)
+				return { output: 'initialized' }
+			})
+				.node('decide', async ({ context }) => {
+					executionCount++
+					const loopCount = await context.get('loop_count') || 0
+					const lastAction = await context.get('last_action')
+					// For this test, always return 'search' to trigger the loop
+					await context.set('last_action', 'search')
+					return { action: 'search', output: `decide_${loopCount}_${lastAction}` }
+				})
+				.node('search', async ({ context }) => {
+					const currentLoopCount = await context.get('loop_count') || 0
+					await context.set('loop_count', currentLoopCount + 1)
+					return { output: `search_${currentLoopCount + 1}` }
+				})
+				.node('answer', async () => {
+					return { output: 'final_answer' }
+				})
+				.loop('research', {
+					startNodeId: 'decide',
+					endNodeId: 'search',
+					condition: 'loop_count < 2 && last_action !== \'answer\''
+				})
+				.edge('initialize', 'decide')
+				.edge('decide', 'search', { action: 'search' })
+				.edge('decide', 'answer', { action: 'answer' })
+				.edge('search', 'decide')
+				.edge('research-loop', 'answer', { action: 'break' })
+
+			const runtime = new FlowRuntime({})
+			const result = await runtime.run(flow.toBlueprint(), {}, { functionRegistry: flow.getFunctionRegistry() })
+
+			// The loop should run 2 times (loop_count goes from 0 to 1 to 2)
+			// After 2 iterations, the condition should be false and it should break
+			expect(executionCount).toBe(2) // decide should only run 2 times
+			expect(result.status).toBe('completed')
+			expect(result.context.answer).toBe('final_answer')
+		})
+
 		it('should throw an error on a graph with a cycle when strict mode is on', async () => {
 			const flow = createFlow('cycle')
 			flow.node('A', async () => ({ output: 'A' }))

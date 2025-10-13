@@ -42,7 +42,7 @@ const flow = createFlow('loop-workflow')
 	})
 
 	// 3. Define the loop.
-	.loop('counter-loop', {
+	.loop('counter', {
 		startNodeId: 'increment',
 		endNodeId: 'increment', // The loop body is just one node.
 		condition: 'context.count < 5' // Continue as long as this is true.
@@ -60,14 +60,14 @@ The `.loop()` method intelligently wires the graph for you. It adds a `loop-cont
 ```mermaid
 flowchart TD
 	initialize["initialize"] --> increment["increment"]
-	increment --> controller["counter-loop_loop_controller"]
+	increment --> controller["counter-loop"]
 	controller -- "continue (context.count < 5)" --> increment
 	controller -- "break" --> exit((Exit Loop))
 ```
 
 1.  `initialize` runs once, setting `count` to 0.
 2.  It triggers `increment`, which sets `count` to 1.
-3.  `increment` completes and triggers `counter-loop_loop_controller`.
+3.  `increment` completes and triggers `counter-loop`.
 4.  The controller evaluates `"context.count < 5"`. Since `1 < 5` is true, it triggers `increment` again.
 5.  This cycle repeats until `count` reaches 5. At that point, the condition is false, and the workflow branch terminates.
 

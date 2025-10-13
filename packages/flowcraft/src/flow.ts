@@ -10,10 +10,12 @@ export class Flow<
 > {
 	private blueprint: Partial<WorkflowBlueprint>
 	private functionRegistry: Map<string, NodeFunction | NodeClass>
+	private loopControllerIds: Map<string, string>
 
 	constructor(id: string) {
 		this.blueprint = { id, nodes: [], edges: [] }
 		this.functionRegistry = new Map()
+		this.loopControllerIds = new Map()
 	}
 
 	node(
@@ -115,7 +117,10 @@ export class Flow<
 		condition: string
 	}): this {
 		const { startNodeId, endNodeId, condition } = options
-		const controllerId = `${id}_loop_controller`
+		const controllerId = `${id}-loop`
+
+		// Store the generated ID against the user-provided loop ID
+		this.loopControllerIds.set(id, controllerId)
 
 		// Add the controller node, which evaluates the loop condition.
 		// Set joinStrategy='any' to allow re-execution on each loop iteration
@@ -137,15 +142,22 @@ export class Flow<
 		// Start node: executes when either its initial predecessor OR the loop controller completes
 		// End node: needs to re-execute on each loop iteration
 		const startNode = this.blueprint.nodes!.find(n => n.id === startNodeId)
-		if (startNode) {
+		if (startNode)
 			startNode.config = { ...startNode.config, joinStrategy: 'any' }
-		}
+
 		const endNode = this.blueprint.nodes!.find(n => n.id === endNodeId)
-		if (endNode) {
+		if (endNode)
 			endNode.config = { ...endNode.config, joinStrategy: 'any' }
-		}
 
 		return this
+	}
+
+	getLoopControllerId(id: string): string {
+		const controllerId = this.loopControllerIds.get(id)
+		if (!controllerId) {
+			throw new Error(`Loop with id '${id}' not found. Ensure you have defined it using the .loop() method.`)
+		}
+		return controllerId
 	}
 
 	toBlueprint(): WorkflowBlueprint {

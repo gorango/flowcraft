@@ -80,7 +80,12 @@ export class GraphTraverser<TContext extends Record<string, any>, TDependencies 
 					await this.handleDynamicNodes(nodeId, result)
 					if (!result._fallbackExecuted) {
 						const matched = await this.runtime.determineNextNodes(this.dynamicBlueprint, nodeId, result, this.state.getContext())
-						for (const { node, edge } of matched) {
+
+						// If one of the next nodes is a loop controller, prioritize it to avoid ambiguity from manual cycle edges.
+						const loopControllerMatch = matched.find(m => m.node.uses === 'loop-controller')
+						const finalMatched = loopControllerMatch ? [loopControllerMatch] : matched
+
+						for (const { node, edge } of finalMatched) {
 							const joinStrategy = node.config?.joinStrategy || 'all'
 							if (joinStrategy !== 'any' && this.state.getCompletedNodes().has(node.id))
 								continue
