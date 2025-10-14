@@ -11,9 +11,6 @@ importers:
       '@antfu/eslint-config':
         specifier: ^5.4.1
         version: 5.4.1(@vue/compiler-sfc@3.5.22)(eslint@9.37.0(jiti@2.6.1))(typescript@5.9.3)(vitest@3.2.4(@types/debug@4.1.12)(@types/node@24.7.2)(jiti@2.6.1)(tsx@4.20.6)(yaml@2.8.1))
-      jiti:
-        specifier: ^2.6.1
-        version: 2.6.1
       mermaid:
         specifier: ^11.12.0
         version: 11.12.0
@@ -106,7 +103,7 @@ importers:
         specifier: ^5.9.3
         version: 5.9.3
 
-  examples/5_1_declarative:
+  examples/5a_declarative:
     dependencies:
       dotenv:
         specifier: ^17.2.3
@@ -134,7 +131,7 @@ importers:
         specifier: ^5.9.3
         version: 5.9.3
 
-  examples/5_2_distributed:
+  examples/5b_distributed:
     dependencies:
       '@flowcraft/bullmq-adapter':
         specifier: workspace:*
@@ -8600,7 +8597,8 @@ snapshots:
     optionalDependencies:
       '@pkgjs/parseargs': 0.11.0
 
-  jiti@2.6.1: {}
+  jiti@2.6.1:
+    optional: true
 
   joycon@3.1.1: {}
 
