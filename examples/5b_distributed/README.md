@@ -1,6 +1,6 @@
 # Distributed AI Agent with a Pluggable Executor
 
-This example demonstrates the power of the `Executor` pattern by running the same complex, graph-based AI agent from the DAG example in a distributed environment using **BullMQ**.
+This example demonstrates the power of the `Executor` pattern by running the same complex, graph-based AI agent from the [declarative example]() in a distributed environment using **BullMQ**.
 
 It showcases a client-worker architecture where a client can initiate a workflow and **asynchronously wait for its final result**. The actual execution of each node happens as a job processed by one or more separate worker processes, which is a common pattern for building scalable, resilient, and long-running process automation systems.
 
@@ -14,7 +14,7 @@ It showcases a client-worker architecture where a client can initiate a workflow
 - **State Serialization**: The `Context` is serialized to a plain object and passed between jobs, allowing state to flow through the distributed graph.
 - **Distributed Cancellation**: A `runId` is generated for each workflow. You can gracefully abort a running workflow by pressing 'c' in the worker terminal and providing the corresponding `runId`, and the client will be notified of the cancellation.
 - **Resilience & Scalability**: By using a message queue, workflows can survive process restarts. You can run multiple worker processes to handle a high volume of concurrent workflows.
-- **Unchanged Business Logic**: The exact same declarative JSON graph definitions from the DAG example are used here. The change in execution environment (in-memory vs. distributed) is completely transparent to the workflow's definition.
+- **Unchanged Business Logic**: The exact same declarative JSON graph definitions from the [declarative example]() are used here. The change in execution environment (in-memory vs. distributed) is completely transparent to the workflow's definition.
 
 ## How to Run
 

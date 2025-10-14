@@ -1,5 +1,5 @@
 {
-	"name": "dag-workflow",
+	"name": "declarative-workflow",
 	"type": "module",
 	"scripts": {
 		"start": "npx tsx src/main.ts",

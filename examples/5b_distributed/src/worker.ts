@@ -4,7 +4,7 @@ import path from 'node:path'
 import process from 'node:process'
 import { BullMQAdapter, RedisCoordinationStore } from '@flowcraft/bullmq-adapter'
 import IORedis from 'ioredis'
-import { agentNodeRegistry } from '../../5.dag/src/registry.js'
+import { agentNodeRegistry } from '../../5_1_declarative/src/registry'
 import 'dotenv/config'
 
 /**

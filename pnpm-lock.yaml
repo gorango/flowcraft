@@ -30,7 +30,7 @@ importers:
         specifier: ^2.0.17
         version: 2.0.17(mermaid@11.12.0)(vitepress@1.6.4(@algolia/client-search@5.40.0)(@types/node@24.7.2)(change-case@5.4.4)(postcss@8.5.6)(search-insights@2.17.3)(typescript@5.9.3))
 
-  examples/1.basic:
+  examples/1_basic:
     dependencies:
       flowcraft:
         specifier: workspace:*
@@ -40,7 +40,7 @@ importers:
         specifier: ^5.9.3
         version: 5.9.3
 
-  examples/2.rag:
+  examples/2_rag:
     dependencies:
       dotenv:
         specifier: ^17.2.3
@@ -65,7 +65,7 @@ importers:
         specifier: ^5.9.3
         version: 5.9.3
 
-  examples/3.translate:
+  examples/3_translate:
     dependencies:
       dotenv:
         specifier: ^17.2.3
@@ -84,7 +84,7 @@ importers:
         specifier: ^5.9.3
         version: 5.9.3
 
-  examples/4.research:
+  examples/4_research:
     dependencies:
       dotenv:
         specifier: ^17.2.3
@@ -106,7 +106,7 @@ importers:
         specifier: ^5.9.3
         version: 5.9.3
 
-  examples/5.dag:
+  examples/5_1_declarative:
     dependencies:
       dotenv:
         specifier: ^17.2.3
@@ -134,7 +134,7 @@ importers:
         specifier: ^5.9.3
         version: 5.9.3
 
-  examples/6.distributed:
+  examples/5_2_distributed:
     dependencies:
       '@flowcraft/bullmq-adapter':
         specifier: workspace:*

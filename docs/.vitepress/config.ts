@@ -26,7 +26,6 @@ export default defineConfig({
 			{ text: 'Guide', link: '/guide/', activeMatch: '/guide/' },
 			{ text: 'Examples', link: '/examples/', activeMatch: '/examples/' },
 			{ text: 'API', link: '/api/', activeMatch: '/api/' },
-			// { text: 'GitHub', link: 'https://github.com/gorango/flowcraft' },
 		],
 		socialLinks: [
 			{ icon: 'github', link: 'https://github.com/gorango/flowcraft' },
@@ -101,15 +100,15 @@ export default defineConfig({
 					text: 'Examples',
 					items: [
 						{ text: 'Overview', link: '/examples/' },
-						{ text: 'Basic Workflow', link: '/examples/1.basic' },
-						{ text: 'RAG Agent', link: '/examples/2.rag' },
-						{ text: 'Parallel Workflow', link: '/examples/3.translate' },
-						{ text: 'Research Agent', link: '/examples/4.research' },
+						{ text: 'Basic Workflow', link: '/examples/1_basic' },
+						{ text: 'RAG Agent', link: '/examples/2_rag' },
+						{ text: 'Parallel Workflow', link: '/examples/3_translate' },
+						{ text: 'Research Agent', link: '/examples/4_research' },
 						{
 							text: 'Declarative Workflow',
 							items: [
-								{ text: 'In-Memory', link: '/examples/5.1.declarative' },
-								{ text: 'Distributed', link: '/examples/5.2.distributed' },
+								{ text: 'In-Memory', link: '/examples/5a_declarative' },
+								{ text: 'Distributed', link: '/examples/5b_distributed' },
 							],
 						},
 					],

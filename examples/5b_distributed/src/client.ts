@@ -5,40 +5,11 @@ import process from 'node:process'
 import { Queue } from 'bullmq'
 import { analyzeBlueprint } from 'flowcraft'
 import IORedis from 'ioredis'
+import { config } from '../../5_1_declarative/src/config'
 import 'dotenv/config'
 
 const QUEUE_NAME = 'flowcraft-queue'
 const ACTIVE_USE_CASE = '4.content-moderation'
-
-const config = {
-	'1.blog-post': {
-		mainWorkflowId: '100',
-		initialContext: {
-			topic: 'The rise of AI-powered workflow automation in modern software development.',
-		},
-	},
-	'2.job-application': {
-		mainWorkflowId: '200',
-		initialContext: {
-			applicantName: 'Jane Doe',
-			resume: 'Experienced developer with a background in TypeScript, Node.js, and building complex DAG workflow systems. Also proficient in React and SQL.',
-			coverLetter: 'To Whom It May Concern, I am writing to express my interest in the Senior Developer position.',
-		},
-	},
-	'3.customer-review': {
-		mainWorkflowId: '300',
-		initialContext: {
-			initial_review: 'The new dashboard is a huge improvement, but the export-to-PDF feature is really slow and sometimes crashes the app on large datasets.',
-		},
-	},
-	'4.content-moderation': {
-		mainWorkflowId: '400',
-		initialContext: {
-			userId: 'user-456',
-			userPost: 'Hi, I need help with my account. My email is test@example.com and my phone is 555-123-4567.',
-		},
-	},
-}
 
 export async function waitForWorkflow(redis: IORedis, runId: string, timeoutMs: number): Promise<{ status: string, payload?: WorkflowResult, reason?: string }> {
 	const statusKey = `workflow:status:${runId}`
