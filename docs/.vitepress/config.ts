@@ -3,7 +3,6 @@ import { MermaidMarkdown, MermaidPlugin } from 'vitepress-plugin-mermaid'
 
 export default defineConfig({
 	cleanUrls: true,
-	base: '/flowcraft/',
 	title: 'Flowcraft',
 	description: 'A lightweight, unopinionated workflow framework for executing declarative DAGs',
 	vite: {
@@ -18,10 +17,7 @@ export default defineConfig({
 		},
 	},
 	themeConfig: {
-		logo: '/flowcraft.png',
-		search: {
-			provider: 'local',
-		},
+		search: { provider: 'local' },
 		nav: [
 			{ text: 'Guide', link: '/guide/', activeMatch: '/guide/' },
 			{ text: 'Examples', link: '/examples/', activeMatch: '/examples/' },
