@@ -1,114 +1,80 @@
-# Getting Started: Your First Workflow
+# Getting Started
 
-This tutorial is the fastest way to get hands-on with Flowcraft. We will build a simple, three-step pipeline that takes a name as input, constructs a greeting, and assembles a final message. By the end, you'll have a running workflow and a practical understanding of Flowcraft's core concepts.
+This guide will walk you through installing Flowcraft and running your first workflow.
 
-## Prerequisites
+### Prerequisites
 
-- [Node.js](https://nodejs.org/) installed on your system.
-- A package manager like `npm` or `pnpm`.
-- A way to run TypeScript files like `tsx` or `bun`.
+-   Node.js (version 18 or higher)
+-   A package manager like npm, pnpm, or yarn
+-   Basic knowledge of TypeScript
 
-## Step 1: Project Setup
+### Installation
 
-In your project directory, install Flowcraft. We'll use `tsx` to run our TypeScript file directly without a separate build step.
+Install Flowcraft into your project using your preferred package manager:
 
 ```bash
-# Create a new directory for your project
-mkdir flowcraft-tutorial
-cd flowcraft-tutorial
-
-# Install Flowcraft and tsx
 npm install flowcraft
-npm install -D tsx
 ```
 
-## Step 2: Define the Workflow Logic
+### Your First Workflow
 
-Create a new file named `main.ts`. This is where we'll define and run our workflow.
+Let's create a simple workflow with two steps: one node to provide a starting number, and a second node to double it.
 
-```bash
-touch main.ts
-```
-
-Inside `main.ts`, we'll start by importing the core components we need from Flowcraft and defining the `ContextKey`s that will hold our state.
+1.  Create a new file named `simple-flow.ts`.
+2.  Add the following code:
 
 ```typescript
-// main.ts
-import { contextKey, Flow, Node, TypedContext } from 'flowcraft'
+import { ConsoleLogger, createFlow, FlowRuntime } from 'flowcraft'
 
-// Define type-safe keys for our shared data
-const NAME = contextKey<string>('name')
-const GREETING = contextKey<string>('greeting')
-const FINAL_MESSAGE = contextKey<string>('final_message')
+// 1. Define the workflow structure
+const flow = createFlow('simple-workflow')
+	// The first node, 'start', takes no input and outputs the number 42.
+	.node('start', async () => ({ output: 42 }))
+	// The second node, 'double', depends on 'start'.
+	// Its input is automatically the output of its single predecessor.
+	.node('double', async ({ input }) => ({ output: input * 2 }))
+	// Define the dependency: 'start' must run before 'double'.
+	.edge('start', 'double')
+	// Finalize the definition into a serializable blueprint.
+	.toBlueprint()
 
-// 1. nameNode: Takes a name from input `params` and stores it in the Context.
-const nameNode = new Node()
-	.exec(async ({ params }) => params.name)
-	.toContext(NAME)
+// 2. Set up the runtime
+// The runtime needs the implementations of the nodes, which are
+// collected by the flow builder.
+const runtime = new FlowRuntime({
+	logger: new ConsoleLogger(),
+	registry: flow.getFunctionRegistry(),
+})
 
-// 2. greetingNode: Reads the name from the Context, creates a greeting, and stores it back.
-const greetingNode = new Node()
-	.exec(async ({ ctx }) => `Hello, ${await ctx.get(NAME)}!`)
-	.toContext(GREETING)
+// 3. Run the workflow
+async function run() {
+	// Start the workflow with an empty initial context.
+	const result = await runtime.run(flow, {})
 
-// 3. finalNode: Reads the greeting from the Context and assembles the final message.
-const finalNode = new Node()
-	.exec(async ({ ctx }) => `${await ctx.get(GREETING)} Welcome to Flowcraft!`)
-	.toContext(FINAL_MESSAGE)
-```
-
-## Step 3: Orchestrate and Run the `Flow`
-
-Now that we have our nodes, we need to wire them together into a sequence and create a `Flow` to run them.
-
-```typescript
-// main.ts (continued)
-
-// Chain the nodes to define the execution order.
-nameNode.next(greetingNode).next(finalNode)
-
-// Create a Flow, telling it which node to start with.
-const flow = new Flow(nameNode)
-
-// Execute the flow.
-async function main() {
-	// The Context is the shared memory for our workflow.
-	const context = new TypedContext()
-
-	console.log('Starting workflow...')
-	// We pass static input via `.withParams()` and run the flow.
-	await flow.withParams({ name: 'Developer' }).run(context)
-
-	// After the flow is done, we can inspect the final state of the context.
-	const result = await context.get(FINAL_MESSAGE)
-	console.log('Workflow complete!')
-	console.log(`Final Result: "${result}"`)
+	console.log('Workflow Result:', result)
+	// Expected Output:
+	// {
+	//   context: { start: 42, double: 84 },
+	//   serializedContext: '{"start":42,"double":84}',
+	//   status: 'completed'
+	// }
 }
 
-main()
+run()
 ```
 
-## Step 4: Run It
+This workflow can be visualized as:
 
-Your `main.ts` file should now contain the complete workflow. Run it from your terminal using `tsx`.
+```mermaid
+flowchart TD
+    start["start"] --> double["double"]
+```
 
+### Running the Example
+
+Execute the file:
 ```bash
-npx tsx main.ts
+npx tsx simple-flow.ts
 ```
 
-You should see the following output:
-
-```
-Starting workflow...
-Workflow complete!
-Final Result: "Hello, Developer! Welcome to Flowcraft!"
-```
-
-Congratulations! You've just built and run your first Flowcraft workflow. You've seen how to create nodes, manage state with a `Context`, and orchestrate a sequence with a `Flow`.
-
-## Next Steps
-
-Now that you have a solid foundation, you can start exploring the two main ways to build workflows:
-
-- **[Building Programmatic Workflows](./programmatic/basics.md)**: Learn more about the class-based and functional APIs for building workflows in code.
-- **[Building Declarative Workflows](./declarative/basics.md)**: Discover how to build dynamic workflows from JSON definitions using the powerful `GraphBuilder`.
+You should see the final workflow result logged to the console, showing that the `context` contains the output from both the `start` and `double` nodes.

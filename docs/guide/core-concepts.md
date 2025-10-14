@@ -1,64 +1,51 @@
 # Core Concepts
 
-Flowcraft is built around a few simple, powerful concepts. Understanding these fundamentals will make it much easier to build, debug, and scale your workflows.
+Flowcraft is built on a few simple but powerful concepts. Understanding them is key to building effective workflows.
 
-## 1. Node
+### 1. Workflow Blueprint
 
-The `Node` is the most fundamental building block, representing a single, reusable unit of work. Every task in your workflow, from calling an API to transforming data, is encapsulated within a `Node`.
+A `WorkflowBlueprint` is a JSON-serializable object that declaratively defines your workflow's structure. It's the "data" part of the "functions as data" philosophy.
 
-### The Node Lifecycle
-
-Every `Node` has a well-defined, three-phase lifecycle that separates concerns and promotes best practices.
-
-```mermaid
-graph TD
-    A(Start) --> B{prep}
-    B -- prepRes --> C{exec}
-    C -- execRes --> D{post}
-    D -- action --> E(Next Node or End)
-
-    subgraph "Error Handling"
-        C -- Fails --> F{Retries?}
-        F -- Yes --> C
-        F -- No --> G{execFallback}
-        G -- fallbackRes --> D
-    end
-```
-
-1.  **`prep(args)`**: **Prepare Data**. This phase runs once. Its job is to gather all the data needed for execution, usually by reading from the `Context`. The result (`prepRes`) is passed to the `exec` phase.
-2.  **`exec(args)`**: **Execute Core Logic**. This phase performs the main work. It is designed to be isolated and pure—it receives all its data from `prepRes` and should not interact with the `Context`. **This is the only phase that is retried on failure.**
-3.  **`post(args)`**: **Process Results & Decide**. This phase runs once after a successful `exec` (or `execFallback`). Its job is to update the `Context` with the results and return an **action** string that determines which path the workflow should take next.
-
-## 2. Flow
-
-A `Flow` is a special type of `Node` that acts as a **container for a graph of other nodes**. It holds the starting point of a workflow and is responsible for orchestrating the execution of its graph.
-
-You can think of a `Flow` as a "sub-workflow" or a "macro-node." Because it's a `Node` itself, a `Flow` can be nested inside another `Flow`, enabling powerful composition.
-
-## 3. Context
-
-The `Context` is the shared memory of a single workflow run. It's an object that is passed to every node, allowing them to share state and pass data to each other.
-
--   **Asynchronous by Default**: All context operations (`get`, `set`, etc.) are asynchronous and return `Promise`s. This is a core design principle that allows Flowcraft to support distributed state managers (like Redis) for multi-worker environments. You must always `await` context calls.
--   **Type-Safe**: You create `ContextKey`s to read and write from the context. This provides compile-time safety, preventing common bugs like typos or type mismatches.
--   **Mutable**: The context is mutable. Nodes read from it (usually in `prep`) and write back to it (usually in `post`).
+A blueprint consists of:
+-   **`id`**: A unique identifier for the workflow.
+-   **`nodes`**: An array of `NodeDefinition` objects, representing the tasks to be executed.
+-   **`edges`**: An array of `EdgeDefinition` objects, defining the dependencies and data flow between nodes.
 
 ```typescript
-// Always use `await` when interacting with the context
-const currentUser = await ctx.get(USER_KEY)
-await ctx.set(RESULT_KEY, { data: '...' })
+interface WorkflowBlueprint {
+	id: string
+	nodes: NodeDefinition[]
+	edges: EdgeDefinition[]
+	metadata?: Record<string, any>
+}
 ```
 
-## 4. Action
+Because blueprints are just data, they can be stored as JSON, sent over a network, or generated dynamically.
 
-An **action** is a `string` or `Symbol` returned by a node's `post()` method. The `Executor` uses this action to decide which path to take next in the workflow graph.
+### 2. Nodes
 
--   **`DEFAULT_ACTION`**: A special symbol used for simple linear sequences. `nodeA.next(nodeB)` is shorthand for creating a branch that triggers on `DEFAULT_ACTION`.
--   **Custom Actions**: Returning a custom string like `'success'` or `'error'` from `post()` enables conditional branching, allowing you to direct the workflow down different paths based on a node's outcome.
+A node represents a single unit of work in your workflow. It encapsulates the logic you want to execute. Flowcraft supports two ways to define node logic:
 
-## 5. Executor
+-   **Function-based**: A simple `async` function that receives a `NodeContext` and returns a `NodeResult`. Ideal for simple, self-contained tasks.
+-   **Class-based**: A class that extends `BaseNode`. This provides a more structured lifecycle (`prep`, `exec`, `post`, `fallback`), which is useful for complex logic, dependency injection, and testability.
 
-The **Executor** is the engine that runs a `Flow`. It is responsible for traversing the graph, calling each node's lifecycle methods in the correct order, applying middleware, and handling the actions returned by each node.
+### 3. Context
 
--   **`InMemoryExecutor`**: The default executor that runs your entire workflow in a single, in-memory process.
--   **Pluggable**: The executor is pluggable, meaning you can create your own to support different environments, like a distributed task queue system. This separation of concerns is what allows your core workflow logic to remain unchanged whether you're running it locally or on a fleet of servers.
+The `Context` is the shared state of a running workflow. It's a key-value store where nodes can read and write data. For example, an early node might fetch user data and save it to the context, allowing a later node to read that user data and perform an action.
+
+Flowcraft provides two context interfaces:
+-   **`ISyncContext`**: A high-performance, in-memory context used for local execution.
+-   **`IAsyncContext`**: A promise-based interface designed for distributed systems where state might be stored in a remote database like Redis.
+
+Nodes always interact with an `IAsyncContext` view, ensuring your business logic remains consistent whether you run locally or distributed.
+
+### 4. Runtime
+
+The `FlowRuntime` is the engine that executes a `WorkflowBlueprint`. It takes the blueprint and an initial context, then traverses the graph, executing each node in the correct order.
+
+The runtime is responsible for:
+-   Managing the workflow's state (the Context).
+-   Handling retries and fallbacks.
+-   Evaluating edge conditions to determine the next nodes to run.
+-   Injecting dependencies and middleware.
+-   Orchestrating both in-memory and distributed execution.

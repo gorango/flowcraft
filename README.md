@@ -1,62 +1,32 @@
-# Flowcraft: A Workflow Framework
+# Flowcraft
 
 [![npm version](https://img.shields.io/npm/v/flowcraft.svg)](https://www.npmjs.com/package/flowcraft)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![codecov](https://img.shields.io/codecov/c/github/gorango/flowcraft/master)](https://codecov.io/github/gorango/flowcraft)
 
-Build complex, multi-step processes with a lightweight, composable, and type-safe TypeScript framework. Model everything from simple sequences to dynamic AI agents, running in-memory or across distributed systems.
+Build complex, multi-step processes with a lightweight, composable, and type-safe approach. Model complex business processes, data pipelines, ETL workflows, or AI agents and scale from in-memory scripts to distributed systems without changing the core business logic.
 
-**[Read the Friendly Manual &raquo;](https://gorango.github.io/flowcraft/guide/)**
-
-## Features
+## Key Features
 
 - **Zero Dependencies**: Lightweight and dependency-free, ensuring a small footprint and easy integration.
-- **Composable & Reusable**: Define workflows by chaining nodes or declaratively embedding other flows as nodes.
-- **Type-Safe by Default**: Strong typing for workflow definitions, shared state, and node parameters.
-- **Async First**: Built on an asynchronous foundation to handle I/O-bound tasks gracefully.
-- **Resilient & Reliable**: Built-in support for retries with configurable delays and fallback logic.
-- **Dynamic Graph Engine**: Construct executable workflows from declarative JSON, ideal for AI agents.
-- **Extensible Execution**: A pluggable Executor pattern enables in-memory or distributed flows.
-- **Advanced Control Flow**: Full support for conditional branching, loops, and parallel execution.
-- **Modern Tooling**: A fluent functional API, static graph validation, and automatic visualizations.
+- **Declarative Workflows**: Define workflows as serializable objects with nodes and edges.
+- **Unopinionated Logic**: Nodes can be simple functions or structured classes, supporting any logic.
+- **Progressive Scalability**: Run in-memory or scale to distributed systems using the same blueprint.
+- **Resilient Execution**: Built-in support for retries, fallbacks, timeouts, and graceful cancellation.
+- **Advanced Patterns**: Includes batch processing and loop constructs for complex workflows.
+- **Extensibility**: Pluggable loggers, evaluators, serializers, and middleware for custom behavior.
+- **Static Analysis**: Tools to detect cycles, validate blueprints, and generate visual diagrams.
+- **Type-Safe API**: Fully typed with TypeScript for a robust developer experience.
 
----
+For complete guides and API references: [Read the Friendly Manual](https://flowcraft.js.org/).
 
-Flowcraft is a lightweight, zero-dependency TypeScript framework for building complex, multi-step processes. It empowers you to model everything from simple sequential tasks to dynamic, graph-driven AI agents with a clear and composable API.
+## Installation
 
-At its core, Flowcraft is guided by a few key principles:
+Flowcraft is a Node.js module using ES Modules (ESM) and TypeScript. Install it using your preferred package manager:
 
-1.  **Structure for Complexity**: It provides a clear way to model asynchronous processes. By breaking logic into discrete `Node`s with a defined lifecycle, you can turn tangled promise chains and `async/await` blocks into maintainable, testable graphs.
-2.  **Start Simple, Scale Gracefully**: You can start with an in-memory workflow in a single file. As your needs grow, the architecture allows you to scale up to a robust, distributed system using message queues—**without changing your core business logic**.
-3.  **Composability is Key**: A `Flow` is just a specialized `Node`. This simple but powerful concept means entire workflows can be treated as building blocks, allowing you to create highly modular and reusable systems.
-
-## The Two Paths of Flowcraft
-
-Flowcraft is designed to cater to two primary use cases, and the documentation is structured to guide you down the path that best fits your needs:
-
-### 1. Programmatic Workflows
-
-This is the path for developers who want to build and manage workflows directly within their application's code. Using a fluent, chainable API and functional helpers, you can quickly define, test, and run complex processes in-memory.
-
-**Choose this path if you are:**
-
-- Building background jobs for a web application.
-- Creating complex, multi-step data processing pipelines.
-- Looking for a structured way to manage complex `async/await` logic.
-
-**[Learn how to build Programmatic Workflows &raquo;](https://gorango.github.io/flowcraft/guide/programmatic/basics.html)**
-
-### 2. Declarative Workflows (for Scale)
-
-This is the path for architects and developers building dynamic, data-driven, or distributed systems. You define your workflow's structure as a declarative data format (like JSON), and the `GraphBuilder` "compiles" it into an executable, serializable `Blueprint`.
-
-**Choose this path if you are:**
-
-- Building a system where workflows are defined by users or stored in a database.
-- Creating a runtime for dynamic AI agents.
-- Architecting a distributed system where tasks are executed by a pool of workers.
-
-**[Learn how to build Declarative Workflows &raquo;](https://gorango.github.io/flowcraft/guide/declarative/basics.html)**
+```bash
+npm install flowcraft
+```
 
 ---
 
@@ -147,8 +117,8 @@ A complete Retrieval-Augmented Generation (RAG) agent that ingests a document, c
 
 ## Documentation
 
-For a deep dive into all features, patterns, and APIs, please see the **[complete Flowcraft documentation](https://gorango.github.io/flowcraft/guide/)**.
+For a complete overview all features, patterns, examples, and APIs, please see the **[Flowcraft documentation](https://flowcraft.js.org/)**.
 
----
+## License
 
-Licensed under the [MIT License](https://github.com/gorango/flowcraft/tree/main/LICENSE).
+Flowcraft is licensed under the [MIT License](LICENSE).

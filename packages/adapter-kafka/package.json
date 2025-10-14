@@ -1,0 +1,33 @@
+{
+	"name": "@flowcraft/kafka-adapter",
+	"type": "module",
+	"version": "1.0.0",
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"import": "./dist/index.js"
+		}
+	},
+	"files": [
+		"dist"
+	],
+	"scripts": {
+		"build": "tsup src/index.ts --format esm --dts",
+		"test": "./testcontainers.sh && vitest run src/*.test.ts",
+		"typecheck": "tsc --noEmit"
+	},
+	"dependencies": {
+		"cassandra-driver": "^4.8.0",
+		"flowcraft": "^2.0.0",
+		"ioredis": "^5.8.1",
+		"kafkajs": "^2.2.4"
+	},
+	"devDependencies": {
+		"@testcontainers/cassandra": "^11.7.1",
+		"@testcontainers/kafka": "^11.7.1",
+		"@testcontainers/redis": "^11.7.1",
+		"tsup": "^8.5.0",
+		"typescript": "^5.9.3",
+		"vitest": "^3.2.4"
+	}
+}

@@ -1,44 +1,19 @@
 # What is Flowcraft?
 
-Flowcraft is a lightweight, zero-dependency TypeScript framework for building complex, multi-step processes. It empowers you to model everything from simple sequential tasks to dynamic, graph-driven AI agents with a clear and composable API.
+**Flowcraft** is a lightweight, unopinionated, and progressively scalable runtime for executing declarative workflows defined as directed acyclic graphs (DAGs). It is designed to reliably orchestrate complex business processes, data pipelines, ETL workflows, or AI agent orchestrations with a focus on simplicity, portability, and extensibility.
 
-At its core, Flowcraft is guided by a few key principles:
+### Core Philosophy
 
-1.  **Structure for Complexity**: It provides a clear way to model asynchronous processes. By breaking logic into discrete `Node`s with a defined lifecycle, you can turn tangled promise chains and `async/await` blocks into maintainable, testable graphs.
-2.  **Start Simple, Scale Gracefully**: You can start with an in-memory workflow in a single file. As your needs grow, the architecture allows you to scale up to a robust, distributed system using message queues—**without changing your core business logic**.
-3.  **Composability is Key**: A `Flow` is just a specialized `Node`. This simple but powerful concept means entire workflows can be treated as building blocks, allowing you to create highly modular and reusable systems.
+Unlike heavy platforms like Temporal or Airflow, or domain-specific libraries like LangChain, Flowcraft is a foundational engine that does one thing exceptionally well: **execute a graph of functions defined as data**. It provides a flexible, type-safe API to define workflows, execute them with resilience, and scale from in-memory scripts to distributed systems without changing the core business logic.
 
-## The Two Paths of Flowcraft
+### Key Features
 
-Flowcraft is designed to cater to two primary use cases, and the documentation is structured to guide you down the path that best fits your needs:
-
-### 1. Programmatic Workflows
-
-This is the path for developers who want to build and manage workflows directly within their application's code. Using a fluent, chainable API and functional helpers, you can quickly define, test, and run complex processes in-memory.
-
-**Choose this path if you are:**
-- Building background jobs for a web application.
-- Creating complex, multi-step data processing pipelines.
-- Looking for a structured way to manage complex `async/await` logic.
-
-➡️ **[Learn how to build Programmatic Workflows](./programmatic/basics.md)**
-
-### 2. Declarative Workflows (for Scale)
-
-This is the path for architects and developers building dynamic, data-driven, or distributed systems. You define your workflow's structure as a declarative data format (like JSON), and the `GraphBuilder` "compiles" it into an executable, serializable `Blueprint`.
-
-**Choose this path if you are:**
-- Building a system where workflows are defined by users or stored in a database.
-- Creating a runtime for dynamic AI agents.
-- Architecting a distributed system where tasks are executed by a pool of workers.
-
-➡️ **[Learn how to build Declarative Workflows](./declarative/basics.md)**
-
----
-
-## Next Steps
-
-Ready to dive in? Here's where to go next:
-
-- **[Core Concepts](./core-concepts.md)**: Get a quick overview of the fundamental building blocks: `Node`, `Flow`, and `Context`.
-- **[Getting Started: Your First Workflow](./getting-started.md)**: Jump right into the code and build a complete workflow in 5 minutes.
+-   **Zero Dependencies**: Lightweight and dependency-free, ensuring a easy integration.
+-   **Declarative Workflows**: Define workflows as serializable objects with nodes and edges.
+-   **Unopinionated Logic**: Nodes can be simple functions or structured classes.
+-   **Progressive Scalability**: Run blueprints in-memory or scale to distributed systems.
+-   **Resilient Execution**: Built-in support for retries, fallbacks, timeouts, and cancellation.
+-   **Advanced Patterns**: Includes batch processing and loops for complex workflows.
+-   **Extensibility**: Pluggable loggers, evaluators, serializers, and middleware.
+-   **Static Analysis**: Tools to detect cycles, validate blueprints, and generate visual diagrams.
+-   **Type-Safe API**: Fully typed with TypeScript for a robust developer experience.

@@ -1,13 +1,13 @@
-name: CI & Coverage
+name: Coverage
 
 on:
   push:
-    branches: [ master ]
+    branches: [master]
   pull_request:
-    branches: [ master ]
+    branches: [master]
 
 jobs:
-  build-and-test:
+  test:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -21,8 +21,9 @@ jobs:
       - name: Install dependencies
         run: pnpm install
       - name: Run tests and create coverage report
-        run: pnpm test:coverage
+        run: pnpm coverage
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v5
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
+          files: ./packages/flowcraft/coverage/lcov.info

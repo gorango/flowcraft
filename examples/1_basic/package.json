@@ -1,0 +1,14 @@
+{
+	"name": "basic-workflow",
+	"type": "module",
+	"scripts": {
+		"start": "npx tsx src/main.ts",
+		"typecheck": "tsc --noEmit"
+	},
+	"dependencies": {
+		"flowcraft": "workspace:*"
+	},
+	"devDependencies": {
+		"typescript": "^5.9.3"
+	}
+}

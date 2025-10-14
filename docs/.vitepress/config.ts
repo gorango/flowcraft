@@ -4,16 +4,12 @@ import { MermaidMarkdown, MermaidPlugin } from 'vitepress-plugin-mermaid'
 export default defineConfig({
 	cleanUrls: true,
 	title: 'Flowcraft',
-	description: 'A Workflow Framework',
+	description: 'A lightweight, unopinionated workflow framework for executing declarative DAGs',
 	vite: {
 		optimizeDeps: {
-			include: [
-				'mermaid',
-			],
+			include: ['mermaid'],
 		},
-		plugins: [
-			MermaidPlugin(),
-		],
+		plugins: [MermaidPlugin()],
 	},
 	markdown: {
 		config: (md) => {
@@ -21,12 +17,14 @@ export default defineConfig({
 		},
 	},
 	themeConfig: {
-		search: {
-			provider: 'local',
-		},
+		search: { provider: 'local' },
 		nav: [
-			{ text: 'Guide', link: '/guide/', activeMatch: '/guide' },
-			{ text: 'API', link: '/api-reference/', activeMatch: '/api-reference' },
+			{ text: 'Guide', link: '/guide/', activeMatch: '/guide/' },
+			{ text: 'Examples', link: '/examples/', activeMatch: '/examples/' },
+			{ text: 'API', link: '/api/', activeMatch: '/api/' },
+		],
+		socialLinks: [
+			{ icon: 'github', link: 'https://github.com/gorango/flowcraft' },
 		],
 		footer: {
 			message: 'Released under the MIT License.',
@@ -38,69 +36,99 @@ export default defineConfig({
 					text: 'Introduction',
 					items: [
 						{ text: 'What is Flowcraft?', link: '/guide/' },
+						{ text: 'Getting Started', link: '/guide/getting-started' },
 						{ text: 'Core Concepts', link: '/guide/core-concepts' },
-						{ text: 'When to Use Flowcraft', link: '/guide/when-to-use' },
-						{ text: 'Your First Workflow', link: '/guide/getting-started' },
 					],
 				},
 				{
-					text: 'Programmatic Flows',
+					text: 'Building Workflows',
 					collapsed: false,
 					items: [
-						{ text: 'The Basics', link: '/guide/programmatic/basics' },
-						{ text: 'Functional API', link: '/guide/programmatic/functional-api' },
-						{ text: 'Data Processing Pipelines', link: '/guide/programmatic/data-pipelines' },
+						{ text: 'Defining Workflows', link: '/guide/defining-workflows' },
+						{ text: 'Nodes and Edges', link: '/guide/nodes-and-edges' },
+						{ text: 'Context Management', link: '/guide/context-management' },
+					],
+				},
+				{
+					text: 'Advanced Patterns',
+					collapsed: false,
+					items: [
+						{ text: 'Batch Processing', link: '/guide/batch-processing' },
+						{ text: 'Loops', link: '/guide/loops' },
+						{ text: 'Subflows', link: '/guide/subflows' },
+					],
+				},
+				{
+					text: 'Extending Flowcraft',
+					collapsed: true,
+					items: [
+						{ text: 'Custom Loggers', link: '/guide/custom-loggers' },
+						{ text: 'Evaluators', link: '/guide/evaluators' },
+						{ text: 'Serializers', link: '/guide/serializers' },
+						{ text: 'Middleware', link: '/guide/middleware' },
+						{ text: 'Distributed Execution', link: '/guide/distributed-execution' },
 						{
-							text: 'Common Patterns',
+							text: 'Official Adapters',
 							collapsed: true,
 							items: [
-								{ text: 'Creating Loops', link: '/guide/programmatic/patterns-loops' },
-								{ text: 'Parallel API Calls (Fan-Out)', link: '/guide/programmatic/patterns-parallel-flow' },
-								{ text: 'Batch Processing', link: '/guide/programmatic/patterns-batch-flow' },
+								{ text: 'BullMQ', link: '/guide/adapters/bullmq' },
+								{ text: 'AWS (SQS)', link: '/guide/adapters/sqs' },
+								{ text: 'GCP (Pub/Sub)', link: '/guide/adapters/gcp' },
+								{ text: 'Azure (Queues)', link: '/guide/adapters/azure' },
+								{ text: 'RabbitMQ & PostgreSQL', link: '/guide/adapters/rabbitmq' },
+								{ text: 'Kafka & Cassandra', link: '/guide/adapters/kafka' },
 							],
 						},
 					],
 				},
 				{
-					text: 'Declarative Flows',
-					collapsed: false,
+					text: 'Analysis and Debugging',
+					collapsed: true,
 					items: [
-						{ text: 'The Basics', link: '/guide/declarative/basics' },
-						{ text: 'Composition & Data Flow', link: '/guide/declarative/composition-data-flow' },
-						{ text: 'Dependency Injection', link: '/guide/declarative/dependency-injection' },
-						{ text: 'Tooling & Validation', link: '/guide/declarative/tooling-validation' },
+						{ text: 'Static Analysis', link: '/guide/static-analysis' },
+						{ text: 'Visualizing Workflows', link: '/guide/visualizing-workflows' },
+						{ text: 'Error Handling', link: '/guide/error-handling' },
 					],
-				},
-				{
-					text: 'Advanced Topics',
-					collapsed: false,
-					items: [
-						{ text: 'Resilience & Error Handling', link: '/guide/advanced/error-handling' },
-						{ text: 'Execution Control', link: '/guide/advanced/execution-control' },
-						{ text: 'Extending Flowcraft', link: '/guide/advanced/extending' },
-						{ text: 'Best Practices', link: '/guide/advanced/best-practices' },
-					],
-				},
-				{
-					text: 'API Reference',
-					link: '/api-reference/',
 				},
 			],
-			'/api-reference/': [
+			'/examples/': [
+				{
+					text: 'Examples',
+					items: [
+						{ text: 'Overview', link: '/examples/' },
+						{ text: 'Basic Workflow', link: '/examples/1_basic' },
+						{ text: 'RAG Agent', link: '/examples/2_rag' },
+						{ text: 'Parallel Workflow', link: '/examples/3_translate' },
+						{ text: 'Research Agent', link: '/examples/4_research' },
+						{
+							text: 'Declarative Workflow',
+							items: [
+								{ text: 'In-Memory', link: '/examples/5a_declarative' },
+								{ text: 'Distributed', link: '/examples/5b_distributed' },
+							],
+						},
+					],
+				},
+			],
+			'/api/': [
 				{
 					text: 'API Reference',
 					items: [
-						{ text: 'Introduction', link: '/api-reference/' },
-						{ text: 'Core API', link: '/api-reference/core' },
-						{ text: 'Builders API', link: '/api-reference/builders' },
-						{ text: 'Functional API', link: '/api-reference/functional' },
-						{ text: 'Utilities API', link: '/api-reference/utils' },
+						{ text: 'Overview', link: '/api/' },
+						{ text: 'Flow', link: '/api/flow' },
+						{ text: 'Runtime', link: '/api/runtime' },
+						{ text: 'Nodes', link: '/api/nodes' },
+						{ text: 'Context', link: '/api/context' },
+						{ text: 'Analysis', link: '/api/analysis' },
+						{ text: 'Linter', link: '/api/linter' },
+						{ text: 'Serializer', link: '/api/serializer' },
+						{ text: 'Evaluator', link: '/api/evaluator' },
+						{ text: 'Logger', link: '/api/logger' },
+						{ text: 'Errors', link: '/api/errors' },
+						{ text: 'Distributed Adapter', link: '/api/distributed-adapter' },
 					],
 				},
 			],
 		},
-		socialLinks: [
-			{ icon: 'github', link: 'https://github.com/gorango/flowcraft' },
-		],
 	},
 })

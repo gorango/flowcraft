@@ -1,9 +1,11 @@
 dist/
 coverage/
 node_modules/
+.turbo/
 
 docs/.vitepress/dist
 docs/.vitepress/cache
 
 TODO*
 NOTE*
+AGENTS*
