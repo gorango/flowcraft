@@ -39,6 +39,24 @@ A sophisticated RAG agent that ingests documents, generates embeddings, performs
 
 ```mermaid
 graph TD
+	A[Load & Chunk Document] --> B[Generate Embeddings]
+	subgraph "Parallel Process"
+		B --> B1[0]
+		B --> B2[1]
+		B --> B3[2]
+		B --> B4[n]
+	end
+	B1 & B2 & B3 & B4 --> C[Store in Vector DB]
+	C --> D[Vector Search for Question]
+	D --> E[Generate Final Answer]
+```
+
+## Dynamic AI Agent from Visual Graphs
+
+A runtime engine for executing graph-based AI workflows defined as JSON files, with support for parallelism, branching, and nested workflows.
+
+```mermaid
+graph TD
     subgraph "Workflow Definition"
         Blueprint["JSON Blueprint <br><small>(e.g., 200.json)</small>"]
     end
@@ -60,9 +78,9 @@ graph TD
     Registry -- "Maps string types to" --> Functions
 ```
 
-## Dynamic AI Agent from Visual Graphs
+## Distributed AI Agent with a Pluggable Executor
 
-A runtime engine for executing graph-based AI workflows defined as JSON files, with support for parallelism, branching, and nested workflows.
+Runs the DAG example in a distributed environment using BullMQ, with client-worker separation and awaitable workflows.
 
 ```mermaid
 graph TD
@@ -90,7 +108,3 @@ graph TD
     State -- "6. Final result is written" --> Worker
     State -- "7. Client reads final result" --> Client
 ```
-
-## Distributed AI Agent with a Pluggable Executor
-
-Runs the DAG example in a distributed environment using BullMQ, with client-worker separation and awaitable workflows.

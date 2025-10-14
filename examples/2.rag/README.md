@@ -1,6 +1,6 @@
-# Advanced RAG Agent with Document Analysis
+# Advanced RAG Agent Workflow
 
-This example demonstrates a sophisticated Retrieval-Augmented Generation (RAG) agent built with Flowcraft. The workflow ingests and analyzes a document, uses embeddings to find relevant information, and generates a precise answer to a user's question.
+This workflow demonstrates a complete Retrieval-Augmented Generation (RAG) agent built with Flowcraft. The workflow ingests and analyzes a document, uses embeddings to find relevant information, and generates a precise answer to a user's question.
 
 This project serves two main purposes:
 
@@ -43,12 +43,16 @@ The workflow is defined in `data/rag.json` and executed by the `InMemoryExecutor
 
 ```mermaid
 graph TD
-    subgraph "Advanced RAG Agent"
-        A[Load & Chunk Document] --> B[Generate Embeddings in Parallel]
-        B --> C[Store in Vector DB]
-        C --> D[Vector Search for Question]
-        D --> E[Generate Final Answer]
-    end
+	A[Load & Chunk Document] --> B[Generate Embeddings]
+	subgraph "Parallel Process"
+		B --> B1[0]
+		B --> B2[1]
+		B --> B3[2]
+		B --> B4[n]
+	end
+	B1 & b2 & B3 & B4 --> C[Store in Vector DB]
+	C --> D[Vector Search for Question]
+	D --> E[Generate Final Answer]
 ```
 
 1. **`LoadAndChunkNode`**: Reads the source document and splits it into smaller text chunks, creating `DocumentChunk` class instances which include an `ingestedAt: Date`.

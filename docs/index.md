@@ -9,7 +9,7 @@ hero:
     - theme: brand
       text: Get Started
       link: /guide/
-    - theme: brand
+    - theme: alt
       text: Examples
       link: /examples/
     - theme: alt

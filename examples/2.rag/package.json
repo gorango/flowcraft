@@ -1,5 +1,5 @@
 {
-	"name": "research-workflow",
+	"name": "rag-workflow",
 	"type": "module",
 	"scripts": {
 		"start": "npx tsx src/main.ts",
@@ -8,11 +8,12 @@
 	"dependencies": {
 		"dotenv": "^17.2.3",
 		"flowcraft": "workspace:*",
-		"openai": "^6.2.0",
-		"serpapi": "^2.1.0",
-		"yaml": "^2.8.1"
+		"openai": "^6.3.0",
+		"superjson": "^2.2.2"
 	},
 	"devDependencies": {
+		"@types/node": "^24.7.2",
+		"tsx": "^4.20.6",
 		"typescript": "^5.9.3"
 	}
 }

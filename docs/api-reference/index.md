@@ -1,6 +1,6 @@
 # API Reference Overview
 
-This section provides detailed technical documentation for the Flowcraft API. It is intended for developers who are familiar with the [Core Concepts](/guide/core-concepts/) and are looking for specific details on classes, interfaces, and functions.
+This section provides detailed technical documentation for the Flowcraft API. It is intended for developers who are familiar with the [Core Concepts](/guide/core-concepts) and are looking for specific details on classes, interfaces, and functions.
 
 ### Key Modules
 

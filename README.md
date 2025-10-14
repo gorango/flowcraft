@@ -17,7 +17,7 @@ Build complex, multi-step processes with a lightweight, composable, and type-saf
 - **Static Analysis**: Tools to detect cycles, validate blueprints, and generate visual diagrams.
 - **Type-Safe API**: Fully typed with TypeScript for a robust developer experience.
 
-For complete guides and API references: [Read the Friendly Manual](https://gorango.github.io/flowcraft/guide/).
+For complete guides and API references: [Read the Friendly Manual](https://flowcraft.js.org/).
 
 ## Installation
 
@@ -116,7 +116,7 @@ A complete Retrieval-Augmented Generation (RAG) agent that ingests a document, c
 
 ## Documentation
 
-For a complete overview all features, patterns, examples, and APIs, please see the **[Flowcraft documentation](https://gorango.github.io/flowcraft/guide/)**.
+For a complete overview all features, patterns, examples, and APIs, please see the **[Flowcraft documentation](https://flowcraft.js.org/)**.
 
 ## License
 

@@ -72,15 +72,9 @@ flowchart TD
 
 ### Running the Example
 
-1.  Make sure you have `typescript` and `ts-node` installed:
-    ```bash
-    npm install -D typescript ts-node
-    ```
-2.  Execute the file:
-    ```bash
-    npx ts-node simple-flow.ts
-    ```
+Execute the file:
+```bash
+npx tsx simple-flow.ts
+```
 
 You should see the final workflow result logged to the console, showing that the `context` contains the output from both the `start` and `double` nodes.
-
-Congratulations! You've successfully built and executed your first Flowcraft workflow. Now, let's dive into the [Core Concepts](/guide/core-concepts).
