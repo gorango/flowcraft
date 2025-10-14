@@ -9,6 +9,7 @@
 		"build": "turbo build",
 		"test": "turbo test",
 		"typecheck": "turbo typecheck",
+		"coverage": "pnpm --filter flowcraft test:coverage",
 		"docs:dev": "vitepress dev docs",
 		"docs:build": "vitepress build docs",
 		"docs:preview": "vitepress preview docs"
