@@ -18,6 +18,7 @@ export default defineConfig({
 		},
 	},
 	themeConfig: {
+		logo: '/flowcraft.png',
 		search: {
 			provider: 'local',
 		},
@@ -25,7 +26,10 @@ export default defineConfig({
 			{ text: 'Guide', link: '/guide/', activeMatch: '/guide/' },
 			{ text: 'Examples', link: '/examples/', activeMatch: '/examples/' },
 			{ text: 'API', link: '/api-reference/', activeMatch: '/api-reference/' },
-			{ text: 'GitHub', link: 'https://github.com/gorango/flowcraft' },
+			// { text: 'GitHub', link: 'https://github.com/gorango/flowcraft' },
+		],
+		socialLinks: [
+			{ icon: 'github', link: 'https://github.com/gorango/flowcraft' },
 		],
 		footer: {
 			message: 'Released under the MIT License.',
@@ -61,18 +65,30 @@ export default defineConfig({
 				},
 				{
 					text: 'Extending Flowcraft',
-					collapsed: false,
+					collapsed: true,
 					items: [
 						{ text: 'Custom Loggers', link: '/guide/custom-loggers' },
 						{ text: 'Evaluators', link: '/guide/evaluators' },
 						{ text: 'Serializers', link: '/guide/serializers' },
 						{ text: 'Middleware', link: '/guide/middleware' },
 						{ text: 'Distributed Execution', link: '/guide/distributed-execution' },
+						{
+							text: 'Official Adapters',
+							collapsed: true,
+							items: [
+								{ text: 'BullMQ', link: '/guide/adapters/bullmq' },
+								{ text: 'AWS (SQS)', link: '/guide/adapters/sqs' },
+								{ text: 'Google Cloud', link: '/guide/adapters/gcp' },
+								{ text: 'Azure', link: '/guide/adapters/azure' },
+								{ text: 'RabbitMQ & PostgreSQL', link: '/guide/adapters/rabbitmq' },
+								{ text: 'Kafka & Cassandra', link: '/guide/adapters/kafka' },
+							],
+						},
 					],
 				},
 				{
 					text: 'Analysis and Debugging',
-					collapsed: false,
+					collapsed: true,
 					items: [
 						{ text: 'Static Analysis', link: '/guide/static-analysis' },
 						{ text: 'Visualizing Workflows', link: '/guide/visualizing-workflows' },
@@ -87,7 +103,7 @@ export default defineConfig({
 						{ text: 'Overview', link: '/examples/' },
 						{ text: 'Basic Workflow', link: '/examples/1.basic' },
 						{ text: 'RAG Agent', link: '/examples/2.rag' },
-						{ text: 'Parallel Workflow', link: '/examples/3.parallel' },
+						{ text: 'Parallel Workflow', link: '/examples/3.translate' },
 						{ text: 'Research Agent', link: '/examples/4.research' },
 						{
 							text: 'Declarative Workflow',
@@ -119,8 +135,5 @@ export default defineConfig({
 				},
 			],
 		},
-		socialLinks: [
-			{ icon: 'github', link: 'https://github.com/gorango/flowcraft' },
-		],
 	},
 })

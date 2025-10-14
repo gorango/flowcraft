@@ -2,22 +2,29 @@
 	"name": "@flowcraft/bullmq-adapter",
 	"type": "module",
 	"version": "1.0.0",
-	"main": "dist/index.js",
-	"types": "dist/index.d.ts",
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"import": "./dist/index.js"
+		}
+	},
 	"files": [
 		"dist"
 	],
 	"scripts": {
 		"build": "tsup src/index.ts --format esm --dts",
+		"test": "./testcontainers.sh && vitest run src/*.test.ts",
 		"typecheck": "tsc --noEmit"
 	},
 	"dependencies": {
 		"bullmq": "^5.61.0",
 		"flowcraft": "workspace:*",
-		"ioredis": "^5.8.1",
-		"tsup": "^8.5.0"
+		"ioredis": "^5.8.1"
 	},
 	"devDependencies": {
-		"typescript": "^5.9.3"
+		"@testcontainers/redis": "^11.7.1",
+		"tsup": "^8.5.0",
+		"typescript": "^5.9.3",
+		"vitest": "^3.2.4"
 	}
 }

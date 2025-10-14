@@ -2,7 +2,7 @@
 	"name": "flowcraft",
 	"type": "module",
 	"private": true,
-	"packageManager": "pnpm@10.4.1",
+	"packageManager": "pnpm@10.18.2",
 	"main": "index.js",
 	"scripts": {
 		"lint": "eslint --fix",
@@ -21,8 +21,10 @@
 	},
 	"devDependencies": {
 		"@antfu/eslint-config": "^5.4.1",
+		"jiti": "^2.6.1",
 		"mermaid": "^11.12.0",
 		"turbo": "^2.5.8",
+		"typescript": "^5.9.3",
 		"vitepress": "^1.6.4",
 		"vitepress-plugin-mermaid": "^2.0.17"
 	}

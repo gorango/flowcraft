@@ -1,16 +1,19 @@
 import type { ICoordinationStore } from 'flowcraft'
-import type IORedis from 'ioredis'
+import type { Redis as RedisClient } from 'ioredis'
 
 export class RedisCoordinationStore implements ICoordinationStore {
-	constructor(private redis: IORedis) { }
+	constructor(private redis: RedisClient) { }
 
 	async increment(key: string, ttlSeconds: number): Promise<number> {
 		const pipeline = this.redis.pipeline()
 		pipeline.incr(key)
 		pipeline.expire(key, ttlSeconds)
 		const results = await pipeline.exec()
-		// The result of INCR is at index 0, value is at index 1 of the result tuple.
-		return (results?.[0]?.[1] as number) ?? 0
+		if (!results)
+			return 0
+
+		const [[, count]] = results
+		return count as number
 	}
 
 	async setIfNotExist(key: string, value: string, ttlSeconds: number): Promise<boolean> {

@@ -1,0 +1,33 @@
+{
+	"name": "@flowcraft/gcp-adapter",
+	"type": "module",
+	"version": "1.0.0",
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"import": "./dist/index.js"
+		}
+	},
+	"files": [
+		"dist"
+	],
+	"scripts": {
+		"build": "tsup src/index.ts --format esm --dts",
+		"test": "./testcontainers.sh && vitest run src/*.test.ts",
+		"typecheck": "tsc --noEmit"
+	},
+	"dependencies": {
+		"@google-cloud/firestore": "^7.11.6",
+		"@google-cloud/pubsub": "^5.2.0",
+		"flowcraft": "workspace:*",
+		"ioredis": "^5.8.1"
+	},
+	"devDependencies": {
+		"@testcontainers/gcloud": "^11.7.1",
+		"@testcontainers/redis": "^11.7.1",
+		"testcontainers": "^11.7.1",
+		"tsup": "^8.5.0",
+		"typescript": "^5.9.3",
+		"vitest": "^3.2.4"
+	}
+}
