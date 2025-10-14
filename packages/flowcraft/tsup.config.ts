@@ -4,7 +4,6 @@ export default defineConfig({
 	entry: [
 		'src/**/*.ts',
 		'!src/**/*.test.ts',
-		'!src/test-utils/**/*.ts',
 	],
 	entryPoints: ['src/index.ts'],
 	format: ['esm'],

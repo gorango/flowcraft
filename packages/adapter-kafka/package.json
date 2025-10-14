@@ -18,7 +18,7 @@
 	},
 	"dependencies": {
 		"cassandra-driver": "^4.8.0",
-		"flowcraft": "workspace:*",
+		"flowcraft": "^2.0.0",
 		"ioredis": "^5.8.1",
 		"kafkajs": "^2.2.4"
 	},

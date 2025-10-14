@@ -18,7 +18,7 @@
 	},
 	"dependencies": {
 		"amqplib": "^0.10.9",
-		"flowcraft": "workspace:*",
+		"flowcraft": "^2.0.0",
 		"ioredis": "^5.8.1",
 		"pg": "^8.16.3"
 	},

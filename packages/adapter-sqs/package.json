@@ -20,7 +20,7 @@
 		"@aws-sdk/client-dynamodb": "^3.908.0",
 		"@aws-sdk/client-sqs": "^3.908.0",
 		"@aws-sdk/util-dynamodb": "^3.908.0",
-		"flowcraft": "workspace:*"
+		"flowcraft": "^2.0.0"
 	},
 	"devDependencies": {
 		"@testcontainers/localstack": "^11.7.1",

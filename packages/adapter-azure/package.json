@@ -19,7 +19,7 @@
 	"dependencies": {
 		"@azure/cosmos": "^4.6.0",
 		"@azure/storage-queue": "^12.27.0",
-		"flowcraft": "workspace:*",
+		"flowcraft": "^2.0.0",
 		"ioredis": "^5.8.1"
 	},
 	"devDependencies": {
