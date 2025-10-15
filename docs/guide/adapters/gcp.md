@@ -44,7 +44,7 @@ The following example shows how to configure and start a worker using the `PubSu
 
 #### `worker.ts`
 ```typescript
-import { FirestoreContext, PubSubAdapter, RedisCoordinationStore } from '@flowcraft/gcp-adapter'
+import { PubSubAdapter, RedisCoordinationStore } from '@flowcraft/gcp-adapter'
 import { Firestore } from '@google-cloud/firestore'
 import { PubSub } from '@google-cloud/pubsub'
 import IORedis from 'ioredis'
@@ -90,8 +90,48 @@ async function main() {
 main().catch(console.error)
 ```
 
+## Workflow Reconciliation
+
+To enhance fault tolerance, the GCP adapter includes a utility for detecting and resuming stalled workflows. This is critical in production environments where workers might crash, leaving workflows in an incomplete state.
+
+### How It Works
+
+The reconciler queries the Firestore `statuses` collection for workflows that have a `status` of 'running' but whose `lastUpdated` timestamp is older than a configurable threshold. For each stalled run, it safely re-enqueues the next set of executable nodes. The adapter automatically maintains the `lastUpdated` timestamp on the status document.
+
+### Reconciler Usage
+
+A reconciliation process should be run periodically as a separate script or scheduled job (e.g., a cron job, Cloud Scheduler job targeting a Cloud Function, or a simple `setInterval`).
+
+#### `reconcile.ts`
+```typescript
+import { createGcpReconciler } from '@flowcraft/gcp-adapter';
+
+// Assume 'adapter' and 'firestoreClient' are initialized just like in your worker
+const reconciler = createGcpReconciler({
+  adapter,
+  firestoreClient,
+  statusCollectionName: 'flowcraft-statuses',
+  stalledThresholdSeconds: 300, // 5 minutes
+});
+
+async function runReconciliation() {
+  console.log('Starting reconciliation cycle...');
+  const stats = await reconciler.run();
+  console.log(`Reconciliation complete. Stalled: ${stats.stalledRuns}, Resumed: ${stats.reconciledRuns}, Failed: ${stats.failedRuns}`);
+}
+
+// Run this function on a schedule
+runReconciliation();
+```
+
+The `run()` method returns a `ReconciliationStats` object:
+-   `stalledRuns`: Number of workflows identified as stalled.
+-   `reconciledRuns`: Number of workflows where at least one job was successfully re-enqueued.
+-   `failedRuns`: Number of workflows where an error occurred during the reconciliation attempt.
+
 ## Key Components
 
 -   **Job Queue**: Uses a Google Cloud Pub/Sub topic and subscription. The adapter is event-driven, listening for messages pushed from the subscription. It `acks` messages on success and `nacks` them on failure for redelivery.
--   **Context Store**: The `FirestoreContext` class stores the state for each workflow run as a separate document in a Firestore collection, using `runId` as the document ID.
+-   **Context Store**: The `FirestoreContext` class stores the state for each workflow run as a separate document in a Firestore collection.
 -   **Coordination Store**: The `RedisCoordinationStore` uses atomic Redis commands (`INCR`, `SETNX`) to manage distributed locks and counters for fan-in joins.
+-   **Reconciler**: The `createGcpReconciler` factory provides a utility to find and resume stalled workflows.

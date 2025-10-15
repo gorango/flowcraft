@@ -40,7 +40,7 @@ The following example shows how to configure and start a worker using the `BullM
 
 #### `worker.ts`
 ```typescript
-import { BullMQAdapter, RedisContext, RedisCoordinationStore } from '@flowcraft/bullmq-adapter'
+import { BullMQAdapter, RedisCoordinationStore } from '@flowcraft/bullmq-adapter'
 import IORedis from 'ioredis'
 // Assume agentNodeRegistry and blueprints are loaded from your application's shared files.
 import { agentNodeRegistry, blueprints } from './shared'
@@ -77,8 +77,48 @@ async function main() {
 main().catch(console.error)
 ```
 
+## Workflow Reconciliation
+
+To enhance fault tolerance, the BullMQ adapter includes a utility for detecting and resuming stalled workflows. This is critical in production environments where workers might crash, leaving workflows in an incomplete state.
+
+### How It Works
+
+The reconciler leverages Redis's `OBJECT IDLETIME` command. It scans for workflow state keys and checks how long they have been idle (i.e., not written to). If a key is idle longer than the configured threshold, the corresponding workflow is considered stalled, and the reconciler attempts to resume it.
+
+### Reconciler Usage
+
+A reconciliation process should be run periodically as a separate script or scheduled job (e.g., a cron job or a simple `setInterval`).
+
+#### `reconcile.ts`
+```typescript
+import { createBullMQReconciler } from '@flowcraft/bullmq-adapter';
+
+// Assume 'adapter' and 'redisConnection' are initialized just like in your worker
+const reconciler = createBullMQReconciler({
+  adapter,
+  redis: redisConnection,
+  stalledThresholdSeconds: 300, // 5 minutes
+});
+
+async function runReconciliation() {
+  console.log('Starting reconciliation cycle...');
+  const stats = await reconciler.run();
+  console.log(`Reconciliation complete. Scanned: ${stats.scannedKeys}, Stalled: ${stats.stalledRuns}, Resumed: ${stats.reconciledRuns}, Failed: ${stats.failedRuns}`);
+}
+
+// Run this function on a schedule
+runReconciliation();
+```
+
+The `run()` method returns a `ReconciliationStats` object:
+-   `scannedKeys`: Total number of workflow state keys scanned in Redis.
+-   `stalledRuns`: Number of workflows identified as stalled.
+-   `reconciledRuns`: Number of workflows where at least one job was successfully re-enqueued.
+-   `failedRuns`: Number of workflows where an error occurred during the reconciliation attempt.
+
 ## Key Components
 
 -   **Job Queue**: Managed by BullMQ, which provides a reliable and feature-rich queueing system on top of Redis.
--   **Context Store**: The `RedisContext` class implements the `IAsyncContext` interface. It stores the state for each workflow run in a separate Redis Hash, ensuring data isolation.
+-   **Context Store**: The `RedisContext` class implements the `IAsyncContext` interface. It stores the state for each workflow run in a separate Redis Hash.
 -   **Coordination Store**: The `RedisCoordinationStore` uses atomic Redis commands like `INCR` and `SETNX` to safely manage distributed locks and counters for fan-in joins.
+-   **Reconciler**: The `createBullMQReconciler` factory provides a utility to find and resume stalled workflows.

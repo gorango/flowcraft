@@ -39,7 +39,7 @@ The following example shows how to configure and start a worker using the `Rabbi
 
 #### `worker.ts`
 ```typescript
-import { PostgresContext, RabbitMqAdapter, RedisCoordinationStore } from '@flowcraft/rabbitmq-adapter'
+import { RabbitMqAdapter, RedisCoordinationStore } from '@flowcraft/rabbitmq-adapter'
 import * as amqplib from 'amqplib'
 import IORedis from 'ioredis'
 import { Client as PgClient } from 'pg'
@@ -81,8 +81,48 @@ async function main() {
 main().catch(console.error)
 ```
 
+## Workflow Reconciliation
+
+To enhance fault tolerance, the RabbitMQ adapter includes a utility for detecting and resuming stalled workflows. This is critical in production environments where workers might crash, leaving workflows in an incomplete state.
+
+### How It Works
+
+The reconciler queries the PostgreSQL `statuses` table for workflows that have a `status` of 'running' but whose `updated_at` timestamp is older than a configurable threshold. For each stalled run, it safely re-enqueues the next set of executable nodes. The adapter automatically maintains the `updated_at` timestamp in the status table.
+
+### Reconciler Usage
+
+A reconciliation process should be run periodically as a separate script or scheduled job (e.g., a cron job or a simple `setInterval`).
+
+#### `reconcile.ts`
+```typescript
+import { createRabbitMqReconciler } from '@flowcraft/rabbitmq-adapter';
+
+// Assume 'adapter' and 'pgClient' are initialized just like in your worker
+const reconciler = createRabbitMqReconciler({
+  adapter,
+  pgClient,
+  statusTableName: 'flowcraft_statuses',
+  stalledThresholdSeconds: 300, // 5 minutes
+});
+
+async function runReconciliation() {
+  console.log('Starting reconciliation cycle...');
+  const stats = await reconciler.run();
+  console.log(`Reconciliation complete. Stalled: ${stats.stalledRuns}, Resumed: ${stats.reconciledRuns}, Failed: ${stats.failedRuns}`);
+}
+
+// Run this function on a schedule
+runReconciliation();
+```
+
+The `run()` method returns a `ReconciliationStats` object:
+-   `stalledRuns`: Number of workflows identified as stalled.
+-   `reconciledRuns`: Number of workflows where at least one job was successfully re-enqueued.
+-   `failedRuns`: Number of workflows where an error occurred during the reconciliation attempt.
+
 ## Key Components
 
 -   **Job Queue**: Uses a durable RabbitMQ queue. The adapter uses message acknowledgments (`ack`/`nack`) to ensure jobs are not lost if a worker fails.
 -   **Context Store**: The `PostgresContext` class stores the state for each workflow run as a row in a PostgreSQL table, using an efficient `JSONB` column.
 -   **Coordination Store**: The `RedisCoordinationStore` uses atomic Redis commands to safely manage fan-in joins.
+-   **Reconciler**: The `createRabbitMqReconciler` factory provides a utility to find and resume stalled workflows.

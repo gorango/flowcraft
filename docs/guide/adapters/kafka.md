@@ -39,7 +39,7 @@ The following example shows how to configure and start a worker using the `Kafka
 
 #### `worker.ts`
 ```typescript
-import { CassandraContext, KafkaAdapter, RedisCoordinationStore } from '@flowcraft/kafka-adapter'
+import { KafkaAdapter, RedisCoordinationStore } from '@flowcraft/kafka-adapter'
 import { Client as CassandraClient } from 'cassandra-driver'
 import IORedis from 'ioredis'
 import { Kafka } from 'kafkajs'
@@ -91,8 +91,52 @@ async function main() {
 main().catch(console.error)
 ```
 
+## Workflow Reconciliation
+
+To enhance fault tolerance, the Kafka adapter includes a utility for detecting and resuming stalled workflows. This is critical in production environments where workers might crash, leaving workflows in an incomplete state.
+
+### How It Works
+
+The reconciler queries the Cassandra `statuses` table for workflows that have a `status` of 'running' but whose `updated_at` timestamp is older than a configurable threshold. For each stalled run, it safely re-enqueues the next set of executable nodes. The adapter automatically maintains the `updated_at` timestamp in the status table.
+
+> [!WARNING]
+> The default query uses `ALLOW FILTERING`, which can be inefficient on large Cassandra tables. For production use, it is highly recommended to create a secondary index on the `status` column of your status table.
+
+### Reconciler Usage
+
+A reconciliation process should be run periodically as a separate script or scheduled job (e.g., a cron job or a simple `setInterval`).
+
+#### `reconcile.ts`
+```typescript
+import { createKafkaReconciler } from '@flowcraft/kafka-adapter';
+
+// Assume 'adapter' and 'cassandraClient' are initialized just like in your worker
+const reconciler = createKafkaReconciler({
+  adapter,
+  cassandraClient,
+  keyspace: 'flowcraft_ks',
+  statusTableName: 'statuses',
+  stalledThresholdSeconds: 300, // 5 minutes
+});
+
+async function runReconciliation() {
+  console.log('Starting reconciliation cycle...');
+  const stats = await reconciler.run();
+  console.log(`Reconciliation complete. Stalled: ${stats.stalledRuns}, Resumed: ${stats.reconciledRuns}, Failed: ${stats.failedRuns}`);
+}
+
+// Run this function on a schedule
+runReconciliation();
+```
+
+The `run()` method returns a `ReconciliationStats` object:
+-   `stalledRuns`: Number of workflows identified as stalled.
+-   `reconciledRuns`: Number of workflows where at least one job was successfully re-enqueued.
+-   `failedRuns`: Number of workflows where an error occurred during the reconciliation attempt.
+
 ## Key Components
 
 -   **Job Queue**: Uses an Apache Kafka topic. The adapter intelligently uses the `runId` as the message key, guaranteeing that all jobs for a single workflow execution are processed in order by the same consumer partition.
 -   **Context Store**: The `CassandraContext` class stores state in a Cassandra table, partitioned by `runId` for fast, distributed reads and writes.
 -   **Coordination Store**: The `RedisCoordinationStore` uses atomic Redis commands to manage fan-in joins.
+-   **Reconciler**: The `createKafkaReconciler` factory provides a utility to find and resume stalled workflows.

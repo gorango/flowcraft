@@ -43,7 +43,7 @@ The following example shows how to configure and start a worker using the `SqsAd
 ```typescript
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb'
 import { SQSClient } from '@aws-sdk/client-sqs'
-import { DynamoDbContext, DynamoDbCoordinationStore, SqsAdapter } from '@flowcraft/sqs-adapter'
+import { DynamoDbCoordinationStore, SqsAdapter } from '@flowcraft/sqs-adapter'
 // Assume agentNodeRegistry and blueprints are loaded from your application's shared files.
 import { agentNodeRegistry, blueprints } from './shared'
 
@@ -87,8 +87,49 @@ async function main() {
 main().catch(console.error)
 ```
 
+## Workflow Reconciliation
+
+To enhance fault tolerance, the SQS adapter includes a utility for detecting and resuming stalled workflows. This is critical in production environments where workers might crash, leaving workflows in an incomplete state.
+
+### How It Works
+
+The reconciler queries the DynamoDB `statuses` table for workflows that have a `status` of 'running' but whose `lastUpdated` timestamp is older than a configurable threshold. For each stalled run, it safely re-enqueues the next set of executable nodes. The adapter automatically maintains the `lastUpdated` timestamp on the status item.
+
+### Reconciler Usage
+
+A reconciliation process should be run periodically as a separate script or scheduled job (e.g., a cron job or a scheduled AWS Lambda function).
+
+#### `reconcile.ts`
+```typescript
+import { createSqsReconciler } from '@flowcraft/sqs-adapter';
+
+// Assume 'adapter' and 'dynamoDbClient' are initialized just like in your worker
+const reconciler = createSqsReconciler({
+  adapter,
+  dynamoDbClient,
+  statusTableName: 'flowcraft-statuses',
+  stalledThresholdSeconds: 300, // 5 minutes
+});
+
+async function runReconciliation() {
+  console.log('Starting reconciliation cycle...');
+  const stats = await reconciler.run();
+  console.log(`Reconciliation complete. Scanned: ${stats.scannedItems}, Stalled: ${stats.stalledRuns}, Resumed: ${stats.reconciledRuns}, Failed: ${stats.failedRuns}`);
+}
+
+// Run this function on a schedule
+runReconciliation();
+```
+
+The `run()` method returns a `ReconciliationStats` object:
+-   `scannedItems`: Total number of items scanned in the DynamoDB status table.
+-   `stalledRuns`: Number of workflows identified as stalled.
+-   `reconciledRuns`: Number of workflows where at least one job was successfully re-enqueued.
+-   `failedRuns`: Number of workflows where an error occurred during the reconciliation attempt.
+
 ## Key Components
 
 -   **Job Queue**: Uses an AWS SQS queue. The adapter polls for messages and deletes them upon successful processing.
--   **Context Store**: The `DynamoDbContext` class stores the state for each workflow run as a single item in a DynamoDB table, using the `runId` as the partition key.
+-   **Context Store**: The `DynamoDbContext` class stores the state for each workflow run as a single item in a DynamoDB table.
 -   **Coordination Store**: The `DynamoDbCoordinationStore` is a powerful, Redis-free implementation that uses DynamoDB's atomic counters and conditional expressions to safely manage distributed locks and fan-in joins.
+-   **Reconciler**: The `createSqsReconciler` factory provides a utility to find and resume stalled workflows.
