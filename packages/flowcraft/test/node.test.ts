@@ -1,7 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import { AsyncContextView } from '../src/context'
-import { BaseNode } from '../src/node'
+import { BaseNode, isNodeClass } from '../src/node'
 import type { ISyncContext, NodeContext, NodeResult } from '../src/types'
+
+class TestNodeForIsNodeClass extends BaseNode {
+	async exec(_prepResult: any, _context: NodeContext): Promise<Omit<NodeResult, 'error'>> {
+		return { output: 'test' }
+	}
+}
 
 class MockSyncContext implements ISyncContext {
 	readonly type = 'sync' as const
@@ -189,5 +195,40 @@ describe('BaseNode', () => {
 		const prepResult = await node.prep(context)
 		await expect(node.exec(prepResult, context)).rejects.toThrow('Exec failed')
 		await expect(node.fallback(new Error('Exec failed'), context)).rejects.toThrow('Exec failed')
+	})
+
+	it('should call constructor with params', () => {
+		const params = { key: 'value' }
+		const node = new TestNode(params)
+		expect((node as any).params).toEqual(params)
+	})
+
+	it('should call constructor without params', () => {
+		const node = new TestNode()
+		expect((node as any).params).toBeUndefined()
+	})
+})
+
+describe('isNodeClass', () => {
+	it('should return true for a class with prototype.exec', () => {
+		expect(isNodeClass(TestNodeForIsNodeClass)).toBe(true)
+	})
+
+	it('should return false for a function without prototype.exec', () => {
+		const func = () => {}
+		expect(isNodeClass(func)).toBe(false)
+	})
+
+	it('should return false for a class without prototype.exec', () => {
+		class NoExecNode {
+			// No exec method
+		}
+		expect(isNodeClass(NoExecNode)).toBe(false)
+	})
+
+	it('should return false for non-function', () => {
+		expect(isNodeClass('string')).toBe(false)
+		expect(isNodeClass(123)).toBe(false)
+		expect(isNodeClass({})).toBe(false)
 	})
 })

@@ -21,8 +21,8 @@ export class ConsoleLogger implements ILogger {
 
 /** A logger implementation that does nothing (no-op). */
 export class NullLogger implements ILogger {
-	debug(): void {}
-	info(): void {}
-	warn(): void {}
-	error(): void {}
+	debug(_message: string, _meta?: Record<string, any>): void {}
+	info(_message: string, _meta?: Record<string, any>): void {}
+	warn(_message: string, _meta?: Record<string, any>): void {}
+	error(_message: string, _meta?: Record<string, any>): void {}
 }
