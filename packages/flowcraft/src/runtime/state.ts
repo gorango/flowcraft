@@ -21,6 +21,8 @@ export class WorkflowState<TContext extends Record<string, any>> {
 			nodeId,
 			message: error.message,
 			originalError: error,
+			timestamp: new Date().toISOString(),
+			stack: error.stack,
 		})
 	}
 

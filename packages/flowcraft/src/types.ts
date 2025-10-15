@@ -213,6 +213,8 @@ export interface WorkflowError {
 	nodeId: string
 	message: string
 	originalError?: any
+	timestamp: string // ISO 8601 format
+	stack?: string
 }
 
 /** The final result of a workflow execution. */
