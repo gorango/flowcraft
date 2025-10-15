@@ -1,4 +1,4 @@
-# Extending Flowcraft: Custom Loggers
+# Custom Loggers
 
 Flowcraft includes a simple `ConsoleLogger` and a `NullLogger` (which does nothing). For production systems, you'll likely want to integrate with a more robust logging framework like Winston, Pino, or your cloud provider's logging service.
 

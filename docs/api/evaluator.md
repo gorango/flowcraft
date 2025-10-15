@@ -19,6 +19,8 @@ interface IEvaluator {
 The default evaluator, which uses `new Function()` to execute JavaScript expressions.
 
 > [!CAUTION]
-> **Security Risk**
+> **Security Warning: Potential for Code Injection**
 >
-> This class can execute arbitrary JavaScript code. Do not use it in production if your workflow blueprints can be defined by untrusted users. Replace it with a secure, sandboxed evaluator implementation.
+> `SimpleEvaluator` uses `new Function()` to execute code from blueprint strings. While it operates in a limited scope, it is a potential security vulnerability if your workflow blueprints can be defined by untrusted third parties.
+>
+> For production systems with external blueprint sources, it is strongly recommended to replace this with a secure, sandboxed implementation like [jsep](https://www.npmjs.com/package/jsep). See the [Custom Evaluators guide](/guide/evaluators/) for an example.

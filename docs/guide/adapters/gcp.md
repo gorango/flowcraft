@@ -1,4 +1,4 @@
-# Adapter: Google Cloud (Pub/Sub & Firestore)
+# Runtime Adapter: Google Cloud (Pub/Sub & Firestore)
 
 [![npm version](https://img.shields.io/npm/v/@flowcraft/gcp-adapter.svg)](https://www.npmjs.com/package/@flowcraft/gcp-adapter)
 

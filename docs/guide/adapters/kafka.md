@@ -1,4 +1,4 @@
-# Adapter: Kafka & Cassandra
+# Runtime Adapter: Kafka & Cassandra
 
 [![npm version](https://img.shields.io/npm/v/@flowcraft/kafka-adapter.svg)](https://www.npmjs.com/package/@flowcraft/kafka-adapter)
 

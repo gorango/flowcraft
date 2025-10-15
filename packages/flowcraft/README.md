@@ -49,7 +49,7 @@ run()
 
 ## Documentation
 
-For a complete overview all features, patterns, examples, and APIs, please see the **[Flowcraft documentation](https://flowcraft.js.org/)**.
+For a complete overview of all features, patterns, examples, and APIs, see the **[Flowcraft documentation](https://flowcraft.js.org/)**.
 
 ## License
 

@@ -1,4 +1,4 @@
-# Extending Flowcraft: Serializers
+# Serializers
 
 The workflow `Context` often needs to be serialized, especially when:
 -   Running in a distributed system where the context is stored in a remote database (like Redis).

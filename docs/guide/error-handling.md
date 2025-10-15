@@ -1,4 +1,4 @@
-# Analysis and Debugging: Error Handling
+# Error Handling
 
 Building reliable workflows requires a robust strategy for handling failures. Flowcraft provides built-in mechanisms for resilience, including retries and fallbacks.
 

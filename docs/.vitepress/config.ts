@@ -56,6 +56,7 @@ export default defineConfig({
 						{ text: 'Batch Processing', link: '/guide/batch-processing' },
 						{ text: 'Loops', link: '/guide/loops' },
 						{ text: 'Subflows', link: '/guide/subflows' },
+						{ text: 'Declarative Workflows', link: '/guide/declarative-workflows' },
 					],
 				},
 				{
@@ -70,6 +71,7 @@ export default defineConfig({
 						{
 							text: 'Official Adapters',
 							collapsed: true,
+							link: '/guide/adapters/',
 							items: [
 								{ text: 'BullMQ', link: '/guide/adapters/bullmq' },
 								{ text: 'AWS (SQS)', link: '/guide/adapters/sqs' },

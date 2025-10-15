@@ -1,4 +1,4 @@
-# Analysis and Debugging: Visualizing Workflows
+# Visualizing Workflows
 
 Understanding the structure of a complex workflow can be challenging just by reading code or JSON. Flowcraft includes a utility to generate [Mermaid](https://mermaid.js.org/) diagram syntax directly from a `WorkflowBlueprint`.
 

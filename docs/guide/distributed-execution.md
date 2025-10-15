@@ -1,4 +1,4 @@
-# Extending Flowcraft: Distributed Execution
+# Distributed Execution
 
 One of Flowcraft's core strengths is its ability to scale from a simple, in-memory script to a distributed system of workers processing jobs from a queue. This is achieved through the **Adapter** pattern.
 

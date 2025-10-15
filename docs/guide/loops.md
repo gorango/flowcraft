@@ -1,4 +1,4 @@
-# Advanced Patterns: Loops
+# Loops
 
 For workflows that require iteration, Flowcraft provides a `.loop()` method on the `Flow` builder. This allows you to execute a portion of your graph repeatedly until a condition is met.
 

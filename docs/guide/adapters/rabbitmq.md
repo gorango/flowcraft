@@ -1,4 +1,4 @@
-# Adapter: RabbitMQ & PostgreSQL
+# Runtime Adapter: RabbitMQ & PostgreSQL
 
 [![npm version](https://img.shields.io/npm/v/@flowcraft/rabbitmq-adapter.svg)](https://www.npmjs.com/package/@flowcraft/rabbitmq-adapter)
 

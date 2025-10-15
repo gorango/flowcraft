@@ -1,4 +1,4 @@
-# Advanced Patterns: Batch Processing
+# Batch Processing
 
 A common workflow requirement is to perform the same operation on every item in a collection, often in parallel to save time. This is known as the **scatter-gather** pattern. Flowcraft provides a high-level `.batch()` method on the `Flow` builder to make this easy.
 

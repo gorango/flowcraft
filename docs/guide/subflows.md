@@ -1,4 +1,4 @@
-# Advanced Patterns: Subflows
+# Subflows
 
 As workflows grow in complexity, it becomes useful to break them down into smaller, reusable components. Flowcraft supports this through **subflows**.
 

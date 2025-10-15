@@ -1,4 +1,4 @@
-# Analysis and Debugging: Static Analysis
+# Static Analysis
 
 Before you even run a workflow, Flowcraft provides tools to statically analyze its `WorkflowBlueprint`. This can help you catch common errors, understand its structure, and prevent runtime issues.
 

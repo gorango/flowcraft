@@ -1,4 +1,4 @@
-# Extending Flowcraft: Middleware
+# Middleware
 
 Middleware allows you to add cross-cutting concerns to your workflows by wrapping the execution of nodes. This is a powerful pattern for implementing logic that isn't part of any single node's business logic, such as:
 

@@ -1,4 +1,4 @@
-# Extending Flowcraft: Evaluators
+# Evaluators
 
 Evaluators are responsible for executing the string expressions found in edge `condition` and `transform` properties. This allows for dynamic, data-driven control flow and data manipulation.
 

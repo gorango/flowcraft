@@ -1,4 +1,4 @@
-# Adapter: BullMQ (Redis)
+# Runtime Adapter: BullMQ (Redis)
 
 [![npm version](https://img.shields.io/npm/v/@flowcraft/bullmq-adapter.svg)](https://www.npmjs.com/package/@flowcraft/bullmq-adapter)
 

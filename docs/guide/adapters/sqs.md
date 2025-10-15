@@ -1,4 +1,4 @@
-# Adapter: AWS (SQS & DynamoDB)
+# Runtime Adapter: AWS (SQS & DynamoDB)
 
 [![npm version](https://img.shields.io/npm/v/@flowcraft/sqs-adapter.svg)](https://www.npmjs.com/package/@flowcraft/sqs-adapter)
 

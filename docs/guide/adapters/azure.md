@@ -1,4 +1,4 @@
-# Adapter: Azure (Queues & Cosmos DB)
+# Runtime Adapter: Azure (Queues & Cosmos DB)
 
 [![npm version](https://img.shields.io/npm/v/@flowcraft/azure-adapter.svg)](https://www.npmjs.com/package/@flowcraft/azure-adapter)
 
