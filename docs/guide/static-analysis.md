@@ -2,7 +2,7 @@
 
 Before you even run a workflow, Flowcraft provides tools to statically analyze its `WorkflowBlueprint`. This can help you catch common errors, understand its structure, and prevent runtime issues.
 
-### `analyzeBlueprint`
+## `analyzeBlueprint`
 
 The `analyzeBlueprint` function is the primary tool for static analysis. It takes a blueprint and returns a comprehensive `BlueprintAnalysis` object.
 
@@ -40,7 +40,7 @@ This tells you:
 -   **`nodeCount`** and **`edgeCount`**: Total number of nodes and edges.
 -   **`isDag`**: A boolean flag that is `true` if no cycles were detected.
 
-### Detecting Cycles
+## Detecting Cycles
 
 Cycles in a workflow can lead to infinite loops. Flowcraft's runtime has safeguards, but it's best to detect them early.
 
@@ -65,7 +65,7 @@ console.log(cycles)
 
 The `checkForCycles` function (which `analyzeBlueprint` uses internally) returns an array of paths that form cycles.
 
-### Linting a Blueprint
+## Linting a Blueprint
 
 For even more detailed checks, you can use `lintBlueprint`. This function validates the blueprint against a function registry to find common errors like missing node implementations or broken edges.
 

@@ -4,7 +4,7 @@ As workflows grow in complexity, it becomes useful to break them down into small
 
 A subflow is a standard `WorkflowBlueprint` that can be executed as a single node within another (parent) workflow. This allows you to encapsulate logic, promote reuse, and keep your main workflow graphs clean and organized.
 
-### The `subflow` Node
+## The `subflow` Node
 
 You can run a subflow by defining a node with `uses: 'subflow'`. This is a built-in node type that the `FlowRuntime` knows how to handle.
 
@@ -13,7 +13,7 @@ The `params` for a subflow node are critical:
 -   **`inputs`** (optional): An object mapping keys in the subflow's initial context to keys in the parent workflow's context. This is how you pass data *into* the subflow.
 -   **`outputs`** (optional): An object mapping keys in the parent workflow's context to keys in the subflow's *final* context. This is how you get data *out of* the subflow.
 
-### Example: A Reusable "Math" Subflow
+## Example: A Reusable "Math" Subflow
 
 Let's create a subflow that adds two numbers and a parent workflow that uses it.
 

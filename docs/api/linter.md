@@ -1,4 +1,4 @@
-# API: Linter
+# Linter
 
 The linter statically analyzes a `WorkflowBlueprint` against a registry of implementations to find common errors before runtime.
 

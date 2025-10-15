@@ -4,7 +4,7 @@ Understanding the structure of a complex workflow can be challenging just by rea
 
 This makes it easy to visualize, document, and debug your workflows.
 
-### `generateMermaid`
+## `generateMermaid`
 
 The `generateMermaid` function takes a blueprint and returns a string of Mermaid flowchart syntax.
 
@@ -27,7 +27,7 @@ const mermaidSyntax = generateMermaid(flow)
 console.log(mermaidSyntax)
 ```
 
-### Rendering the Diagram
+## Rendering the Diagram
 
 The output of `generateMermaid` will be:
 ```

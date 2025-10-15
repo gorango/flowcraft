@@ -5,7 +5,7 @@ The workflow `Context` often needs to be serialized, especially when:
 -   Persisting the final state of a completed workflow.
 -   Passing initial state to the `runtime.run()` method as a string.
 
-### The Default: `JsonSerializer`
+## The Default: `JsonSerializer`
 
 Flowcraft's default serializer, `JsonSerializer`, uses `JSON.stringify()` and `JSON.parse()`. This is simple and universal, but it has limitations. Standard JSON cannot represent complex data types like:
 
@@ -14,7 +14,7 @@ Flowcraft's default serializer, `JsonSerializer`, uses `JSON.stringify()` and `J
 -   `undefined` (is omitted)
 -   Class instances (lose their methods and prototype chain)
 
-### Replacing the Serializer
+## Replacing the Serializer
 
 If your workflows need to handle complex data types, you can provide a custom serializer that implements the `ISerializer` interface.
 

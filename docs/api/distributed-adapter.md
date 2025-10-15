@@ -1,4 +1,4 @@
-# API: Distributed Adapter
+# Distributed Adapter
 
 The distributed adapter pattern is the mechanism for scaling Flowcraft beyond a single process. This section details the core components for building your own adapter.
 

@@ -4,7 +4,7 @@ Flowcraft includes a simple `ConsoleLogger` and a `NullLogger` (which does nothi
 
 You can do this by creating a custom logger that implements the `ILogger` interface.
 
-### The `ILogger` Interface
+## The `ILogger` Interface
 
 The `ILogger` interface defines four standard logging methods:
 
@@ -20,7 +20,7 @@ interface ILogger {
 -   `message`: The log message string.
 -   `meta`: An optional object containing structured metadata (e.g., `nodeId`, `executionId`). The `FlowRuntime` automatically provides this where applicable.
 
-### Example: A Simple File Logger
+## Example: A Simple File Logger
 
 Here is an example of a custom logger that appends log messages to a file.
 
@@ -56,7 +56,7 @@ class FileLogger implements ILogger {
 }
 ```
 
-### Using the Custom Logger
+## Using the Custom Logger
 
 To use your custom logger, simply pass an instance of it to the `FlowRuntime` constructor.
 

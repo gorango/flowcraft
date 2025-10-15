@@ -1,4 +1,4 @@
-# API: Nodes
+# Nodes
 
 This section covers the core types and classes for defining the logic of your workflow tasks.
 

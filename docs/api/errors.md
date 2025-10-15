@@ -1,4 +1,4 @@
-# API: Errors
+# Errors
 
 Flowcraft uses a set of custom error classes to handle specific failure scenarios during workflow execution.
 

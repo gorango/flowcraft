@@ -7,7 +7,7 @@ Middleware allows you to add cross-cutting concerns to your workflows by wrappin
 -   Custom caching
 -   Schema validation for node inputs/outputs
 
-### The `Middleware` Interface
+## The `Middleware` Interface
 
 A middleware object can implement one or more of three hooks:
 
@@ -28,7 +28,7 @@ interface Middleware {
 
 You can provide an array of middleware objects to the `FlowRuntime` constructor. They are executed in a "wraparound" or LIFO (Last-In, First-Out) order.
 
-### Example: Transaction Middleware
+## Example: Transaction Middleware
 
 The most common use case for `aroundNode` is managing database transactions. We want to start a transaction before a node runs, commit it if the node succeeds, or roll it back if it fails.
 
@@ -69,7 +69,7 @@ const runtime = new FlowRuntime({
 })
 ```
 
-### Example: Performance Monitoring
+## Example: Performance Monitoring
 
 You can use `beforeNode` and `afterNode` for simpler tasks like performance logging.
 

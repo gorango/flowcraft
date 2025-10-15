@@ -1,4 +1,4 @@
-# API: Logger
+# Logger
 
 Loggers provide a consistent way for the runtime and nodes to output information.
 

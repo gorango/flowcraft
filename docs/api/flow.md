@@ -1,4 +1,4 @@
-# API: Flow
+# Flow
 
 The `Flow` class and `createFlow` function provide a fluent, type-safe API for programmatically building a `WorkflowBlueprint`.
 

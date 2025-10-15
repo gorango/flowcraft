@@ -2,7 +2,7 @@
 
 Building reliable workflows requires a robust strategy for handling failures. Flowcraft provides built-in mechanisms for resilience, including retries and fallbacks.
 
-### Retries
+## Retries
 
 You can configure a node to automatically retry its `exec()` method if it fails. This is useful for transient errors, like network timeouts or temporary API unavailability.
 
@@ -30,7 +30,7 @@ const flow = createFlow('retry-workflow')
 
 When this workflow runs, the `risky-operation` node will fail twice and then succeed on its third and final attempt.
 
-### Fallbacks
+## Fallbacks
 
 If a node fails all of its retry attempts, you can define a **fallback** node to execute as a recovery mechanism. This allows you to handle the failure gracefully instead of letting the entire workflow fail.
 
@@ -67,7 +67,7 @@ In this example:
 3. The output of `secondary-api` will be passed to `process-data`.
 4. The workflow completes successfully, with the final context containing the output from the fallback path.
 
-### Custom Error Types
+## Custom Error Types
 
 Flowcraft uses custom error types to give you more control over failure modes:
 

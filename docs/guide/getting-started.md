@@ -2,13 +2,13 @@
 
 This guide will walk you through installing Flowcraft and running your first strongly-typed workflow.
 
-### Prerequisites
+## Prerequisites
 
 -   Node.js (version 18 or higher)
 -   A package manager like npm, pnpm, or yarn
 -   Basic knowledge of TypeScript
 
-### Installation
+## Installation
 
 Install Flowcraft into your project using your preferred package manager:
 
@@ -16,7 +16,7 @@ Install Flowcraft into your project using your preferred package manager:
 npm install flowcraft
 ```
 
-### Your First Strongly-Typed Workflow
+## Your First Strongly-Typed Workflow
 
 Let's create a simple workflow with two steps: one node to provide a starting number, and a second node to double it, using Flowcraft's strongly-typed context system.
 
@@ -91,7 +91,7 @@ flowchart TD
     start["start"] --> double["double"]
 ```
 
-### Type Safety Benefits
+## Type Safety Benefits
 
 This example demonstrates Flowcraft's strongly-typed context system:
 
@@ -100,7 +100,7 @@ This example demonstrates Flowcraft's strongly-typed context system:
 - **IntelliSense Support**: Full autocomplete for context keys and their types
 - **Runtime Safety**: Type mismatches are caught during development, not execution
 
-### Running the Example
+## Running the Example
 
 Execute the file:
 ```bash

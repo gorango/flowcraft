@@ -1,4 +1,4 @@
-# API: Serializer
+# Serializer
 
 Serializers are responsible for converting the workflow `Context` to and from a string representation, which is essential for distributed execution and persistence.
 

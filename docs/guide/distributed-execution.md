@@ -4,7 +4,7 @@ One of Flowcraft's core strengths is its ability to scale from a simple, in-memo
 
 The `FlowRuntime` handles in-memory execution. For distributed systems, you use a **Distributed Adapter** that handles the technology-specific parts of queueing and state management.
 
-### The Adapter Pattern
+## The Adapter Pattern
 
 A distributed system requires three key components:
 1.  **A Message Queue**: To enqueue jobs for workers (e.g., RabbitMQ, BullMQ, SQS).
@@ -13,14 +13,14 @@ A distributed system requires three key components:
 
 The `BaseDistributedAdapter` provides the core, technology-agnostic orchestration logic. To create a concrete implementation (like the official `@flowcraft/bullmq-adapter`), you extend this base class and implement a few key methods.
 
-### Core Concepts
+## Core Concepts
 
 -   **`BaseDistributedAdapter`**: The abstract class that orchestrates the distributed execution of a single node.
 -   **`ICoordinationStore`**: An interface for an atomic key-value store needed for distributed locking and counters. This is crucial for correctly implementing `joinStrategy` in a distributed environment.
 -   **`IAsyncContext`**: The asynchronous context interface used to manage state remotely.
 -   **`JobPayload`**: The data structure for a job placed on the queue.
 
-### Example: Using the BullMQ Adapter (Conceptual)
+## Example: Using the BullMQ Adapter (Conceptual)
 
 Flowcraft provides an official adapter for [BullMQ](https://bullmq.io/), which uses Redis for both the queue and state management.
 

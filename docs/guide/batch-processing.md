@@ -2,7 +2,7 @@
 
 A common workflow requirement is to perform the same operation on every item in a collection, often in parallel to save time. This is known as the **scatter-gather** pattern. Flowcraft provides a high-level `.batch()` method on the `Flow` builder to make this easy.
 
-### The `.batch()` Method
+## The `.batch()` Method
 
 The `.batch()` method automatically creates the necessary nodes and logic to:
 1.	**Scatter**: Take an array from the context.
@@ -21,7 +21,7 @@ flow.batch(
 )
 ```
 
-### Example: Processing an Array in Parallel
+## Example: Processing an Array in Parallel
 
 Let's create a workflow that takes an array of numbers, doubles each one in parallel, and then sums the results.
 
@@ -60,7 +60,7 @@ const flow = createFlow("batch-workflow")
 	.toBlueprint();
 ```
 
-### How It Looks
+## How It Looks
 
 Behind the scenes, `.batch()` creates a `scatter` and a `gather` node. The workflow graph looks like this:
 

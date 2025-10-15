@@ -1,4 +1,4 @@
-# API: Runtime
+# Runtime
 
 The `FlowRuntime` is the engine that executes workflows.
 

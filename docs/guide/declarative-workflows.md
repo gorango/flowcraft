@@ -9,7 +9,7 @@ This decouples your business logic from the workflow's structure, enabling you t
 -   Store workflow definitions in a database.
 -   Dynamically generate and execute workflows in AI agent systems.
 
-### The Pattern: Registry + Blueprint + Runtime
+## The Pattern: Registry + Blueprint + Runtime
 
 The core pattern involves three components:
 
@@ -17,7 +17,7 @@ The core pattern involves three components:
 2.  **Workflow Blueprint**: A JSON file that defines the nodes and edges, referencing the node implementations by their string keys.
 3.  **FlowRuntime**: The engine, configured with the registry, that can load and execute any blueprint.
 
-### Example: A Declarative Content Moderation Agent
+## Example: A Declarative Content Moderation Agent
 
 The **[Dynamic AI Agent example](https://github.com/gorango/flowcraft/tree/master/examples/5a_declarative/)** demonstrates this perfectly. The entire moderation logic is defined in [`400.json`](https://github.com/gorango/flowcraft/tree/master/examples/5a_declarative/data/4.content-moderation/400.json).
 

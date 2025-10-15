@@ -2,7 +2,7 @@
 
 Evaluators are responsible for executing the string expressions found in edge `condition` and `transform` properties. This allows for dynamic, data-driven control flow and data manipulation.
 
-### The Default: `SimpleEvaluator`
+## The Default: `SimpleEvaluator`
 
 Flowcraft ships with `SimpleEvaluator`, which uses `new Function()` to execute JavaScript expressions.
 
@@ -18,7 +18,7 @@ flow.edge('A', 'B', { condition: 'result.output.status === \'SUCCESS\'' })
 >
 > The default `SimpleEvaluator` is powerful but can be a security risk if the expressions in your `WorkflowBlueprint` are provided by untrusted users. It creates a sandbox, but a determined attacker could potentially escape it. For production systems handling user-defined workflows, it is **highly recommended** to replace it with a more secure, sandboxed library.
 
-### Replacing the Evaluator
+## Replacing the Evaluator
 
 You can provide your own evaluator by creating a class that implements the `IEvaluator` interface and passing it to the `FlowRuntime`.
 

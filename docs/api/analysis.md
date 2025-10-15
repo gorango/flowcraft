@@ -1,4 +1,4 @@
-# API: Analysis
+# Analysis
 
 Flowcraft provides a set of utility functions for statically analyzing a `WorkflowBlueprint` before execution.
 

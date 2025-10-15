@@ -1,4 +1,4 @@
-# API: Context
+# Context
 
 The context is the state management system for a workflow execution. Flowcraft provides strongly-typed interfaces for both synchronous (in-memory) and asynchronous (distributed) state with compile-time type safety.
 
