@@ -171,8 +171,8 @@ importers:
         specifier: ^12.27.0
         version: 12.27.0
       flowcraft:
-        specifier: ^2.0.0
-        version: 2.0.0
+        specifier: ^2.1.0
+        version: 2.1.0
       ioredis:
         specifier: ^5.8.1
         version: 5.8.1
@@ -202,8 +202,8 @@ importers:
         specifier: ^5.61.0
         version: 5.61.0
       flowcraft:
-        specifier: ^2.0.0
-        version: 2.0.0
+        specifier: ^2.1.0
+        version: 2.1.0
       ioredis:
         specifier: ^5.8.1
         version: 5.8.1
@@ -230,8 +230,8 @@ importers:
         specifier: ^5.2.0
         version: 5.2.0
       flowcraft:
-        specifier: ^2.0.0
-        version: 2.0.0
+        specifier: ^2.1.0
+        version: 2.1.0
       ioredis:
         specifier: ^5.8.1
         version: 5.8.1
@@ -261,8 +261,8 @@ importers:
         specifier: ^4.8.0
         version: 4.8.0
       flowcraft:
-        specifier: ^2.0.0
-        version: 2.0.0
+        specifier: ^2.1.0
+        version: 2.1.0
       ioredis:
         specifier: ^5.8.1
         version: 5.8.1
@@ -295,8 +295,8 @@ importers:
         specifier: ^0.10.9
         version: 0.10.9
       flowcraft:
-        specifier: ^2.0.0
-        version: 2.0.0
+        specifier: ^2.1.0
+        version: 2.1.0
       ioredis:
         specifier: ^5.8.1
         version: 5.8.1
@@ -341,8 +341,8 @@ importers:
         specifier: ^3.908.0
         version: 3.908.0(@aws-sdk/client-dynamodb@3.908.0)
       flowcraft:
-        specifier: ^2.0.0
-        version: 2.0.0
+        specifier: ^2.1.0
+        version: 2.1.0
     devDependencies:
       '@testcontainers/localstack':
         specifier: ^11.7.1
@@ -2561,8 +2561,8 @@ packages:
   fix-dts-default-cjs-exports@1.0.1:
     resolution: {integrity: sha512-pVIECanWFC61Hzl2+oOCtoJ3F17kglZC/6N94eRWycFgBH35hHx0Li604ZIzhseh97mf2p0cv7vVrOZGoqhlEg==}
 
-  flowcraft@2.0.0:
-    resolution: {integrity: sha512-xMTLfISWMldKmkKi8bLb2+7LKziIR+5sxNHfw/nn7vZCsndrlqVT6jUPOY3YpHJO7yOaeld9Y2BVfWBXkgonSg==}
+  flowcraft@2.1.0:
+    resolution: {integrity: sha512-ME0yIRUucTPhLIcwWTO1kp45qFw1fk7B1AKwQlS/s7sTqWHbliNkI78CN/P4xwFPPOU82uE0xNjhpS3WrK3+pQ==}
 
   focus-trap@7.6.5:
     resolution: {integrity: sha512-7Ke1jyybbbPZyZXFxEftUtxFGLMpE2n6A+z//m4CRDlj0hW+o3iYSmh8nFlYMurOiJVDmJRilUQtJr08KfIxlg==}
@@ -6609,7 +6609,7 @@ snapshots:
       mlly: 1.8.0
       rollup: 4.52.4
 
-  flowcraft@2.0.0: {}
+  flowcraft@2.1.0: {}
 
   focus-trap@7.6.5:
     dependencies:
