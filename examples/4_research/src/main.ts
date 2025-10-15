@@ -1,5 +1,5 @@
 import process from 'node:process'
-import { ConsoleLogger, FlowRuntime } from 'flowcraft'
+import { ConsoleLogger, FlowRuntime, UnsafeEvaluator } from 'flowcraft'
 import { createAgentFlow } from './flow.js'
 
 // --- Run the Agent ---
@@ -14,6 +14,7 @@ async function main() {
 
 	const runtime = new FlowRuntime({
 		logger: new ConsoleLogger(),
+		evaluator: new UnsafeEvaluator(),
 	})
 
 	const result = await runtime.run(blueprint, { question }, { functionRegistry })

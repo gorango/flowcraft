@@ -35,9 +35,15 @@ This project demonstrates a simple yet powerful research agent that can search t
     npm start -- "Who won the Nobel Prize in Physics 2024?"
     ```
 
-## How It Works
+ ## Security Note
 
-The agent uses a graph structure with a decision loop:
+ This example uses `UnsafeEvaluator` in the runtime configuration because it requires complex expression evaluation for the loop condition (`loop_count < 2 && last_action !== 'answer'`). The `UnsafeEvaluator` allows JavaScript expressions but poses security risks if used with untrusted input.
+
+ For production use, consider implementing a custom evaluator using a sandboxed library like `jsep` for safer expression evaluation.
+
+ ## How It Works
+
+ The agent uses a graph structure with a decision loop:
 
 ```mermaid
 graph TD

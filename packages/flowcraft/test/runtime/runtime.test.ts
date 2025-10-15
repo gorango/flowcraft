@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
+import { UnsafeEvaluator } from '../../src/evaluator'
 import { FlowRuntime } from '../../src/runtime/runtime'
 import { WorkflowState } from '../../src/runtime/state'
 
@@ -42,7 +43,7 @@ describe('FlowRuntime', () => {
 	})
 
 	it('should apply edge transforms', async () => {
-		const runtime = new FlowRuntime({})
+		const runtime = new FlowRuntime({ evaluator: new UnsafeEvaluator() })
 		const edge = { source: 'A', target: 'B', transform: 'input * 2' }
 		const sourceResult = { output: 5 }
 		const targetNode = { id: 'B', uses: 'test', params: {} }

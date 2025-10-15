@@ -2,7 +2,7 @@
 
 For workflows that require iteration, Flowcraft provides a `.loop()` method on the `Flow` builder. This allows you to execute a portion of your graph repeatedly until a condition is met.
 
-### The `.loop()` Method
+## The `.loop()` Method
 
 The `.loop()` method creates a special `loop-controller` node that manages the iteration. After the last node in the loop body executes, the controller evaluates a condition to decide whether to run the loop again or exit.
 
@@ -18,7 +18,7 @@ flow.loop(
 )
 ```
 
-### Example: A Simple Counter
+## Example: A Simple Counter
 
 Let's build a workflow that increments a counter from 0 to 5.
 
@@ -72,3 +72,20 @@ flowchart TD
 5.  This cycle repeats until `count` reaches 5. At that point, the condition is false, and the workflow branch terminates.
 
 > **Note**: The `.loop()` method automatically configures the `joinStrategy` of the loop's start and end nodes to `'any'` so they can be re-executed on each iteration.
+
+## Security Considerations
+
+> [!WARNING]
+> By default, Flowcraft uses [`PropertyEvaluator`](/api/evaluator#propertyevaluator-class) for expression evaluation, which only allows simple property access (e.g., `result.output.status`). Complex expressions with operators like `<`, `>`, `===`, or `!==` (as shown in the example above) require the [`UnsafeEvaluator`](/api/evaluator#unsafeevaluator-class).
+>
+> If your loop condition uses comparison or logical operators, you must explicitly configure your runtime to use [`UnsafeEvaluator`](/api/evaluator#unsafeevaluator-class):
+>
+> ```typescript
+> import { FlowRuntime, UnsafeEvaluator } from 'flowcraft'
+>
+> const runtime = new FlowRuntime({
+>   evaluator: new UnsafeEvaluator(),
+> })
+> ```
+>
+> [`UnsafeEvaluator`](/api/evaluator#unsafeevaluator-class) uses `new Function()` and can execute arbitrary JavaScript code. Only use it in trusted environments where all workflow definitions are authored by trusted developers. For production systems, consider implementing a custom evaluator using a sandboxed library like `jsep`.

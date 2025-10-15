@@ -1,7 +1,7 @@
 import { analyzeBlueprint } from '../analysis'
 import { AsyncContextView } from '../context'
 import { CancelledWorkflowError, FatalNodeExecutionError, NodeExecutionError } from '../errors'
-import { SimpleEvaluator } from '../evaluator'
+import { PropertyEvaluator } from '../evaluator'
 import { NullLogger } from '../logger'
 import type { BaseNode } from '../node'
 import { isNodeClass } from '../node'
@@ -53,7 +53,7 @@ export class FlowRuntime<TContext extends Record<string, any>, TDependencies ext
 		this.eventBus = options.eventBus || { emit: () => {} }
 		this.serializer = options.serializer || new JsonSerializer()
 		this.middleware = options.middleware || []
-		this.evaluator = options.evaluator || new SimpleEvaluator()
+		this.evaluator = options.evaluator || new PropertyEvaluator()
 		this.options = options
 	}
 

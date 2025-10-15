@@ -1,6 +1,7 @@
 export * from './analysis'
 export * from './context'
 export * from './errors'
+export * from './evaluator'
 export * from './flow'
 export * from './linter'
 export * from './logger'

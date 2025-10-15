@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
+import { UnsafeEvaluator } from '../src/evaluator'
 import { createFlow } from '../src/flow'
 import { FlowRuntime } from '../src/runtime'
 import type { IEventBus, Middleware, NodeResult } from '../src/types'
@@ -155,7 +156,7 @@ describe('Flowcraft Runtime - Integration Tests', () => {
 				.edge('search', 'decide')
 				.edge('research-loop', 'answer', { action: 'break' })
 
-			const runtime = new FlowRuntime({})
+			const runtime = new FlowRuntime({ evaluator: new UnsafeEvaluator() })
 			const result = await runtime.run(flow.toBlueprint(), {}, { functionRegistry: flow.getFunctionRegistry() })
 
 			// The loop should run 2 times (loop_count goes from 0 to 1 to 2)
@@ -245,7 +246,7 @@ describe('Flowcraft Runtime - Integration Tests', () => {
 				.node('B', async (ctx) => ({ output: ctx.input }))
 				.edge('A', 'B', { transform: 'input * 2' })
 
-			const runtime = new FlowRuntime({})
+			const runtime = new FlowRuntime({ evaluator: new UnsafeEvaluator() })
 			const result = await runtime.run(flow.toBlueprint(), {}, { functionRegistry: flow.getFunctionRegistry() })
 
 			expect(result.context.B).toBe(20)
@@ -306,7 +307,7 @@ describe('Flowcraft Runtime - Integration Tests', () => {
 				.edge('A', 'B', { condition: "result.output.status === 'OK'" })
 				.edge('A', 'C', { condition: "result.output.status === 'ERROR'" })
 
-			const runtime = new FlowRuntime({})
+			const runtime = new FlowRuntime({ evaluator: new UnsafeEvaluator() })
 			const result = await runtime.run(flow.toBlueprint(), {}, { functionRegistry: flow.getFunctionRegistry() })
 
 			expect(result.context.B).toBe('B')
@@ -322,7 +323,7 @@ describe('Flowcraft Runtime - Integration Tests', () => {
 				.edge('A', 'B', { condition: '1 === 2' }) // false
 				.edge('A', 'C')
 
-			const runtime = new FlowRuntime({})
+			const runtime = new FlowRuntime({ evaluator: new UnsafeEvaluator() })
 			const result = await runtime.run(flow.toBlueprint(), {}, { functionRegistry: flow.getFunctionRegistry() })
 
 			expect(result.context.B).toBeUndefined()

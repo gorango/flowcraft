@@ -153,7 +153,12 @@ export interface RuntimeOptions<TDependencies extends RuntimeDependencies = Runt
 	logger?: ILogger
 	/** A pluggable event bus for observability. */
 	eventBus?: IEventBus
-	/** A pluggable evaluator for edge conditions and transforms. */
+	/**
+	 * A pluggable evaluator for edge conditions and transforms.
+	 * @default new PropertyEvaluator() - A safe evaluator for simple property access.
+	 * For complex logic, provide a custom implementation or use the `UnsafeEvaluator`
+	 * (not recommended for production).
+	 */
 	evaluator?: IEvaluator
 	/** An array of middleware to wrap node execution. */
 	middleware?: Middleware[]
