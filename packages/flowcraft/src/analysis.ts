@@ -88,7 +88,9 @@ export function generateMermaid(blueprint: WorkflowBlueprint): string {
 	let mermaid = 'flowchart TD\n'
 
 	for (const node of blueprint.nodes) {
-		const nodeLabel = node.id
+		// Using backticks and characters like <br/> for newlines in Mermaid labels
+		const paramsString = node.params ? `<br/>params: ${JSON.stringify(node.params)}` : ''
+		const nodeLabel = `${node.id}${paramsString}`
 		mermaid += `    ${node.id}["${nodeLabel}"]\n`
 	}
 

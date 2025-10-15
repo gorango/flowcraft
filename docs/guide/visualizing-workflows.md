@@ -6,7 +6,7 @@ This makes it easy to visualize, document, and debug your workflows.
 
 ## `generateMermaid`
 
-The `generateMermaid` function takes a blueprint and returns a string of Mermaid flowchart syntax.
+The `generateMermaid` function takes a blueprint and returns a string of Mermaid flowchart syntax. Node labels include the node ID and, if present, the node's parameters for richer visualization.
 
 ```typescript
 import { createFlow, generateMermaid } from 'flowcraft'
@@ -15,7 +15,7 @@ const flow = createFlow('conditional-workflow')
 	.node('fetch', async () => ({ output: { value: 10 } }))
 	.node('check', async ({ input }) => ({
 		action: input.value > 5 ? 'big' : 'small'
-	}))
+	}), { threshold: 5 })
 	.node('process-big', async () => ({}))
 	.node('process-small', async () => ({}))
 	.edge('fetch', 'check')
@@ -33,7 +33,7 @@ The output of `generateMermaid` will be:
 ```
 flowchart TD
 	fetch["fetch"]
-	check["check"]
+	check["check<br/>params: {"threshold":5}"]
 	process-big["process-big"]
 	process-small["process-small"]
 	fetch --> check
@@ -46,7 +46,7 @@ When this syntax is rendered by a tool that supports Mermaid (like this document
 ```mermaid
 flowchart TD
 	fetch["fetch"]
-	check["check"]
+	check["check<br/>params: {"threshold":5}"]
 	process-big["process-big"]
 	process-small["process-small"]
 	fetch --> check
