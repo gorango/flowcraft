@@ -8,7 +8,19 @@ import type { ISerializer } from './types'
  * serializer like `superjson` if working with complex data types.
  */
 export class JsonSerializer implements ISerializer {
+	private hasWarned = false
+
 	serialize(data: Record<string, any>): string {
+		for (const value of Object.values(data)) {
+			if (value instanceof Map || value instanceof Set || value instanceof Date) {
+				if (!this.hasWarned) {
+					console.warn(
+						'[Flowcraft] Warning: Default JsonSerializer does not support Map, Set, or Date types. Data may be lost. Consider providing a custom ISerializer (e.g., using superjson).',
+					)
+					this.hasWarned = true
+				}
+			}
+		}
 		return JSON.stringify(data)
 	}
 
