@@ -47,7 +47,7 @@ Nodes always interact with an `IAsyncContext<TContext>` view, ensuring your busi
 
 ## 4. Runtime
 
-The `FlowRuntime` is the engine that executes a `WorkflowBlueprint`. It takes the blueprint and an initial context, then traverses the graph, executing each node in the correct order. See the [Runtime API docs](/api/runtime) for configuration options.
+The `FlowRuntime` is the engine that executes a `WorkflowBlueprint`. It takes the blueprint and an initial context, then traverses the graph, executing each node in the correct order. For production use, you can configure concurrency limits to control resource usage during execution. See the [Runtime API docs](/api/runtime) for configuration options.
 
 The runtime is responsible for:
 -   Managing the workflow's state (the Context).

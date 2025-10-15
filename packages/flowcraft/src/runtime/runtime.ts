@@ -64,6 +64,7 @@ export class FlowRuntime<TContext extends Record<string, any>, TDependencies ext
 			functionRegistry?: Map<string, any>
 			strict?: boolean
 			signal?: AbortSignal
+			concurrency?: number
 		},
 	): Promise<WorkflowResult<TContext>> {
 		const executionId = globalThis.crypto?.randomUUID()
@@ -99,6 +100,7 @@ export class FlowRuntime<TContext extends Record<string, any>, TDependencies ext
 				options?.functionRegistry,
 				executionId,
 				options?.signal,
+				options?.concurrency,
 			)
 			await traverser.traverse()
 			const status = state.getStatus(traverser.getAllNodeIds(), traverser.getFallbackNodeIds())

@@ -16,6 +16,7 @@ export class GraphTraverser<TContext extends Record<string, any>, TDependencies 
 		private functionRegistry: Map<string, any> | undefined,
 		private executionId: string,
 		private signal?: AbortSignal,
+		private concurrency?: number,
 	) {
 		this.dynamicBlueprint = structuredClone(blueprint) as WorkflowBlueprint
 		this.allPredecessors = new Map<string, Set<string>>()
@@ -57,27 +58,7 @@ export class GraphTraverser<TContext extends Record<string, any>, TDependencies 
 				this.signal?.throwIfAborted()
 				const currentJobs = Array.from(this.frontier)
 				this.frontier.clear()
-				const promises = currentJobs.map((nodeId) =>
-					this.runtime
-						.executeNode(
-							this.dynamicBlueprint,
-							nodeId,
-							this.state,
-							this.allPredecessors,
-							this.functionRegistry,
-							this.executionId,
-							this.signal,
-						)
-						.then((result: NodeResult<any, any>) => ({
-							status: 'fulfilled' as const,
-							value: { nodeId, result },
-						}))
-						.catch((error: unknown) => ({
-							status: 'rejected' as const,
-							reason: { nodeId, error },
-						})),
-				)
-				const settledResults = await Promise.all(promises)
+				const settledResults = await this.executeWithConcurrency(currentJobs)
 				const completedThisTurn = new Set<string>()
 				for (const promiseResult of settledResults) {
 					if (promiseResult.status === 'rejected') {
@@ -137,6 +118,51 @@ export class GraphTraverser<TContext extends Record<string, any>, TDependencies 
 				throw error
 			}
 		}
+	}
+
+	private async executeWithConcurrency(
+		nodeIds: string[],
+	): Promise<
+		Array<
+			| { status: 'fulfilled'; value: { nodeId: string; result: NodeResult<any, any> } }
+			| { status: 'rejected'; reason: { nodeId: string; error: unknown } }
+		>
+	> {
+		const maxConcurrency = this.concurrency || nodeIds.length
+		const results: Array<
+			| { status: 'fulfilled'; value: { nodeId: string; result: NodeResult<any, any> } }
+			| { status: 'rejected'; reason: { nodeId: string; error: unknown } }
+		> = []
+
+		for (let i = 0; i < nodeIds.length; i += maxConcurrency) {
+			const batch = nodeIds.slice(i, i + maxConcurrency)
+			const batchPromises = batch.map(async (nodeId) => {
+				try {
+					const result = await this.runtime.executeNode(
+						this.dynamicBlueprint,
+						nodeId,
+						this.state,
+						this.allPredecessors,
+						this.functionRegistry,
+						this.executionId,
+						this.signal,
+					)
+					results.push({
+						status: 'fulfilled' as const,
+						value: { nodeId, result },
+					})
+				} catch (error) {
+					results.push({
+						status: 'rejected' as const,
+						reason: { nodeId, error },
+					})
+				}
+			})
+
+			await Promise.all(batchPromises)
+		}
+
+		return results
 	}
 
 	private async handleDynamicNodes(nodeId: string, result: NodeResult<any, any>) {

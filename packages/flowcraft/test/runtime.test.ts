@@ -205,6 +205,80 @@ describe('Flowcraft Runtime - Integration Tests', () => {
 
 			await expect(promise).rejects.toThrow(/Cycles are not allowed/)
 		})
+
+		it('should respect concurrency limit when specified', async () => {
+			let concurrentCount = 0
+			let maxConcurrent = 0
+			const flow = createFlow('concurrency-test')
+			// Create 5 nodes that can run in parallel
+			for (let i = 0; i < 5; i++) {
+				flow.node(`node${i}`, async () => {
+					concurrentCount++
+					maxConcurrent = Math.max(maxConcurrent, concurrentCount)
+					await new Promise((resolve) => setTimeout(resolve, 30)) // Simulate work
+					concurrentCount--
+					return { output: `result${i}` }
+				})
+			}
+
+			const runtime = new FlowRuntime({})
+			const result = await runtime.run(
+				flow.toBlueprint(),
+				{},
+				{ functionRegistry: flow.getFunctionRegistry(), concurrency: 2 },
+			)
+
+			expect(result.status).toBe('completed')
+			expect(maxConcurrent).toBeLessThanOrEqual(2) // Should not exceed concurrency limit
+		})
+
+		it('should allow unlimited concurrency when not specified', async () => {
+			let concurrentCount = 0
+			let maxConcurrent = 0
+			const flow = createFlow('unlimited-concurrency')
+			// Create 5 nodes that can run in parallel
+			for (let i = 0; i < 5; i++) {
+				flow.node(`node${i}`, async () => {
+					concurrentCount++
+					maxConcurrent = Math.max(maxConcurrent, concurrentCount)
+					await new Promise((resolve) => setTimeout(resolve, 30)) // Simulate work
+					concurrentCount--
+					return { output: `result${i}` }
+				})
+			}
+
+			const runtime = new FlowRuntime({})
+			const result = await runtime.run(flow.toBlueprint(), {}, { functionRegistry: flow.getFunctionRegistry() })
+
+			expect(result.status).toBe('completed')
+			expect(maxConcurrent).toBe(5) // All nodes should run in parallel
+		})
+
+		it('should enforce sequential execution with concurrency: 1', async () => {
+			let concurrentCount = 0
+			let maxConcurrent = 0
+			const flow = createFlow('sequential')
+			// Create 3 nodes that can run in parallel
+			for (let i = 0; i < 3; i++) {
+				flow.node(`node${i}`, async () => {
+					concurrentCount++
+					maxConcurrent = Math.max(maxConcurrent, concurrentCount)
+					await new Promise((resolve) => setTimeout(resolve, 30)) // Simulate work
+					concurrentCount--
+					return { output: `result${i}` }
+				})
+			}
+
+			const runtime = new FlowRuntime({})
+			const result = await runtime.run(
+				flow.toBlueprint(),
+				{},
+				{ functionRegistry: flow.getFunctionRegistry(), concurrency: 1 },
+			)
+
+			expect(result.status).toBe('completed')
+			expect(maxConcurrent).toBe(1) // Should be strictly sequential
+		})
 	})
 
 	describe('State Management & Data Flow', () => {

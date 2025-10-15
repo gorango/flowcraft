@@ -79,3 +79,16 @@ flowchart TD
 ```
 
 The runtime dynamically creates and executes the worker nodes, providing a powerful and simple API for parallel processing.
+
+## Performance Considerations
+
+When running workflows with batch operations that process large arrays, you may want to control the level of parallelism to avoid overwhelming your system resources. You can use the `concurrency` option in the `runtime.run()` method to limit the number of nodes that execute simultaneously:
+
+```typescript
+const result = await runtime.run(blueprint, initialState, {
+  functionRegistry: flow.getFunctionRegistry(),
+  concurrency: 10, // Limit to 10 concurrent nodes
+});
+```
+
+This is particularly useful for batch operations where each worker node performs resource-intensive tasks, ensuring your application remains stable under load.
