@@ -2,6 +2,20 @@ import { isNodeClass } from './node'
 import type { EdgeDefinition, NodeClass, NodeDefinition, NodeFunction, WorkflowBlueprint } from './types'
 
 /**
+ * Generates a deterministic hash for a function based on its source code.
+ */
+function _hashFunction(fn: NodeFunction<any, any, any, any, any> | NodeClass<any, any, any, any, any>): string {
+	const source = fn.toString()
+	let hash = 0
+	for (let i = 0; i < source.length; i++) {
+		const char = source.charCodeAt(i)
+		hash = (hash << 5) - hash + char
+		hash = hash & hash // Convert to 32-bit integer
+	}
+	return Math.abs(hash).toString(16)
+}
+
+/**
  * A fluent API for programmatically constructing a WorkflowBlueprint.
  */
 export class Flow<
@@ -37,10 +51,10 @@ export class Flow<
 			usesKey =
 				implementation.name && implementation.name !== 'BaseNode'
 					? implementation.name
-					: `class_${globalThis.crypto.randomUUID()}`
+					: `class_${_hashFunction(implementation)}`
 			this.functionRegistry.set(usesKey, implementation)
 		} else {
-			usesKey = `fn_${globalThis.crypto.randomUUID()}`
+			usesKey = `fn_${_hashFunction(implementation)}`
 			this.functionRegistry.set(usesKey, implementation as unknown as NodeFunction)
 		}
 
@@ -85,10 +99,10 @@ export class Flow<
 		let workerUsesKey: string
 		if (isNodeClass(worker)) {
 			workerUsesKey =
-				worker.name && worker.name !== 'BaseNode' ? worker.name : `class_batch_worker_${globalThis.crypto.randomUUID()}`
+				worker.name && worker.name !== 'BaseNode' ? worker.name : `class_batch_worker_${_hashFunction(worker)}`
 			this.functionRegistry.set(workerUsesKey, worker)
 		} else {
-			workerUsesKey = `fn_batch_worker_${globalThis.crypto.randomUUID()}`
+			workerUsesKey = `fn_batch_worker_${_hashFunction(worker)}`
 			this.functionRegistry.set(workerUsesKey, worker as unknown as NodeFunction)
 		}
 
