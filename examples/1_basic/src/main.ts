@@ -17,8 +17,10 @@ async function main() {
 	const result = await runtime.run(blueprint, {}, { functionRegistry })
 
 	console.log('\n--- Workflow Complete ---')
-	console.log('Final Greeting:', result.context['create-greeting'])
-	console.log('Final Context:', result.context)
+	// Type-safe access to context values
+	console.log('User Name:', result.context.user_name)
+	console.log('Final Greeting:', result.context.final_greeting)
+	console.log('Full Context:', result.context)
 }
 
 main()

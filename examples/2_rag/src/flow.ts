@@ -38,8 +38,10 @@ async function loadAndChunk(ctx: NodeContext<RagContext>): Promise<NodeResult> {
 	return { output: Array.from(chunks.values()) }
 }
 
-async function generateSingleEmbedding(ctx: NodeContext<RagContext>): Promise<NodeResult> {
-	const chunk = ctx.input as DocumentChunk
+async function generateSingleEmbedding(
+	ctx: NodeContext<RagContext, any, DocumentChunk>,
+): Promise<NodeResult<{ chunkId: string; vector: number[] }>> {
+	const chunk = ctx.input
 	if (!chunk || !chunk.text) {
 		throw new TypeError('Batch worker for embeddings received an invalid chunk.')
 	}
@@ -47,9 +49,11 @@ async function generateSingleEmbedding(ctx: NodeContext<RagContext>): Promise<No
 	return { output: { chunkId: chunk.id, vector } }
 }
 
-async function storeInVectorDB(ctx: NodeContext<RagContext>): Promise<NodeResult> {
+async function storeInVectorDB(
+	ctx: NodeContext<RagContext, any, { chunkId: string; vector: number[] }[]>,
+): Promise<NodeResult<string>> {
 	console.log('[Node] Simulating storage of chunks and vectors.')
-	const embeddingResults = ctx.input as { chunkId: string; vector: number[] }[]
+	const embeddingResults = ctx.input
 	const chunks = await ctx.context.get('chunks')
 	if (!chunks) {
 		throw new TypeError('chunks is required')
@@ -108,8 +112,8 @@ async function vectorSearch(ctx: NodeContext<RagContext>): Promise<NodeResult> {
 	return { output: searchResults }
 }
 
-async function generateFinalAnswer(ctx: NodeContext<RagContext>): Promise<NodeResult> {
-	const searchResults = ctx.input as SearchResult[]
+async function generateFinalAnswer(ctx: NodeContext<RagContext, any, SearchResult[]>): Promise<NodeResult<string>> {
+	const searchResults = ctx.input
 	const contextText = searchResults?.map((r) => r.chunk.text).join('\n\n---\n\n') ?? 'No context found.'
 	const question = await ctx.context.get('question')
 	if (!question) {

@@ -1,35 +1,48 @@
 # Defining Workflows
 
-Workflows are defined programmatically using the fluent `Flow` builder API. This provides a type-safe and intuitive way to construct your `WorkflowBlueprint`.
+Workflows are defined programmatically using the fluent `Flow` builder API. This provides a strongly-typed and intuitive way to construct your `WorkflowBlueprint` with compile-time type safety.
 
-### Using `createFlow`
+## Defining Context Types
 
-The entry point to the builder is the `createFlow` function. It takes a unique ID for your workflow and returns a `Flow` instance.
+Before creating workflows, define the shape of your context data using a TypeScript interface:
+
+```typescript
+interface UserProcessingContext {
+  user_data?: { id: number; name: string }
+  validation_result?: boolean
+  processing_status?: 'pending' | 'completed' | 'failed'
+}
+```
+
+## Using `createFlow`
+
+The entry point to the builder is the `createFlow` function. It takes a unique ID for your workflow and is generic over your context type for full type safety.
 
 ```typescript
 import { createFlow } from 'flowcraft'
 
-const flowBuilder = createFlow('my-first-workflow')
+// Providing the context type is optional, but recommended
+const flowBuilder = createFlow<UserProcessingContext>('my-first-workflow')
 ```
 
-### Adding Nodes with `.node()`
+## Adding Nodes with `.node()`
 
-You add tasks to your workflow using the `.node()` method. It takes three arguments:
-
-1.  **`id`**: A unique string identifier for the node within the workflow.
-2.  **`implementation`**: The logic for the node, which can be a `NodeFunction` or a `NodeClass`.
-3.  **`options`** (optional): An object to configure the node's behavior.
+You add tasks to your workflow using the `.node()` method. Node functions receive a strongly-typed `NodeContext` that provides access to the typed context.
 
 ```typescript
-const flowBuilder = createFlow('user-processing')
-	// A simple function-based node
-	.node('fetch-user', async () => {
+const flowBuilder = createFlow<UserProcessingContext>('user-processing')
+	// A simple function-based node with type safety
+	.node('fetch-user', async ({ context }) => {
 		const user = { id: 1, name: 'Alice' }
+		await context.set('user_data', user)
 		return { output: user }
 	})
-	// A node with options
-	.node('validate-user', async ({ input }) => {
-		const isValid = input.name === 'Alice'
+	// A node with type-safe input handling
+	.node('validate-user', async ({ context, input }) => {
+		const userData = input as { id: number; name: string }
+		const isValid = userData.name === 'Alice'
+
+		await context.set('validation_result', isValid)
 		return {
 			output: isValid,
 			action: isValid ? 'valid' : 'invalid'
@@ -41,16 +54,26 @@ const flowBuilder = createFlow('user-processing')
 	})
 ```
 
-### Adding Edges with `.edge()`
+## Adding Edges with `.edge()`
 
 Edges define the dependencies and control flow between nodes. You create them with the `.edge()` method, specifying the `source` and `target` node IDs.
 
 ```typescript
-const flowBuilder = createFlow('user-processing')
+const flowBuilder = createFlow<UserProcessingContext>('user-processing')
 	.node('fetch-user', /* ... */)
 	.node('validate-user', /* ... */)
-	.node('process-valid', /* ... */)
-	.node('handle-invalid', /* ... */)
+	.node('process-valid', async ({ context }) => {
+		// Type-safe context access in downstream nodes
+		const userData = await context.get('user_data')
+		const validation = await context.get('validation_result')
+
+		await context.set('processing_status', 'completed')
+		return { output: `Processed user ${userData?.name}` }
+	})
+	.node('handle-invalid', async ({ context }) => {
+		await context.set('processing_status', 'failed')
+		return { output: 'Invalid user data' }
+	})
 
 	// Basic edge: runs 'validate-user' after 'fetch-user'
 	.edge('fetch-user', 'validate-user')
@@ -69,7 +92,16 @@ flowchart TD
     validate -- "action: invalid" --> invalid["handle-invalid"]
 ```
 
-### Finalizing the Blueprint
+## Type Safety Benefits
+
+The strongly-typed workflow system provides:
+
+- **Context key validation**: Only valid keys from your interface can be accessed
+- **Precise type inference**: Context values have exact types, not `any`
+- **IntelliSense support**: Full autocomplete for context keys and their types
+- **Compile-time error prevention**: Type mismatches caught during development
+
+## Finalizing the Blueprint
 
 Once your workflow is defined, call `.toBlueprint()` to get the serializable `WorkflowBlueprint` object. You will also need the function registry, which contains the node implementations.
 
@@ -78,7 +110,7 @@ Once your workflow is defined, call `.toBlueprint()` to get the serializable `Wo
 const blueprint = flowBuilder.toBlueprint()
 const functionRegistry = flowBuilder.getFunctionRegistry()
 
-// Now you can pass these to the FlowRuntime
+// Now you can pass these to the FlowRuntime with type safety
 // const runtime = new FlowRuntime({ registry: functionRegistry });
-// const result = await runtime.run(blueprint, {});
+// const result = await runtime.run(blueprint, { user_data: initialUser });
 ```

@@ -24,9 +24,15 @@ async function prepareJobs(ctx: NodeContext<TranslationContext>): Promise<NodeRe
 }
 
 // 2. This function will be executed FOR EACH item in the batch
-async function translateItem(ctx: NodeContext<TranslationContext>): Promise<NodeResult> {
+async function translateItem(
+	ctx: NodeContext<TranslationContext, any, { language: string; text: string }>,
+): Promise<NodeResult<{ language: string; translation: string }>> {
 	// The `input` for a batch worker is a single item from the source array.
-	const { language, text } = ctx.input as { language: string; text: string }
+	const input = ctx.input
+	if (!input) {
+		throw new Error('Input is required for translation worker')
+	}
+	const { language, text } = input
 	const prompt = `
 Translate the following markdown text into ${language}.
 Preserve markdown formatting, links, and code blocks.
@@ -42,9 +48,11 @@ ${text}`
 }
 
 // 3. This node runs AFTER the entire batch is complete
-async function saveResults(ctx: NodeContext<TranslationContext>): Promise<NodeResult> {
+async function saveResults(
+	ctx: NodeContext<TranslationContext, any, { language: string; translation: string }[]>,
+): Promise<NodeResult<string>> {
 	// The `input` for the successor of a batch is an array of all worker outputs.
-	const translations = ctx.input as { language: string; translation: string }[]
+	const translations = ctx.input
 	const outputDir = await ctx.context.get('output_dir')
 	if (!outputDir) {
 		throw new TypeError('output_dir is required')

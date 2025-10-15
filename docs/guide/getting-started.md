@@ -1,6 +1,6 @@
 # Getting Started
 
-This guide will walk you through installing Flowcraft and running your first workflow.
+This guide will walk you through installing Flowcraft and running your first strongly-typed workflow.
 
 ### Prerequisites
 
@@ -16,9 +16,9 @@ Install Flowcraft into your project using your preferred package manager:
 npm install flowcraft
 ```
 
-### Your First Workflow
+### Your First Strongly-Typed Workflow
 
-Let's create a simple workflow with two steps: one node to provide a starting number, and a second node to double it.
+Let's create a simple workflow with two steps: one node to provide a starting number, and a second node to double it, using Flowcraft's strongly-typed context system.
 
 1.  Create a new file named `simple-flow.ts`.
 2.  Add the following code:
@@ -26,19 +26,35 @@ Let's create a simple workflow with two steps: one node to provide a starting nu
 ```typescript
 import { ConsoleLogger, createFlow, FlowRuntime } from 'flowcraft'
 
-// 1. Define the workflow structure
-const flow = createFlow('simple-workflow')
+// 1. Define your context interface for type safety
+interface SimpleWorkflowContext {
+  initial_value?: number
+  doubled_value?: number
+}
+
+// 2. Define the workflow structure with strong typing
+const flow = createFlow<SimpleWorkflowContext>('simple-workflow')
 	// The first node, 'start', takes no input and outputs the number 42.
-	.node('start', async () => ({ output: 42 }))
+	.node('start', async ({ context }) => {
+		const value = 42
+		// Type-safe context access
+		await context.set('initial_value', value)
+		return { output: value }
+	})
 	// The second node, 'double', depends on 'start'.
 	// Its input is automatically the output of its single predecessor.
-	.node('double', async ({ input }) => ({ output: input * 2 }))
+	.node('double', async ({ context, input }) => {
+		const doubled = input * 2
+		// Type-safe context operations
+		await context.set('doubled_value', doubled)
+		return { output: doubled }
+	})
 	// Define the dependency: 'start' must run before 'double'.
 	.edge('start', 'double')
 	// Finalize the definition into a serializable blueprint.
 	.toBlueprint()
 
-// 2. Set up the runtime
+// 3. Set up the runtime
 // The runtime needs the implementations of the nodes, which are
 // collected by the flow builder.
 const runtime = new FlowRuntime({
@@ -46,7 +62,7 @@ const runtime = new FlowRuntime({
 	registry: flow.getFunctionRegistry(),
 })
 
-// 3. Run the workflow
+// 4. Run the workflow
 async function run() {
 	// Start the workflow with an empty initial context.
 	const result = await runtime.run(flow, {})
@@ -54,8 +70,13 @@ async function run() {
 	console.log('Workflow Result:', result)
 	// Expected Output:
 	// {
-	//   context: { start: 42, double: 84 },
-	//   serializedContext: '{"start":42,"double":84}',
+	//   context: {
+	//     initial_value: 42,
+	//     doubled_value: 84,
+	//     start: 42,
+	//     double: 84
+	//   },
+	//   serializedContext: '{"initial_value":42,"doubled_value":84,"start":42,"double":84}',
 	//   status: 'completed'
 	// }
 }
@@ -70,6 +91,15 @@ flowchart TD
     start["start"] --> double["double"]
 ```
 
+### Type Safety Benefits
+
+This example demonstrates Flowcraft's strongly-typed context system:
+
+- **Context Interface**: `SimpleWorkflowContext` defines the shape of your workflow's shared state
+- **Type-safe Operations**: `context.get()` and `context.set()` provide compile-time type checking
+- **IntelliSense Support**: Full autocomplete for context keys and their types
+- **Runtime Safety**: Type mismatches are caught during development, not execution
+
 ### Running the Example
 
 Execute the file:
@@ -77,4 +107,4 @@ Execute the file:
 npx tsx simple-flow.ts
 ```
 
-You should see the final workflow result logged to the console, showing that the `context` contains the output from both the `start` and `double` nodes.
+You should see the final workflow result logged to the console, showing that the `context` contains both the node outputs and your custom context values with full type safety.

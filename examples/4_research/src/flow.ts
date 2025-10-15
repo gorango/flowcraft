@@ -2,10 +2,20 @@ import type { NodeContext, NodeResult } from 'flowcraft'
 import { createFlow } from 'flowcraft'
 import { callLLM, searchWeb } from './utils.js'
 
+// --- Context Interface ---
+interface ResearchAgentContext {
+	question: string
+	search_context: string
+	loop_count: number
+	current_query?: string
+	last_action?: string
+	answer?: string
+}
+
 // --- Node Logic ---
 
 // Decide node: The "brain" of the agent
-async function decide(ctx: NodeContext): Promise<NodeResult> {
+async function decide(ctx: NodeContext<ResearchAgentContext>): Promise<NodeResult> {
 	const { question, search_context, loop_count } = await ctx.context.toJSON()
 	const prompt = `Based on the question and context, decide whether to 'search' or 'answer'. Respond in JSON format with 'action' (search or answer) and 'reason'. If action is 'search', include 'search_query'.
 
@@ -33,8 +43,11 @@ JSON Response:`
 }
 
 // Search node: The "tool" of the agent
-async function search(ctx: NodeContext): Promise<NodeResult> {
+async function search(ctx: NodeContext<ResearchAgentContext>): Promise<NodeResult> {
 	const query = await ctx.context.get('current_query')
+	if (!query) {
+		throw new Error('current_query is required for search')
+	}
 	const results = await searchWeb(query)
 	const current_context = (await ctx.context.get('search_context')) || ''
 	await ctx.context.set('search_context', `${current_context}\n${results}`)
@@ -47,24 +60,25 @@ async function search(ctx: NodeContext): Promise<NodeResult> {
 }
 
 // Answer node: The final output step
-async function answer(ctx: NodeContext): Promise<NodeResult> {
+async function answer(ctx: NodeContext<ResearchAgentContext>): Promise<NodeResult> {
 	const { question, search_context } = await ctx.context.toJSON()
 	const prompt = `Answer the question based on the context. Q: ${question}, C: ${search_context}`
 	const finalAnswer = await callLLM(prompt)
+	await ctx.context.set('answer', finalAnswer)
 	return { output: finalAnswer }
 }
 
 // --- The Workflow Definition ---
 
 export function createAgentFlow() {
-	const flow = createFlow('research-agent')
+	const flow = createFlow<ResearchAgentContext>('research-agent')
 
 	flow
 		.node('initialize', async ({ context }) => {
 			// Set up the initial state for the loop
 			await context.set('search_context', '')
 			await context.set('loop_count', 0)
-			await context.set('last_action', null) // Initialize last_action
+			await context.set('last_action', undefined) // Initialize last_action
 			return { output: 'Initialized' }
 		})
 		.node('decide', decide, { config: { joinStrategy: 'any' } }) // 'any' allows re-execution

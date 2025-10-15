@@ -31,13 +31,19 @@ A node represents a single unit of work in your workflow.It encapsulates the log
 
 ### 3. Context
 
-The `Context` is the shared state of a running workflow. It's a key-value store where nodes can read and write data. For example, an early node might fetch user data and save it to the context, allowing a later node to read that user data and perform an action. Learn more about [Context Management](/guide/context-management).
+The `Context` is the strongly-typed, shared state of a running workflow. It's a key-value store where nodes can read and write data with compile-time type safety. For example, an early node might fetch user data and save it to the context, allowing a later node to read that user data and perform an action with full type checking. Learn more about [Context Management](/guide/context-management).
 
-Flowcraft provides two context interfaces:
--   **`ISyncContext`**: A high-performance, in-memory context used for local execution.
--   **`IAsyncContext`**: A promise-based interface designed for distributed systems where state might be stored in a remote database like Redis.
+Flowcraft provides two strongly-typed context interfaces:
+-   **`ISyncContext<TContext>`**: A high-performance, in-memory context used for local execution with full type safety.
+-   **`IAsyncContext<TContext>`**: A promise-based interface designed for distributed systems where state might be stored in a remote database like Redis, maintaining type safety across distributed execution.
 
-Nodes always interact with an `IAsyncContext` view, ensuring your business logic remains consistent whether you run locally or distributed.
+Nodes always interact with an `IAsyncContext<TContext>` view, ensuring your business logic remains consistent and type-safe whether you run locally or distributed.
+
+**Type Safety Benefits:**
+- Define your context shape upfront with TypeScript interfaces
+- Get compile-time validation for context key access
+- Receive precise type inference for context values
+- Catch type mismatches during development, not runtime
 
 ### 4. Runtime
 
