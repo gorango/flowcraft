@@ -12,10 +12,10 @@ import type {
 export interface ExecutionStrategy {
 	execute: (
 		nodeDef: NodeDefinition,
-		context: NodeContext<any, any>,
+		context: NodeContext<any, any, any>,
 		executionId?: string,
 		signal?: AbortSignal,
-	) => Promise<NodeResult>
+	) => Promise<NodeResult<any, any>>
 }
 
 export class FunctionNodeExecutor implements ExecutionStrategy {
@@ -27,10 +27,10 @@ export class FunctionNodeExecutor implements ExecutionStrategy {
 
 	async execute(
 		nodeDef: NodeDefinition,
-		context: NodeContext<any, any>,
+		context: NodeContext<any, any, any>,
 		executionId?: string,
 		signal?: AbortSignal,
-	): Promise<NodeResult> {
+	): Promise<NodeResult<any, any>> {
 		let lastError: any
 		for (let attempt = 1; attempt <= this.maxRetries; attempt++) {
 			try {
@@ -87,10 +87,10 @@ export class ClassNodeExecutor implements ExecutionStrategy {
 
 	async execute(
 		nodeDef: NodeDefinition,
-		context: NodeContext<any, any>,
+		context: NodeContext<any, any, any>,
 		executionId?: string,
 		signal?: AbortSignal,
-	): Promise<NodeResult> {
+	): Promise<NodeResult<any, any>> {
 		const instance = new this.implementation(nodeDef.params || {})
 		try {
 			signal?.throwIfAborted()
@@ -160,13 +160,16 @@ export class ClassNodeExecutor implements ExecutionStrategy {
 
 export class BuiltInNodeExecutor implements ExecutionStrategy {
 	constructor(
-		private executeBuiltIn: (nodeDef: NodeDefinition, context: ContextImplementation<any>) => Promise<NodeResult>,
+		private executeBuiltIn: (
+			nodeDef: NodeDefinition,
+			context: ContextImplementation<any>,
+		) => Promise<NodeResult<any, any>>,
 	) {}
 
 	async execute(
 		nodeDef: NodeDefinition,
-		context: NodeContext<Record<string, unknown>, Record<string, unknown>>,
-	): Promise<NodeResult> {
+		context: NodeContext<Record<string, unknown>, Record<string, unknown>, any>,
+	): Promise<NodeResult<any, any>> {
 		return this.executeBuiltIn(nodeDef, context.context as ContextImplementation<any>)
 	}
 }

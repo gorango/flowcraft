@@ -164,7 +164,7 @@ export class FlowRuntime<TContext extends Record<string, any>, TDependencies ext
 		functionRegistry?: Map<string, any>,
 		executionId?: string,
 		signal?: AbortSignal,
-	): Promise<NodeResult> {
+	): Promise<NodeResult<any, any>> {
 		const nodeDef = blueprint.nodes.find((n) => n.id === nodeId)
 		if (!nodeDef) {
 			throw new NodeExecutionError(
@@ -181,7 +181,7 @@ export class FlowRuntime<TContext extends Record<string, any>, TDependencies ext
 			contextImpl.type === 'sync'
 				? new AsyncContextView(contextImpl as ISyncContext<TContext>)
 				: (contextImpl as IAsyncContext<TContext>)
-		const nodeContext: NodeContext<TContext, TDependencies> = {
+		const nodeContext: NodeContext<TContext, TDependencies, any> = {
 			context: asyncContext,
 			input: await this._resolveNodeInput(nodeDef, asyncContext, allPredecessors),
 			params: nodeDef.params || {},
@@ -282,13 +282,13 @@ export class FlowRuntime<TContext extends Record<string, any>, TDependencies ext
 	private async executeWithFallback(
 		blueprint: WorkflowBlueprint,
 		nodeDef: NodeDefinition,
-		context: NodeContext<TContext, TDependencies>,
+		context: NodeContext<TContext, TDependencies, any>,
 		executor: ExecutionStrategy,
 		executionId?: string,
 		signal?: AbortSignal,
 		state?: WorkflowState<TContext>,
 		functionRegistry?: Map<string, any>,
-	): Promise<NodeResult> {
+	): Promise<NodeResult<any, any>> {
 		try {
 			return await executor.execute(nodeDef, context, executionId, signal)
 		} catch (error) {
@@ -337,7 +337,7 @@ export class FlowRuntime<TContext extends Record<string, any>, TDependencies ext
 	async determineNextNodes(
 		blueprint: WorkflowBlueprint,
 		nodeId: string,
-		result: NodeResult,
+		result: NodeResult<any, any>,
 		context: ContextImplementation<TContext>,
 	): Promise<{ node: NodeDefinition; edge: EdgeDefinition }[]> {
 		const outgoingEdges = blueprint.edges.filter((edge) => edge.source === nodeId)
@@ -377,7 +377,7 @@ export class FlowRuntime<TContext extends Record<string, any>, TDependencies ext
 
 	public async applyEdgeTransform(
 		edge: EdgeDefinition,
-		sourceResult: NodeResult,
+		sourceResult: NodeResult<any, any>,
 		targetNode: NodeDefinition,
 		context: ContextImplementation<TContext>,
 		allPredecessors?: Map<string, Set<string>>,
@@ -430,7 +430,7 @@ export class FlowRuntime<TContext extends Record<string, any>, TDependencies ext
 	protected async _executeBuiltInNode(
 		nodeDef: NodeDefinition,
 		contextImpl: ContextImplementation<TContext>,
-	): Promise<NodeResult> {
+	): Promise<NodeResult<any, any>> {
 		const context = contextImpl.type === 'sync' ? new AsyncContextView(contextImpl) : contextImpl
 		const { params = {}, id, inputs } = nodeDef
 		switch (nodeDef.uses) {

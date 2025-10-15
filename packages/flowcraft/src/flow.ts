@@ -24,9 +24,11 @@ export class Flow<
 		this.loopDefinitions = []
 	}
 
-	node(
+	node<TInput = any, TOutput = any, TAction extends string = string>(
 		id: string,
-		implementation: NodeFunction<TContext, TDependencies> | NodeClass,
+		implementation:
+			| NodeFunction<TContext, TDependencies, TInput, TOutput, TAction>
+			| NodeClass<TContext, TDependencies, TInput, TOutput, TAction>,
 		options?: Omit<NodeDefinition, 'id' | 'uses'>,
 	): this {
 		let usesKey: string
@@ -39,7 +41,7 @@ export class Flow<
 			this.functionRegistry.set(usesKey, implementation)
 		} else {
 			usesKey = `fn_${globalThis.crypto.randomUUID()}`
-			this.functionRegistry.set(usesKey, implementation as NodeFunction)
+			this.functionRegistry.set(usesKey, implementation as unknown as NodeFunction)
 		}
 
 		const nodeDef: NodeDefinition = { id, uses: usesKey, ...options }
@@ -63,9 +65,11 @@ export class Flow<
 	 * @param options.outputKey The key in the context where the array of results will be stored.
 	 * @returns The Flow instance for chaining.
 	 */
-	batch(
+	batch<TInput = any, TOutput = any, TAction extends string = string>(
 		id: string,
-		worker: NodeFunction<TContext, TDependencies> | NodeClass,
+		worker:
+			| NodeFunction<TContext, TDependencies, TInput, TOutput, TAction>
+			| NodeClass<TContext, TDependencies, TInput, TOutput, TAction>,
 		options: {
 			/** The key in the context that holds the input array for the batch. */
 			inputKey: string
@@ -85,7 +89,7 @@ export class Flow<
 			this.functionRegistry.set(workerUsesKey, worker)
 		} else {
 			workerUsesKey = `fn_batch_worker_${globalThis.crypto.randomUUID()}`
-			this.functionRegistry.set(workerUsesKey, worker as NodeFunction)
+			this.functionRegistry.set(workerUsesKey, worker as unknown as NodeFunction)
 		}
 
 		// scatter node: takes an array and dynamically schedules worker nodes

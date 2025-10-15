@@ -68,7 +68,7 @@ export class GraphTraverser<TContext extends Record<string, any>, TDependencies 
 							this.executionId,
 							this.signal,
 						)
-						.then((result: NodeResult) => ({
+						.then((result: NodeResult<any, any>) => ({
 							status: 'fulfilled' as const,
 							value: { nodeId, result },
 						}))
@@ -139,7 +139,7 @@ export class GraphTraverser<TContext extends Record<string, any>, TDependencies 
 		}
 	}
 
-	private async handleDynamicNodes(nodeId: string, result: NodeResult) {
+	private async handleDynamicNodes(nodeId: string, result: NodeResult<any, any>) {
 		if (result.dynamicNodes && result.dynamicNodes.length > 0) {
 			const gatherNodeId = result.output?.gatherNodeId
 			for (const dynamicNode of result.dynamicNodes) {

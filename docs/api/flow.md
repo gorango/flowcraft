@@ -11,14 +11,21 @@ Creates and returns a new `Flow` builder instance.
 
 ## `Flow` Class
 
-### `.node(id, implementation, options?)`
+### `.node<TInput, TOutput, TAction>(id, implementation, options?)`
 
-Adds a node to the workflow definition.
+Adds a node to the workflow definition with full type safety.
 
 -   **`id`** `string`: A unique identifier for the node.
--   **`implementation`** `NodeFunction | NodeClass`: The logic for the node.
+-   **`implementation`** `NodeFunction<TContext, TDependencies, TInput, TOutput, TAction> | NodeClass<TContext, TDependencies, TInput, TOutput, TAction>`: The logic for the node.
 -   **`options?`** `Omit<NodeDefinition, 'id' | 'uses'>`: Optional configuration for the node, including `inputs`, `params`, and `config`.
 -   **Returns**: `this` (for chaining).
+
+**Type-safe Example:**
+```typescript
+flow.node<{id: string}, {status: 'ok'}, 'done'>('process', async ({ input }) => {
+  return { output: { status: 'ok' }, action: 'done' };
+});
+```
 
 ### `.edge(source, target, options?)`
 
@@ -29,12 +36,12 @@ Adds an edge to define a dependency between two nodes.
 -   **`options?`** `Omit<EdgeDefinition, 'source' | 'target'>`: Optional configuration for the edge, including `action`, `condition`, and `transform`.
 -   **Returns**: `this` (for chaining).
 
-### `.batch(id, worker, options)`
+### `.batch<TInput, TOutput, TAction>(id, worker, options)`
 
-Creates a scatter-gather batch processing pattern.
+Creates a scatter-gather batch processing pattern with full type safety.
 
 -   **`id`** `string`: A base ID for the batch operation. This will be used to create `_scatter` and `_gather` nodes.
--   **`worker`** `NodeFunction | NodeClass`: The node implementation to run on each item in the input array.
+-   **`worker`** `NodeFunction<TContext, TDependencies, TInput, TOutput, TAction> | NodeClass<TContext, TDependencies, TInput, TOutput, TAction>`: The node implementation to run on each item in the input array.
 -   **`options`** `{ inputKey: string, outputKey: string }`:
     -   `inputKey`: The key in the context that holds the input array.
     -   `outputKey`: The key in the context where the array of results will be stored.

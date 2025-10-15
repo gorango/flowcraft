@@ -53,9 +53,9 @@ export interface NodeConfig {
 // =================================================================================
 
 /** The required return type for any node implementation. */
-export interface NodeResult<TOutput = any> {
+export interface NodeResult<TOutput = any, TAction extends string = string> {
 	output?: TOutput
-	action?: string
+	action?: TAction
 	error?: { message: string; [key: string]: any }
 	/** Allows a node to dynamically schedule new nodes for the orchestrator to execute. */
 	dynamicNodes?: NodeDefinition[]
@@ -67,11 +67,12 @@ export interface NodeResult<TOutput = any> {
 export interface NodeContext<
 	TContext extends Record<string, any> = Record<string, any>,
 	TDependencies extends RuntimeDependencies = RuntimeDependencies,
+	TInput = any,
 > {
 	/** The async-only interface for interacting with the workflow's state. */
 	context: IAsyncContext<TContext>
 	/** The primary input data for this node, typically from its predecessor. */
-	input?: any
+	input?: TInput
 	/** Static parameters defined in the blueprint. */
 	params: Record<string, any>
 	/** Shared, runtime-level dependencies (e.g., database clients, loggers). */
@@ -84,13 +85,19 @@ export interface NodeContext<
 export type NodeFunction<
 	TContext extends Record<string, any> = Record<string, any>,
 	TDependencies extends RuntimeDependencies = RuntimeDependencies,
-> = (context: NodeContext<TContext, TDependencies>) => Promise<NodeResult>
+	TInput = any,
+	TOutput = any,
+	TAction extends string = string,
+> = (context: NodeContext<TContext, TDependencies, TInput>) => Promise<NodeResult<TOutput, TAction>>
 
 /** Represents a constructor for any concrete class that extends the abstract BaseNode. */
 export type NodeClass<
 	TContext extends Record<string, any> = Record<string, any>,
 	TDependencies extends RuntimeDependencies = RuntimeDependencies,
-> = new (params?: Record<string, any>) => BaseNode<TContext, TDependencies>
+	TInput = any,
+	TOutput = any,
+	TAction extends string = string,
+> = new (params?: Record<string, any>) => BaseNode<TContext, TDependencies, TInput, TOutput, TAction>
 
 /** A union of all possible node implementation types. */
 export type NodeImplementation = NodeFunction | NodeClass

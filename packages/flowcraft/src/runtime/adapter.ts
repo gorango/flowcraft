@@ -1,5 +1,12 @@
 import { JsonSerializer } from '../serializer'
-import type { IAsyncContext, ISerializer, RuntimeOptions, WorkflowBlueprint, WorkflowResult } from '../types'
+import type {
+	IAsyncContext,
+	ISerializer,
+	NodeResult,
+	RuntimeOptions,
+	WorkflowBlueprint,
+	WorkflowResult,
+} from '../types'
 import { FlowRuntime } from './runtime'
 
 /**
@@ -117,14 +124,14 @@ export abstract class BaseDistributedAdapter {
 		}
 		const workerState = {
 			getContext: () => context,
-			markFallbackExecuted: () => { },
+			markFallbackExecuted: () => {},
 			addError: (nodeId: string, error: Error) => {
 				console.error(`[Adapter] Error in node ${nodeId}:`, error)
 			},
 		} as any
 
 		try {
-			const result = await this.runtime.executeNode(blueprint, nodeId, workerState)
+			const result: NodeResult<any, any> = await this.runtime.executeNode(blueprint, nodeId, workerState)
 			await context.set(nodeId as any, result.output)
 
 			const nodeDef = blueprint.nodes.find((n) => n.id === nodeId)

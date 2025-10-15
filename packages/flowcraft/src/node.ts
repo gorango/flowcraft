@@ -13,6 +13,9 @@ export function isNodeClass(impl: any): impl is NodeClass {
 export abstract class BaseNode<
 	TContext extends Record<string, any> = Record<string, any>,
 	TDependencies extends RuntimeDependencies = RuntimeDependencies,
+	TInput = any,
+	TOutput = any,
+	TAction extends string = string,
 > {
 	/**
 	 * @param params Static parameters for this node instance, passed from the blueprint.
@@ -24,7 +27,7 @@ export abstract class BaseNode<
 	 * @param context The node's execution context.
 	 * @returns The data needed for the `exec` phase.
 	 */
-	async prep(context: NodeContext<TContext, TDependencies>): Promise<any> {
+	async prep(context: NodeContext<TContext, TDependencies, TInput>): Promise<any> {
 		return context.input
 	}
 
@@ -33,7 +36,10 @@ export abstract class BaseNode<
 	 * @param prepResult The data returned from the `prep` phase.
 	 * @param context The node's execution context.
 	 */
-	abstract exec(prepResult: any, context: NodeContext<TContext, TDependencies>): Promise<Omit<NodeResult, 'error'>>
+	abstract exec(
+		prepResult: any,
+		context: NodeContext<TContext, TDependencies, TInput>,
+	): Promise<Omit<NodeResult<TOutput, TAction>, 'error'>>
 
 	/**
 	 * Phase 3: Processes the result and saves state. This phase is NOT retried.
@@ -41,9 +47,9 @@ export abstract class BaseNode<
 	 * @param _context The node's execution context.
 	 */
 	async post(
-		execResult: Omit<NodeResult, 'error'>,
-		_context: NodeContext<TContext, TDependencies>,
-	): Promise<NodeResult> {
+		execResult: Omit<NodeResult<TOutput, TAction>, 'error'>,
+		_context: NodeContext<TContext, TDependencies, TInput>,
+	): Promise<NodeResult<TOutput, TAction>> {
 		return execResult
 	}
 
@@ -52,7 +58,10 @@ export abstract class BaseNode<
 	 * @param error The final error from the last `exec` attempt.
 	 * @param _context The node's execution context.
 	 */
-	async fallback(error: Error, _context: NodeContext<TContext, TDependencies>): Promise<Omit<NodeResult, 'error'>> {
+	async fallback(
+		error: Error,
+		_context: NodeContext<TContext, TDependencies, TInput>,
+	): Promise<Omit<NodeResult<TOutput, TAction>, 'error'>> {
 		// By default, re-throw the error, failing the node.
 		throw error
 	}

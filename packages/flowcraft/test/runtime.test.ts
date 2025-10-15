@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { createFlow } from '../src/flow'
 import { FlowRuntime } from '../src/runtime'
-import type { IEventBus, Middleware } from '../src/types'
+import type { IEventBus, Middleware, NodeResult } from '../src/types'
 
 // A mock event bus for testing observability
 class MockEventBus implements IEventBus {
@@ -479,11 +479,15 @@ describe('Flowcraft Runtime - Integration Tests', () => {
 			const controller = new AbortController()
 			const flow = createFlow('cancel-me')
 			flow
-				.node('A', async () => {
+				.node('A', async (): Promise<NodeResult<string>> => {
 					controller.abort() // Abort after the first node starts
 					return { output: 'A' }
 				})
-				.node('B', async () => new Promise((resolve) => setTimeout(() => resolve({ output: 'B' }), 50)))
+				.node(
+					'B',
+					async (): Promise<NodeResult<string>> =>
+						new Promise((resolve) => setTimeout(() => resolve({ output: 'B' }), 50)),
+				)
 				.edge('A', 'B')
 
 			const runtime = new FlowRuntime({})
