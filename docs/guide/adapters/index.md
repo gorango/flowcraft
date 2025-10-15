@@ -18,4 +18,4 @@ Each adapter provides the necessary components to bridge Flowcraft's core runtim
 > [!NOTE]
 > **Building Your Own Adapter**
 >
-> If your preferred infrastructure isn't listed, you can easily create your own. See the [Distributed Execution](/guide/distributed-execution/) guide for details on the `BaseDistributedAdapter` pattern.
+> If your preferred infrastructure isn't listed, you can easily create your own. See the [Distributed Execution](/guide/distributed-execution) guide for details on the `BaseDistributedAdapter` pattern.
