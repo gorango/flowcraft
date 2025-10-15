@@ -11,11 +11,17 @@ export class Flow<
 	private blueprint: Partial<WorkflowBlueprint>
 	private functionRegistry: Map<string, NodeFunction | NodeClass>
 	private loopControllerIds: Map<string, string>
+	private loopDefinitions: Array<{
+		id: string
+		startNodeId: string
+		endNodeId: string
+	}>
 
 	constructor(id: string) {
 		this.blueprint = { id, nodes: [], edges: [] }
 		this.functionRegistry = new Map()
 		this.loopControllerIds = new Map()
+		this.loopDefinitions = []
 	}
 
 	node(
@@ -125,7 +131,10 @@ export class Flow<
 	): this {
 		const { startNodeId, endNodeId, condition } = options
 		const controllerId = `${id}-loop`
+
 		this.loopControllerIds.set(id, controllerId)
+
+		this.loopDefinitions.push({ id, startNodeId, endNodeId })
 
 		// controller node: evaluates the loop condition
 		this.blueprint.nodes?.push({
@@ -136,16 +145,11 @@ export class Flow<
 		})
 
 		this.edge(endNodeId, controllerId)
+
 		this.edge(controllerId, startNodeId, {
 			action: 'continue',
 			transform: `context.${endNodeId}`, // pass the end node's value to the start node
 		})
-
-		const startNode = this.blueprint.nodes?.find((n) => n.id === startNodeId)
-		if (startNode) startNode.config = { ...startNode.config, joinStrategy: 'any' }
-
-		const endNode = this.blueprint.nodes?.find((n) => n.id === endNodeId)
-		if (endNode) endNode.config = { ...endNode.config, joinStrategy: 'any' }
 
 		return this
 	}
@@ -162,6 +166,22 @@ export class Flow<
 		if (!this.blueprint.nodes || this.blueprint.nodes.length === 0) {
 			throw new Error('Cannot build a blueprint with no nodes.')
 		}
+
+		for (const loopDef of this.loopDefinitions) {
+			const startNode = this.blueprint.nodes?.find((n) => n.id === loopDef.startNodeId)
+			const endNode = this.blueprint.nodes?.find((n) => n.id === loopDef.endNodeId)
+
+			if (!startNode) {
+				throw new Error(`Loop '${loopDef.id}' references non-existent start node '${loopDef.startNodeId}'.`)
+			}
+			if (!endNode) {
+				throw new Error(`Loop '${loopDef.id}' references non-existent end node '${loopDef.endNodeId}'.`)
+			}
+
+			startNode.config = { ...startNode.config, joinStrategy: 'any' }
+			endNode.config = { ...endNode.config, joinStrategy: 'any' }
+		}
+
 		return this.blueprint as WorkflowBlueprint
 	}
 
