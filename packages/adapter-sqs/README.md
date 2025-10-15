@@ -10,6 +10,7 @@ This package provides a distributed adapter for [Flowcraft](https://www.npmjs.co
 - **Distributed Execution**: Natively scale your workflows across multiple workers using managed AWS services.
 - **Serverless Job Queuing**: Utilizes AWS SQS for a fully managed message queue that decouples workflow steps.
 - **Scalable State & Coordination**: Leverages AWS DynamoDB's performance and scalability for both workflow context persistence and distributed coordination tasks (like fan-in joins), eliminating the need for a separate Redis instance.
+- **Workflow Reconciliation**: Includes a reconciler utility to detect and resume stalled workflows, ensuring fault tolerance in production environments.
 
 ## Installation
 
@@ -81,6 +82,57 @@ console.log('Flowcraft worker with SQS adapter is running...');
 - **`SqsAdapter`**: The main adapter class that polls an SQS queue for jobs, executes them via the `FlowRuntime`, and enqueues subsequent jobs.
 - **`DynamoDbContext`**: An `IAsyncContext` implementation that stores and retrieves workflow state from a specified DynamoDB table.
 - **`DynamoDbCoordinationStore`**: An `ICoordinationStore` implementation that uses DynamoDB's atomic update and conditional expression features to handle distributed coordination without needing a separate service.
+- **`createSqsReconciler`**: A utility function for creating a reconciler that queries DynamoDB for stalled workflows and resumes them.
+
+## Reconciliation
+
+The SQS adapter includes a reconciliation utility that helps detect and resume stalled workflows. This is particularly useful in production environments where workers might crash or be restarted.
+
+### Prerequisites for Reconciliation
+
+To use reconciliation, your status table must include a `lastUpdated` field that tracks when workflows were last active. The adapter automatically updates this field during job processing.
+
+### Usage
+
+```typescript
+import { createSqsReconciler } from '@flowcraft/sqs-adapter'
+
+// Create a reconciler instance
+const reconciler = createSqsReconciler({
+  adapter: mySqsAdapter,
+  dynamoDbClient: myDynamoClient,
+  statusTableName: 'flowcraft-statuses',
+  stalledThresholdSeconds: 300, // 5 minutes
+})
+
+// Run reconciliation
+const stats = await reconciler.run()
+console.log(`Scanned ${stats.scannedItems} items, found ${stats.stalledRuns} stalled runs, reconciled ${stats.reconciledRuns} runs`)
+```
+
+### Reconciliation Stats
+
+The reconciler returns detailed statistics:
+
+```typescript
+interface ReconciliationStats {
+  scannedItems: number   // Number of DynamoDB items scanned
+  stalledRuns: number    // Number of workflows identified as stalled
+  reconciledRuns: number // Number of workflows successfully resumed
+  failedRuns: number     // Number of reconciliation attempts that failed
+}
+```
+
+### How It Works
+
+The reconciler queries the status table for workflows with `status = 'running'` that haven't been updated within the threshold period. For each stalled workflow, it:
+
+1. Loads the workflow's current state from the context table
+2. Determines which nodes are ready to execute based on completed predecessors
+3. Acquires appropriate locks to prevent race conditions
+4. Enqueues jobs for ready nodes via SQS
+
+This ensures that workflows can be resumed even after worker failures or restarts.
 
 ## License
 

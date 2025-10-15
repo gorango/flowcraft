@@ -47,6 +47,22 @@ export class AzureQueueAdapter extends BaseDistributedAdapter {
 		await this.queueClient.sendMessage(message)
 	}
 
+	protected async onJobStart(_runId: string, _blueprintId: string, _nodeId: string): Promise<void> {
+		// Touch the status container to update the 'lastUpdated' timestamp.
+		try {
+			const statusContext = new CosmosDbContext(_runId, {
+				client: this.cosmosClient,
+				databaseName: this.cosmosDatabaseName,
+				containerName: this.statusContainerName,
+			})
+			// This performs an upsert, setting the status and timestamp.
+			await statusContext.set('status' as any, 'running')
+			await statusContext.set('lastUpdated' as any, Math.floor(Date.now() / 1000))
+		} catch (error) {
+			console.error(`[AzureQueueAdapter] Failed to update lastUpdated timestamp for Run ID ${_runId}`, error)
+		}
+	}
+
 	protected async publishFinalResult(
 		runId: string,
 		result: { status: string; payload?: WorkflowResult; reason?: string },
@@ -56,7 +72,10 @@ export class AzureQueueAdapter extends BaseDistributedAdapter {
 			databaseName: this.cosmosDatabaseName,
 			containerName: this.statusContainerName,
 		})
+		// Set final status and also update top-level status/timestamp for querying
 		await statusContext.set('finalStatus', result)
+		await statusContext.set('status' as any, result.status)
+		await statusContext.set('lastUpdated' as any, Math.floor(Date.now() / 1000))
 		console.log(`[AzureQueueAdapter] Published final result for Run ID ${runId}.`)
 	}
 

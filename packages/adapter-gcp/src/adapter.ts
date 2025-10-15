@@ -1,5 +1,6 @@
 import { Buffer } from 'node:buffer'
 import type { Firestore } from '@google-cloud/firestore'
+import { FieldValue } from '@google-cloud/firestore'
 import type { PubSub, Subscription } from '@google-cloud/pubsub'
 import type { AdapterOptions, JobPayload, WorkflowResult } from 'flowcraft'
 import { BaseDistributedAdapter } from 'flowcraft'
@@ -47,9 +48,20 @@ export class PubSubAdapter extends BaseDistributedAdapter {
 		})
 	}
 
-	protected async enqueueJob(job: JobPayload): Promise<void> {
-		const dataBuffer = Buffer.from(JSON.stringify(job), 'utf-8')
-		await this.pubsub.topic(this.topicName).publishMessage({ data: dataBuffer })
+	protected async onJobStart(_runId: string, _blueprintId: string, _nodeId: string): Promise<void> {
+		// Touch the status document to update the 'lastUpdated' timestamp.
+		try {
+			const statusDocRef = this.firestore.collection(this.statusCollectionName).doc(_runId)
+			await statusDocRef.set(
+				{
+					status: 'running',
+					lastUpdated: FieldValue.serverTimestamp(),
+				},
+				{ merge: true },
+			)
+		} catch (error) {
+			console.error(`[PubSubAdapter] Failed to update lastUpdated timestamp for Run ID ${_runId}`, error)
+		}
 	}
 
 	protected async publishFinalResult(
@@ -57,8 +69,17 @@ export class PubSubAdapter extends BaseDistributedAdapter {
 		result: { status: string; payload?: WorkflowResult; reason?: string },
 	): Promise<void> {
 		const statusDocRef = this.firestore.collection(this.statusCollectionName).doc(runId)
-		await statusDocRef.set({ finalStatus: result })
+		await statusDocRef.set({
+			finalStatus: result,
+			status: result.status,
+			lastUpdated: FieldValue.serverTimestamp(),
+		})
 		console.log(`[PubSubAdapter] Published final result for Run ID ${runId}.`)
+	}
+
+	protected async enqueueJob(job: JobPayload): Promise<void> {
+		const dataBuffer = Buffer.from(JSON.stringify(job), 'utf-8')
+		await this.pubsub.topic(this.topicName).publishMessage({ data: dataBuffer })
 	}
 
 	protected processJobs(handler: (job: JobPayload) => Promise<void>): void {

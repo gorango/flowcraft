@@ -85,10 +85,20 @@ export abstract class BaseDistributedAdapter {
 	): Promise<void>
 
 	/**
+	 * Hook called at the start of job processing. Subclasses can override this
+	 * to perform additional setup (e.g., timestamp tracking for reconciliation).
+	 */
+	protected async onJobStart(_runId: string, _blueprintId: string, _nodeId: string): Promise<void> {
+		// default implementation does nothing
+	}
+
+	/**
 	 * The main handler for processing a single job from the queue.
 	 */
-	private async handleJob(job: JobPayload): Promise<void> {
+	protected async handleJob(job: JobPayload): Promise<void> {
 		const { runId, blueprintId, nodeId } = job
+
+		await this.onJobStart(runId, blueprintId, nodeId)
 
 		const blueprint = this.runtime.options.blueprints?.[blueprintId]
 		if (!blueprint) {
@@ -164,7 +174,7 @@ export abstract class BaseDistributedAdapter {
 	/**
 	 * Encapsulates the fan-in join logic using the coordination store.
 	 */
-	private async isReadyForFanIn(runId: string, blueprint: WorkflowBlueprint, targetNodeId: string): Promise<boolean> {
+	protected async isReadyForFanIn(runId: string, blueprint: WorkflowBlueprint, targetNodeId: string): Promise<boolean> {
 		const targetNode = blueprint.nodes.find((n) => n.id === targetNodeId)
 		if (!targetNode) {
 			throw new Error(`Node '${targetNodeId}' not found in blueprint`)

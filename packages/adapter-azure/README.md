@@ -11,6 +11,7 @@ This package provides a distributed adapter for [Flowcraft](https://www.npmjs.co
 - **Resilient Job Queuing**: Utilizes Azure Queue Storage to ensure that workflow jobs are durable and processed reliably.
 - **Scalable State Persistence**: Leverages Azure Cosmos DB to store and manage the context of each workflow run, enabling fault tolerance and stateful recovery.
 - **High-Performance Coordination**: Uses Redis for atomic operations required for complex patterns like fan-in joins and distributed locks.
+- **Workflow Reconciliation**: Includes a reconciler utility to detect and resume stalled workflows, ensuring fault tolerance in production environments.
 
 ## Installation
 
@@ -75,6 +76,57 @@ console.log('Flowcraft worker with Azure adapter is running...')
 - **`AzureQueueAdapter`**: The main adapter class that orchestrates job dequeuing, execution via the `FlowRuntime`, and enqueuing of subsequent jobs.
 - **`CosmosDbContext`**: An `IAsyncContext` implementation that stores and retrieves workflow state from a specified Azure Cosmos DB container.
 - **`RedisCoordinationStore`**: An `ICoordinationStore` implementation that uses Redis to handle atomic operations for distributed coordination.
+- **`createAzureReconciler`**: A utility function for creating a reconciler that queries Cosmos DB for stalled workflows and resumes them.
+
+## Reconciliation
+
+The Azure adapter includes a reconciliation utility that helps detect and resume stalled workflows. This is particularly useful in production environments where workers might crash or be restarted.
+
+### Prerequisites for Reconciliation
+
+To use reconciliation, your status container must include `status` and `lastUpdated` fields that track workflow state. The adapter automatically updates these fields during job processing.
+
+### Usage
+
+```typescript
+import { createAzureReconciler } from '@flowcraft/azure-adapter'
+
+// Create a reconciler instance
+const reconciler = createAzureReconciler({
+  adapter: myAzureAdapter,
+  cosmosClient: myCosmosClient,
+  cosmosDatabaseName: 'my-database',
+  statusContainerName: 'workflow-statuses',
+  stalledThresholdSeconds: 300, // 5 minutes
+})
+
+// Run reconciliation
+const stats = await reconciler.run()
+console.log(`Found ${stats.stalledRuns} stalled runs, reconciled ${stats.reconciledRuns} runs`)
+```
+
+### Reconciliation Stats
+
+The reconciler returns detailed statistics:
+
+```typescript
+interface ReconciliationStats {
+  stalledRuns: number    // Number of workflows identified as stalled
+  reconciledRuns: number // Number of workflows successfully resumed
+  failedRuns: number     // Number of reconciliation attempts that failed
+}
+```
+
+### How It Works
+
+The reconciler queries the status container for workflows with `status = 'running'` that haven't been updated within the threshold period. For each stalled workflow, it:
+
+1. Loads the workflow's current state from the context container
+2. Determines which nodes are ready to execute based on completed predecessors
+3. Acquires appropriate locks to prevent race conditions
+4. Enqueues jobs for ready nodes via Azure Queue Storage
+
+This ensures that workflows can be resumed even after worker failures or restarts.
 
 ## License
 

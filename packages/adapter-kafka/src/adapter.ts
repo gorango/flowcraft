@@ -50,6 +50,34 @@ export class KafkaAdapter extends BaseDistributedAdapter {
 		})
 	}
 
+	protected async onJobStart(_runId: string, _blueprintId: string, _nodeId: string): Promise<void> {
+		// Touch the status table to update the 'updated_at' timestamp.
+		try {
+			// Using an INSERT as an UPSERT. This only sets status if it's the first touch.
+			const touchQuery = `INSERT INTO ${this.keyspace}.${this.statusTableName} (run_id, status, updated_at) VALUES (?, 'running', toTimestamp(now())) IF NOT EXISTS`
+			const updateQuery = `UPDATE ${this.keyspace}.${this.statusTableName} SET updated_at = toTimestamp(now()) WHERE run_id = ?`
+
+			const result = await this.cassandra.execute(touchQuery, [_runId], { prepare: true })
+			// If the row already existed, the insert was not applied, so we update instead.
+			if (!result.wasApplied()) {
+				await this.cassandra.execute(updateQuery, [_runId], { prepare: true })
+			}
+		} catch (error) {
+			console.error(`[KafkaAdapter] Failed to update updated_at timestamp for Run ID ${_runId}`, error)
+		}
+	}
+
+	protected async publishFinalResult(
+		runId: string,
+		result: { status: string; payload?: WorkflowResult; reason?: string },
+	): Promise<void> {
+		const query = `INSERT INTO ${this.keyspace}.${this.statusTableName} (run_id, status, status_data, updated_at) VALUES (?, ?, ?, toTimestamp(now()))`
+		await this.cassandra.execute(query, [runId, result.status, JSON.stringify(result)], {
+			prepare: true,
+		})
+		console.log(`[KafkaAdapter] Published final result for Run ID ${runId}.`)
+	}
+
 	protected async enqueueJob(job: JobPayload): Promise<void> {
 		if (!this.isRunning) {
 			throw new Error('Kafka producer is not connected. Adapter must be started.')
@@ -63,17 +91,6 @@ export class KafkaAdapter extends BaseDistributedAdapter {
 				},
 			],
 		})
-	}
-
-	protected async publishFinalResult(
-		runId: string,
-		result: { status: string; payload?: WorkflowResult; reason?: string },
-	): Promise<void> {
-		const query = `INSERT INTO ${this.keyspace}.${this.statusTableName} (run_id, status_data, updated_at) VALUES (?, ?, toTimestamp(now()))`
-		await this.cassandra.execute(query, [runId, JSON.stringify(result)], {
-			prepare: true,
-		})
-		console.log(`[KafkaAdapter] Published final result for Run ID ${runId}.`)
 	}
 
 	protected async processJobs(handler: (job: JobPayload) => Promise<void>): Promise<void> {

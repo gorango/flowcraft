@@ -51,11 +51,11 @@ export class RabbitMqAdapter extends BaseDistributedAdapter {
 		result: { status: string; payload?: WorkflowResult; reason?: string },
 	): Promise<void> {
 		const query = `
-      INSERT INTO ${this.statusTableName} (run_id, status_data, updated_at)
-      VALUES ($1, $2, NOW())
-      ON CONFLICT (run_id) DO UPDATE SET status_data = $2, updated_at = NOW();
+      INSERT INTO ${this.statusTableName} (run_id, status, status_data, updated_at)
+      VALUES ($1, $2, $3, NOW())
+      ON CONFLICT (run_id) DO UPDATE SET status = $2, status_data = $3, updated_at = NOW();
     `
-		await this.pg.query(query, [runId, result])
+		await this.pg.query(query, [runId, result.status, result])
 		console.log(`[RabbitMqAdapter] Published final result for Run ID ${runId}.`)
 	}
 
@@ -73,8 +73,8 @@ export class RabbitMqAdapter extends BaseDistributedAdapter {
 			console.log(`[RabbitMqAdapter] Worker listening for jobs on queue: "${this.queueName}"`)
 
 			await this.channel.consume(this.queueName, async (msg: ConsumeMessage | null) => {
+				// Add a guard to ensure the channel hasn't been closed by a concurrent stop() call
 				if (msg !== null && this.channel) {
-					// add null check for channel
 					try {
 						const job = JSON.parse(msg.content.toString('utf-8')) as JobPayload
 						console.log(`[RabbitMqAdapter] ==> Picked up job for Node: ${job.nodeId}, Run: ${job.runId}`)

@@ -39,15 +39,13 @@ export class CosmosDbContext implements IAsyncContext<Record<string, any>> {
 	}
 
 	async set<K extends string>(key: K, value: any): Promise<void> {
-		const item = await this.readItem()
-		if (item) {
-			// if item exists, patch it to update or add the key
-			await this.container.item(this.runId, this.runId).patch([{ op: 'set', path: `/${key}`, value }])
-		} else {
-			// if item does not exist, create it
-			const newItem = { id: this.runId, runId: this.runId, [key]: value }
-			await this.container.items.create(newItem)
+		// Use upsert for atomic create-or-replace operation
+		const updatedItem = {
+			id: this.runId,
+			runId: this.runId,
+			[key]: value,
 		}
+		await this.container.items.upsert(updatedItem)
 	}
 
 	async has<K extends string>(key: K): Promise<boolean> {
