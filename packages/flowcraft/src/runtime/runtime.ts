@@ -323,6 +323,7 @@ export class FlowRuntime<TContext extends Record<string, any>, TDependencies ext
 				const fallbackExecutor = this.getExecutor(fallbackNode, functionRegistry)
 				const fallbackResult = await fallbackExecutor.execute(fallbackNode, context, executionId, signal)
 				state.markFallbackExecuted()
+				state.addCompletedNode(fallbackNodeId, fallbackResult.output)
 				context.dependencies.logger.info(`Fallback execution completed`, {
 					nodeId: nodeDef.id,
 					fallbackNodeId,

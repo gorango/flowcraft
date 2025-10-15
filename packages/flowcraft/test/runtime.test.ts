@@ -166,6 +166,28 @@ describe('Flowcraft Runtime - Integration Tests', () => {
 			expect(result.context.answer).toBe('final_answer')
 		})
 
+		it('should execute fallback node when main node fails', async () => {
+			const flow = createFlow('fallback-test')
+			flow
+				.node(
+					'A',
+					async () => {
+						throw new Error('Main failed')
+					},
+					{ config: { fallback: 'B' } },
+				)
+				.node('B', async () => ({ output: 'fallback success' }))
+				.edge('A', 'B', { action: 'fallback' })
+
+			const blueprint = flow.toBlueprint()
+			const runtime = new FlowRuntime({})
+			const result = await runtime.run(blueprint, {}, { functionRegistry: flow.getFunctionRegistry() })
+
+			expect(result.status).toBe('completed')
+			expect(result.context.B).toBe('fallback success')
+			expect(result.errors).toBeUndefined()
+		})
+
 		it('should throw an error on a graph with a cycle when strict mode is on', async () => {
 			const flow = createFlow('cycle')
 			flow
