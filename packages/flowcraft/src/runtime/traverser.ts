@@ -17,7 +17,7 @@ export class GraphTraverser<TContext extends Record<string, any>, TDependencies 
 		private executionId: string,
 		private signal?: AbortSignal,
 	) {
-		this.dynamicBlueprint = JSON.parse(JSON.stringify(blueprint)) as WorkflowBlueprint
+		this.dynamicBlueprint = structuredClone(blueprint) as WorkflowBlueprint
 		this.allPredecessors = new Map<string, Set<string>>()
 		for (const node of this.dynamicBlueprint.nodes) {
 			this.allPredecessors.set(node.id, new Set())
