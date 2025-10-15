@@ -99,9 +99,15 @@ export abstract class BaseDistributedAdapter {
 		}
 
 		const context = this.createContext(runId)
+
+		// persist the blueprintId for the reconcile method to find later
+		const hasBlueprintId = await context.has('blueprintId' as any)
+		if (!hasBlueprintId) {
+			await context.set('blueprintId' as any, blueprintId)
+		}
 		const workerState = {
 			getContext: () => context,
-			markFallbackExecuted: () => {},
+			markFallbackExecuted: () => { },
 			addError: (nodeId: string, error: Error) => {
 				console.error(`[Adapter] Error in node ${nodeId}:`, error)
 			},
@@ -182,5 +188,102 @@ export abstract class BaseDistributedAdapter {
 			}
 			return false
 		}
+	}
+
+	/**
+	 * Reconciles the state of a workflow run. It inspects the persisted
+	 * context to find completed nodes, determines the next set of executable
+	 * nodes (the frontier), and enqueues jobs for them if they aren't
+	 * already running. This is the core of the resume functionality.
+	 *
+	 * @param runId The unique ID of the workflow execution to reconcile.
+	 * @returns The set of node IDs that were enqueued for execution.
+	 */
+	public async reconcile(runId: string): Promise<Set<string>> {
+		const context = this.createContext(runId)
+		const blueprintId = (await context.get('blueprintId' as any)) as string | undefined
+
+		if (!blueprintId) {
+			throw new Error(`Cannot reconcile runId '${runId}': blueprintId not found in context.`)
+		}
+		const blueprint = this.runtime.options.blueprints?.[blueprintId]
+		if (!blueprint) {
+			throw new Error(`Cannot reconcile runId '${runId}': Blueprint with ID '${blueprintId}' not found.`)
+		}
+
+		const state = await context.toJSON()
+		// filter out internal keys
+		const completedNodes = new Set(Object.keys(state).filter((k) => blueprint.nodes.some((n) => n.id === k)))
+
+		const frontier = this.calculateResumedFrontier(blueprint, completedNodes)
+
+		const enqueuedNodes = new Set<string>()
+		for (const nodeId of frontier) {
+			const nodeDef = blueprint.nodes.find((n) => n.id === nodeId)
+			const joinStrategy = nodeDef?.config?.joinStrategy || 'all'
+
+			let shouldEnqueue = false
+
+			if (joinStrategy === 'any') {
+				// acquire the permanent join lock
+				const lockKey = `flowcraft:joinlock:${runId}:${nodeId}`
+				if (await this.store.setIfNotExist(lockKey, 'locked-by-reconcile', 3600)) {
+					shouldEnqueue = true
+				} else {
+					console.log(`[Adapter] Reconciling: Node '${nodeId}' is an 'any' join and is already locked.`, { runId })
+				}
+			} else {
+				// 'all' joins and single-predecessor nodes use a temporary lock
+				const lockKey = `flowcraft:nodelock:${runId}:${nodeId}`
+				if (await this.store.setIfNotExist(lockKey, 'locked', 120)) {
+					shouldEnqueue = true
+				} else {
+					console.log(`[Adapter] Reconciling: Node '${nodeId}' is already locked.`, { runId })
+				}
+			}
+
+			if (shouldEnqueue) {
+				console.log(`[Adapter] Reconciling: Enqueuing ready job for node '${nodeId}'`, { runId })
+				await this.enqueueJob({ runId, blueprintId: blueprint.id, nodeId })
+				enqueuedNodes.add(nodeId)
+			}
+		}
+
+		return enqueuedNodes
+	}
+
+	private calculateResumedFrontier(blueprint: WorkflowBlueprint, completedNodes: Set<string>): Set<string> {
+		const newFrontier = new Set<string>()
+		const allPredecessors = new Map<string, Set<string>>()
+		// (logic extracted from the GraphTraverser)
+		for (const node of blueprint.nodes) {
+			allPredecessors.set(node.id, new Set())
+		}
+		for (const edge of blueprint.edges) {
+			allPredecessors.get(edge.target)?.add(edge.source)
+		}
+
+		for (const node of blueprint.nodes) {
+			if (completedNodes.has(node.id)) {
+				continue
+			}
+
+			const predecessors = allPredecessors.get(node.id) ?? new Set()
+			if (predecessors.size === 0 && !completedNodes.has(node.id)) {
+				newFrontier.add(node.id)
+				continue
+			}
+
+			const joinStrategy = node.config?.joinStrategy || 'all'
+			const completedPredecessors = [...predecessors].filter((p) => completedNodes.has(p))
+
+			const isReady =
+				joinStrategy === 'any' ? completedPredecessors.length > 0 : completedPredecessors.length === predecessors.size
+
+			if (isReady) {
+				newFrontier.add(node.id)
+			}
+		}
+		return newFrontier
 	}
 }

@@ -72,7 +72,7 @@ describe('BaseDistributedAdapter', () => {
 	beforeEach(() => {
 		mockCoordinationStore = {
 			increment: vi.fn(),
-			setIfNotExist: vi.fn(),
+			setIfNotExist: vi.fn().mockResolvedValue(true), // Default to allowing locks
 			delete: vi.fn(),
 		}
 
@@ -304,6 +304,210 @@ describe('BaseDistributedAdapter', () => {
 			expect(adapter.publishFinalResult).toHaveBeenCalledWith('run1', {
 				status: 'failed',
 				reason: "Blueprint with ID 'non-existent' not found in the worker's runtime registry.",
+			})
+		})
+	})
+
+	describe('Reconciliation', () => {
+		beforeEach(() => {
+			// Reset the mock context for each test
+			vi.mocked(mockContext.get).mockClear()
+			vi.mocked(mockContext.set).mockClear()
+			vi.mocked(mockContext.has).mockClear()
+			vi.mocked(mockContext.toJSON).mockClear()
+		})
+
+		it('should persist blueprintId on first execution', async () => {
+			const job: JobPayload = {
+				runId: 'run1',
+				blueprintId: 'linear',
+				nodeId: 'A',
+			}
+
+			// First execution - blueprintId should not exist yet
+			vi.mocked(mockContext.has).mockResolvedValue(false)
+
+			vi.mocked(mockRuntime.executeNode).mockResolvedValue({
+				output: 'Result from A',
+			})
+			vi.mocked(mockRuntime.determineNextNodes).mockResolvedValue([
+				{ node: linearBlueprint.nodes[1], edge: linearBlueprint.edges[0] },
+			])
+
+			await jobHandler(job)
+
+			expect(mockContext.has).toHaveBeenCalledWith('blueprintId')
+			expect(mockContext.set).toHaveBeenCalledWith('blueprintId', 'linear')
+		})
+
+		it('should not persist blueprintId on subsequent executions', async () => {
+			const job: JobPayload = {
+				runId: 'run1',
+				blueprintId: 'linear',
+				nodeId: 'B',
+			}
+
+			// Subsequent execution - blueprintId should already exist
+			vi.mocked(mockContext.has).mockResolvedValue(true)
+
+			vi.mocked(mockRuntime.executeNode).mockResolvedValue({
+				output: 'Final Result',
+			})
+			vi.mocked(mockRuntime.determineNextNodes).mockResolvedValue([])
+
+			await jobHandler(job)
+
+			expect(mockContext.has).toHaveBeenCalledWith('blueprintId')
+			expect(mockContext.set).not.toHaveBeenCalledWith('blueprintId', 'linear')
+		})
+
+		it('should reconcile a linear workflow with completed nodes', async () => {
+			// Simulate a workflow state where node A is completed
+			vi.mocked(mockContext.get).mockResolvedValue('linear')
+			vi.mocked(mockContext.toJSON).mockResolvedValue({ A: 'result from A' })
+
+			const enqueuedNodes = await adapter.reconcile('run1')
+
+			expect(enqueuedNodes).toEqual(new Set(['B']))
+			expect(adapter.enqueueJob).toHaveBeenCalledWith({
+				runId: 'run1',
+				blueprintId: 'linear',
+				nodeId: 'B',
+			})
+		})
+
+		it('should reconcile a fan-in workflow with all predecessors completed', async () => {
+			// Simulate a workflow state where both A and B are completed
+			vi.mocked(mockContext.get).mockResolvedValue('fan-in')
+			vi.mocked(mockContext.toJSON).mockResolvedValue({ A: 'result from A', B: 'result from B' })
+
+			const enqueuedNodes = await adapter.reconcile('run1')
+
+			expect(enqueuedNodes).toEqual(new Set(['C']))
+			expect(adapter.enqueueJob).toHaveBeenCalledWith({
+				runId: 'run1',
+				blueprintId: 'fan-in',
+				nodeId: 'C',
+			})
+		})
+
+		it('should not enqueue nodes that are already locked', async () => {
+			// Simulate a workflow state where node A is completed
+			vi.mocked(mockContext.get).mockResolvedValue('linear')
+			vi.mocked(mockContext.toJSON).mockResolvedValue({ A: 'result from A' })
+
+			// Node B is already locked
+			vi.mocked(mockCoordinationStore.setIfNotExist).mockResolvedValue(false)
+
+			const enqueuedNodes = await adapter.reconcile('run1')
+
+			expect(enqueuedNodes).toEqual(new Set())
+			expect(adapter.enqueueJob).not.toHaveBeenCalled()
+		})
+
+		it('should handle any join strategy correctly', async () => {
+			// Simulate a workflow state where node A is completed for fan-in-any
+			vi.mocked(mockContext.get).mockResolvedValue('fan-in-any')
+			vi.mocked(mockContext.toJSON).mockResolvedValue({ A: 'result from A' })
+
+			// For 'any' joins, use the permanent join lock
+			vi.mocked(mockCoordinationStore.setIfNotExist).mockResolvedValue(true)
+
+			const enqueuedNodes = await adapter.reconcile('run1')
+
+			expect(enqueuedNodes).toEqual(new Set(['B', 'C']))
+			expect(mockCoordinationStore.setIfNotExist).toHaveBeenCalledWith(
+				'flowcraft:joinlock:run1:C',
+				'locked-by-reconcile',
+				3600,
+			)
+			expect(adapter.enqueueJob).toHaveBeenCalledWith({
+				runId: 'run1',
+				blueprintId: 'fan-in-any',
+				nodeId: 'B',
+			})
+			expect(adapter.enqueueJob).toHaveBeenCalledWith({
+				runId: 'run1',
+				blueprintId: 'fan-in-any',
+				nodeId: 'C',
+			})
+		})
+
+		it('should not enqueue any join nodes that are already locked', async () => {
+			// Simulate a workflow state where node A is completed for fan-in-any
+			vi.mocked(mockContext.get).mockResolvedValue('fan-in-any')
+			vi.mocked(mockContext.toJSON).mockResolvedValue({ A: 'result from A' })
+
+			// For 'any' joins, the lock is already acquired
+			vi.mocked(mockCoordinationStore.setIfNotExist).mockResolvedValue(false)
+
+			const enqueuedNodes = await adapter.reconcile('run1')
+
+			expect(enqueuedNodes).toEqual(new Set())
+			expect(adapter.enqueueJob).not.toHaveBeenCalled()
+		})
+
+		it('should throw error if blueprintId is not found in context', async () => {
+			vi.mocked(mockContext.get).mockResolvedValue(undefined)
+
+			await expect(adapter.reconcile('run1')).rejects.toThrow(
+				"Cannot reconcile runId 'run1': blueprintId not found in context.",
+			)
+		})
+
+		it('should throw error if blueprint is not found', async () => {
+			vi.mocked(mockContext.get).mockResolvedValue('non-existent')
+			vi.mocked(mockContext.toJSON).mockResolvedValue({})
+
+			await expect(adapter.reconcile('run1')).rejects.toThrow(
+				"Cannot reconcile runId 'run1': Blueprint with ID 'non-existent' not found.",
+			)
+		})
+
+		it('should handle start nodes correctly', async () => {
+			// Create a blueprint with a start node that has no predecessors
+			const startNodeBlueprint: WorkflowBlueprint = {
+				id: 'start-node',
+				nodes: [
+					{ id: 'start', uses: 'test' },
+					{ id: 'output', uses: 'output' },
+				],
+				edges: [{ source: 'start', target: 'output' }],
+			}
+			if (mockRuntime.options.blueprints) {
+				vi.mocked(mockRuntime.options.blueprints)['start-node'] = startNodeBlueprint
+			}
+
+			// No nodes completed yet, so start node should be enqueued
+			vi.mocked(mockContext.get).mockResolvedValue('start-node')
+			vi.mocked(mockContext.toJSON).mockResolvedValue({})
+
+			const enqueuedNodes = await adapter.reconcile('run1')
+
+			expect(enqueuedNodes).toEqual(new Set(['start']))
+			expect(adapter.enqueueJob).toHaveBeenCalledWith({
+				runId: 'run1',
+				blueprintId: 'start-node',
+				nodeId: 'start',
+			})
+		})
+
+		it('should filter out internal keys when calculating completed nodes', async () => {
+			// Simulate context with blueprintId and completed node A
+			vi.mocked(mockContext.get).mockResolvedValue('linear')
+			vi.mocked(mockContext.toJSON).mockResolvedValue({
+				blueprintId: 'linear', // Internal key that should be filtered out
+				A: 'result from A',
+			})
+
+			const enqueuedNodes = await adapter.reconcile('run1')
+
+			expect(enqueuedNodes).toEqual(new Set(['B']))
+			// Should only consider node keys, not blueprintId
+			expect(adapter.enqueueJob).toHaveBeenCalledWith({
+				runId: 'run1',
+				blueprintId: 'linear',
+				nodeId: 'B',
 			})
 		})
 	})
