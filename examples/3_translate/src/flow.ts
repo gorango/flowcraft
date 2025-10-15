@@ -1,30 +1,32 @@
-import type { NodeContext, NodeResult } from 'flowcraft'
 import * as fs from 'node:fs/promises'
 import * as path from 'node:path'
+import type { NodeContext, NodeResult } from 'flowcraft'
 import { createFlow } from 'flowcraft'
 import { callLLM } from './utils.js'
 
 interface TranslationContext {
-	'text': string
-	'languages': string[]
-	'output_dir': string
-	'prepare-jobs': { language: string, text: string }[]
-	'translations': { language: string, translation: string }[]
+	text: string
+	languages: string[]
+	output_dir: string
+	'prepare-jobs': { language: string; text: string }[]
+	translations: { language: string; translation: string }[]
 }
 
 // 1. Prepare the list of translation jobs
 async function prepareJobs(ctx: NodeContext<TranslationContext>): Promise<NodeResult> {
-	const languages = (await ctx.context.get('languages'))!
-	const text = (await ctx.context.get('text'))!
-	// The output of this node is an array of objects, which the batch processor will iterate over.
-	const jobs = languages.map(language => ({ language, text }))
+	const languages = await ctx.context.get('languages')
+	const text = await ctx.context.get('text')
+	if (!languages || !text) {
+		throw new TypeError('languages and text are required')
+	}
+	const jobs = languages.map((language) => ({ language, text }))
 	return { output: jobs }
 }
 
 // 2. This function will be executed FOR EACH item in the batch
 async function translateItem(ctx: NodeContext<TranslationContext>): Promise<NodeResult> {
 	// The `input` for a batch worker is a single item from the source array.
-	const { language, text } = ctx.input as { language: string, text: string }
+	const { language, text } = ctx.input as { language: string; text: string }
 	const prompt = `
 Translate the following markdown text into ${language}.
 Preserve markdown formatting, links, and code blocks.
@@ -42,8 +44,11 @@ ${text}`
 // 3. This node runs AFTER the entire batch is complete
 async function saveResults(ctx: NodeContext<TranslationContext>): Promise<NodeResult> {
 	// The `input` for the successor of a batch is an array of all worker outputs.
-	const translations = ctx.input as { language: string, translation: string }[]
-	const outputDir = (await ctx.context.get('output_dir'))!
+	const translations = ctx.input as { language: string; translation: string }[]
+	const outputDir = await ctx.context.get('output_dir')
+	if (!outputDir) {
+		throw new TypeError('output_dir is required')
+	}
 
 	if (!translations || translations.length === 0) {
 		console.warn('No translations to save.')
@@ -51,7 +56,7 @@ async function saveResults(ctx: NodeContext<TranslationContext>): Promise<NodeRe
 	}
 
 	const promises = translations.map(({ language, translation }) => {
-		const filename = path.join(outputDir!, `README_${language.toUpperCase()}.md`)
+		const filename = path.join(outputDir, `README_${language.toUpperCase()}.md`)
 		console.log(`Saving translation to ${filename}`)
 		return fs.writeFile(filename, translation, 'utf-8')
 	})
@@ -64,8 +69,7 @@ export function createTranslateFlow() {
 	const flow = createFlow<TranslationContext>('parallel-translation')
 
 	// Define all the nodes first
-	flow.node('prepare-jobs', prepareJobs)
-		.node('save-results', saveResults, { inputs: 'translations' })
+	flow.node('prepare-jobs', prepareJobs).node('save-results', saveResults, { inputs: 'translations' })
 
 	// Define the batch operation.
 	// This implicitly creates 'translate-batch_scatter' and 'translate-batch_gather' nodes.

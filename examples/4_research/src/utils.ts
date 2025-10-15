@@ -16,7 +16,10 @@ export async function callLLM(prompt: string): Promise<string> {
 		const response = await openaiClient.chat.completions.create({
 			model: 'gpt-4o-mini',
 			messages: [
-				{ role: 'system', content: `Today's date is ${new Date().toISOString()}.` },
+				{
+					role: 'system',
+					content: `Today's date is ${new Date().toISOString()}.`,
+				},
 				{ role: 'user', content: prompt },
 			],
 			temperature: 0.2,
@@ -24,8 +27,7 @@ export async function callLLM(prompt: string): Promise<string> {
 		const result = response.choices[0].message.content || ''
 		console.log(`--- Received from LLM ---\n${result}\n-----------------------\n`)
 		return result
-	}
-	catch (error: any) {
+	} catch (error: any) {
 		console.error('Error calling OpenAI API:', error)
 		throw new Error(`OpenAI API call failed: ${error.message}`)
 	}
@@ -50,12 +52,14 @@ export async function searchWeb(query: string): Promise<string> {
 			api_key: apiKey,
 		})
 		const organicResults = results.organic_results || []
-		const formattedResults = organicResults.map((result: any, index: number) =>
-			`${index + 1}. ${result.title}\n   URL: ${result.link}\n   Snippet: ${result.snippet}`,
-		).join('\n\n')
+		const formattedResults = organicResults
+			.map(
+				(result: any, index: number) =>
+					`${index + 1}. ${result.title}\n   URL: ${result.link}\n   Snippet: ${result.snippet}`,
+			)
+			.join('\n\n')
 		return formattedResults || 'No results found.'
-	}
-	catch (error: any) {
+	} catch (error: any) {
 		console.error('Error calling SerpAPI:', error)
 		return `Error: Could not fetch search results. ${error.message}`
 	}

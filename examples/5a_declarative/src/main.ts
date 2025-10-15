@@ -1,7 +1,7 @@
-import type { NodeDefinition, WorkflowBlueprint } from 'flowcraft'
 import { promises as fs } from 'node:fs'
 import path from 'node:path'
 import process from 'node:process'
+import type { NodeDefinition, WorkflowBlueprint } from 'flowcraft'
 import { FlowRuntime } from 'flowcraft'
 import { config } from './config.js'
 import { agentNodeRegistry } from './registry.js'
@@ -45,9 +45,8 @@ async function loadAndProcessBlueprint(filePath: string): Promise<WorkflowBluepr
 
 	const nodePredecessorMap = new Map<string, string[]>()
 	edges.forEach((edge: any) => {
-		if (!nodePredecessorMap.has(edge.target))
-			nodePredecessorMap.set(edge.target, [])
-		nodePredecessorMap.get(edge.target)!.push(edge.source)
+		if (!nodePredecessorMap.has(edge.target)) nodePredecessorMap.set(edge.target, [])
+		nodePredecessorMap.get(edge.target)?.push(edge.source)
 	})
 
 	for (const node of nodes) {
@@ -55,7 +54,7 @@ async function loadAndProcessBlueprint(filePath: string): Promise<WorkflowBluepr
 		if (predecessors && predecessors.length > 1) {
 			// Check if all predecessors are the same (i.e., it's a fan-out from a single router)
 			const firstPredecessor = predecessors[0]
-			if (predecessors.every(p => p === firstPredecessor)) {
+			if (predecessors.every((p) => p === firstPredecessor)) {
 				console.log(`[Blueprint Loader] Automatically setting joinStrategy='any' for convergence node '${node.id}'`)
 				node.config = { ...node.config, joinStrategy: 'any' }
 			}
@@ -90,8 +89,7 @@ async function main() {
 	const mainWorkflowId = config[ACTIVE_USE_CASE].mainWorkflowId
 	const mainBlueprint = blueprints[mainWorkflowId]
 
-	if (!mainBlueprint)
-		throw new Error(`Main workflow blueprint with ID '${mainWorkflowId}' was not found.`)
+	if (!mainBlueprint) throw new Error(`Main workflow blueprint with ID '${mainWorkflowId}' was not found.`)
 
 	const { initialContext } = config[ACTIVE_USE_CASE]
 

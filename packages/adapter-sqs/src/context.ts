@@ -1,12 +1,7 @@
-import type {
-	DynamoDBClient,
-} from '@aws-sdk/client-dynamodb'
-import type { IAsyncContext } from 'flowcraft'
-import {
-	GetItemCommand,
-	UpdateItemCommand,
-} from '@aws-sdk/client-dynamodb'
+import type { DynamoDBClient } from '@aws-sdk/client-dynamodb'
+import { GetItemCommand, UpdateItemCommand } from '@aws-sdk/client-dynamodb'
 import { marshall, unmarshall } from '@aws-sdk/util-dynamodb'
+import type { IAsyncContext } from 'flowcraft'
 
 export interface DynamoDbContextOptions {
 	client: DynamoDBClient
@@ -42,7 +37,7 @@ export class DynamoDbContext implements IAsyncContext<Record<string, any>> {
 		})
 
 		const result = await this.client.send(command)
-		if (result.Item && result.Item[key]) {
+		if (result.Item?.[key]) {
 			return unmarshall(result.Item)[key]
 		}
 		return undefined
@@ -54,7 +49,9 @@ export class DynamoDbContext implements IAsyncContext<Record<string, any>> {
 			Key: this.getKey(),
 			UpdateExpression: 'SET #k = :v',
 			ExpressionAttributeNames: { '#k': key },
-			ExpressionAttributeValues: { ':v': marshall(value, { removeUndefinedValues: true }) },
+			ExpressionAttributeValues: {
+				':v': marshall(value, { removeUndefinedValues: true }),
+			},
 		})
 
 		await this.client.send(command)
@@ -68,7 +65,7 @@ export class DynamoDbContext implements IAsyncContext<Record<string, any>> {
 			ExpressionAttributeNames: { '#k': key },
 		})
 		const result = await this.client.send(command)
-		return !!result.Item && Object.prototype.hasOwnProperty.call(result.Item, key)
+		return !!result.Item && Object.hasOwn(result.Item, key)
 	}
 
 	async delete<K extends string>(key: K): Promise<boolean> {
@@ -91,8 +88,7 @@ export class DynamoDbContext implements IAsyncContext<Record<string, any>> {
 
 		const result = await this.client.send(command)
 		if (result.Item) {
-			// Remove the primary key from the returned context object
-			const { runId, ...contextData } = unmarshall(result.Item)
+			const { runId: _, ...contextData } = unmarshall(result.Item)
 			return contextData
 		}
 		return {}

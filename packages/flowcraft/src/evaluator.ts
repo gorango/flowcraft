@@ -18,22 +18,20 @@ import type { IEvaluator } from './types'
 export class SimpleEvaluator implements IEvaluator {
 	evaluate(expression: string, context: Record<string, any>): any {
 		try {
-			// Filter out keys that aren't valid JavaScript identifiers
+			// filter out keys that aren't valid JavaScript identifiers
 			const validIdentifierRegex = /^[a-z_$][\w$]*$/i
-			const validKeys = Object.keys(context).filter(key => validIdentifierRegex.test(key))
+			const validKeys = Object.keys(context).filter((key) => validIdentifierRegex.test(key))
 			const validContext: Record<string, any> = {}
 			for (const key of validKeys) {
 				validContext[key] = context[key]
 			}
 
-			// Creates a function that is sandboxed to only the keys of the `context` object.
-			// It prevents access to global scope (e.g., `window`, `process`).
-			const sandbox = new Function(...validKeys, `return ${expression}`) // eslint-disable-line no-new-func
-			return sandbox(...validKeys.map(k => validContext[k]))
-		}
-		catch (error) {
+			// sandboxed function prevents access to global scope (e.g., `window`, `process`).
+			const sandbox = new Function(...validKeys, `return ${expression}`)
+			return sandbox(...validKeys.map((k) => validContext[k]))
+		} catch (error) {
 			console.error(`Error evaluating expression "${expression}":`, error)
-			// In case of a syntax error or other issue, default to a "falsy" value.
+			// default to a "falsy" value.
 			return undefined
 		}
 	}

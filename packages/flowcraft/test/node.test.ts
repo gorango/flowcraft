@@ -1,7 +1,7 @@
-import type { ISyncContext, NodeContext, NodeResult } from '../src/types'
 import { describe, expect, it } from 'vitest'
 import { AsyncContextView } from '../src/context'
 import { BaseNode } from '../src/node'
+import type { ISyncContext, NodeContext, NodeResult } from '../src/types'
 
 class MockSyncContext implements ISyncContext {
 	readonly type = 'sync' as const
@@ -115,7 +115,12 @@ describe('BaseNode', () => {
 		const node = new TestNode({})
 		const syncContext = new MockSyncContext()
 		const asyncContext = new AsyncContextView(syncContext)
-		const context: NodeContext = { context: asyncContext, input: {}, params: {}, dependencies: {} }
+		const context: NodeContext = {
+			context: asyncContext,
+			input: {},
+			params: {},
+			dependencies: {},
+		}
 		const prepResult = await node.prep(context)
 		await node.exec(prepResult, context)
 		await node.post({ output: 'test' }, context)
@@ -128,7 +133,12 @@ describe('BaseNode', () => {
 		const node = new FailingPrepNode({})
 		const syncContext = new MockSyncContext()
 		const asyncContext = new AsyncContextView(syncContext)
-		const context: NodeContext = { context: asyncContext, input: {}, params: {}, dependencies: {} }
+		const context: NodeContext = {
+			context: asyncContext,
+			input: {},
+			params: {},
+			dependencies: {},
+		}
 		await expect(node.prep(context)).rejects.toThrow('Prep failed')
 		expect(node.postCalled).toBe(false)
 	})
@@ -137,7 +147,12 @@ describe('BaseNode', () => {
 		const node = new FailingExecNode({})
 		const syncContext = new MockSyncContext()
 		const asyncContext = new AsyncContextView(syncContext)
-		const context: NodeContext = { context: asyncContext, input: {}, params: {}, dependencies: {} }
+		const context: NodeContext = {
+			context: asyncContext,
+			input: {},
+			params: {},
+			dependencies: {},
+		}
 		const prepResult = await node.prep(context)
 		await expect(node.exec(prepResult, context)).rejects.toThrow('Exec failed')
 		expect(node.postCalled).toBe(false)
@@ -147,7 +162,12 @@ describe('BaseNode', () => {
 		const node = new FailingExecWithFallbackNode({})
 		const syncContext = new MockSyncContext()
 		const asyncContext = new AsyncContextView(syncContext)
-		const context: NodeContext = { context: asyncContext, input: {}, params: {}, dependencies: {} }
+		const context: NodeContext = {
+			context: asyncContext,
+			input: {},
+			params: {},
+			dependencies: {},
+		}
 		const prepResult = await node.prep(context)
 		await expect(node.exec(prepResult, context)).rejects.toThrow('Exec failed')
 		await node.fallback(new Error('Exec failed'), context)
@@ -160,7 +180,12 @@ describe('BaseNode', () => {
 		const node = new FailingExecNode({})
 		const syncContext = new MockSyncContext()
 		const asyncContext = new AsyncContextView(syncContext)
-		const context: NodeContext = { context: asyncContext, input: {}, params: {}, dependencies: {} }
+		const context: NodeContext = {
+			context: asyncContext,
+			input: {},
+			params: {},
+			dependencies: {},
+		}
 		const prepResult = await node.prep(context)
 		await expect(node.exec(prepResult, context)).rejects.toThrow('Exec failed')
 		await expect(node.fallback(new Error('Exec failed'), context)).rejects.toThrow('Exec failed')

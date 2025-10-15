@@ -1,8 +1,19 @@
-import type { ContextImplementation, EdgeDefinition, NodeDefinition, NodeResult, RuntimeDependencies, RuntimeOptions, WorkflowBlueprint } from '../types'
+import type {
+	ContextImplementation,
+	EdgeDefinition,
+	NodeDefinition,
+	NodeResult,
+	RuntimeDependencies,
+	RuntimeOptions,
+	WorkflowBlueprint,
+} from '../types'
 import type { WorkflowState } from './state'
 
 /** Interface for the core runtime operations used by the traverser. */
-export interface IRuntime<TContext extends Record<string, any> = Record<string, any>, TDependencies extends RuntimeDependencies = RuntimeDependencies> {
+export interface IRuntime<
+	TContext extends Record<string, any> = Record<string, any>,
+	TDependencies extends RuntimeDependencies = RuntimeDependencies,
+> {
 	options: RuntimeOptions<TDependencies>
 	executeNode: (
 		blueprint: WorkflowBlueprint,
@@ -18,7 +29,7 @@ export interface IRuntime<TContext extends Record<string, any> = Record<string, 
 		nodeId: string,
 		result: NodeResult,
 		context: ContextImplementation<TContext>,
-	) => Promise<{ node: NodeDefinition, edge: EdgeDefinition }[]>
+	) => Promise<{ node: NodeDefinition; edge: EdgeDefinition }[]>
 	applyEdgeTransform: (
 		edge: EdgeDefinition,
 		sourceResult: NodeResult,

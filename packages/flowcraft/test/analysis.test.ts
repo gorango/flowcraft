@@ -1,6 +1,6 @@
-import type { WorkflowBlueprint } from '../src/types'
 import { describe, expect, it } from 'vitest'
 import { analyzeBlueprint, checkForCycles, generateMermaid } from '../src/analysis'
+import type { WorkflowBlueprint } from '../src/types'
 
 describe('Graph Analysis', () => {
 	describe('checkForCycles', () => {
@@ -104,9 +104,7 @@ describe('Graph Analysis', () => {
 					{ id: 'A', uses: 'node' },
 					{ id: 'B', uses: 'node' },
 				],
-				edges: [
-					{ source: 'A', target: 'B' },
-				],
+				edges: [{ source: 'A', target: 'B' }],
 			}
 			const cycleBlueprint: WorkflowBlueprint = {
 				id: 'test',
@@ -132,9 +130,7 @@ describe('Graph Analysis', () => {
 					{ id: 'A', uses: 'node' },
 					{ id: 'B', uses: 'node' },
 				],
-				edges: [
-					{ source: 'A', target: 'B' },
-				],
+				edges: [{ source: 'A', target: 'B' }],
 			}
 			const mermaid = generateMermaid(blueprint)
 			expect(mermaid).toContain('flowchart TD')
@@ -151,7 +147,12 @@ describe('Graph Analysis', () => {
 					{ id: 'B', uses: 'node' },
 				],
 				edges: [
-					{ source: 'A', target: 'B', action: 'success', condition: 'status == "ok"' },
+					{
+						source: 'A',
+						target: 'B',
+						action: 'success',
+						condition: 'status == "ok"',
+					},
 				],
 			}
 			const mermaid = generateMermaid(blueprint)

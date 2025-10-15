@@ -1,7 +1,7 @@
+import { Buffer } from 'node:buffer'
 import type { CosmosClient } from '@azure/cosmos'
 import type { QueueClient } from '@azure/storage-queue'
 import type { AdapterOptions, JobPayload, WorkflowResult } from 'flowcraft'
-import { Buffer } from 'node:buffer'
 import { BaseDistributedAdapter } from 'flowcraft'
 import { CosmosDbContext } from './context'
 
@@ -47,7 +47,10 @@ export class AzureQueueAdapter extends BaseDistributedAdapter {
 		await this.queueClient.sendMessage(message)
 	}
 
-	protected async publishFinalResult(runId: string, result: { status: string, payload?: WorkflowResult, reason?: string }): Promise<void> {
+	protected async publishFinalResult(
+		runId: string,
+		result: { status: string; payload?: WorkflowResult; reason?: string },
+	): Promise<void> {
 		const statusContext = new CosmosDbContext(runId, {
 			client: this.cosmosClient,
 			databaseName: this.cosmosDatabaseName,
@@ -76,24 +79,24 @@ export class AzureQueueAdapter extends BaseDistributedAdapter {
 				})
 
 				if (response.receivedMessageItems.length > 0) {
-					await Promise.all(response.receivedMessageItems.map(async (message) => {
-						try {
-							const job = JSON.parse(Buffer.from(message.messageText, 'base64').toString()) as JobPayload
-							console.log(`[AzureQueueAdapter] ==> Picked up job for Node: ${job.nodeId}, Run: ${job.runId}`)
-							await handler(job)
-							await this.queueClient.deleteMessage(message.messageId, message.popReceipt)
-						}
-						catch (err) {
-							console.error('[AzureQueueAdapter] Error processing message, it will become visible again:', err)
-							// If we fail, we don't delete the message. It will reappear after the visibilityTimeout.
-						}
-					}))
+					await Promise.all(
+						response.receivedMessageItems.map(async (message) => {
+							try {
+								const job = JSON.parse(Buffer.from(message.messageText, 'base64').toString()) as JobPayload
+								console.log(`[AzureQueueAdapter] ==> Picked up job for Node: ${job.nodeId}, Run: ${job.runId}`)
+								await handler(job)
+								await this.queueClient.deleteMessage(message.messageId, message.popReceipt)
+							} catch (err) {
+								console.error('[AzureQueueAdapter] Error processing message, it will become visible again:', err)
+								// if we fail, we don't delete the message - it will reappear after the visibilityTimeout
+							}
+						}),
+					)
 				}
-				// If no messages, the loop will naturally wait for the next iteration.
-			}
-			catch (error) {
+				// if no messages, the loop will wait for the next iteration
+			} catch (error) {
 				console.error('[AzureQueueAdapter] Error during queue polling:', error)
-				await new Promise(resolve => setTimeout(resolve, 5000))
+				await new Promise((resolve) => setTimeout(resolve, 5000))
 			}
 		}
 	}

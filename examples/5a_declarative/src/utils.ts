@@ -19,8 +19,7 @@ export async function callLLM(prompt: string): Promise<string> {
 		const result = response.choices[0].message.content || ''
 		console.log(`--- Received from LLM ---\n${result}\n-----------------------\n`)
 		return result
-	}
-	catch (error: any) {
+	} catch (error: any) {
 		console.error('Error calling OpenAI API:', error)
 		throw new Error(`OpenAI API call failed: ${error.message}`)
 	}

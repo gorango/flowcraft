@@ -103,10 +103,7 @@
 				"outputKey": "final_output",
 				"promptTemplate": "--- CONTENT MODERATION COMPLETE ---\n\nFinal Action Log:\n{{final_action_taken}}",
 				"inputs": {
-					"final_action_taken": [
-						"moderation_result",
-						"approve_post_branch"
-					]
+					"final_action_taken": ["moderation_result", "approve_post_branch"]
 				}
 			}
 		}

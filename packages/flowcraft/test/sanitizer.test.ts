@@ -1,6 +1,6 @@
-import type { WorkflowBlueprint } from '../src/types'
 import { describe, expect, it } from 'vitest'
 import { sanitizeBlueprint } from '../src/sanitizer'
+import type { WorkflowBlueprint } from '../src/types'
 
 describe('sanitizeBlueprint', () => {
 	it('should remove extra properties from nodes and edges', () => {

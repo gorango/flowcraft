@@ -25,10 +25,9 @@ export class CosmosDbContext implements IAsyncContext<Record<string, any>> {
 		try {
 			const { resource } = await this.container.item(this.runId, this.runId).read()
 			return resource || null
-		}
-		catch (error: any) {
+		} catch (error: any) {
 			if (error.code === 404) {
-				return null // Item not found is not an error
+				return null // item not found is not an error
 			}
 			throw error
 		}
@@ -42,13 +41,10 @@ export class CosmosDbContext implements IAsyncContext<Record<string, any>> {
 	async set<K extends string>(key: K, value: any): Promise<void> {
 		const item = await this.readItem()
 		if (item) {
-			// If item exists, patch it to update or add the key
-			await this.container.item(this.runId, this.runId).patch([
-				{ op: 'set', path: `/${key}`, value },
-			])
-		}
-		else {
-			// If item does not exist, create it
+			// if item exists, patch it to update or add the key
+			await this.container.item(this.runId, this.runId).patch([{ op: 'set', path: `/${key}`, value }])
+		} else {
+			// if item does not exist, create it
 			const newItem = { id: this.runId, runId: this.runId, [key]: value }
 			await this.container.items.create(newItem)
 		}
@@ -56,18 +52,15 @@ export class CosmosDbContext implements IAsyncContext<Record<string, any>> {
 
 	async has<K extends string>(key: K): Promise<boolean> {
 		const item = await this.readItem()
-		return !!item && Object.prototype.hasOwnProperty.call(item, key)
+		return !!item && Object.hasOwn(item, key)
 	}
 
 	async delete<K extends string>(key: K): Promise<boolean> {
 		try {
-			await this.container.item(this.runId, this.runId).patch([
-				{ op: 'remove', path: `/${key}` },
-			])
+			await this.container.item(this.runId, this.runId).patch([{ op: 'remove', path: `/${key}` }])
 			return true
-		}
-		catch (error: any) {
-			// Patch will fail if the path doesn't exist, which is a valid outcome for delete
+		} catch (error: any) {
+			// patch will fail if the path doesn't exist, which is a valid outcome for delete
 			if (error.code === 400) {
 				return false
 			}
@@ -78,7 +71,7 @@ export class CosmosDbContext implements IAsyncContext<Record<string, any>> {
 	async toJSON(): Promise<Record<string, any>> {
 		const item = await this.readItem()
 		if (item) {
-			const { id, runId, _rid, _self, _etag, _attachments, _ts, ...contextData } = item
+			const { id: _id, runId: _runId, _rid, _self, _etag, _attachments, _ts, ...contextData } = item
 			return contextData
 		}
 		return {}

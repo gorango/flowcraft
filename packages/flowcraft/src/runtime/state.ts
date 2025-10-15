@@ -1,5 +1,5 @@
-import type { ContextImplementation, ISerializer, WorkflowError, WorkflowResult } from '../types'
 import { Context } from '../context'
+import type { ContextImplementation, ISerializer, WorkflowError, WorkflowResult } from '../types'
 
 export class WorkflowState<TContext extends Record<string, any>> {
 	private _completedNodes = new Set<string>()
@@ -13,7 +13,7 @@ export class WorkflowState<TContext extends Record<string, any>> {
 
 	addCompletedNode(nodeId: string, output: any) {
 		this._completedNodes.add(nodeId)
-		this.context.set(nodeId as any, output)
+		this.context.set(nodeId as keyof TContext, output)
 	}
 
 	addError(nodeId: string, error: Error) {
@@ -25,7 +25,7 @@ export class WorkflowState<TContext extends Record<string, any>> {
 	}
 
 	clearError(nodeId: string) {
-		this.errors = this.errors.filter(err => err.nodeId !== nodeId)
+		this.errors = this.errors.filter((err) => err.nodeId !== nodeId)
 	}
 
 	markFallbackExecuted() {
@@ -48,12 +48,10 @@ export class WorkflowState<TContext extends Record<string, any>> {
 		return this.anyFallbackExecuted
 	}
 
-	getStatus(allNodeIds: Set<string>, fallbackNodeIds: Set<string>): WorkflowResult['status'] {
-		if (this.anyFallbackExecuted)
-			return 'completed'
-		if (this.errors.length > 0)
-			return 'failed'
-		const _remainingNodes = [...allNodeIds].filter(id => !this._completedNodes.has(id) && !fallbackNodeIds.has(id))
+	getStatus(allNodeIds: Set<string>, _fallbackNodeIds: Set<string>): WorkflowResult['status'] {
+		if (this.anyFallbackExecuted) return 'completed'
+		if (this.errors.length > 0) return 'failed'
+		// const _remainingNodes = [...allNodeIds].filter((id) => !this._completedNodes.has(id) && !fallbackNodeIds.has(id))
 		return this._completedNodes.size < allNodeIds.size ? 'stalled' : 'completed'
 	}
 

@@ -23,10 +23,7 @@ export class PostgresContext implements IAsyncContext<Record<string, any>> {
 	}
 
 	private async readContext(): Promise<Record<string, any>> {
-		const res = await this.pg.query(
-			`SELECT context_data FROM ${this.tableName} WHERE run_id = $1`,
-			[this.runId],
-		)
+		const res = await this.pg.query(`SELECT context_data FROM ${this.tableName} WHERE run_id = $1`, [this.runId])
 		return res.rows[0]?.context_data || {}
 	}
 
@@ -47,7 +44,7 @@ export class PostgresContext implements IAsyncContext<Record<string, any>> {
 
 	async has<K extends string>(key: K): Promise<boolean> {
 		const context = await this.readContext()
-		return Object.prototype.hasOwnProperty.call(context, key)
+		return Object.hasOwn(context, key)
 	}
 
 	async delete<K extends string>(key: K): Promise<boolean> {

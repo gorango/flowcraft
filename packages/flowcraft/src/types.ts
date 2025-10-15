@@ -56,7 +56,7 @@ export interface NodeConfig {
 export interface NodeResult<TOutput = any> {
 	output?: TOutput
 	action?: string
-	error?: { message: string, [key: string]: any }
+	error?: { message: string; [key: string]: any }
 	/** Allows a node to dynamically schedule new nodes for the orchestrator to execute. */
 	dynamicNodes?: NodeDefinition[]
 	/** Internal flag: Indicates that this result came from a fallback execution. */
@@ -87,7 +87,10 @@ export type NodeFunction<
 > = (context: NodeContext<TContext, TDependencies>) => Promise<NodeResult>
 
 /** Represents a constructor for any concrete class that extends the abstract BaseNode. */
-export type NodeClass = new (params?: any) => BaseNode<any, any>
+export type NodeClass<
+	TContext extends Record<string, any> = Record<string, any>,
+	TDependencies extends RuntimeDependencies = RuntimeDependencies,
+> = new (params?: Record<string, any>) => BaseNode<TContext, TDependencies>
 
 /** A union of all possible node implementation types. */
 export type NodeImplementation = NodeFunction | NodeClass
@@ -127,12 +130,14 @@ export interface IAsyncContext<TContext extends Record<string, any> = Record<str
 // =================================================================================
 
 /** Generic for any set of dependencies. */
-export interface RuntimeDependencies { [key: string]: any }
+export interface RuntimeDependencies {
+	[key: string]: any
+}
 
 /** Configuration options for the FlowRuntime. */
 export interface RuntimeOptions<TDependencies extends RuntimeDependencies = RuntimeDependencies> {
 	/** A registry of globally available node implementations. */
-	registry?: Record<string, NodeFunction | NodeClass>
+	registry?: Record<string, NodeFunction | NodeClass | typeof BaseNode>
 	/** A registry of all available workflow blueprints for subflow execution. */
 	blueprints?: Record<string, WorkflowBlueprint>
 	/** Shared dependencies to be injected into every node. */
@@ -178,8 +183,17 @@ export interface ISerializer {
 /** Interface for middleware to handle cross-cutting concerns. */
 export interface Middleware<TContext extends Record<string, any> = Record<string, any>> {
 	beforeNode?: (ctx: ContextImplementation<TContext>, nodeId: string) => void | Promise<void>
-	afterNode?: (ctx: ContextImplementation<TContext>, nodeId: string, result: NodeResult | undefined, error: Error | undefined) => void | Promise<void>
-	aroundNode?: (ctx: ContextImplementation<TContext>, nodeId: string, next: () => Promise<NodeResult>) => Promise<NodeResult>
+	afterNode?: (
+		ctx: ContextImplementation<TContext>,
+		nodeId: string,
+		result: NodeResult | undefined,
+		error: Error | undefined,
+	) => void | Promise<void>
+	aroundNode?: (
+		ctx: ContextImplementation<TContext>,
+		nodeId: string,
+		next: () => Promise<NodeResult>,
+	) => Promise<NodeResult>
 }
 
 /** A structured error object returned from a failed workflow execution. */
@@ -190,7 +204,7 @@ export interface WorkflowError {
 }
 
 /** The final result of a workflow execution. */
-export interface WorkflowResult<TContext = any> {
+export interface WorkflowResult<TContext = Record<string, any>> {
 	context: TContext
 	serializedContext: string
 	status: 'completed' | 'failed' | 'stalled' | 'cancelled'

@@ -46,15 +46,28 @@ describe('FlowRuntime', () => {
 		const edge = { source: 'A', target: 'B', transform: 'input * 2' }
 		const sourceResult = { output: 5 }
 		const targetNode = { id: 'B', uses: 'test', params: {} }
-		const context = { type: 'sync', set: vi.fn(), toJSON: vi.fn().mockReturnValue({}) } as any
+		const context = {
+			type: 'sync',
+			set: vi.fn(),
+			toJSON: vi.fn().mockReturnValue({}),
+		} as any
 		await runtime.applyEdgeTransform(edge, sourceResult, targetNode, context)
 		expect(context.set).toHaveBeenCalledWith('B_input', 10)
 	})
 
 	it('should handle built-in nodes', async () => {
 		const runtime = new FlowRuntime({})
-		const nodeDef = { id: 'batch', uses: 'batch-scatter', params: { workerUsesKey: 'worker', gatherNodeId: 'gather' }, inputs: 'data' }
-		const context = { type: 'sync', get: vi.fn().mockResolvedValue(['item1']), set: vi.fn() } as any
+		const nodeDef = {
+			id: 'batch',
+			uses: 'batch-scatter',
+			params: { workerUsesKey: 'worker', gatherNodeId: 'gather' },
+			inputs: 'data',
+		}
+		const context = {
+			type: 'sync',
+			get: vi.fn().mockResolvedValue(['item1']),
+			set: vi.fn(),
+		} as any
 		const result = await (runtime as any)._executeBuiltInNode(nodeDef, context)
 		expect(result.dynamicNodes).toBeDefined()
 		expect(result.output.gatherNodeId).toBeDefined()

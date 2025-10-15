@@ -1,7 +1,7 @@
-import type { ISerializer } from 'flowcraft'
 import * as fs from 'node:fs/promises'
 import * as path from 'node:path'
 import process from 'node:process'
+import type { ISerializer } from 'flowcraft'
 import { FlowRuntime } from 'flowcraft'
 import SuperJSON from 'superjson'
 import { createRagFlow } from './flow.js'
@@ -39,7 +39,9 @@ async function main() {
 		question: 'How does Flowcraft handle conditional branching?',
 	}
 
-	const result = await runtime.run(blueprint, initialContext, { functionRegistry })
+	const result = await runtime.run(blueprint, initialContext, {
+		functionRegistry,
+	})
 
 	console.log('\n--- Workflow Complete ---\n')
 	console.log('Final Answer:\n', result.context.final_answer)

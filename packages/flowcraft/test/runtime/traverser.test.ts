@@ -28,8 +28,24 @@ describe('GraphTraverser', () => {
 		} as any
 		const traverser = new GraphTraverser(blueprint, runtime, state, undefined, 'exec1')
 		await traverser.traverse()
-		expect(runtime.executeNode).toHaveBeenCalledWith(blueprint, 'A', state, expect.any(Map), undefined, 'exec1', undefined)
-		expect(runtime.executeNode).toHaveBeenCalledWith(blueprint, 'B', state, expect.any(Map), undefined, 'exec1', undefined)
+		expect(runtime.executeNode).toHaveBeenCalledWith(
+			blueprint,
+			'A',
+			state,
+			expect.any(Map),
+			undefined,
+			'exec1',
+			undefined,
+		)
+		expect(runtime.executeNode).toHaveBeenCalledWith(
+			blueprint,
+			'B',
+			state,
+			expect.any(Map),
+			undefined,
+			'exec1',
+			undefined,
+		)
 	})
 
 	it('should handle parallel branches', async () => {
@@ -89,9 +105,12 @@ describe('GraphTraverser', () => {
 		}
 		const state = new WorkflowState({})
 		const runtime = {
-			executeNode: vi.fn().mockImplementation((blueprint, nodeId) => {
+			executeNode: vi.fn().mockImplementation((_blueprint, nodeId) => {
 				if (nodeId === 'A') {
-					return Promise.resolve({ output: 'result', dynamicNodes: [{ id: 'D1', uses: 'test', params: {} }] })
+					return Promise.resolve({
+						output: 'result',
+						dynamicNodes: [{ id: 'D1', uses: 'test', params: {} }],
+					})
 				}
 				return Promise.resolve({ output: 'result' })
 			}),
@@ -106,7 +125,11 @@ describe('GraphTraverser', () => {
 	it('should respect abort signals', async () => {
 		const controller = new AbortController()
 		controller.abort()
-		const blueprint = { id: 'abort', nodes: [{ id: 'A', uses: 'test', params: {} }], edges: [] }
+		const blueprint = {
+			id: 'abort',
+			nodes: [{ id: 'A', uses: 'test', params: {} }],
+			edges: [],
+		}
 		const state = new WorkflowState({})
 		const runtime = {
 			executeNode: vi.fn().mockResolvedValue({ output: 'result' }),

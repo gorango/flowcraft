@@ -6,21 +6,23 @@ import type { EdgeDefinition, NodeDefinition, WorkflowBlueprint } from './types'
  * properties defined in NodeDefinition and EdgeDefinition.
  */
 export function sanitizeBlueprint(raw: any): WorkflowBlueprint {
-	const nodes: NodeDefinition[] = raw.nodes?.map((node: any) => ({
-		id: node.id,
-		uses: node.uses,
-		params: node.params,
-		inputs: node.inputs,
-		config: node.config,
-	})) || []
+	const nodes: NodeDefinition[] =
+		raw.nodes?.map((node: any) => ({
+			id: node.id,
+			uses: node.uses,
+			params: node.params,
+			inputs: node.inputs,
+			config: node.config,
+		})) || []
 
-	const edges: EdgeDefinition[] = raw.edges?.map((edge: any) => ({
-		source: edge.source,
-		target: edge.target,
-		action: edge.action,
-		condition: edge.condition,
-		transform: edge.transform,
-	})) || []
+	const edges: EdgeDefinition[] =
+		raw.edges?.map((edge: any) => ({
+			source: edge.source,
+			target: edge.target,
+			action: edge.action,
+			condition: edge.condition,
+			transform: edge.transform,
+		})) || []
 
 	return {
 		id: raw.id,

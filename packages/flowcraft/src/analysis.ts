@@ -34,10 +34,14 @@ export function checkForCycles(blueprint: WorkflowBlueprint): Cycles {
 		return cycles
 	}
 
-	const allNodeIds = blueprint.nodes.map(node => node.id)
+	const allNodeIds = blueprint.nodes.map((node) => node.id)
 	const adj = new Map<string, string[]>()
-	allNodeIds.forEach(id => adj.set(id, []))
-	blueprint.edges.forEach(edge => adj.get(edge.source)?.push(edge.target))
+	for (const id of allNodeIds) {
+		adj.set(id, [])
+	}
+	for (const edge of blueprint.edges) {
+		adj.get(edge.source)?.push(edge.target)
+	}
 
 	const visited = new Set<string>()
 	const recursionStack = new Set<string>()
@@ -53,8 +57,7 @@ export function checkForCycles(blueprint: WorkflowBlueprint): Cycles {
 				const cycleStartIndex = path.indexOf(neighbor)
 				const cycle = path.slice(cycleStartIndex)
 				cycles.push([...cycle, neighbor])
-			}
-			else if (!visited.has(neighbor)) {
+			} else if (!visited.has(neighbor)) {
 				detectCycleUtil(neighbor, path)
 			}
 		}
@@ -84,13 +87,11 @@ export function generateMermaid(blueprint: WorkflowBlueprint): string {
 
 	let mermaid = 'flowchart TD\n'
 
-	// Add nodes
 	for (const node of blueprint.nodes) {
 		const nodeLabel = node.id
 		mermaid += `    ${node.id}["${nodeLabel}"]\n`
 	}
 
-	// Add edges
 	for (const edge of blueprint.edges || []) {
 		const labelParts: string[] = []
 
@@ -107,8 +108,7 @@ export function generateMermaid(blueprint: WorkflowBlueprint): string {
 		if (labelParts.length > 0) {
 			const edgeLabel = labelParts.join(' | ')
 			mermaid += `    ${edge.source} -- "${edgeLabel}" --> ${edge.target}\n`
-		}
-		else {
+		} else {
 			mermaid += `    ${edge.source} --> ${edge.target}\n`
 		}
 	}
@@ -137,25 +137,19 @@ export function analyzeBlueprint(blueprint: WorkflowBlueprint): BlueprintAnalysi
 	const nodeCount = blueprint.nodes.length
 	const edgeCount = blueprint.edges?.length || 0
 
-	// Find nodes with no incoming edges (start nodes)
 	const nodesWithIncoming = new Set<string>()
 	for (const edge of blueprint.edges || []) {
 		nodesWithIncoming.add(edge.target)
 	}
 
-	const startNodeIds = blueprint.nodes
-		.map(node => node.id)
-		.filter(nodeId => !nodesWithIncoming.has(nodeId))
+	const startNodeIds = blueprint.nodes.map((node) => node.id).filter((nodeId) => !nodesWithIncoming.has(nodeId))
 
-	// Find nodes with no outgoing edges (terminal nodes)
 	const nodesWithOutgoing = new Set<string>()
 	for (const edge of blueprint.edges || []) {
 		nodesWithOutgoing.add(edge.source)
 	}
 
-	const terminalNodeIds = blueprint.nodes
-		.map(node => node.id)
-		.filter(nodeId => !nodesWithOutgoing.has(nodeId))
+	const terminalNodeIds = blueprint.nodes.map((node) => node.id).filter((nodeId) => !nodesWithOutgoing.has(nodeId))
 
 	return {
 		cycles,

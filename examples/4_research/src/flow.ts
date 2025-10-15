@@ -36,11 +36,11 @@ JSON Response:`
 async function search(ctx: NodeContext): Promise<NodeResult> {
 	const query = await ctx.context.get('current_query')
 	const results = await searchWeb(query)
-	const current_context = await ctx.context.get('search_context') || ''
+	const current_context = (await ctx.context.get('search_context')) || ''
 	await ctx.context.set('search_context', `${current_context}\n${results}`)
 
 	// Increment loop_count after each search
-	const currentLoopCount = await ctx.context.get('loop_count') || 0
+	const currentLoopCount = (await ctx.context.get('loop_count')) || 0
 	await ctx.context.set('loop_count', currentLoopCount + 1)
 
 	return { output: results }
@@ -75,7 +75,7 @@ export function createAgentFlow() {
 		.loop('research', {
 			startNodeId: 'decide',
 			endNodeId: 'search', // The loop body includes 'decide' and 'search'
-			condition: 'loop_count < 2 && last_action !== \'answer\'', // Exit condition
+			condition: "loop_count < 2 && last_action !== 'answer'", // Exit condition
 		})
 		// If the loop breaks, go to the answer node
 		.edge('research-loop', 'answer', { action: 'break' })

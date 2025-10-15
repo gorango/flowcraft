@@ -23,9 +23,7 @@ export default defineConfig({
 			{ text: 'Examples', link: '/examples/', activeMatch: '/examples/' },
 			{ text: 'API', link: '/api/', activeMatch: '/api/' },
 		],
-		socialLinks: [
-			{ icon: 'github', link: 'https://github.com/gorango/flowcraft' },
-		],
+		socialLinks: [{ icon: 'github', link: 'https://github.com/gorango/flowcraft' }],
 		footer: {
 			message: 'Released under the MIT License.',
 			copyright: 'Copyright © 2025-present Goran Spasojevic',
@@ -56,7 +54,10 @@ export default defineConfig({
 						{ text: 'Batch Processing', link: '/guide/batch-processing' },
 						{ text: 'Loops', link: '/guide/loops' },
 						{ text: 'Subflows', link: '/guide/subflows' },
-						{ text: 'Declarative Workflows', link: '/guide/declarative-workflows' },
+						{
+							text: 'Declarative Workflows',
+							link: '/guide/declarative-workflows',
+						},
 					],
 				},
 				{
@@ -67,7 +68,10 @@ export default defineConfig({
 						{ text: 'Evaluators', link: '/guide/evaluators' },
 						{ text: 'Serializers', link: '/guide/serializers' },
 						{ text: 'Middleware', link: '/guide/middleware' },
-						{ text: 'Distributed Execution', link: '/guide/distributed-execution' },
+						{
+							text: 'Distributed Execution',
+							link: '/guide/distributed-execution',
+						},
 						{
 							text: 'Official Adapters',
 							collapsed: true,
@@ -77,7 +81,10 @@ export default defineConfig({
 								{ text: 'AWS (SQS)', link: '/guide/adapters/sqs' },
 								{ text: 'GCP (Pub/Sub)', link: '/guide/adapters/gcp' },
 								{ text: 'Azure (Queues)', link: '/guide/adapters/azure' },
-								{ text: 'RabbitMQ & PostgreSQL', link: '/guide/adapters/rabbitmq' },
+								{
+									text: 'RabbitMQ & PostgreSQL',
+									link: '/guide/adapters/rabbitmq',
+								},
 								{ text: 'Kafka & Cassandra', link: '/guide/adapters/kafka' },
 							],
 						},
@@ -88,7 +95,10 @@ export default defineConfig({
 					collapsed: true,
 					items: [
 						{ text: 'Static Analysis', link: '/guide/static-analysis' },
-						{ text: 'Visualizing Workflows', link: '/guide/visualizing-workflows' },
+						{
+							text: 'Visualizing Workflows',
+							link: '/guide/visualizing-workflows',
+						},
 						{ text: 'Error Handling', link: '/guide/error-handling' },
 					],
 				},

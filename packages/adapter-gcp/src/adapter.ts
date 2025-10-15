@@ -1,15 +1,15 @@
+import { Buffer } from 'node:buffer'
 import type { Firestore } from '@google-cloud/firestore'
 import type { PubSub, Subscription } from '@google-cloud/pubsub'
 import type { AdapterOptions, JobPayload, WorkflowResult } from 'flowcraft'
-import type { Redis as RedisClient } from 'ioredis'
-import { Buffer } from 'node:buffer'
 import { BaseDistributedAdapter } from 'flowcraft'
+import type { Redis as RedisClient } from 'ioredis'
 import { FirestoreContext } from './context'
 
 export interface PubSubAdapterOptions extends AdapterOptions {
 	pubsubClient: PubSub
 	firestoreClient: Firestore
-	redisClient: RedisClient // For the coordination store
+	redisClient: RedisClient
 	topicName: string
 	subscriptionName: string
 	contextCollectionName: string
@@ -52,7 +52,10 @@ export class PubSubAdapter extends BaseDistributedAdapter {
 		await this.pubsub.topic(this.topicName).publishMessage({ data: dataBuffer })
 	}
 
-	protected async publishFinalResult(runId: string, result: { status: string, payload?: WorkflowResult, reason?: string }): Promise<void> {
+	protected async publishFinalResult(
+		runId: string,
+		result: { status: string; payload?: WorkflowResult; reason?: string },
+	): Promise<void> {
 		const statusDocRef = this.firestore.collection(this.statusCollectionName).doc(runId)
 		await statusDocRef.set({ finalStatus: result })
 		console.log(`[PubSubAdapter] Published final result for Run ID ${runId}.`)
@@ -71,11 +74,10 @@ export class PubSubAdapter extends BaseDistributedAdapter {
 				const job = JSON.parse(message.data.toString('utf-8')) as JobPayload
 				console.log(`[PubSubAdapter] ==> Picked up job for Node: ${job.nodeId}, Run: ${job.runId}`)
 				await handler(job)
-				message.ack() // Acknowledge the message so it's not redelivered
-			}
-			catch (err) {
+				message.ack() // acknowledge the message so it's not redelivered
+			} catch (err) {
 				console.error('[PubSubAdapter] Error processing message, nacking:', err)
-				message.nack() // Nack the message so Pub/Sub can redeliver it later
+				message.nack() // nack the message so Pub/Sub can redeliver it later
 			}
 		}
 

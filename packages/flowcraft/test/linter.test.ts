@@ -1,7 +1,7 @@
-import type { WorkflowBlueprint } from '../src/types'
 import { describe, expect, it } from 'vitest'
 import { lintBlueprint } from '../src/linter'
 import { BaseNode } from '../src/node'
+import type { WorkflowBlueprint } from '../src/types'
 
 describe('Blueprint Linter', () => {
 	describe('Implementation Checks', () => {
@@ -17,7 +17,9 @@ describe('Blueprint Linter', () => {
 			const registry = {
 				func1: async () => ({}),
 				TestNode: class TestNode extends BaseNode {
-					async exec() { return {} }
+					async exec() {
+						return {}
+					}
 				},
 			}
 			const result = lintBlueprint(blueprint, registry)
@@ -28,9 +30,7 @@ describe('Blueprint Linter', () => {
 		it('should detect a missing node implementation for a node `uses` key', () => {
 			const blueprint: WorkflowBlueprint = {
 				id: 'test',
-				nodes: [
-					{ id: 'A', uses: 'missing' },
-				],
+				nodes: [{ id: 'A', uses: 'missing' }],
 				edges: [],
 			}
 			const registry = {}
@@ -72,9 +72,7 @@ describe('Blueprint Linter', () => {
 		it('should handle an empty registry correctly', () => {
 			const blueprint: WorkflowBlueprint = {
 				id: 'test',
-				nodes: [
-					{ id: 'A', uses: 'missing' },
-				],
+				nodes: [{ id: 'A', uses: 'missing' }],
 				edges: [],
 			}
 			const result = lintBlueprint(blueprint, {})
@@ -91,9 +89,7 @@ describe('Blueprint Linter', () => {
 					{ id: 'A', uses: 'node' },
 					{ id: 'B', uses: 'node' },
 				],
-				edges: [
-					{ source: 'A', target: 'B' },
-				],
+				edges: [{ source: 'A', target: 'B' }],
 			}
 			const registry = { node: async () => ({}) }
 			const result = lintBlueprint(blueprint, registry)
@@ -103,12 +99,8 @@ describe('Blueprint Linter', () => {
 		it('should detect an edge where the `source` ID does not exist', () => {
 			const blueprint: WorkflowBlueprint = {
 				id: 'test',
-				nodes: [
-					{ id: 'A', uses: 'node' },
-				],
-				edges: [
-					{ source: 'B', target: 'A' },
-				],
+				nodes: [{ id: 'A', uses: 'node' }],
+				edges: [{ source: 'B', target: 'A' }],
 			}
 			const registry = { node: async () => ({}) }
 			const result = lintBlueprint(blueprint, registry)
@@ -119,12 +111,8 @@ describe('Blueprint Linter', () => {
 		it('should detect an edge where the `target` ID does not exist', () => {
 			const blueprint: WorkflowBlueprint = {
 				id: 'test',
-				nodes: [
-					{ id: 'A', uses: 'node' },
-				],
-				edges: [
-					{ source: 'A', target: 'B' },
-				],
+				nodes: [{ id: 'A', uses: 'node' }],
+				edges: [{ source: 'A', target: 'B' }],
 			}
 			const registry = { node: async () => ({}) }
 			const result = lintBlueprint(blueprint, registry)
@@ -135,9 +123,7 @@ describe('Blueprint Linter', () => {
 		it('should report multiple invalid edges simultaneously', () => {
 			const blueprint: WorkflowBlueprint = {
 				id: 'test',
-				nodes: [
-					{ id: 'A', uses: 'node' },
-				],
+				nodes: [{ id: 'A', uses: 'node' }],
 				edges: [
 					{ source: 'B', target: 'A' },
 					{ source: 'A', target: 'C' },
@@ -152,9 +138,7 @@ describe('Blueprint Linter', () => {
 		it('should return valid for a blueprint with no edges', () => {
 			const blueprint: WorkflowBlueprint = {
 				id: 'test',
-				nodes: [
-					{ id: 'A', uses: 'node' },
-				],
+				nodes: [{ id: 'A', uses: 'node' }],
 				edges: [],
 			}
 			const registry = { node: async () => ({}) }
@@ -185,9 +169,7 @@ describe('Blueprint Linter', () => {
 		it('should detect a single node that is completely disconnected', () => {
 			const blueprint: WorkflowBlueprint = {
 				id: 'test',
-				nodes: [
-					{ id: 'A', uses: 'node' },
-				],
+				nodes: [{ id: 'A', uses: 'node' }],
 				edges: [],
 			}
 			const registry = { node: async () => ({}) }
@@ -211,15 +193,13 @@ describe('Blueprint Linter', () => {
 			const registry = { node: async () => ({}) }
 			const result = lintBlueprint(blueprint, registry)
 			expect(result.isValid).toBe(false)
-			expect(result.issues.some(i => i.nodeId === 'C')).toBe(true)
+			expect(result.issues.some((i) => i.nodeId === 'C')).toBe(true)
 		})
 
 		it('should not flag nodes in a workflow with a single node and no edges', () => {
 			const blueprint: WorkflowBlueprint = {
 				id: 'test',
-				nodes: [
-					{ id: 'A', uses: 'node' },
-				],
+				nodes: [{ id: 'A', uses: 'node' }],
 				edges: [],
 			}
 			const registry = { node: async () => ({}) }
@@ -250,9 +230,7 @@ describe('Blueprint Linter', () => {
 		it('should return `isValid: true` and an empty issues array for a valid blueprint', () => {
 			const blueprint: WorkflowBlueprint = {
 				id: 'test',
-				nodes: [
-					{ id: 'A', uses: 'node' },
-				],
+				nodes: [{ id: 'A', uses: 'node' }],
 				edges: [],
 			}
 			const registry = { node: async () => ({}) }
@@ -264,9 +242,7 @@ describe('Blueprint Linter', () => {
 		it('should return `isValid: false` when any issue is detected', () => {
 			const blueprint: WorkflowBlueprint = {
 				id: 'test',
-				nodes: [
-					{ id: 'A', uses: 'missing' },
-				],
+				nodes: [{ id: 'A', uses: 'missing' }],
 				edges: [],
 			}
 			const registry = {}
@@ -281,9 +257,7 @@ describe('Blueprint Linter', () => {
 					{ id: 'A', uses: 'missing' },
 					{ id: 'B', uses: 'node' },
 				],
-				edges: [
-					{ source: 'C', target: 'B' },
-				],
+				edges: [{ source: 'C', target: 'B' }],
 			}
 			const registry = { node: async () => ({}) }
 			const result = lintBlueprint(blueprint, registry)
@@ -293,9 +267,7 @@ describe('Blueprint Linter', () => {
 		it('should produce a correctly structured LinterIssue for each error type', () => {
 			const blueprint: WorkflowBlueprint = {
 				id: 'test',
-				nodes: [
-					{ id: 'A', uses: 'missing' },
-				],
+				nodes: [{ id: 'A', uses: 'missing' }],
 				edges: [],
 			}
 			const registry = {}

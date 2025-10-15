@@ -1,7 +1,7 @@
 import type { Client as CassandraClient } from 'cassandra-driver'
 import type { AdapterOptions, JobPayload, WorkflowResult } from 'flowcraft'
-import type { Consumer, Kafka, Producer } from 'kafkajs'
 import { BaseDistributedAdapter } from 'flowcraft'
+import type { Consumer, Kafka, Producer } from 'kafkajs'
 import { CassandraContext } from './context'
 
 export interface KafkaAdapterOptions extends AdapterOptions {
@@ -58,16 +58,21 @@ export class KafkaAdapter extends BaseDistributedAdapter {
 			topic: this.topicName,
 			messages: [
 				{
-					key: job.runId, // Use runId as key to ensure ordering within a partition
+					key: job.runId, // use runId as key to ensure ordering within a partition
 					value: JSON.stringify(job),
 				},
 			],
 		})
 	}
 
-	protected async publishFinalResult(runId: string, result: { status: string, payload?: WorkflowResult, reason?: string }): Promise<void> {
+	protected async publishFinalResult(
+		runId: string,
+		result: { status: string; payload?: WorkflowResult; reason?: string },
+	): Promise<void> {
 		const query = `INSERT INTO ${this.keyspace}.${this.statusTableName} (run_id, status_data, updated_at) VALUES (?, ?, toTimestamp(now()))`
-		await this.cassandra.execute(query, [runId, JSON.stringify(result)], { prepare: true })
+		await this.cassandra.execute(query, [runId, JSON.stringify(result)], {
+			prepare: true,
+		})
 		console.log(`[KafkaAdapter] Published final result for Run ID ${runId}.`)
 	}
 
@@ -80,13 +85,15 @@ export class KafkaAdapter extends BaseDistributedAdapter {
 		try {
 			await this.producer.connect()
 			await this.consumer.connect()
-			await this.consumer.subscribe({ topic: this.topicName, fromBeginning: false })
+			await this.consumer.subscribe({
+				topic: this.topicName,
+				fromBeginning: false,
+			})
 			this.isRunning = true
 
 			console.log(`[KafkaAdapter] Worker (Group: ${this.groupId}) listening on topic: "${this.topicName}"`)
 
 			await this.consumer.run({
-				// Process one message at a time per partition for this consumer
 				partitionsConsumedConcurrently: 1,
 				eachMessage: async ({ topic, partition, message }) => {
 					if (message.value) {
@@ -94,19 +101,16 @@ export class KafkaAdapter extends BaseDistributedAdapter {
 							const job = JSON.parse(message.value.toString()) as JobPayload
 							console.log(`[KafkaAdapter] ==> [P${partition}] Picked up job for Node: ${job.nodeId}, Run: ${job.runId}`)
 							await handler(job)
-							// KafkaJS handles offsets automatically on success
-						}
-						catch (err) {
+							// kafka handles offsets automatically on success
+						} catch (err) {
 							console.error(`[KafkaAdapter] Error processing message on topic ${topic}:`, err)
-							// By throwing an error here, KafkaJS will not commit the offset,
-							// and the message will be re-consumed based on policy.
+							// throwing - kafka will not commit the offset and the message will be re-consumed based on policy
 							throw err
 						}
 					}
 				},
 			})
-		}
-		catch (error) {
+		} catch (error) {
 			console.error('[KafkaAdapter] Failed to start Kafka producer/consumer:', error)
 			this.isRunning = false
 		}

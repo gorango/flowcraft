@@ -1,6 +1,6 @@
 import type { Firestore } from '@google-cloud/firestore'
-import type { IAsyncContext } from 'flowcraft'
 import { FieldValue } from '@google-cloud/firestore'
+import type { IAsyncContext } from 'flowcraft'
 
 export interface FirestoreContextOptions {
 	client: Firestore
@@ -35,7 +35,7 @@ export class FirestoreContext implements IAsyncContext<Record<string, any>> {
 
 	async has<K extends string>(key: K): Promise<boolean> {
 		const doc = await this.docRef.get()
-		return doc.exists && Object.prototype.hasOwnProperty.call(doc.data(), key)
+		return doc.exists && Object.hasOwn(doc.data() || {}, key)
 	}
 
 	async delete<K extends string>(key: K): Promise<boolean> {

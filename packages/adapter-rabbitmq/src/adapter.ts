@@ -1,9 +1,9 @@
-import type { Channel, ConsumeMessage } from 'amqplib'
-import type * as amqplib from 'amqplib'
-import type { AdapterOptions, JobPayload, WorkflowResult } from 'flowcraft'
-import type { Client as PgClient } from 'pg'
 import { Buffer } from 'node:buffer'
+import type * as amqplib from 'amqplib'
+import type { Channel, ConsumeMessage } from 'amqplib'
+import type { AdapterOptions, JobPayload, WorkflowResult } from 'flowcraft'
 import { BaseDistributedAdapter } from 'flowcraft'
+import type { Client as PgClient } from 'pg'
 import { PostgresContext } from './context'
 
 type AmqpConnection = Awaited<ReturnType<typeof amqplib.connect>>
@@ -32,7 +32,10 @@ export class RabbitMqAdapter extends BaseDistributedAdapter {
 	}
 
 	protected createContext(runId: string): PostgresContext {
-		return new PostgresContext(runId, { client: this.pg, tableName: this.contextTableName })
+		return new PostgresContext(runId, {
+			client: this.pg,
+			tableName: this.contextTableName,
+		})
 	}
 
 	protected async enqueueJob(job: JobPayload): Promise<void> {
@@ -43,7 +46,10 @@ export class RabbitMqAdapter extends BaseDistributedAdapter {
 		this.channel.sendToQueue(this.queueName, jobBuffer, { persistent: true })
 	}
 
-	protected async publishFinalResult(runId: string, result: { status: string, payload?: WorkflowResult, reason?: string }): Promise<void> {
+	protected async publishFinalResult(
+		runId: string,
+		result: { status: string; payload?: WorkflowResult; reason?: string },
+	): Promise<void> {
 		const query = `
       INSERT INTO ${this.statusTableName} (run_id, status_data, updated_at)
       VALUES ($1, $2, NOW())
@@ -67,21 +73,20 @@ export class RabbitMqAdapter extends BaseDistributedAdapter {
 			console.log(`[RabbitMqAdapter] Worker listening for jobs on queue: "${this.queueName}"`)
 
 			await this.channel.consume(this.queueName, async (msg: ConsumeMessage | null) => {
-				if (msg !== null && this.channel) { // Add null check for channel
+				if (msg !== null && this.channel) {
+					// add null check for channel
 					try {
 						const job = JSON.parse(msg.content.toString('utf-8')) as JobPayload
 						console.log(`[RabbitMqAdapter] ==> Picked up job for Node: ${job.nodeId}, Run: ${job.runId}`)
 						await handler(job)
 						this.channel.ack(msg)
-					}
-					catch (err) {
+					} catch (err) {
 						console.error('[RabbitMqAdapter] Error processing message, nacking:', err)
 						this.channel.nack(msg, false, false)
 					}
 				}
 			})
-		}
-		catch (error) {
+		} catch (error) {
 			console.error('[RabbitMqAdapter] Failed to set up RabbitMQ consumer:', error)
 		}
 	}

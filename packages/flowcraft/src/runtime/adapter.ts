@@ -1,5 +1,5 @@
-import type { IAsyncContext, ISerializer, RuntimeOptions, WorkflowBlueprint, WorkflowResult } from '../types'
 import { JsonSerializer } from '../serializer'
+import type { IAsyncContext, ISerializer, RuntimeOptions, WorkflowBlueprint, WorkflowResult } from '../types'
 import { FlowRuntime } from './runtime'
 
 /**
@@ -75,7 +75,14 @@ export abstract class BaseDistributedAdapter {
 	 * @param runId The unique ID of the workflow run.
 	 * @param result The final status and payload of the workflow.
 	 */
-	protected abstract publishFinalResult(runId: string, result: { status: 'completed' | 'failed', payload?: WorkflowResult, reason?: string }): Promise<void>
+	protected abstract publishFinalResult(
+		runId: string,
+		result: {
+			status: 'completed' | 'failed'
+			payload?: WorkflowResult
+			reason?: string
+		},
+	): Promise<void>
 
 	/**
 	 * The main handler for processing a single job from the queue.
@@ -83,7 +90,7 @@ export abstract class BaseDistributedAdapter {
 	private async handleJob(job: JobPayload): Promise<void> {
 		const { runId, blueprintId, nodeId } = job
 
-		const blueprint = (this.runtime.options.blueprints || {})[blueprintId]
+		const blueprint = this.runtime.options.blueprints?.[blueprintId]
 		if (!blueprint) {
 			const reason = `Blueprint with ID '${blueprintId}' not found in the worker's runtime registry.`
 			console.error(`[Adapter] FATAL: ${reason}`)
@@ -92,7 +99,7 @@ export abstract class BaseDistributedAdapter {
 		}
 
 		const context = this.createContext(runId)
-		const mockState = {
+		const workerState = {
 			getContext: () => context,
 			markFallbackExecuted: () => { },
 			addError: (nodeId: string, error: Error) => {
@@ -101,11 +108,11 @@ export abstract class BaseDistributedAdapter {
 		} as any
 
 		try {
-			const result = await this.runtime.executeNode(blueprint, nodeId, mockState)
+			const result = await this.runtime.executeNode(blueprint, nodeId, workerState)
 			await context.set(nodeId as any, result.output)
 
-			const nodeDef = blueprint.nodes.find(n => n.id === nodeId)
-			// Convention: The workflow is considered complete when the first 'output' node finishes.
+			const nodeDef = blueprint.nodes.find((n) => n.id === nodeId)
+			// workflow is considered complete when the first 'output' node finishes.
 			if (nodeDef?.uses === 'output') {
 				console.log(`[Adapter] ✅ Output node '${nodeId}' finished. Declaring workflow complete for Run ID: ${runId}`)
 				const finalContext = await context.toJSON()
@@ -114,15 +121,20 @@ export abstract class BaseDistributedAdapter {
 					serializedContext: this.serializer.serialize(finalContext),
 					status: 'completed',
 				}
-				await this.publishFinalResult(runId, { status: 'completed', payload: finalResult })
+				await this.publishFinalResult(runId, {
+					status: 'completed',
+					payload: finalResult,
+				})
 				return
 			}
 
 			const nextNodes = await this.runtime.determineNextNodes(blueprint, nodeId, result, context)
 
-			// If a branch terminates but it wasn't an 'output' node, just stop.
+			// stop if a branch terminates but it wasn't an 'output' node
 			if (nextNodes.length === 0) {
-				console.log(`[Adapter] Terminal node '${nodeId}' reached for Run ID '${runId}', but it was not an 'output' node. This branch will now terminate.`)
+				console.log(
+					`[Adapter] Terminal node '${nodeId}' reached for Run ID '${runId}', but it was not an 'output' node. This branch will now terminate.`,
+				)
 				return
 			}
 
@@ -132,13 +144,11 @@ export abstract class BaseDistributedAdapter {
 				if (isReady) {
 					console.log(`[Adapter] Node '${nextNodeDef.id}' is ready. Enqueuing job.`)
 					await this.enqueueJob({ runId, blueprintId, nodeId: nextNodeDef.id })
-				}
-				else {
+				} else {
 					console.log(`[Adapter] Node '${nextNodeDef.id}' is waiting for other predecessors to complete.`)
 				}
 			}
-		}
-		catch (error: any) {
+		} catch (error: any) {
 			const reason = error.message || 'Unknown execution error'
 			console.error(`[Adapter] FATAL: Job for node '${nodeId}' failed for Run ID '${runId}': ${reason}`)
 			await this.publishFinalResult(runId, { status: 'failed', reason })
@@ -149,9 +159,12 @@ export abstract class BaseDistributedAdapter {
 	 * Encapsulates the fan-in join logic using the coordination store.
 	 */
 	private async isReadyForFanIn(runId: string, blueprint: WorkflowBlueprint, targetNodeId: string): Promise<boolean> {
-		const targetNode = blueprint.nodes.find(n => n.id === targetNodeId)!
+		const targetNode = blueprint.nodes.find((n) => n.id === targetNodeId)
+		if (!targetNode) {
+			throw new Error(`Node '${targetNodeId}' not found in blueprint`)
+		}
 		const joinStrategy = targetNode.config?.joinStrategy || 'all'
-		const predecessors = blueprint.edges.filter(e => e.target === targetNodeId)
+		const predecessors = blueprint.edges.filter((e) => e.target === targetNodeId)
 
 		if (predecessors.length <= 1) {
 			return true
@@ -160,8 +173,7 @@ export abstract class BaseDistributedAdapter {
 		if (joinStrategy === 'any') {
 			const lockKey = `flowcraft:joinlock:${runId}:${targetNodeId}`
 			return await this.store.setIfNotExist(lockKey, 'locked', 3600)
-		}
-		else {
+		} else {
 			const fanInKey = `flowcraft:fanin:${runId}:${targetNodeId}`
 			const readyCount = await this.store.increment(fanInKey, 3600)
 			if (readyCount >= predecessors.length) {

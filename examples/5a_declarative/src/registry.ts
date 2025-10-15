@@ -10,6 +10,6 @@ export const agentNodeRegistry: NodeRegistry = {
 	'llm-process': llmProcess,
 	'llm-condition': llmCondition,
 	'llm-router': llmRouter,
-	'output': outputNode,
+	output: outputNode,
 	// The 'subflow' node is built-in to runtime, so it doesn't need to be registered here.
 }

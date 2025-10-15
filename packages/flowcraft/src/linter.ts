@@ -1,7 +1,8 @@
-import type { NodeClass, NodeFunction, WorkflowBlueprint } from './types'
 import { analyzeBlueprint } from './analysis'
+import type { NodeClass, NodeFunction, WorkflowBlueprint } from './types'
 
-export type LinterIssueCode = | 'INVALID_EDGE_SOURCE'
+export type LinterIssueCode =
+	| 'INVALID_EDGE_SOURCE'
 	| 'INVALID_EDGE_TARGET'
 	| 'MISSING_NODE_IMPLEMENTATION'
 	| 'ORPHAN_NODE'
@@ -31,10 +32,10 @@ export function lintBlueprint(
 	registry: Map<string, NodeFunction | NodeClass> | Record<string, NodeFunction | NodeClass>,
 ): LinterResult {
 	const issues: LinterIssue[] = []
-	const nodeIds = new Set(blueprint.nodes.map(n => n.id))
+	const nodeIds = new Set(blueprint.nodes.map((n) => n.id))
 	const registryKeys = registry instanceof Map ? new Set(registry.keys()) : new Set(Object.keys(registry))
 
-	// 1. Check for missing node implementations
+	// check for missing node implementations
 	for (const node of blueprint.nodes) {
 		if (!node.uses.startsWith('batch-') && !node.uses.startsWith('loop-') && !registryKeys.has(node.uses)) {
 			issues.push({
@@ -45,7 +46,7 @@ export function lintBlueprint(
 		}
 	}
 
-	// 2. Check for graph integrity (edges must point to valid nodes)
+	// check for graph integrity (edges must point to valid nodes)
 	for (const edge of blueprint.edges || []) {
 		if (!nodeIds.has(edge.source)) {
 			issues.push({
@@ -63,7 +64,7 @@ export function lintBlueprint(
 		}
 	}
 
-	// 3. Check for orphan nodes (not connected to the main graph)
+	// check for orphan nodes (not connected to the main graph)
 	if (blueprint.nodes.length > 1) {
 		const analysis = analyzeBlueprint(blueprint)
 		const connectedNodes = new Set<string>()
@@ -71,16 +72,15 @@ export function lintBlueprint(
 		const visited = new Set<string>()
 
 		while (nodesToVisit.length > 0) {
-			const currentId = nodesToVisit.pop()!
-			if (visited.has(currentId))
-				continue
+			const currentId = nodesToVisit.pop()
+			if (!currentId || visited.has(currentId)) continue
 
 			visited.add(currentId)
 			connectedNodes.add(currentId)
 
-			blueprint.edges
-				.filter(e => e.source === currentId)
-				.forEach(e => nodesToVisit.push(e.target))
+			for (const e of blueprint.edges.filter((e) => e.source === currentId)) {
+				nodesToVisit.push(e.target)
+			}
 		}
 
 		for (const nodeId of nodeIds) {

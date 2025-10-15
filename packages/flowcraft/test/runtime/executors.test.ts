@@ -5,21 +5,49 @@ import { BuiltInNodeExecutor, ClassNodeExecutor, FunctionNodeExecutor } from '..
 describe('FunctionNodeExecutor', () => {
 	it('should execute function nodes successfully', async () => {
 		const mockFunction = vi.fn().mockResolvedValue({ output: 'success' })
-		const executor = new FunctionNodeExecutor(mockFunction, 1, { emit: vi.fn() })
+		const executor = new FunctionNodeExecutor(mockFunction, 1, {
+			emit: vi.fn(),
+		})
 		const nodeDef = { id: 'test', uses: 'test', params: {} }
-		const context = { context: { get: vi.fn(), set: vi.fn(), type: 'sync', has: vi.fn(), delete: vi.fn(), toJSON: vi.fn() }, input: 'input', params: {}, dependencies: { logger: { info: vi.fn() } }, signal: undefined } as any
+		const context = {
+			context: {
+				get: vi.fn(),
+				set: vi.fn(),
+				type: 'sync',
+				has: vi.fn(),
+				delete: vi.fn(),
+				toJSON: vi.fn(),
+			},
+			input: 'input',
+			params: {},
+			dependencies: { logger: { info: vi.fn() } },
+			signal: undefined,
+		} as any
 		const result = await executor.execute(nodeDef, context)
 		expect(result.output).toBe('success')
 		expect(mockFunction).toHaveBeenCalledWith(context)
 	})
 
 	it('should handle retries on failure', async () => {
-		const mockFunction = vi.fn()
-			.mockRejectedValueOnce(new Error('Fail'))
-			.mockResolvedValueOnce({ output: 'success' })
-		const executor = new FunctionNodeExecutor(mockFunction, 2, { emit: vi.fn() })
+		const mockFunction = vi.fn().mockRejectedValueOnce(new Error('Fail')).mockResolvedValueOnce({ output: 'success' })
+		const executor = new FunctionNodeExecutor(mockFunction, 2, {
+			emit: vi.fn(),
+		})
 		const nodeDef = { id: 'test', uses: 'test', params: {} }
-		const context = { context: { get: vi.fn(), set: vi.fn(), type: 'sync', has: vi.fn(), delete: vi.fn(), toJSON: vi.fn() }, input: 'input', params: {}, dependencies: { logger: { info: vi.fn(), warn: vi.fn() } }, signal: undefined } as any
+		const context = {
+			context: {
+				get: vi.fn(),
+				set: vi.fn(),
+				type: 'sync',
+				has: vi.fn(),
+				delete: vi.fn(),
+				toJSON: vi.fn(),
+			},
+			input: 'input',
+			params: {},
+			dependencies: { logger: { info: vi.fn(), warn: vi.fn() } },
+			signal: undefined,
+		} as any
 		const result = await executor.execute(nodeDef, context)
 		expect(result.output).toBe('success')
 		expect(mockFunction).toHaveBeenCalledTimes(2)
@@ -29,17 +57,47 @@ describe('FunctionNodeExecutor', () => {
 		const controller = new AbortController()
 		controller.abort()
 		const mockFunction = vi.fn().mockResolvedValue({ output: 'success' })
-		const executor = new FunctionNodeExecutor(mockFunction, 1, { emit: vi.fn() })
+		const executor = new FunctionNodeExecutor(mockFunction, 1, {
+			emit: vi.fn(),
+		})
 		const nodeDef = { id: 'test', uses: 'test', params: {} }
-		const context = { context: { get: vi.fn(), set: vi.fn(), type: 'sync', has: vi.fn(), delete: vi.fn(), toJSON: vi.fn() }, input: 'input', params: {}, dependencies: { logger: { info: vi.fn() } }, signal: controller.signal } as any
+		const context = {
+			context: {
+				get: vi.fn(),
+				set: vi.fn(),
+				type: 'sync',
+				has: vi.fn(),
+				delete: vi.fn(),
+				toJSON: vi.fn(),
+			},
+			input: 'input',
+			params: {},
+			dependencies: { logger: { info: vi.fn() } },
+			signal: controller.signal,
+		} as any
 		await expect(executor.execute(nodeDef, context, undefined, controller.signal)).rejects.toThrow('Workflow cancelled')
 	})
 
 	it('should stop on fatal errors', async () => {
 		const mockFunction = vi.fn().mockRejectedValue(new FatalNodeExecutionError('Fatal', 'test', ''))
-		const executor = new FunctionNodeExecutor(mockFunction, 3, { emit: vi.fn() })
+		const executor = new FunctionNodeExecutor(mockFunction, 3, {
+			emit: vi.fn(),
+		})
 		const nodeDef = { id: 'test', uses: 'test', params: {} }
-		const context = { context: { get: vi.fn(), set: vi.fn(), type: 'sync', has: vi.fn(), delete: vi.fn(), toJSON: vi.fn() }, input: 'input', params: {}, dependencies: { logger: { info: vi.fn(), error: vi.fn() } }, signal: undefined } as any
+		const context = {
+			context: {
+				get: vi.fn(),
+				set: vi.fn(),
+				type: 'sync',
+				has: vi.fn(),
+				delete: vi.fn(),
+				toJSON: vi.fn(),
+			},
+			input: 'input',
+			params: {},
+			dependencies: { logger: { info: vi.fn(), error: vi.fn() } },
+			signal: undefined,
+		} as any
 		await expect(executor.execute(nodeDef, context)).rejects.toThrow('Fatal')
 		expect(mockFunction).toHaveBeenCalledTimes(1)
 	})
@@ -53,9 +111,24 @@ describe('ClassNodeExecutor', () => {
 			exec: vi.fn().mockResolvedValue({ output: 'success' }),
 			post: vi.fn().mockResolvedValue({ output: 'success' }),
 		}))
-		const executor = new ClassNodeExecutor(mockImplementation as any, 1, { emit: vi.fn() })
+		const executor = new ClassNodeExecutor(mockImplementation as any, 1, {
+			emit: vi.fn(),
+		})
 		const nodeDef = { id: 'test', uses: 'test', params: {} }
-		const context = { context: { get: vi.fn(), set: vi.fn(), type: 'sync', has: vi.fn(), delete: vi.fn(), toJSON: vi.fn() }, input: 'input', params: {}, dependencies: { logger: { info: vi.fn() } }, signal: undefined } as any
+		const context = {
+			context: {
+				get: vi.fn(),
+				set: vi.fn(),
+				type: 'sync',
+				has: vi.fn(),
+				delete: vi.fn(),
+				toJSON: vi.fn(),
+			},
+			input: 'input',
+			params: {},
+			dependencies: { logger: { info: vi.fn() } },
+			signal: undefined,
+		} as any
 		const result = await executor.execute(nodeDef, context)
 		expect(result.output).toBe('success')
 	})
@@ -66,15 +139,29 @@ describe('ClassNodeExecutor', () => {
 			prep: vi.fn().mockResolvedValue(null),
 			exec: vi.fn().mockImplementation(() => {
 				attempts++
-				if (attempts < 2)
-					throw new Error('Fail')
+				if (attempts < 2) throw new Error('Fail')
 				return { output: 'success' }
 			}),
 			post: vi.fn().mockResolvedValue({ output: 'success' }),
 		}))
-		const executor = new ClassNodeExecutor(mockImplementation as any, 2, { emit: vi.fn() })
+		const executor = new ClassNodeExecutor(mockImplementation as any, 2, {
+			emit: vi.fn(),
+		})
 		const nodeDef = { id: 'test', uses: 'test', params: {} }
-		const context = { context: { get: vi.fn(), set: vi.fn(), type: 'sync', has: vi.fn(), delete: vi.fn(), toJSON: vi.fn() }, input: 'input', params: {}, dependencies: { logger: { info: vi.fn(), warn: vi.fn() } }, signal: undefined } as any
+		const context = {
+			context: {
+				get: vi.fn(),
+				set: vi.fn(),
+				type: 'sync',
+				has: vi.fn(),
+				delete: vi.fn(),
+				toJSON: vi.fn(),
+			},
+			input: 'input',
+			params: {},
+			dependencies: { logger: { info: vi.fn(), warn: vi.fn() } },
+			signal: undefined,
+		} as any
 		const result = await executor.execute(nodeDef, context)
 		expect(result.output).toBe('success')
 		expect(attempts).toBe(2)
@@ -87,9 +174,26 @@ describe('ClassNodeExecutor', () => {
 			fallback: vi.fn().mockResolvedValue({ output: 'fallback' }),
 			post: vi.fn().mockResolvedValue({ output: 'fallback', _fallbackExecuted: true }),
 		}))
-		const executor = new ClassNodeExecutor(mockImplementation as any, 1, { emit: vi.fn() })
+		const executor = new ClassNodeExecutor(mockImplementation as any, 1, {
+			emit: vi.fn(),
+		})
 		const nodeDef = { id: 'test', uses: 'test', params: {} }
-		const context = { context: { get: vi.fn(), set: vi.fn(), type: 'sync', has: vi.fn(), delete: vi.fn(), toJSON: vi.fn() }, input: 'input', params: {}, dependencies: { logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() } }, signal: undefined } as any
+		const context = {
+			context: {
+				get: vi.fn(),
+				set: vi.fn(),
+				type: 'sync',
+				has: vi.fn(),
+				delete: vi.fn(),
+				toJSON: vi.fn(),
+			},
+			input: 'input',
+			params: {},
+			dependencies: {
+				logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
+			},
+			signal: undefined,
+		} as any
 		const result = await executor.execute(nodeDef, context)
 		expect(result.output).toBe('fallback')
 		expect(result._fallbackExecuted).toBe(true)
@@ -103,9 +207,24 @@ describe('ClassNodeExecutor', () => {
 			exec: vi.fn().mockResolvedValue({ output: 'success' }),
 			post: vi.fn().mockResolvedValue({ output: 'success' }),
 		}))
-		const executor = new ClassNodeExecutor(mockImplementation as any, 1, { emit: vi.fn() })
+		const executor = new ClassNodeExecutor(mockImplementation as any, 1, {
+			emit: vi.fn(),
+		})
 		const nodeDef = { id: 'test', uses: 'test', params: {} }
-		const context = { context: { get: vi.fn(), set: vi.fn(), type: 'sync', has: vi.fn(), delete: vi.fn(), toJSON: vi.fn() }, input: 'input', params: {}, dependencies: { logger: { info: vi.fn() } }, signal: controller.signal } as any
+		const context = {
+			context: {
+				get: vi.fn(),
+				set: vi.fn(),
+				type: 'sync',
+				has: vi.fn(),
+				delete: vi.fn(),
+				toJSON: vi.fn(),
+			},
+			input: 'input',
+			params: {},
+			dependencies: { logger: { info: vi.fn() } },
+			signal: controller.signal,
+		} as any
 		await expect(executor.execute(nodeDef, context, undefined, controller.signal)).rejects.toThrow('Workflow cancelled')
 	})
 })
@@ -115,7 +234,20 @@ describe('BuiltInNodeExecutor', () => {
 		const mockExecute = vi.fn().mockResolvedValue({ output: 'built-in' })
 		const executor = new BuiltInNodeExecutor(mockExecute)
 		const nodeDef = { id: 'test', uses: 'test', params: {} }
-		const context = { context: { get: vi.fn(), set: vi.fn(), type: 'sync', has: vi.fn(), delete: vi.fn(), toJSON: vi.fn() }, input: 'input', params: {}, dependencies: { logger: { info: vi.fn() } }, signal: undefined } as any
+		const context = {
+			context: {
+				get: vi.fn(),
+				set: vi.fn(),
+				type: 'sync',
+				has: vi.fn(),
+				delete: vi.fn(),
+				toJSON: vi.fn(),
+			},
+			input: 'input',
+			params: {},
+			dependencies: { logger: { info: vi.fn() } },
+			signal: undefined,
+		} as any
 		const result = await executor.execute(nodeDef, context)
 		expect(result.output).toBe('built-in')
 		expect(mockExecute).toHaveBeenCalledWith(nodeDef, context.context)

@@ -85,15 +85,9 @@
 				"outputKey": "final_output",
 				"promptTemplate": "--- Final Actions Taken ---\nTicket System: {{ticket_action}}\n\nCustomer Email: {{email_action}}\n\nPositive Flow Result: {{positive_result}}",
 				"inputs": {
-					"ticket_action": [
-						"send_to_ticketing_system"
-					],
-					"email_action": [
-						"send_email_to_customer"
-					],
-					"positive_result": [
-						"final_positive_reply"
-					]
+					"ticket_action": ["send_to_ticketing_system"],
+					"email_action": ["send_email_to_customer"],
+					"positive_result": ["final_positive_reply"]
 				}
 			}
 		}

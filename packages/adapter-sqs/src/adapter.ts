@@ -1,13 +1,7 @@
 import type { DynamoDBClient } from '@aws-sdk/client-dynamodb'
-import type {
-	SQSClient,
-} from '@aws-sdk/client-sqs'
+import type { SQSClient } from '@aws-sdk/client-sqs'
+import { DeleteMessageCommand, ReceiveMessageCommand, SendMessageCommand } from '@aws-sdk/client-sqs'
 import type { AdapterOptions, JobPayload, WorkflowResult } from 'flowcraft'
-import {
-	DeleteMessageCommand,
-	ReceiveMessageCommand,
-	SendMessageCommand,
-} from '@aws-sdk/client-sqs'
 import { BaseDistributedAdapter } from 'flowcraft'
 import { DynamoDbContext } from './context'
 
@@ -56,7 +50,10 @@ export class SqsAdapter extends BaseDistributedAdapter {
 		await this.sqs.send(command)
 	}
 
-	protected async publishFinalResult(runId: string, result: { status: string, payload?: WorkflowResult, reason?: string }): Promise<void> {
+	protected async publishFinalResult(
+		runId: string,
+		result: { status: string; payload?: WorkflowResult; reason?: string },
+	): Promise<void> {
 		// In a real application, you might use DynamoDB Streams + Lambda
 		// to push this result to a client. For this adapter, we just store it.
 		const store = new DynamoDbContext(runId, {
@@ -83,38 +80,36 @@ export class SqsAdapter extends BaseDistributedAdapter {
 				const command = new ReceiveMessageCommand({
 					QueueUrl: this.queueUrl,
 					MaxNumberOfMessages: 10,
-					WaitTimeSeconds: 20, // Use long polling
+					WaitTimeSeconds: 20, // use long polling
 				})
 
 				const { Messages } = await this.sqs.send(command)
 
 				if (Messages && Messages.length > 0) {
-					await Promise.all(Messages.map(async (message) => {
-						if (message.Body) {
-							try {
-								const job = JSON.parse(message.Body) as JobPayload
-								console.log(`[SqsAdapter] ==> Picked up job for Node: ${job.nodeId}, Run: ${job.runId}`)
-								await handler(job)
+					await Promise.all(
+						Messages.map(async (message) => {
+							if (message.Body) {
+								try {
+									const job = JSON.parse(message.Body) as JobPayload
+									console.log(`[SqsAdapter] ==> Picked up job for Node: ${job.nodeId}, Run: ${job.runId}`)
+									await handler(job)
+								} catch (err) {
+									console.error('[SqsAdapter] Error processing message body:', err)
+								} finally {
+									const deleteCommand = new DeleteMessageCommand({
+										QueueUrl: this.queueUrl,
+										ReceiptHandle: message.ReceiptHandle,
+									})
+									await this.sqs.send(deleteCommand)
+								}
 							}
-							catch (err) {
-								console.error('[SqsAdapter] Error processing message body:', err)
-							}
-							finally {
-								// Always delete the message after processing
-								const deleteCommand = new DeleteMessageCommand({
-									QueueUrl: this.queueUrl,
-									ReceiptHandle: message.ReceiptHandle,
-								})
-								await this.sqs.send(deleteCommand)
-							}
-						}
-					}))
+						}),
+					)
 				}
-			}
-			catch (error) {
+			} catch (error) {
 				console.error('[SqsAdapter] Error during SQS polling:', error)
-				// Wait before retrying to prevent rapid-fire errors
-				await new Promise(resolve => setTimeout(resolve, 5000))
+				// wait before retrying to prevent rapid-fire errors
+				await new Promise((resolve) => setTimeout(resolve, 5000))
 			}
 		}
 	}

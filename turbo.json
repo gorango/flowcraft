@@ -4,22 +4,12 @@
 		"lint": {},
 		"typecheck": {},
 		"build": {
-			"dependsOn": [
-				"^build"
-			],
-			"outputs": [
-				"dist/**",
-				"lib/**",
-				"types/**",
-				".output/**"
-			]
+			"dependsOn": ["^build"],
+			"outputs": ["dist/**", "lib/**", "types/**", ".output/**"]
 		},
 		"test": {
 			"dependsOn": [],
-			"inputs": [
-				"src/**/*.test.js",
-				"src/**/*.test.ts"
-			]
+			"inputs": ["src/**/*.test.js", "src/**/*.test.ts"]
 		}
 	}
 }

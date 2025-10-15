@@ -1,6 +1,6 @@
 import type { StartedRedisContainer } from '@testcontainers/redis'
-import type { JobPayload } from 'flowcraft'
 import { RedisContainer } from '@testcontainers/redis'
+import type { JobPayload } from 'flowcraft'
 import Redis from 'ioredis'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { BullMQAdapter } from './adapter'
@@ -31,12 +31,13 @@ describe('BullMQAdapter - Testcontainers Integration', () => {
 			runtimeOptions: {},
 		})
 
-		const job: JobPayload = { runId: 'run-bull-1', blueprintId: 'bp-bull', nodeId: 'node-bull' }
+		const job: JobPayload = {
+			runId: 'run-bull-1',
+			blueprintId: 'bp-bull',
+			nodeId: 'node-bull',
+		}
 
-		// ACTION: Enqueue the job
 		await (adapter as any).enqueueJob(job)
-
-		// VERIFICATION: Use BullMQ's API to check the enqueued job
 		const waitingJobs = await (adapter as any).queue.getWaiting()
 		expect(waitingJobs.length).toBe(1)
 		expect(waitingJobs[0].data).toEqual(job)

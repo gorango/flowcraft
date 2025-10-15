@@ -17,8 +17,7 @@ export async function callLLM(prompt: string): Promise<string> {
 			messages: [{ role: 'user', content: prompt }],
 		})
 		return response.choices[0].message.content || ''
-	}
-	catch (error: any) {
+	} catch (error: any) {
 		console.error('Error calling OpenAI API:', error)
 		return `Error: Could not get a response from the LLM. Details: ${error.message}`
 	}

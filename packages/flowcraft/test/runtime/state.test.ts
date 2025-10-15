@@ -67,7 +67,10 @@ describe('WorkflowState', () => {
 
 	it('should generate correct result object', () => {
 		const state = new WorkflowState({ initial: 'data' })
-		const mockSerializer = { serialize: (data: any) => JSON.stringify(data), deserialize: (data: string) => JSON.parse(data) }
+		const mockSerializer = {
+			serialize: (data: any) => JSON.stringify(data),
+			deserialize: (data: string) => JSON.parse(data),
+		}
 		const result = state.toResult(mockSerializer)
 		expect(result.context).toEqual({ initial: 'data' })
 		expect(result.serializedContext).toBe('{"initial":"data"}')

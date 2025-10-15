@@ -1,11 +1,6 @@
-import type {
-	DynamoDBClient,
-} from '@aws-sdk/client-dynamodb'
+import type { DynamoDBClient } from '@aws-sdk/client-dynamodb'
+import { DeleteItemCommand, UpdateItemCommand } from '@aws-sdk/client-dynamodb'
 import type { ICoordinationStore } from 'flowcraft'
-import {
-	DeleteItemCommand,
-	UpdateItemCommand,
-} from '@aws-sdk/client-dynamodb'
 
 export interface DynamoDbCoordinationStoreOptions {
 	client: DynamoDBClient
@@ -25,14 +20,15 @@ export class DynamoDbCoordinationStore implements ICoordinationStore {
 	constructor(options: DynamoDbCoordinationStoreOptions) {
 		this.client = options.client
 		this.tableName = options.tableName
-		this.defaultTtl = options.ttlSeconds || 3600 // Default to 1 hour
+		this.defaultTtl = options.ttlSeconds || 3600
 	}
 
 	private getTtl(ttlSeconds: number): number {
 		return Math.floor(Date.now() / 1000) + ttlSeconds
 	}
 
-	async increment(key: string, ttlSeconds: number): Promise<number> {
+	async increment(key: string, ttlSeconds?: number): Promise<number> {
+		const ttl = ttlSeconds ?? this.defaultTtl
 		const command = new UpdateItemCommand({
 			TableName: this.tableName,
 			Key: { coordinationKey: { S: key } },
@@ -44,7 +40,7 @@ export class DynamoDbCoordinationStore implements ICoordinationStore {
 			ExpressionAttributeValues: {
 				':inc': { N: '1' },
 				':zero': { N: '0' },
-				':ttl': { N: this.getTtl(ttlSeconds).toString() },
+				':ttl': { N: this.getTtl(ttl).toString() },
 			},
 			ReturnValues: 'UPDATED_NEW',
 		})
@@ -53,7 +49,8 @@ export class DynamoDbCoordinationStore implements ICoordinationStore {
 		return Number(result.Attributes?.value?.N || '0')
 	}
 
-	async setIfNotExist(key: string, value: string, ttlSeconds: number): Promise<boolean> {
+	async setIfNotExist(key: string, value: string, ttlSeconds?: number): Promise<boolean> {
+		const ttl = ttlSeconds ?? this.defaultTtl
 		try {
 			const command = new UpdateItemCommand({
 				TableName: this.tableName,
@@ -65,14 +62,13 @@ export class DynamoDbCoordinationStore implements ICoordinationStore {
 				},
 				ExpressionAttributeValues: {
 					':val': { S: value },
-					':ttl': { N: this.getTtl(ttlSeconds).toString() },
+					':ttl': { N: this.getTtl(ttl).toString() },
 				},
 				ConditionExpression: 'attribute_not_exists(coordinationKey)',
 			})
 			await this.client.send(command)
 			return true
-		}
-		catch (error: any) {
+		} catch (error: any) {
 			if (error.name === 'ConditionalCheckFailedException') {
 				return false
 			}

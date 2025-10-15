@@ -10,14 +10,16 @@ export const config = {
 		mainWorkflowId: '200',
 		initialContext: {
 			applicantName: 'Jane Doe',
-			resume: 'Experienced developer with a background in TypeScript, Node.js, and building complex DAG workflow systems. Also proficient in React and SQL.',
+			resume:
+				'Experienced developer with a background in TypeScript, Node.js, and building complex DAG workflow systems. Also proficient in React and SQL.',
 			coverLetter: 'To Whom It May Concern, I am writing to express my interest in the Senior Developer position.',
 		},
 	},
 	'3.customer-review': {
 		mainWorkflowId: '300',
 		initialContext: {
-			initial_review: 'The new dashboard is a huge improvement, but I noticed that the export-to-PDF feature is really slow and sometimes crashes the app on large datasets. It would be great if you could look into this.',
+			initial_review:
+				'The new dashboard is a huge improvement, but I noticed that the export-to-PDF feature is really slow and sometimes crashes the app on large datasets. It would be great if you could look into this.',
 		},
 	},
 	'4.content-moderation': {

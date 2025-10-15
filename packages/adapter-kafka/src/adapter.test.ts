@@ -1,18 +1,17 @@
 import type { StartedCassandraContainer } from '@testcontainers/cassandra'
-import type { StartedKafkaContainer } from '@testcontainers/kafka'
-import type { StartedRedisContainer } from '@testcontainers/redis'
-import type { JobPayload } from 'flowcraft'
 import { CassandraContainer } from '@testcontainers/cassandra'
+import type { StartedKafkaContainer } from '@testcontainers/kafka'
 import { KafkaContainer } from '@testcontainers/kafka'
+import type { StartedRedisContainer } from '@testcontainers/redis'
 import { RedisContainer } from '@testcontainers/redis'
 import { Client as CassandraClient } from 'cassandra-driver'
+import type { JobPayload } from 'flowcraft'
 import Redis from 'ioredis'
 import { Kafka } from 'kafkajs'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { KafkaAdapter } from './adapter'
 import { RedisCoordinationStore } from './store'
 
-// Test constants
 const TOPIC_NAME = 'flowcraft-test-topic'
 const KEYSPACE = 'testkeyspace'
 const CONTEXT_TABLE = 'contexts'
@@ -29,14 +28,12 @@ describe('KafkaAdapter - Testcontainers Integration', () => {
 	let redis: Redis
 
 	beforeAll(async () => {
-		// 1. Start all containers in parallel
-		[kafkaContainer, cassandraContainer, redisContainer] = await Promise.all([
+		;[kafkaContainer, cassandraContainer, redisContainer] = await Promise.all([
 			new KafkaContainer('confluentinc/cp-kafka:7.4.0').withExposedPorts(9093).withKraft().start(),
 			new CassandraContainer('cassandra:latest').start(),
 			new RedisContainer('redis:latest').start(),
 		])
 
-		// 2. Create clients
 		kafka = new Kafka({
 			clientId: 'test-client',
 			brokers: [`localhost:${kafkaContainer.getMappedPort(9093)}`],
@@ -48,13 +45,17 @@ describe('KafkaAdapter - Testcontainers Integration', () => {
 		await cassandraClient.connect()
 		redis = new Redis(redisContainer.getConnectionUrl())
 
-		// 3. Create Cassandra keyspace and tables
-		await cassandraClient.execute(`CREATE KEYSPACE IF NOT EXISTS ${KEYSPACE} WITH REPLICATION = {'class': 'SimpleStrategy', 'replication_factor': 1}`)
+		await cassandraClient.execute(
+			`CREATE KEYSPACE IF NOT EXISTS ${KEYSPACE} WITH REPLICATION = {'class': 'SimpleStrategy', 'replication_factor': 1}`,
+		)
 		await cassandraClient.execute(`USE ${KEYSPACE}`)
-		await cassandraClient.execute(`CREATE TABLE IF NOT EXISTS ${CONTEXT_TABLE} (run_id TEXT PRIMARY KEY, context_data TEXT)`)
-		await cassandraClient.execute(`CREATE TABLE IF NOT EXISTS ${STATUS_TABLE} (run_id TEXT PRIMARY KEY, status_data TEXT, updated_at TIMESTAMP)`)
+		await cassandraClient.execute(
+			`CREATE TABLE IF NOT EXISTS ${CONTEXT_TABLE} (run_id TEXT PRIMARY KEY, context_data TEXT)`,
+		)
+		await cassandraClient.execute(
+			`CREATE TABLE IF NOT EXISTS ${STATUS_TABLE} (run_id TEXT PRIMARY KEY, status_data TEXT, updated_at TIMESTAMP)`,
+		)
 
-		// 4. Create Kafka topic
 		const admin = kafka.admin()
 		await admin.connect()
 		await admin.createTopics({
@@ -65,11 +66,7 @@ describe('KafkaAdapter - Testcontainers Integration', () => {
 	}, 90000)
 
 	afterAll(async () => {
-		await Promise.all([
-			kafkaContainer.stop(),
-			cassandraContainer.stop(),
-			redisContainer.stop(),
-		])
+		await Promise.all([kafkaContainer.stop(), cassandraContainer.stop(), redisContainer.stop()])
 		await cassandraClient.shutdown()
 	})
 
@@ -87,16 +84,17 @@ describe('KafkaAdapter - Testcontainers Integration', () => {
 			runtimeOptions: {},
 		})
 
-		// Connect the producer and set isRunning
-		await (adapter as any).producer.connect();
-		(adapter as any).isRunning = true
+		await (adapter as any).producer.connect()
+		;(adapter as any).isRunning = true
 
-		const job: JobPayload = { runId: 'run-kafka-1', blueprintId: 'bp-kafka', nodeId: 'node-kafka' }
+		const job: JobPayload = {
+			runId: 'run-kafka-1',
+			blueprintId: 'bp-kafka',
+			nodeId: 'node-kafka',
+		}
 
-		// Enqueue the job
 		await (adapter as any).enqueueJob(job)
 
-		// Create a consumer to verify the message
 		const consumer = kafka.consumer({ groupId: `${GROUP_ID}-test` })
 		await consumer.connect()
 		await consumer.subscribe({ topic: TOPIC_NAME, fromBeginning: true })

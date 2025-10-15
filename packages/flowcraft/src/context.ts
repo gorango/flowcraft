@@ -39,7 +39,7 @@ export class Context<TContext extends Record<string, any>> implements ISyncConte
 export class AsyncContextView<TContext extends Record<string, any>> implements IAsyncContext<TContext> {
 	public readonly type = 'async' as const
 
-	constructor(private syncContext: ISyncContext<TContext>) { }
+	constructor(private syncContext: ISyncContext<TContext>) {}
 
 	get<K extends keyof TContext>(key: K): Promise<TContext[K] | undefined> {
 		return Promise.resolve(this.syncContext.get(key))

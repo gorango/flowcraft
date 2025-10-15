@@ -1,5 +1,3 @@
-/** eslint-disable unused-imports/no-unused-vars */
-
 import type { NodeClass, NodeContext, NodeResult, RuntimeDependencies } from './types'
 
 /** A type guard to reliably distinguish a NodeClass from a NodeFunction. */
@@ -19,7 +17,7 @@ export abstract class BaseNode<
 	/**
 	 * @param params Static parameters for this node instance, passed from the blueprint.
 	 */
-	constructor(protected params: Record<string, any>) { }
+	constructor(protected params?: Record<string, any>) {}
 
 	/**
 	 * Phase 1: Gathers and prepares data for execution. This phase is NOT retried on failure.
@@ -42,7 +40,10 @@ export abstract class BaseNode<
 	 * @param execResult The successful result from the `exec` or `fallback` phase.
 	 * @param _context The node's execution context.
 	 */
-	async post(execResult: Omit<NodeResult, 'error'>, _context: NodeContext<TContext, TDependencies>): Promise<NodeResult> {
+	async post(
+		execResult: Omit<NodeResult, 'error'>,
+		_context: NodeContext<TContext, TDependencies>,
+	): Promise<NodeResult> {
 		return execResult
 	}
 

@@ -2,15 +2,14 @@ import type { ICoordinationStore } from 'flowcraft'
 import type { Redis as RedisClient } from 'ioredis'
 
 export class RedisCoordinationStore implements ICoordinationStore {
-	constructor(private redis: RedisClient) { }
+	constructor(private redis: RedisClient) {}
 
 	async increment(key: string, ttlSeconds: number): Promise<number> {
 		const pipeline = this.redis.pipeline()
 		pipeline.incr(key)
 		pipeline.expire(key, ttlSeconds)
 		const results = await pipeline.exec()
-		if (!results)
-			return 0
+		if (!results) return 0
 
 		const [[, count]] = results
 		return count as number

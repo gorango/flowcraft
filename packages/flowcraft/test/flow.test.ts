@@ -1,7 +1,7 @@
-import type { NodeFunction } from '../src/types'
 import { describe, expect, it } from 'vitest'
 import { createFlow } from '../src/flow'
 import { BaseNode } from '../src/node'
+import type { NodeFunction } from '../src/types'
 
 describe('Flow Builder', () => {
 	describe('Blueprint Construction', () => {
@@ -11,13 +11,19 @@ describe('Flow Builder', () => {
 			flow.node('A', func)
 			const blueprint = flow.toBlueprint()
 			expect(blueprint.nodes).toHaveLength(1)
-			expect(blueprint.nodes[0]).toEqual({ id: 'A', uses: expect.any(String), params: undefined })
+			expect(blueprint.nodes[0]).toEqual({
+				id: 'A',
+				uses: expect.any(String),
+				params: undefined,
+			})
 		})
 
 		it('should add a node definition when .node() is called with a class', () => {
 			const flow = createFlow('test')
 			class TestNode extends BaseNode {
-				async exec() { return { output: 'test' } }
+				async exec() {
+					return { output: 'test' }
+				}
 			}
 			flow.node('A', TestNode)
 			const blueprint = flow.toBlueprint()
@@ -39,7 +45,11 @@ describe('Flow Builder', () => {
 			const flow = createFlow('test')
 			flow.node('A', async () => ({}))
 			flow.node('B', async () => ({}))
-			flow.edge('A', 'B', { action: 'success', condition: 'true', transform: 'input' })
+			flow.edge('A', 'B', {
+				action: 'success',
+				condition: 'true',
+				transform: 'input',
+			})
 			const blueprint = flow.toBlueprint()
 			expect(blueprint.edges[0]).toEqual({
 				source: 'A',
@@ -80,7 +90,9 @@ describe('Flow Builder', () => {
 		it('should register a class implementation using its name as the key', () => {
 			const flow = createFlow('test')
 			class TestNode extends BaseNode {
-				async exec() { return {} }
+				async exec() {
+					return {}
+				}
 			}
 			flow.node('A', TestNode)
 			const registry = flow.getFunctionRegistry()
@@ -89,9 +101,14 @@ describe('Flow Builder', () => {
 
 		it('should generate a stable random key for anonymous or generic classes', () => {
 			const flow = createFlow('test')
-			flow.node('A', class extends BaseNode {
-				async exec() { return {} }
-			})
+			flow.node(
+				'A',
+				class extends BaseNode {
+					async exec() {
+						return {}
+					}
+				},
+			)
 			const registry = flow.getFunctionRegistry()
 			expect(registry.size).toBe(1)
 			const key = Array.from(registry.keys())[0]
@@ -102,7 +119,9 @@ describe('Flow Builder', () => {
 			const flow = createFlow('test')
 			const func: NodeFunction = async () => ({})
 			class TestNode extends BaseNode {
-				async exec() { return {} }
+				async exec() {
+					return {}
+				}
 			}
 			flow.node('A', func)
 			flow.node('B', TestNode)
@@ -137,7 +156,11 @@ describe('Flow Builder', () => {
 			flow.node('start', async () => ({}))
 			flow.node('end', async () => ({}))
 			flow.edge('start', 'end')
-			flow.loop('loop1', { startNodeId: 'start', endNodeId: 'end', condition: 'i < 10' })
+			flow.loop('loop1', {
+				startNodeId: 'start',
+				endNodeId: 'end',
+				condition: 'i < 10',
+			})
 			const blueprint = flow.toBlueprint()
 			expect(blueprint.nodes).toHaveLength(3)
 			expect(blueprint.nodes[2].uses).toBe('loop-controller')
@@ -148,11 +171,23 @@ describe('Flow Builder', () => {
 			flow.node('start', async () => ({}))
 			flow.node('end', async () => ({}))
 			flow.edge('start', 'end')
-			flow.loop('loop1', { startNodeId: 'start', endNodeId: 'end', condition: 'i < 10' })
+			flow.loop('loop1', {
+				startNodeId: 'start',
+				endNodeId: 'end',
+				condition: 'i < 10',
+			})
 			const blueprint = flow.toBlueprint()
 			expect(blueprint.edges).toHaveLength(3)
-			expect(blueprint.edges[1]).toEqual({ source: 'end', target: 'loop1-loop' })
-			expect(blueprint.edges[2]).toEqual({ source: 'loop1-loop', target: 'start', action: 'continue', transform: 'context.end' })
+			expect(blueprint.edges[1]).toEqual({
+				source: 'end',
+				target: 'loop1-loop',
+			})
+			expect(blueprint.edges[2]).toEqual({
+				source: 'loop1-loop',
+				target: 'start',
+				action: 'continue',
+				transform: 'context.end',
+			})
 		})
 	})
 })

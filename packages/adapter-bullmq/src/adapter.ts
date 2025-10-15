@@ -1,7 +1,7 @@
-import type { AdapterOptions, JobPayload } from 'flowcraft'
-import type { Redis } from 'ioredis'
 import { Queue, Worker } from 'bullmq'
+import type { AdapterOptions, JobPayload } from 'flowcraft'
 import { BaseDistributedAdapter } from 'flowcraft'
+import type { Redis } from 'ioredis'
 import { RedisContext } from './context'
 
 const STATUS_KEY_PREFIX = 'workflow:status:'
@@ -30,10 +30,14 @@ export class BullMQAdapter extends BaseDistributedAdapter {
 	}
 
 	protected processJobs(handler: (job: JobPayload) => Promise<void>): void {
-		this.worker = new Worker(this.queueName, async (job) => {
-			console.log(`[BullMQAdapter] ==> Picked up job ID: ${job.id}, Name: ${job.name}`)
-			await handler(job.data as JobPayload)
-		}, { connection: this.redis, concurrency: 5 })
+		this.worker = new Worker(
+			this.queueName,
+			async (job) => {
+				console.log(`[BullMQAdapter] ==> Picked up job ID: ${job.id}, Name: ${job.name}`)
+				await handler(job.data as JobPayload)
+			},
+			{ connection: this.redis, concurrency: 5 },
+		)
 
 		console.log(`[BullMQAdapter] Worker listening for jobs on queue: "${this.queueName}"`)
 	}
@@ -45,5 +49,11 @@ export class BullMQAdapter extends BaseDistributedAdapter {
 	protected async publishFinalResult(runId: string, result: any): Promise<void> {
 		const statusKey = `${STATUS_KEY_PREFIX}${runId}`
 		await this.redis.set(statusKey, JSON.stringify(result), 'EX', 3600)
+	}
+
+	public async close(): Promise<void> {
+		console.log('[BullMQAdapter] Closing worker and queue...')
+		await this.worker?.close()
+		await this.queue.close()
 	}
 }

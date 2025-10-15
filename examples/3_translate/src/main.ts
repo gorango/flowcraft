@@ -12,10 +12,7 @@ async function main() {
 	const outputDir = path.resolve(process.cwd(), 'translations')
 	await fs.mkdir(outputDir, { recursive: true })
 
-	const text = (await fs.readFile(sourceReadmePath, 'utf-8'))
-		.split('##')
-		.slice(0, 2)
-		.join('##')
+	const text = (await fs.readFile(sourceReadmePath, 'utf-8')).split('##').slice(0, 2).join('##')
 
 	const languages = [
 		'Spanish',
@@ -37,11 +34,7 @@ async function main() {
 	console.log(`Starting parallel translation into ${languages.length} languages...`)
 	const startTime = Date.now()
 
-	await runtime.run(
-		blueprint,
-		{ text, languages, output_dir: outputDir },
-		{ functionRegistry },
-	)
+	await runtime.run(blueprint, { text, languages, output_dir: outputDir }, { functionRegistry })
 
 	const duration = (Date.now() - startTime) / 1000
 	console.log(`\nTotal parallel translation time: ${duration.toFixed(2)} seconds`)

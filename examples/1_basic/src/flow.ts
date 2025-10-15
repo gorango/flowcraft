@@ -22,11 +22,13 @@ async function createGreeting(ctx: any) {
 // --- Define the Workflow ---
 
 export function createGreetingFlow() {
-	return createFlow('greeting-workflow')
-		.node('fetch-user', fetchUser)
-		.node('extract-name', extractName)
-		.node('create-greeting', createGreeting)
-		// Define the execution order
-		.edge('fetch-user', 'extract-name')
-		.edge('extract-name', 'create-greeting')
+	return (
+		createFlow('greeting-workflow')
+			.node('fetch-user', fetchUser)
+			.node('extract-name', extractName)
+			.node('create-greeting', createGreeting)
+			// Define the execution order
+			.edge('fetch-user', 'extract-name')
+			.edge('extract-name', 'create-greeting')
+	)
 }

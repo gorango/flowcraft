@@ -16,7 +16,10 @@ interface LlmNodeContext extends NodeContext<Record<string, any>, RuntimeDepende
 /**
  * Resolves input values from the context based on the node's `inputs` mapping.
  */
-async function resolveInputs(context: IAsyncContext<any>, inputs: Record<string, string | string[]>): Promise<Record<string, any>> {
+async function resolveInputs(
+	context: IAsyncContext<any>,
+	inputs: Record<string, string | string[]>,
+): Promise<Record<string, any>> {
 	const resolved: Record<string, any> = {}
 	for (const [templateKey, sourceKeyOrKeys] of Object.entries(inputs)) {
 		const sourceKeys = Array.isArray(sourceKeyOrKeys) ? sourceKeyOrKeys : [sourceKeyOrKeys]

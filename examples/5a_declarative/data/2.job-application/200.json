@@ -64,10 +64,7 @@
 				"promptTemplate": "Final email sent to {{applicantName}}:\n\n{{email_body}}",
 				"inputs": {
 					"applicantName": "applicantName",
-					"email_body": [
-						"send_interview_email",
-						"send_rejection_email"
-					]
+					"email_body": ["send_interview_email", "send_rejection_email"]
 				}
 			}
 		}

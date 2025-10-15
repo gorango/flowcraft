@@ -9,7 +9,10 @@ export class RedisContext implements IAsyncContext<Record<string, any>> {
 	public readonly type = 'async' as const
 	private stateKey: string
 
-	constructor(private redis: IORedis, runId: string) {
+	constructor(
+		private redis: IORedis,
+		runId: string,
+	) {
 		this.stateKey = `workflow:state:${runId}`
 	}
 

@@ -1,10 +1,10 @@
-import type { WorkflowBlueprint } from 'flowcraft'
 import { promises as fs } from 'node:fs'
 import path from 'node:path'
 import process from 'node:process'
 import { BullMQAdapter, RedisCoordinationStore } from '@flowcraft/bullmq-adapter'
+import type { WorkflowBlueprint } from 'flowcraft'
 import IORedis from 'ioredis'
-import { agentNodeRegistry } from '../../5_1_declarative/src/registry'
+import { agentNodeRegistry } from '../../5a_declarative/src/registry'
 import 'dotenv/config'
 
 /**
@@ -27,9 +27,14 @@ async function loadAllBlueprints(): Promise<Record<string, WorkflowBlueprint>> {
 					nodes: graph.nodes.map((n: any) => ({
 						id: n.id,
 						uses: n.type === 'sub-workflow' ? 'subflow' : n.type,
-						params: n.type === 'sub-workflow'
-							? { blueprintId: n.data.workflowId.toString(), inputs: n.data.inputs, outputs: n.data.outputs }
-							: n.data,
+						params:
+							n.type === 'sub-workflow'
+								? {
+										blueprintId: n.data.workflowId.toString(),
+										inputs: n.data.inputs,
+										outputs: n.data.outputs,
+									}
+								: n.data,
 						config: n.config,
 					})),
 					edges: graph.edges,
@@ -57,7 +62,7 @@ async function main() {
 		queueName: 'flowcraft-queue',
 		coordinationStore,
 		runtimeOptions: {
-			registry: agentNodeRegistry,
+			registry: agentNodeRegistry as any,
 			blueprints,
 		},
 	})

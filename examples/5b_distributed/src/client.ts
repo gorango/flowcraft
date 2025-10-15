@@ -1,17 +1,21 @@
-import type { WorkflowResult } from 'flowcraft'
 import { promises as fs } from 'node:fs'
 import path from 'node:path'
 import process from 'node:process'
 import { Queue } from 'bullmq'
+import type { WorkflowResult } from 'flowcraft'
 import { analyzeBlueprint } from 'flowcraft'
 import IORedis from 'ioredis'
-import { config } from '../../5_1_declarative/src/config'
+import { config } from '../../5a_declarative/src/config'
 import 'dotenv/config'
 
 const QUEUE_NAME = 'flowcraft-queue'
 const ACTIVE_USE_CASE = '4.content-moderation'
 
-export async function waitForWorkflow(redis: IORedis, runId: string, timeoutMs: number): Promise<{ status: string, payload?: WorkflowResult, reason?: string }> {
+export async function waitForWorkflow(
+	redis: IORedis,
+	runId: string,
+	timeoutMs: number,
+): Promise<{ status: string; payload?: WorkflowResult; reason?: string }> {
 	const statusKey = `workflow:status:${runId}`
 	const startTime = Date.now()
 
@@ -23,10 +27,13 @@ export async function waitForWorkflow(redis: IORedis, runId: string, timeoutMs: 
 			await redis.del(statusKey) // Clean up
 			return JSON.parse(statusJson)
 		}
-		await new Promise(resolve => setTimeout(resolve, 500))
+		await new Promise((resolve) => setTimeout(resolve, 500))
 	}
 
-	return { status: 'failed', reason: `Timeout: Client did not receive a result within ${timeoutMs}ms.` }
+	return {
+		status: 'failed',
+		reason: `Timeout: Client did not receive a result within ${timeoutMs}ms.`,
+	}
 }
 
 async function loadBlueprint(blueprintPath: string) {
@@ -42,7 +49,14 @@ async function main() {
 	const queue = new Queue(QUEUE_NAME, { connection: redisConnection })
 
 	const useCase = config[ACTIVE_USE_CASE]
-	const blueprintPath = path.join(process.cwd(), '..', '5.dag', 'data', ACTIVE_USE_CASE, `${useCase.mainWorkflowId}.json`)
+	const blueprintPath = path.join(
+		process.cwd(),
+		'..',
+		'5.dag',
+		'data',
+		ACTIVE_USE_CASE,
+		`${useCase.mainWorkflowId}.json`,
+	)
 	const blueprint = await loadBlueprint(blueprintPath)
 
 	const analysis = analyzeBlueprint(blueprint)
@@ -82,8 +96,7 @@ async function main() {
 				break
 		}
 		console.log('=============================================================\n')
-	}
-	catch (error) {
+	} catch (error) {
 		console.error(`Error waiting for workflow to complete for Run ID ${runId}`, error)
 	}
 

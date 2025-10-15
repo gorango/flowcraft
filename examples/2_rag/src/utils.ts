@@ -23,8 +23,7 @@ export async function callLLM(prompt: string): Promise<string> {
 			'\n====================================================\n',
 		)
 		return result
-	}
-	catch (error: any) {
+	} catch (error: any) {
 		console.error('Error calling OpenAI API for generation:', error)
 		throw new Error(`OpenAI API call failed: ${error.message}`)
 	}
@@ -41,8 +40,7 @@ export async function getEmbedding(text: string): Promise<number[]> {
 			input: text.replace(/\n/g, ' '),
 		})
 		return response.data[0].embedding
-	}
-	catch (error: any) {
+	} catch (error: any) {
 		console.error('Error calling OpenAI Embeddings API:', error)
 		throw new Error(`OpenAI Embeddings API call failed: ${error.message}`)
 	}
@@ -69,8 +67,7 @@ export function resolveTemplate(template: string, data: Record<string, any>): st
 			return ''
 		}
 		// Use superjson to handle complex objects like our SearchResult class
-		if (typeof value === 'object')
-			return SuperJSON.stringify(value)
+		if (typeof value === 'object') return SuperJSON.stringify(value)
 
 		return String(value)
 	})

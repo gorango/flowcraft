@@ -25,14 +25,18 @@ export class CassandraContext implements IAsyncContext<Record<string, any>> {
 
 	private async readContext(): Promise<Record<string, any>> {
 		const query = `SELECT context_data FROM ${this.tableName} WHERE run_id = ?`
-		const result = await this.client.execute(query, [this.runId], { prepare: true })
+		const result = await this.client.execute(query, [this.runId], {
+			prepare: true,
+		})
 		const row = result.first()
 		return row ? JSON.parse(row.get('context_data')) : {}
 	}
 
 	private async writeContext(context: Record<string, any>): Promise<void> {
 		const query = `INSERT INTO ${this.tableName} (run_id, context_data) VALUES (?, ?)`
-		await this.client.execute(query, [this.runId, JSON.stringify(context)], { prepare: true })
+		await this.client.execute(query, [this.runId, JSON.stringify(context)], {
+			prepare: true,
+		})
 	}
 
 	async get<K extends string>(key: K): Promise<any> {
@@ -41,7 +45,7 @@ export class CassandraContext implements IAsyncContext<Record<string, any>> {
 	}
 
 	async set<K extends string>(key: K, value: any): Promise<void> {
-		// Cassandra requires a read-before-write pattern for partial JSON updates
+		// cassandra requires a read-before-write pattern for partial JSON updates
 		const context = await this.readContext()
 		context[key] = value
 		await this.writeContext(context)
@@ -49,12 +53,12 @@ export class CassandraContext implements IAsyncContext<Record<string, any>> {
 
 	async has<K extends string>(key: K): Promise<boolean> {
 		const context = await this.readContext()
-		return Object.prototype.hasOwnProperty.call(context, key)
+		return Object.hasOwn(context, key)
 	}
 
 	async delete<K extends string>(key: K): Promise<boolean> {
 		const context = await this.readContext()
-		if (Object.prototype.hasOwnProperty.call(context, key)) {
+		if (Object.hasOwn(context, key)) {
 			delete context[key]
 			await this.writeContext(context)
 			return true

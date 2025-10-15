@@ -4,13 +4,7 @@ import { FatalNodeExecutionError, NodeExecutionError } from '../src/errors'
 describe('Custom Errors', () => {
 	it('should correctly construct a NodeExecutionError with all properties', () => {
 		const originalError = new Error('original')
-		const err = new NodeExecutionError(
-			'Test message',
-			'node-123',
-			'bp-abc',
-			originalError,
-			'exec-id-1',
-		)
+		const err = new NodeExecutionError('Test message', 'node-123', 'bp-abc', originalError, 'exec-id-1')
 
 		expect(err).toBeInstanceOf(Error)
 		expect(err.name).toBe('NodeExecutionError')
