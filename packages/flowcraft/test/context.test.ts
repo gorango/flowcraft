@@ -55,28 +55,28 @@ describe('State Management (Context)', () => {
 
 	describe('AsyncContextView (Asynchronous Wrapper)', () => {
 		it('should resolve a `get` call with the underlying sync value', async () => {
-			const syncContext = new Context<{ key: string }>({ key: 'value' })
+			const syncContext = new Context<Record<string, any>>({ key: 'value' })
 			const asyncContext = new AsyncContextView(syncContext)
 			const result = await asyncContext.get('key')
 			expect(result).toBe('value')
 		})
 
 		it('should resolve a `set` call and update the underlying sync context', async () => {
-			const syncContext = new Context<{ key: string }>()
+			const syncContext = new Context<Record<string, any>>()
 			const asyncContext = new AsyncContextView(syncContext)
 			await asyncContext.set('key', 'value')
 			expect(syncContext.get('key')).toBe('value')
 		})
 
 		it('should resolve a `has` call with the underlying sync boolean', async () => {
-			const syncContext = new Context<{ key: string }>({ key: 'value' })
+			const syncContext = new Context<Record<string, any>>({ key: 'value' })
 			const asyncContext = new AsyncContextView(syncContext)
 			const result = await asyncContext.has('key')
 			expect(result).toBe(true)
 		})
 
 		it('should resolve a `delete` call and update the underlying sync context', async () => {
-			const syncContext = new Context<{ key: string }>({ key: 'value' })
+			const syncContext = new Context<Record<string, any>>({ key: 'value' })
 			const asyncContext = new AsyncContextView(syncContext)
 			const result = await asyncContext.delete('key')
 			expect(result).toBe(true)
@@ -84,7 +84,7 @@ describe('State Management (Context)', () => {
 		})
 
 		it('should resolve `toJSON` with the underlying sync context data', async () => {
-			const syncContext = new Context<{ key: string }>({ key: 'value' })
+			const syncContext = new Context<Record<string, any>>({ key: 'value' })
 			const asyncContext = new AsyncContextView(syncContext)
 			const json = await asyncContext.toJSON()
 			expect(json).toEqual({ key: 'value' })

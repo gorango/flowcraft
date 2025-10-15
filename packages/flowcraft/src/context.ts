@@ -19,11 +19,11 @@ export class Context<TContext extends Record<string, any>> implements ISyncConte
 		this.data.set(String(key), value)
 	}
 
-	has(key: keyof TContext): boolean {
+	has<K extends keyof TContext>(key: K): boolean {
 		return this.data.has(String(key))
 	}
 
-	delete(key: keyof TContext): boolean {
+	delete<K extends keyof TContext>(key: K): boolean {
 		return this.data.delete(String(key))
 	}
 
@@ -50,11 +50,11 @@ export class AsyncContextView<TContext extends Record<string, any>> implements I
 		return Promise.resolve()
 	}
 
-	has(key: keyof TContext): Promise<boolean> {
+	has<K extends keyof TContext>(key: K): Promise<boolean> {
 		return Promise.resolve(this.syncContext.has(key))
 	}
 
-	delete(key: keyof TContext): Promise<boolean> {
+	delete<K extends keyof TContext>(key: K): Promise<boolean> {
 		return Promise.resolve(this.syncContext.delete(key))
 	}
 

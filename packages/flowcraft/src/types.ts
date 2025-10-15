@@ -117,8 +117,8 @@ export interface ISyncContext<TContext extends Record<string, any> = Record<stri
 	readonly type: 'sync'
 	get: <K extends keyof TContext>(key: K) => TContext[K] | undefined
 	set: <K extends keyof TContext>(key: K, value: TContext[K]) => void
-	has: (key: keyof TContext) => boolean
-	delete: (key: keyof TContext) => boolean
+	has: <K extends keyof TContext>(key: K) => boolean
+	delete: <K extends keyof TContext>(key: K) => boolean
 	toJSON: () => Record<string, any>
 }
 
@@ -127,8 +127,8 @@ export interface IAsyncContext<TContext extends Record<string, any> = Record<str
 	readonly type: 'async'
 	get: <K extends keyof TContext>(key: K) => Promise<TContext[K] | undefined>
 	set: <K extends keyof TContext>(key: K, value: TContext[K]) => Promise<void>
-	has: (key: keyof TContext) => Promise<boolean>
-	delete: (key: keyof TContext) => Promise<boolean>
+	has: <K extends keyof TContext>(key: K) => Promise<boolean>
+	delete: <K extends keyof TContext>(key: K) => Promise<boolean>
 	toJSON: () => Promise<Record<string, any>>
 }
 

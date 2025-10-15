@@ -25,11 +25,11 @@ export class RedisContext implements IAsyncContext<Record<string, any>> {
 		await this.redis.hset(this.stateKey, key, JSON.stringify(value))
 	}
 
-	async has(key: string): Promise<boolean> {
+	async has<K extends string>(key: K): Promise<boolean> {
 		return (await this.redis.hexists(this.stateKey, key)) === 1
 	}
 
-	async delete(key: string): Promise<boolean> {
+	async delete<K extends string>(key: K): Promise<boolean> {
 		return (await this.redis.hdel(this.stateKey, key)) > 0
 	}
 
