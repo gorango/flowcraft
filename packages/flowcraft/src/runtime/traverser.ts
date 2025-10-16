@@ -41,6 +41,27 @@ export class GraphTraverser<TContext extends Record<string, any>, TDependencies 
 		return this.dynamicBlueprint.nodes.some((n) => n.config?.fallback === nodeId)
 	}
 
+	private getEffectiveJoinStrategy(nodeId: string): 'any' | 'all' {
+		const node = this.dynamicBlueprint.nodes.find((n) => n.id === nodeId)
+		const baseJoinStrategy = node?.config?.joinStrategy || 'all'
+
+		if (node?.uses === 'loop-controller') {
+			return 'any'
+		}
+
+		const predecessors = this.allPredecessors.get(nodeId)
+		if (predecessors) {
+			for (const predecessorId of predecessors) {
+				const predecessorNode = this.dynamicBlueprint.nodes.find((n) => n.id === predecessorId)
+				if (predecessorNode?.uses === 'loop-controller') {
+					return 'any'
+				}
+			}
+		}
+
+		return baseJoinStrategy
+	}
+
 	async traverse(): Promise<void> {
 		try {
 			this.signal?.throwIfAborted()
@@ -80,12 +101,12 @@ export class GraphTraverser<TContext extends Record<string, any>, TDependencies 
 							this.state.getContext(),
 						)
 
-						// If one of the next nodes is a loop controller, prioritize it to avoid ambiguity from manual cycle edges.
+						// if one of the next nodes is a loop controller, prioritize it to avoid ambiguity from manual cycle edges.
 						const loopControllerMatch = matched.find((m) => m.node.uses === 'loop-controller')
 						const finalMatched = loopControllerMatch ? [loopControllerMatch] : matched
 
 						for (const { node, edge } of finalMatched) {
-							const joinStrategy = node.config?.joinStrategy || 'all'
+							const joinStrategy = this.getEffectiveJoinStrategy(node.id)
 							if (joinStrategy !== 'any' && this.state.getCompletedNodes().has(node.id)) continue
 							await this.runtime.applyEdgeTransform(edge, result, node, this.state.getContext(), this.allPredecessors)
 							const requiredPredecessors = this.allPredecessors.get(node.id)
@@ -99,8 +120,7 @@ export class GraphTraverser<TContext extends Record<string, any>, TDependencies 
 						if (matched.length === 0) {
 							for (const [potentialNextId, predecessors] of this.allPredecessors) {
 								if (predecessors.has(nodeId) && !this.state.getCompletedNodes().has(potentialNextId)) {
-									const joinStrategy =
-										this.dynamicBlueprint.nodes.find((n) => n.id === potentialNextId)?.config?.joinStrategy || 'all'
+									const joinStrategy = this.getEffectiveJoinStrategy(potentialNextId)
 									const isReady =
 										joinStrategy === 'any'
 											? [...predecessors].some((p) => completedThisTurn.has(p))
