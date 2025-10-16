@@ -30,8 +30,13 @@ export class GraphTraverser<TContext extends Record<string, any>, TDependencies 
 		this.frontier = new Set(analysis.startNodeIds.filter((id) => !this.isFallbackNode(id)))
 		if (this.frontier.size === 0 && analysis.cycles.length > 0 && this.runtime.options.strict !== true) {
 			const uniqueStartNodes = new Set<string>()
+			const cycleEntryPoints = new Set(blueprint.metadata?.cycleEntryPoints || [])
 			for (const cycle of analysis.cycles) {
-				if (cycle.length > 0) uniqueStartNodes.add(cycle[0])
+				if (cycle.length > 0) {
+					// prefer entry points if specified, otherwise use the first node
+					const entryPoint = cycle.find((node) => cycleEntryPoints.has(node))
+					uniqueStartNodes.add(entryPoint || cycle[0])
+				}
 			}
 			this.frontier = new Set(uniqueStartNodes)
 		}

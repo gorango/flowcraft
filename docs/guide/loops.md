@@ -84,9 +84,39 @@ If your loop condition uses comparison or logical operators, you must explicitly
 import { FlowRuntime, UnsafeEvaluator } from 'flowcraft'
 
 const runtime = new FlowRuntime({
-  evaluator: new UnsafeEvaluator(),
+	evaluator: new UnsafeEvaluator(),
 })
 ```
 
 > [!WARNING]
 > [`UnsafeEvaluator`](/api/evaluator#unsafeevaluator-class) uses `new Function()` and can execute arbitrary JavaScript code. Only use it in trusted environments where all workflow definitions are authored by trusted developers. For production systems, consider implementing a custom evaluator using a sandboxed library like [`jsep`](https://npmjs.com/package/jsep).
+
+## Cycles and Non-DAG Workflows
+
+While loops provide a structured way to handle iteration, it's also possible to create workflows with cycles (non-DAG graphs) using manual edges. However, this comes with significant risks and unpredictable behavior.
+
+### Risks of Non-DAG Workflows
+
+When a workflow contains cycles and is run in non-strict mode, the runtime arbitrarily selects the first node of a detected cycle as the starting point. This can lead to:
+
+- **Unpredictable execution flow**: The order of execution may vary between runs, making the workflow behavior inconsistent.
+- **Infinite loops**: If not carefully designed, cycles can cause the workflow to run indefinitely.
+- **Resource exhaustion**: Uncontrolled cycles can consume excessive CPU and memory.
+- **Debugging difficulties**: Tracing the execution path becomes challenging due to the non-deterministic nature.
+
+### Recommendations
+
+1. **Use structured loops**: Prefer the `.loop()` method for iteration instead of manual cycles, as it provides predictable behavior and built-in safeguards.
+
+2. **Enable strict mode**: Run workflows in strict mode (`strict: true`) to prevent execution of non-DAG graphs entirely:
+
+   ```typescript
+   const result = await runtime.run(blueprint, initialContext, { strict: true })
+   ```
+
+3. **Design for predictability**: If you must use cycles, ensure they have clear entry and exit points, and test thoroughly in various scenarios.
+
+4. **Monitor execution**: In production, implement monitoring to detect and handle potential infinite loops or excessive resource usage.
+
+> [!CAUTION]
+> Non-DAG workflows in non-strict mode are inherently unpredictable and should be avoided in production environments unless absolutely necessary and thoroughly tested.

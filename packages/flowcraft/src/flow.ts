@@ -37,6 +37,7 @@ export class Flow<
 		this.functionRegistry = new Map()
 		this.loopControllerIds = new Map()
 		this.loopDefinitions = []
+		this.cycleEntryPoints = new Map()
 	}
 
 	node<TInput = any, TOutput = any, TAction extends string = string>(
@@ -183,6 +184,16 @@ export class Flow<
 		return controllerId
 	}
 
+	/**
+	 * Sets the preferred entry point for a cycle in non-DAG workflows.
+	 * This helps remove ambiguity when the runtime needs to choose a starting node for cycles.
+	 * @param nodeId The ID of the node to use as the entry point for cycles containing this node.
+	 */
+	setCycleEntryPoint(nodeId: string): this {
+		this.cycleEntryPoints.set(nodeId, nodeId)
+		return this
+	}
+
 	toBlueprint(): WorkflowBlueprint {
 		if (!this.blueprint.nodes || this.blueprint.nodes.length === 0) {
 			throw new Error('Cannot build a blueprint with no nodes.')
@@ -201,6 +212,13 @@ export class Flow<
 
 			startNode.config = { ...startNode.config, joinStrategy: 'any' }
 			endNode.config = { ...endNode.config, joinStrategy: 'any' }
+		}
+
+		if (this.cycleEntryPoints.size > 0) {
+			this.blueprint.metadata = {
+				...this.blueprint.metadata,
+				cycleEntryPoints: Array.from(this.cycleEntryPoints.keys()),
+			}
 		}
 
 		return this.blueprint as WorkflowBlueprint
