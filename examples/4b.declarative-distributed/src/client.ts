@@ -41,7 +41,7 @@ async function main() {
 	const queue = new Queue(QUEUE_NAME, { connection: redisConnection })
 
 	const useCase = config[ACTIVE_USE_CASE]
-	const blueprint = blueprints[useCase.mainWorkflowId]
+	const blueprint = blueprints[useCase.entryWorkflowId]
 
 	const analysis = analyzeBlueprint(blueprint)
 	const startNodeIds = analysis.startNodeIds
@@ -55,7 +55,7 @@ async function main() {
 
 	const startJobs = startNodeIds.map((nodeId: any) => ({
 		name: 'executeNode',
-		data: { runId, blueprintId: useCase.mainWorkflowId, nodeId },
+		data: { runId, blueprintId: useCase.entryWorkflowId, nodeId },
 	}))
 
 	console.log(`🚀 Enqueuing ${startJobs.length} start job(s) for Run ID: ${runId}`)

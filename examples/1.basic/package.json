@@ -2,13 +2,14 @@
 	"name": "@flowcraft/example-basic-workflow",
 	"type": "module",
 	"scripts": {
-		"start": "npx tsx src/main.ts",
+		"start": "tsx src/main.ts",
 		"typecheck": "tsc --noEmit"
 	},
 	"dependencies": {
 		"flowcraft": "workspace:*"
 	},
 	"devDependencies": {
+		"tsx": "^4.20.6",
 		"typescript": "^5.9.3"
 	}
 }

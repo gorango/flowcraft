@@ -3,7 +3,7 @@ import { MermaidMarkdown, MermaidPlugin } from 'vitepress-plugin-mermaid'
 
 export default defineConfig({
 	cleanUrls: true,
-	title: 'Flowcraft',
+	title: 'flowcraft',
 	description: 'A lightweight, unopinionated workflow framework for executing declarative DAGs',
 	vite: {
 		optimizeDeps: {
@@ -67,14 +67,20 @@ export default defineConfig({
 							text: 'Declarative Workflows',
 							link: '/guide/declarative-workflows',
 						},
-						{ text: 'Best Practices', link: '/guide/best-practices' },
+						{ text: 'Static Analysis', link: '/guide/static-analysis' },
+						{
+							text: 'Visualizing Workflows',
+							link: '/guide/visualizing-workflows',
+						},
+						{ text: 'Error Handling', link: '/guide/error-handling' },
+						// { text: 'Best Practices', link: '/guide/best-practices' },
 					],
 				},
 				{
 					text: 'Extending Flowcraft',
 					collapsed: true,
 					items: [
-						{ text: 'Custom Loggers', link: '/guide/custom-loggers' },
+						{ text: 'Loggers', link: '/guide/loggers' },
 						{ text: 'Evaluators', link: '/guide/evaluators' },
 						{ text: 'Serializers', link: '/guide/serializers' },
 						{ text: 'Middleware', link: '/guide/middleware' },
@@ -98,18 +104,6 @@ export default defineConfig({
 								{ text: 'Kafka & Cassandra', link: '/guide/adapters/kafka' },
 							],
 						},
-					],
-				},
-				{
-					text: 'Analysis and Debugging',
-					collapsed: true,
-					items: [
-						{ text: 'Static Analysis', link: '/guide/static-analysis' },
-						{
-							text: 'Visualizing Workflows',
-							link: '/guide/visualizing-workflows',
-						},
-						{ text: 'Error Handling', link: '/guide/error-handling' },
 					],
 				},
 			],

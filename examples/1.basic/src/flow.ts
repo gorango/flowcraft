@@ -1,14 +1,13 @@
 import { createFlow } from 'flowcraft'
 
-// --- Define the Context Interface ---
+// Define the Context Interface
 interface GreetingWorkflowContext {
 	user_id?: number
 	user_name?: string
 	final_greeting?: string
 }
 
-// --- Define the Node Logic ---
-
+// Define the Node Logic
 async function fetchUser() {
 	console.log('Fetching user...')
 	return { output: { id: 1, name: 'Alice' } }
@@ -31,8 +30,7 @@ async function createGreeting(ctx: any) {
 	return { output: greeting }
 }
 
-// --- Define the Workflow ---
-
+// Define the Workflow
 export function createGreetingFlow() {
 	return (
 		createFlow<GreetingWorkflowContext>('greeting-workflow')

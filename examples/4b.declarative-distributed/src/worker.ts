@@ -9,10 +9,10 @@ async function main() {
 
 	console.log(`[Worker] Loaded ${Object.keys(blueprints).length} blueprints into the cache.`)
 
-	// 2. Create the coordination store.
+	// 1. Create the coordination store.
 	const coordinationStore = new RedisCoordinationStore(redisConnection)
 
-	// 3. Instantiate the adapter with all necessary components.
+	// 2. Instantiate the adapter with all necessary components.
 	const adapter = new BullMQAdapter({
 		connection: redisConnection,
 		queueName: 'flowcraft-queue',
@@ -23,7 +23,7 @@ async function main() {
 		},
 	})
 
-	// 4. Start the worker. The adapter now handles all orchestration logic.
+	// 3. Start the worker. The adapter now handles all orchestration logic.
 	adapter.start()
 
 	process.on('SIGINT', () => {

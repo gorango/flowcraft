@@ -1,6 +1,8 @@
 # Dynamic AI Agent from JSON Files
 
-This example demonstrates a runtime engine that can execute complex, graph-based AI workflows defined as simple JSON files. It showcases how to build a powerful AI agent that can reason, branch, and call other workflows recursively using the `workflow` framework.
+[[view source code]](https://github.com/gorango/flowcraft/tree/master/examples/4a.declarative-in-memory)
+
+This example demonstrates a runtime engine that can execute complex, graph-based AI workflows defined as simple JSON files. It showcases how to build a powerful AI agent that can reason, branch, and call other workflows recursively using the workflow framework.
 
 ## The Goal
 
@@ -29,7 +31,7 @@ graph TD
     Registry -- "Maps string types to" --> Functions
 ```
 
-## The Scenarios
+## The Blueprints
 
 #### [`blog-post`](https://github.com/gorango/flowcraft/tree/master/examples/5.declarative-shared-logic/data/1.blog-post)
 ```mermaid
@@ -105,6 +107,8 @@ graph TD
 ## The Code
 
 #### `nodes.ts`
+Defines node functions for processing LLM tasks, including resolving inputs, handling conditions, routing, and generating output based on workflow parameters.
+
 ```typescript
 import type { IAsyncContext, NodeContext, NodeResult, RuntimeDependencies } from 'flowcraft'
 import { callLLM, resolveTemplate } from './utils.js'
@@ -124,7 +128,10 @@ interface LlmNodeContext extends NodeContext<Record<string, any>, RuntimeDepende
 /**
  * Resolves input values from the context based on the node's `inputs` mapping.
  */
-async function resolveInputs(context: IAsyncContext<any>, inputs: Record<string, string | string[]>): Promise<Record<string, any>> {
+async function resolveInputs(
+	context: IAsyncContext<any>,
+	inputs: Record<string, string | string[]>,
+): Promise<Record<string, any>> {
 	const resolved: Record<string, any> = {}
 	for (const [templateKey, sourceKeyOrKeys] of Object.entries(inputs)) {
 		const sourceKeys = Array.isArray(sourceKeyOrKeys) ? sourceKeyOrKeys : [sourceKeyOrKeys]
@@ -179,8 +186,11 @@ export async function outputNode(ctx: NodeContext<Record<string, any>, RuntimeDe
 ```
 
 #### `utils.ts`
+Provides utility functions for interacting with the OpenAI API to call LLMs and for resolving template strings with dynamic data.
+
 ```typescript
 import OpenAI from 'openai'
+import 'dotenv/config'
 
 const openaiClient = new OpenAI()
 
@@ -200,8 +210,7 @@ export async function callLLM(prompt: string): Promise<string> {
 		const result = response.choices[0].message.content || ''
 		console.log(`--- Received from LLM ---\n${result}\n-----------------------\n`)
 		return result
-	}
-	catch (error: any) {
+	} catch (error: any) {
 		console.error('Error calling OpenAI API:', error)
 		throw new Error(`OpenAI API call failed: ${error.message}`)
 	}
@@ -224,6 +233,8 @@ export function resolveTemplate(template: string, data: Record<string, any>): st
 ```
 
 #### `registry.ts`
+Creates a node registry that maps string identifiers to their corresponding function implementations for use in the workflow runtime.
+
 ```typescript
 import type { NodeRegistry } from 'flowcraft'
 import { llmCondition, llmProcess, llmRouter, outputNode } from './nodes.js'
@@ -237,101 +248,57 @@ export const agentNodeRegistry: NodeRegistry = {
 	'llm-process': llmProcess,
 	'llm-condition': llmCondition,
 	'llm-router': llmRouter,
-	'output': outputNode,
+	output: outputNode,
 	// The 'subflow' node is built-in to runtime, so it doesn't need to be registered here.
 }
 ```
 
-#### `main.ts`
+#### `blueprints.ts`
+Loads JSON workflow definitions from files, processes them into WorkflowBlueprint objects, and handles node configurations for convergence points.
+
 ```typescript
-import type { NodeDefinition, WorkflowBlueprint } from 'flowcraft'
-import { promises as fs } from 'node:fs'
+import fs from 'node:fs'
 import path from 'node:path'
-import process from 'node:process'
-import { FlowRuntime } from 'flowcraft'
-import { agentNodeRegistry } from './registry.js'
-import 'dotenv/config'
-
-// The configuration object defines the different scenarios this example can run.
-const config = {
-	'1.blog-post': {
-		mainWorkflowId: '100',
-		initialContext: {
-			topic: 'The rise of AI-powered workflow automation in modern software development.',
-		},
-	},
-	'2.job-application': {
-		mainWorkflowId: '200',
-		initialContext: {
-			applicantName: 'Jane Doe',
-			resume: 'Experienced developer with a background in TypeScript, Node.js, and building complex DAG workflow systems. Also proficient in React and SQL.',
-			coverLetter: 'To Whom It May Concern, I am writing to express my interest in the Senior Developer position.',
-		},
-	},
-	'3.customer-review': {
-		mainWorkflowId: '300',
-		initialContext: {
-			initial_review: 'The new dashboard is a huge improvement, but I noticed that the export-to-PDF feature is really slow and sometimes crashes the app on large datasets. It would be great if you could look into this.',
-		},
-	},
-	'4.content-moderation': {
-		mainWorkflowId: '400',
-		initialContext: {
-			userId: 'user-456',
-			userPost: 'Hi, I need help with my account. My email is test@example.com and my phone is 555-123-4567.',
-		},
-	},
-} as const
-
-type UseCase = keyof typeof config
-
-const ACTIVE_USE_CASE: UseCase = '4.content-moderation' // Change this to test other scenarios
+import { fileURLToPath } from 'node:url'
+import type { NodeDefinition, WorkflowBlueprint } from 'flowcraft'
 
 /**
- * Loads a legacy JSON graph and transforms it into a modern WorkflowBlueprint.
+ * Loads a JSON graph and transforms it into a WorkflowBlueprint.
  * It also intelligently configures nodes that are convergence points for routers.
  */
-async function loadAndProcessBlueprint(filePath: string): Promise<WorkflowBlueprint> {
-	const fileContent = await fs.readFile(filePath, 'utf-8')
+function loadAndProcessBlueprint(filePath: string): WorkflowBlueprint {
+	const fileContent = fs.readFileSync(filePath, 'utf-8')
 	const graph = JSON.parse(fileContent)
 	const blueprintId = path.basename(filePath, '.json')
 
-	const nodes: NodeDefinition[] = graph.nodes.map((n: any) => {
-		// Map the data format to the framework format
-		const node: NodeDefinition = {
-			id: n.id,
-			uses: n.type,
-			params: n.data,
-			config: n.config,
-		}
-
-		if (node.uses === 'sub-workflow') {
-			node.uses = 'subflow'
-			node.params = {
-				blueprintId: n.data.workflowId.toString(),
-				inputs: n.data.inputs,
-				outputs: n.data.outputs,
+	const nodes: NodeDefinition[] = graph.nodes.map((n: any) => ({
+		id: n.id,
+		uses: n.uses,
+		config: n.config,
+		params: n.uses === 'subflow'
+			? {
+				// Ensure blueprintId is a string
+				blueprintId: n.params.blueprintId.toString(),
+				...n.params,
 			}
-		}
-
-		return node
-	})
+			: n.params,
+	}))
 
 	const edges = graph.edges
-
 	const nodePredecessorMap = new Map<string, string[]>()
+
+	// Wire up the edges to the nodes
 	edges.forEach((edge: any) => {
-		if (!nodePredecessorMap.has(edge.target))
-			nodePredecessorMap.set(edge.target, [])
-		nodePredecessorMap.get(edge.target)!.push(edge.source)
+		if (!nodePredecessorMap.has(edge.target)) nodePredecessorMap.set(edge.target, [])
+		nodePredecessorMap.get(edge.target)?.push(edge.source)
 	})
 
+	// Check if all predecessors are the same (i.e., it's a fan-out from a single router)
 	for (const node of nodes) {
 		const predecessors = nodePredecessorMap.get(node.id)
 		if (predecessors && predecessors.length > 1) {
-			// Check if all predecessors are the same (i.e., it's a fan-out from a single router)
 			const firstPredecessor = predecessors[0]
-			if (predecessors.every(p => p === firstPredecessor)) {
+			if (predecessors.every((p) => p === firstPredecessor)) {
 				console.log(`[Blueprint Loader] Automatically setting joinStrategy='any' for convergence node '${node.id}'`)
 				node.config = { ...node.config, joinStrategy: 'any' }
 			}
@@ -341,33 +308,88 @@ async function loadAndProcessBlueprint(filePath: string): Promise<WorkflowBluepr
 	return { id: blueprintId, nodes, edges }
 }
 
-async function main() {
-	console.log(`--- Running Use-Case (Data-First): ${ACTIVE_USE_CASE} ---\n`)
+// Load all blueprints from the data directory
+const __dirname = path.dirname(fileURLToPath(import.meta.url))
+const dataDir = path.join(__dirname, '..', 'data')
+const useCaseDirs = ['1.blog-post', '2.job-application', '3.customer-review', '4.content-moderation']
 
-	// Load all blueprints so they are available for sub-workflow calls.
-	const blueprints: Record<string, WorkflowBlueprint> = {}
-	const useCaseDirs = ['1.blog-post', '2.job-application', '3.customer-review', '4.content-moderation']
-	for (const dirName of useCaseDirs) {
-		const dirPath = path.join(process.cwd(), 'data', dirName)
-		const files = await fs.readdir(dirPath)
-		for (const file of files) {
-			if (file.endsWith('.json')) {
-				const blueprint = await loadAndProcessBlueprint(path.join(dirPath, file))
-				blueprints[blueprint.id] = blueprint
-			}
+export const blueprints: Record<string, WorkflowBlueprint> = {}
+
+for (const dirName of useCaseDirs) {
+	const dirPath = path.join(dataDir, dirName)
+	const files = fs.readdirSync(dirPath)
+	for (const file of files) {
+		if (file.endsWith('.json')) {
+			const blueprint = loadAndProcessBlueprint(path.join(dirPath, file))
+			blueprints[blueprint.id] = blueprint
 		}
 	}
+}
+```
+
+#### `config.ts`
+Defines configuration objects for various use cases, specifying the entry workflow ID and initial context data for each scenario.
+
+```typescript
+// The configuration object defines the different scenarios this example can run.
+export const config = {
+	'1.blog-post': {
+		entryWorkflowId: '100',
+		initialContext: {
+			topic: 'The rise of AI-powered workflow automation in modern software development.',
+		},
+	},
+	'2.job-application': {
+		entryWorkflowId: '200',
+		initialContext: {
+			applicantName: 'Jane Doe',
+			resume:
+				'Experienced developer with a background in TypeScript, Node.js, and building complex DAG workflow systems. Also proficient in React and SQL.',
+			coverLetter: 'To Whom It May Concern, I am writing to express my interest in the Senior Developer position.',
+		},
+	},
+	'3.customer-review': {
+		entryWorkflowId: '300',
+		initialContext: {
+			initial_review:
+				'The new dashboard is a huge improvement, but I noticed that the export-to-PDF feature is really slow and sometimes crashes the app on large datasets. It would be great if you could look into this.',
+		},
+	},
+	'4.content-moderation': {
+		entryWorkflowId: '400',
+		initialContext: {
+			userId: 'user-456',
+			userPost: 'Hi, I need help with my account. My email is test@example.com and my phone is 555-123-4567.',
+		},
+	},
+} as const
+```
+
+#### `main.ts`
+Serves as the entry point, initializing the FlowRuntime with the node registry and blueprints, then executing the specified workflow with initial context.
+
+```typescript
+import { FlowRuntime } from 'flowcraft'
+import { blueprints } from './blueprints.js'
+import { config } from './config.js'
+import { agentNodeRegistry } from './registry.js'
+
+type UseCase = keyof typeof config
+
+const ACTIVE_USE_CASE: UseCase = '4.content-moderation' // Change this to test other scenarios
+
+async function main() {
+	console.log(`--- Running Use-Case (Data-First): ${ACTIVE_USE_CASE} ---\n`)
 
 	const runtime = new FlowRuntime({
 		registry: agentNodeRegistry,
 		blueprints,
 	})
 
-	const mainWorkflowId = config[ACTIVE_USE_CASE].mainWorkflowId
-	const mainBlueprint = blueprints[mainWorkflowId]
+	const entryWorkflowId = config[ACTIVE_USE_CASE].entryWorkflowId
+	const mainBlueprint = blueprints[entryWorkflowId]
 
-	if (!mainBlueprint)
-		throw new Error(`Main workflow blueprint with ID '${mainWorkflowId}' was not found.`)
+	if (!mainBlueprint) throw new Error(`Main workflow blueprint with ID '${entryWorkflowId}' was not found.`)
 
 	const { initialContext } = config[ACTIVE_USE_CASE]
 
@@ -382,3 +404,7 @@ async function main() {
 
 main().catch(console.error)
 ```
+
+---
+
+[[view source code]](https://github.com/gorango/flowcraft/tree/master/examples/4a.declarative-in-memory)

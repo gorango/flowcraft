@@ -12,39 +12,33 @@ function loadAndProcessBlueprint(filePath: string): WorkflowBlueprint {
 	const graph = JSON.parse(fileContent)
 	const blueprintId = path.basename(filePath, '.json')
 
-	const nodes: NodeDefinition[] = graph.nodes.map((n: any) => {
-		// Map the data format to the framework format
-		const node: NodeDefinition = {
-			id: n.id,
-			uses: n.uses,
-			params: n.params,
-			config: n.config,
-		}
-
-		if (node.uses === 'subflow') {
-			// Ensure blueprintId is a string
-			node.params = {
-				blueprintId: n.params.blueprintId.toString(),
-				inputs: n.params.inputs,
-				outputs: n.params.outputs,
-			}
-		}
-
-		return node
-	})
+	const nodes: NodeDefinition[] = graph.nodes.map((n: any) => ({
+		id: n.id,
+		uses: n.uses,
+		config: n.config,
+		params:
+			n.uses === 'subflow'
+				? {
+						// Ensure blueprintId is a string
+						blueprintId: n.params.blueprintId.toString(),
+						...n.params,
+					}
+				: n.params,
+	}))
 
 	const edges = graph.edges
-
 	const nodePredecessorMap = new Map<string, string[]>()
+
+	// Wire up the edges to the nodes
 	edges.forEach((edge: any) => {
 		if (!nodePredecessorMap.has(edge.target)) nodePredecessorMap.set(edge.target, [])
 		nodePredecessorMap.get(edge.target)?.push(edge.source)
 	})
 
+	// Check if all predecessors are the same (i.e., it's a fan-out from a single router)
 	for (const node of nodes) {
 		const predecessors = nodePredecessorMap.get(node.id)
 		if (predecessors && predecessors.length > 1) {
-			// Check if all predecessors are the same (i.e., it's a fan-out from a single router)
 			const firstPredecessor = predecessors[0]
 			if (predecessors.every((p) => p === firstPredecessor)) {
 				console.log(`[Blueprint Loader] Automatically setting joinStrategy='any' for convergence node '${node.id}'`)

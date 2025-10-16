@@ -47,4 +47,4 @@ This example is a lightweight runner that demonstrates the core runtime:
 
 All the complex logic (subflows, conditional branching, fan-out) is defined in the shared JSON files and handled transparently by the in-memory runtime.
 
-For a detailed breakdown of the available use-cases and their workflow graphs, see the **[Shared Logic README](../4.declarative-shared-logic/README.md)**.
+For a detailed breakdown of the available use-cases and their workflow graphs, see the **[shared logic codebase](../4.declarative-shared-logic/README.md)**.

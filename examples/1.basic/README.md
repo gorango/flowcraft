@@ -40,6 +40,7 @@ A `workflow` example that demonstrates an article writing workflow using a seque
 The workflow consists of three sequential nodes:
 
 ```mermaid
-graph LR
-    Outline[Generate Outline] --> Write[Write Content]
-    Write --> Style[Apply Style]
+flowchart TD
+	A["fetch-user"] --> B["extract-name"]
+	B --> C["create-greeting"]
+```

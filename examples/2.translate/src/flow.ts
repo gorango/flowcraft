@@ -10,6 +10,7 @@ interface TranslationContext {
 	output_dir: string
 	'prepare-jobs': { language: string; text: string }[]
 	translations: { language: string; translation: string }[]
+	'translate-batch_gather_allWorkerIds': string[]
 }
 
 // 1. Prepare the list of translation jobs
@@ -20,6 +21,7 @@ async function prepareJobs(ctx: NodeContext<TranslationContext>): Promise<NodeRe
 		throw new TypeError('languages and text are required')
 	}
 	const jobs = languages.map((language) => ({ language, text }))
+	await ctx.context.set('prepare-jobs', jobs)
 	return { output: jobs }
 }
 
@@ -44,43 +46,50 @@ ${text}`
 	console.log(`Translating to ${language}...`)
 	const translation = await callLLM(prompt)
 	console.log(`✓ Finished ${language}`)
+	// console.log(`Translation for ${language}:`, translation.substring(0, 100) + '...')
 	return { output: { language, translation } }
 }
 
 // 3. This node runs AFTER the entire batch is complete
-async function saveResults(
-	ctx: NodeContext<TranslationContext, any, { language: string; translation: string }[]>,
-): Promise<NodeResult<string>> {
-	// The `input` for the successor of a batch is an array of all worker outputs.
-	const translations = ctx.input
+async function saveResults(ctx: NodeContext<TranslationContext>): Promise<NodeResult<string>> {
 	const outputDir = await ctx.context.get('output_dir')
 	if (!outputDir) {
 		throw new TypeError('output_dir is required')
 	}
 
-	if (!translations || translations.length === 0) {
+	// Collect translations from worker outputs in context
+	const allWorkerIds = (await ctx.context.get('translate-batch_gather_allWorkerIds')) || []
+	const collectedTranslations: { language: string; translation: string }[] = []
+	for (const workerId of allWorkerIds) {
+		const trans = await ctx.context.get(workerId as keyof TranslationContext)
+		if (trans && typeof trans === 'object' && 'language' in trans && 'translation' in trans) {
+			collectedTranslations.push(trans as { language: string; translation: string })
+		}
+	}
+
+	if (!collectedTranslations || collectedTranslations.length === 0) {
 		console.warn('No translations to save.')
 		return { output: 'Saved 0 files.' }
 	}
 
-	const promises = translations.map(({ language, translation }) => {
+	const promises = collectedTranslations.map(({ language, translation }) => {
 		const filename = path.join(outputDir, `README_${language.toUpperCase()}.md`)
 		console.log(`Saving translation to ${filename}`)
 		return fs.writeFile(filename, translation, 'utf-8')
 	})
 
 	await Promise.all(promises)
-	return { output: `Saved ${translations.length} files.` }
+	return { output: `Saved ${collectedTranslations.length} files.` }
 }
 
 export function createTranslateFlow() {
 	const flow = createFlow<TranslationContext>('parallel-translation')
 
 	// Define all the nodes first
-	flow.node('prepare-jobs', prepareJobs).node('save-results', saveResults, { inputs: 'translations' })
+	flow.node('prepare-jobs', prepareJobs)
+	flow.node('save-results', saveResults, { inputs: 'translations' })
 
-	// Define the batch operation.
-	// This implicitly creates 'translate-batch_scatter' and 'translate-batch_gather' nodes.
+	// The batch operation creates 'translate-batch_scatter' and 'translate-batch_gather' nodes.
 	flow.batch('translate-batch', translateItem, {
 		// The scatter node will read its list of items from the context key 'prepare-jobs',
 		// which is the output of the node with that ID.

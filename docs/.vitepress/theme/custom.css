@@ -18,7 +18,7 @@
 }
 
 .dark {
-	--vp-c-indigo-1: #6093fa;
+	--vp-c-indigo-1: #80a8f7;
 	--vp-c-indigo-2: #5c8be7;
 	--vp-c-indigo-3: #3367ea;
 	--vp-c-indigo-soft: rgba(100, 162, 255, 0.16);
@@ -107,6 +107,7 @@
 
 header,
 aside,
+.aside,
 h1,
 h2,
 h3,

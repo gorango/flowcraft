@@ -2,7 +2,7 @@
 	"name": "@flowcraft/example-rag-workflow",
 	"type": "module",
 	"scripts": {
-		"start": "npx tsx src/main.ts",
+		"start": "tsx src/main.ts",
 		"typecheck": "tsc --noEmit"
 	},
 	"dependencies": {

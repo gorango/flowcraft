@@ -1,8 +1,12 @@
 # Examples Index
 
+[[view source code]](https://github.com/gorango/flowcraft/tree/master/examples)
+
 This page provides an overview of all Flowcraft examples, including summaries and visualizations of each workflow.
 
-## Basic Workflow
+You can clone the [Flowcraft repository](https://github.com/gorango/flowcraft/tree/master/examples) to run them all locally.
+
+## [Basic Workflow](/examples/1_basic)
 
 A basic, linear workflow that creates a greeting message. It demonstrates defining a workflow with [`createFlow`](/api/flow#createflow-id), passing data between nodes, and executing with [`FlowRuntime`](/api/runtime#flowruntime-class).
 
@@ -12,7 +16,7 @@ flowchart TD
 	B --> C["create-greeting"]
 ```
 
-## Parallel Batch Translation
+## [Parallel Batch Translation](/examples/2_translate)
 
 Demonstrates using Flowcraft's [`.batch()`](/api/flow#batch-tinput-toutput-taction-id-worker-options) helper to translate a document into multiple languages concurrently, showcasing performance improvements for I/O-bound tasks.
 
@@ -22,9 +26,9 @@ graph TD
     B --> C[Save Results];
 ```
 
-## Research Agent
+## [Research Agent](/examples/3_research)
 
-A simple research agent that searches the web and answers questions using conditional branching and loops.
+A simple research agent that searches the web and answers questions using conditional branching and [loops](/guide/loops).
 
 ```mermaid
 graph TD
@@ -33,27 +37,9 @@ graph TD
     B -->|"decide"| A
 ```
 
-## Advanced RAG Agent with Document Analysis
+## [Dynamic AI Workflows from JSON Files](/examples/4a_declarative-in-memory)
 
-A sophisticated RAG agent that ingests documents, generates embeddings, performs vector searches, and synthesizes answers.
-
-```mermaid
-graph TD
-	A[Load & Chunk Document] --> B[Generate Embeddings]
-	subgraph "Parallel Process"
-		B --> B1[0]
-		B --> B2[1]
-		B --> B3[2]
-		B --> B4[n]
-	end
-	B1 & B2 & B3 & B4 --> C[Store in Vector DB]
-	C --> D[Vector Search for Question]
-	D --> E[Generate Final Answer]
-```
-
-## Dynamic AI Agent from JSON Files
-
-A runtime engine for executing graph-based AI workflows defined as JSON files, with support for parallelism, branching, and nested workflows.
+An in-memory runtime engine for executing [declarative workflows](/guide/declarative-workflows) defined as JSON files, with support for parallelism, branching, and [subflows](/guide/subflows).
 
 ```mermaid
 graph TD
@@ -78,9 +64,9 @@ graph TD
     Registry -- "Maps string types to" --> Functions
 ```
 
-## Distributed AI Agent with a Pluggable Executor
+## [Distributed Dynamic Workflows](/examples/4b_declarative-distributed)
 
-Runs the DAG example in a distributed environment using BullMQ, with client-worker separation and awaitable workflows.
+Implements the previous example, but in a distributed environment using [BullMQ](/guide/adapters/bullmq), with client-worker separation and awaitable workflows.
 
 ```mermaid
 graph TD
@@ -107,4 +93,22 @@ graph TD
 
     State -- "6. Final result is written" --> Worker
     State -- "7. Client reads final result" --> Client
+```
+
+## [RAG Workflow for Document Analysis](/examples/5_rag)
+
+A sophisticated RAG agent that implements a custom [serializer](/guide/serializers), ingests documents, generates embeddings, performs vector searches, and synthesizes answers.
+
+```mermaid
+graph TD
+	A[Load & Chunk Document] --> B[Generate Embeddings]
+	subgraph "Parallel Process"
+		B --> B1[0]
+		B --> B2[1]
+		B --> B3[2]
+		B --> B4[n]
+	end
+	B1 & B2 & B3 & B4 --> C[Store in Vector DB]
+	C --> D[Vector Search for Question]
+	D --> E[Generate Final Answer]
 ```

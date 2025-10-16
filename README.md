@@ -1,4 +1,4 @@
-# Flowcraft
+# `flowcraft`
 
 [![NPM Version](https://img.shields.io/npm/v/flowcraft.svg)](https://www.npmjs.com/package/flowcraft)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)

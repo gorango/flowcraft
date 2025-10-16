@@ -1,5 +1,7 @@
 # Advanced RAG Agent with Document Analysis
 
+[[view source code]](https://github.com/gorango/flowcraft/tree/master/examples/5.rag)
+
 This example demonstrates a sophisticated Retrieval-Augmented Generation (RAG) agent. The workflow ingests and analyzes a document, uses embeddings to find relevant information, and generates a precise answer to a user's question.
 
 ## The Goal
@@ -24,69 +26,9 @@ graph TD
 
 ## The Code
 
-#### `main.ts`
-```typescript
-import type { ISerializer } from 'flowcraft'
-import * as fs from 'node:fs/promises'
-import * as path from 'node:path'
-import process from 'node:process'
-import { FlowRuntime } from 'flowcraft'
-import SuperJSON from 'superjson'
-import { createRagFlow } from './flow.js'
-import { DocumentChunk, SearchResult } from './types.js'
-
-// Register custom classes with SuperJSON for proper serialization
-SuperJSON.registerClass(DocumentChunk)
-SuperJSON.registerClass(SearchResult)
-
-// Create a serializer adapter for the runtime
-class SuperJsonSerializer implements ISerializer {
-	serialize(data: Record<string, any>): string {
-		return SuperJSON.stringify(data)
-	}
-
-	deserialize(text: string): Record<string, any> {
-		return SuperJSON.parse(text)
-	}
-}
-
-async function main() {
-	console.log('--- RAG Agent Workflow ---')
-
-	const ragFlow = createRagFlow()
-	const blueprint = ragFlow.toBlueprint()
-	const functionRegistry = ragFlow.getFunctionRegistry()
-
-	const runtime = new FlowRuntime({
-		serializer: new SuperJsonSerializer(), // Plug in the custom serializer
-	})
-
-	const documentPath = path.join(process.cwd(), 'documents', 'sample.md')
-	const initialContext = {
-		document_path: documentPath,
-		question: 'How does Flowcraft implement declarative workflows?',
-	}
-
-	const result = await runtime.run(blueprint, initialContext, { functionRegistry })
-
-	console.log('\n--- Workflow Complete ---\n')
-	console.log('Final Answer:\n', result.context.final_answer)
-
-	console.log('\n\n--- Final Context State (Serialized with SuperJSON) ---')
-	const outputFilePath = path.join(process.cwd(), 'tmp', 'final-context-v2.json')
-	await fs.mkdir(path.dirname(outputFilePath), { recursive: true })
-
-	const serializedContext = result.serializedContext
-	await fs.writeFile(outputFilePath, JSON.stringify(JSON.parse(serializedContext), null, 2), 'utf-8')
-
-	console.log(`Full context saved to: ${outputFilePath}\n`)
-	console.log('Inspect the file to see that complex types like Map, Date, and classes were preserved.')
-}
-
-main().catch(console.error)
-```
-
 #### `flow.ts`
+Defines the RAG workflow nodes for document chunking, embedding generation, vector storage, similarity search, and final answer synthesis.
+
 ```typescript
 import type { NodeContext, NodeResult } from 'flowcraft'
 import * as fs from 'node:fs/promises'
@@ -227,6 +169,8 @@ export function createRagFlow() {
 ```
 
 #### `types.ts`
+Defines TypeScript classes for representing document chunks and search results in the RAG system.
+
 ```typescript
 export class DocumentChunk {
 	constructor(
@@ -246,6 +190,8 @@ export class SearchResult {
 ```
 
 #### `utils.ts`
+Provides utility functions for OpenAI API interactions, embedding generation, cosine similarity calculations, and template resolution with SuperJSON support.
+
 ```typescript
 import OpenAI from 'openai'
 import SuperJSON from 'superjson'
@@ -325,4 +271,71 @@ export function resolveTemplate(template: string, data: Record<string, any>): st
 	})
 }
 ```
+
+#### `main.ts`
+Serves as the entry point, configuring the FlowRuntime with a custom SuperJSON serializer and executing the RAG workflow with a specified document and question.
+
+```typescript
+import type { ISerializer } from 'flowcraft'
+import * as fs from 'node:fs/promises'
+import * as path from 'node:path'
+import process from 'node:process'
+import { FlowRuntime } from 'flowcraft'
+import SuperJSON from 'superjson'
+import { createRagFlow } from './flow.js'
+import { DocumentChunk, SearchResult } from './types.js'
+
+// Register custom classes with SuperJSON for proper serialization
+SuperJSON.registerClass(DocumentChunk)
+SuperJSON.registerClass(SearchResult)
+
+// Create a serializer adapter for the runtime
+class SuperJsonSerializer implements ISerializer {
+	serialize(data: Record<string, any>): string {
+		return SuperJSON.stringify(data)
+	}
+
+	deserialize(text: string): Record<string, any> {
+		return SuperJSON.parse(text)
+	}
+}
+
+async function main() {
+	console.log('--- RAG Agent Workflow ---')
+
+	const ragFlow = createRagFlow()
+	const blueprint = ragFlow.toBlueprint()
+	const functionRegistry = ragFlow.getFunctionRegistry()
+
+	const runtime = new FlowRuntime({
+		serializer: new SuperJsonSerializer(), // Plug in the custom serializer
+	})
+
+	const documentPath = path.join(process.cwd(), 'documents', 'sample.md')
+	const initialContext = {
+		document_path: documentPath,
+		question: 'How does Flowcraft implement declarative workflows?',
+	}
+
+	const result = await runtime.run(blueprint, initialContext, { functionRegistry })
+
+	console.log('\n--- Workflow Complete ---\n')
+	console.log('Final Answer:\n', result.context.final_answer)
+
+	console.log('\n\n--- Final Context State (Serialized with SuperJSON) ---')
+	const outputFilePath = path.join(process.cwd(), 'tmp', 'final-context-v2.json')
+	await fs.mkdir(path.dirname(outputFilePath), { recursive: true })
+
+	const serializedContext = result.serializedContext
+	await fs.writeFile(outputFilePath, JSON.stringify(JSON.parse(serializedContext), null, 2), 'utf-8')
+
+	console.log(`Full context saved to: ${outputFilePath}\n`)
+	console.log('Inspect the file to see that complex types like Map, Date, and classes were preserved.')
+}
+
+main().catch(console.error)
 ```
+
+---
+
+[[view source code]](https://github.com/gorango/flowcraft/tree/master/examples/5.rag)

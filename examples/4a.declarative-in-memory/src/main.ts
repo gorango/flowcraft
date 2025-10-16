@@ -3,7 +3,7 @@ import { FlowRuntime } from 'flowcraft'
 
 type UseCase = keyof typeof config
 
-const ACTIVE_USE_CASE: UseCase = '4.content-moderation' // Change this to test other scenarios
+const ACTIVE_USE_CASE: UseCase = '3.customer-review' // Change this to test other scenarios
 
 async function main() {
 	console.log(`--- Running Use-Case (Data-First): ${ACTIVE_USE_CASE} ---\n`)
@@ -13,10 +13,10 @@ async function main() {
 		blueprints,
 	})
 
-	const mainWorkflowId = config[ACTIVE_USE_CASE].mainWorkflowId
-	const mainBlueprint = blueprints[mainWorkflowId]
+	const entryWorkflowId = config[ACTIVE_USE_CASE].entryWorkflowId
+	const mainBlueprint = blueprints[entryWorkflowId]
 
-	if (!mainBlueprint) throw new Error(`Main workflow blueprint with ID '${mainWorkflowId}' was not found.`)
+	if (!mainBlueprint) throw new Error(`Main workflow blueprint with ID '${entryWorkflowId}' was not found.`)
 
 	const { initialContext } = config[ACTIVE_USE_CASE]
 

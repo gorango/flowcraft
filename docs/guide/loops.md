@@ -18,7 +18,7 @@ flow.loop(
 )
 ```
 
-## Example: A Simple Counter
+## Example: Simple Counter
 
 Let's build a workflow that increments a counter from 0 to 5.
 
@@ -91,7 +91,7 @@ const runtime = new FlowRuntime({
 > [!WARNING]
 > [`UnsafeEvaluator`](/api/evaluator#unsafeevaluator-class) uses `new Function()` and can execute arbitrary JavaScript code. Only use it in trusted environments where all workflow definitions are authored by trusted developers. For production systems, consider implementing a custom evaluator using a sandboxed library like [`jsep`](https://npmjs.com/package/jsep).
 
-## Cycles and Non-DAG Workflows
+## Cycles and Non-DAG Flows
 
 While loops provide a structured way to handle iteration, it's also possible to create workflows with cycles (non-DAG graphs) using manual edges. However, this comes with significant risks and unpredictable behavior.
 
