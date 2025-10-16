@@ -293,7 +293,7 @@ describe('BaseDistributedAdapter', () => {
 
 		it('should not enqueue the job for subsequent predecessors with "any" join strategy', async () => {
 			const job: JobPayload = {
-				runId: 'run1',
+				runId: 'run2',
 				blueprintId: 'fan-in-any',
 				nodeId: 'B',
 			}
@@ -301,13 +301,53 @@ describe('BaseDistributedAdapter', () => {
 			vi.mocked(mockRuntime.determineNextNodes).mockResolvedValue([
 				{ node: fanInAnyBlueprint.nodes[2], edge: fanInAnyBlueprint.edges[1] },
 			])
-			// Second predecessor fails to acquire the lock
-			vi.mocked(mockCoordinationStore.setIfNotExist).mockResolvedValue(false)
+			// Poison check returns true (not poisoned), join lock returns false
+			vi.mocked(mockCoordinationStore.setIfNotExist)
+				.mockResolvedValueOnce(true) // Poison check
+				.mockResolvedValue(false) // Join lock
 
 			await jobHandler(job)
 
-			expect(mockCoordinationStore.setIfNotExist).toHaveBeenCalledWith('flowcraft:joinlock:run1:C', 'locked', 3600)
+			expect(mockCoordinationStore.setIfNotExist).toHaveBeenCalledWith('flowcraft:joinlock:run2:C', 'locked', 3600)
 			expect(adapter.enqueueJob).not.toHaveBeenCalled()
+		})
+
+		it('should throw error when trying to enqueue a poisoned node', async () => {
+			const poisonedFanInBlueprint: WorkflowBlueprint = {
+				id: 'poisoned-fan-in',
+				nodes: [
+					{ id: 'A', uses: 'test' },
+					{ id: 'B', uses: 'test' },
+					{ id: 'C', uses: 'output' },
+				],
+				edges: [
+					{ source: 'A', target: 'C' },
+					{ source: 'B', target: 'C' },
+				],
+			}
+			if (mockRuntime.options.blueprints) {
+				vi.mocked(mockRuntime.options.blueprints)['poisoned-fan-in'] = poisonedFanInBlueprint
+			}
+			const job: JobPayload = {
+				runId: 'run3',
+				blueprintId: 'poisoned-fan-in',
+				nodeId: 'B',
+			}
+			vi.mocked(mockRuntime.executeNode).mockResolvedValue({ output: 'from B' })
+			vi.mocked(mockRuntime.determineNextNodes).mockResolvedValue([
+				{ node: poisonedFanInBlueprint.nodes[2], edge: poisonedFanInBlueprint.edges[1] },
+			])
+			// Simulate poison pill already set for 'C' (first call for poison check returns false)
+			vi.mocked(mockCoordinationStore.setIfNotExist)
+				.mockResolvedValueOnce(false) // Poison check fails
+				.mockResolvedValue(true) // Other calls succeed
+
+			await jobHandler(job)
+
+			expect(adapter.publishFinalResult).toHaveBeenCalledWith('run3', {
+				status: 'failed',
+				reason: "Node 'C' failed due to poisoned predecessor in run 'run3'",
+			})
 		})
 	})
 
@@ -344,6 +384,67 @@ describe('BaseDistributedAdapter', () => {
 				status: 'failed',
 				reason: "Blueprint with ID 'non-existent' not found in the worker's runtime registry.",
 			})
+		})
+
+		it('should write poison pill for "all" join successors when a node fails fatally', async () => {
+			const fanInWithFailureBlueprint: WorkflowBlueprint = {
+				id: 'fan-in-failure',
+				nodes: [
+					{ id: 'A', uses: 'test' },
+					{ id: 'B', uses: 'test' },
+					{ id: 'C', uses: 'output' }, // 'all' join by default
+				],
+				edges: [
+					{ source: 'A', target: 'C' },
+					{ source: 'B', target: 'C' },
+				],
+			}
+			if (mockRuntime.options.blueprints) {
+				vi.mocked(mockRuntime.options.blueprints)['fan-in-failure'] = fanInWithFailureBlueprint
+			}
+			const job: JobPayload = {
+				runId: 'run1',
+				blueprintId: 'fan-in-failure',
+				nodeId: 'A',
+			}
+			const executionError = new Error('Node A failed')
+			vi.mocked(mockRuntime.executeNode).mockRejectedValue(executionError)
+
+			await jobHandler(job)
+
+			expect(adapter.publishFinalResult).toHaveBeenCalledWith('run1', {
+				status: 'failed',
+				reason: executionError.message,
+			})
+			// Verify poison pill is written for successor 'C'
+			expect(mockCoordinationStore.setIfNotExist).toHaveBeenCalledWith(
+				'flowcraft:fanin:poison:run1:C',
+				'poisoned',
+				3600,
+			)
+		})
+
+		it('should not write poison pill for "any" join successors when a node fails', async () => {
+			const job: JobPayload = {
+				runId: 'run1',
+				blueprintId: 'fan-in-any',
+				nodeId: 'A',
+			}
+			const executionError = new Error('Node A failed')
+			vi.mocked(mockRuntime.executeNode).mockRejectedValue(executionError)
+
+			await jobHandler(job)
+
+			expect(adapter.publishFinalResult).toHaveBeenCalledWith('run1', {
+				status: 'failed',
+				reason: executionError.message,
+			})
+			// Should not write poison pill for 'any' join
+			expect(mockCoordinationStore.setIfNotExist).not.toHaveBeenCalledWith(
+				expect.stringContaining('poison'),
+				expect.anything(),
+				expect.anything(),
+			)
 		})
 	})
 

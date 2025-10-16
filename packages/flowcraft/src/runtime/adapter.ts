@@ -125,7 +125,7 @@ export abstract class BaseDistributedAdapter {
 		}
 		const workerState = {
 			getContext: () => context,
-			markFallbackExecuted: () => {},
+			markFallbackExecuted: () => { },
 			addError: (nodeId: string, error: Error) => {
 				console.error(`[Adapter] Error in node ${nodeId}:`, error)
 			},
@@ -188,6 +188,7 @@ export abstract class BaseDistributedAdapter {
 			const reason = error.message || 'Unknown execution error'
 			console.error(`[Adapter] FATAL: Job for node '${nodeId}' failed for Run ID '${runId}': ${reason}`)
 			await this.publishFinalResult(runId, { status: 'failed', reason })
+			await this.writePoisonPillForSuccessors(runId, blueprint, nodeId)
 		}
 	}
 
@@ -204,6 +205,13 @@ export abstract class BaseDistributedAdapter {
 
 		if (predecessors.length <= 1) {
 			return true
+		}
+
+		const poisonKey = `flowcraft:fanin:poison:${runId}:${targetNodeId}`
+		const isPoisoned = !(await this.store.setIfNotExist(poisonKey, 'poisoned', 3600))
+		if (isPoisoned) {
+			console.log(`[Adapter] Node '${targetNodeId}' is poisoned due to failed predecessor. Failing immediately.`)
+			throw new Error(`Node '${targetNodeId}' failed due to poisoned predecessor in run '${runId}'`)
 		}
 
 		if (joinStrategy === 'any') {
@@ -315,5 +323,30 @@ export abstract class BaseDistributedAdapter {
 			}
 		}
 		return newFrontier
+	}
+
+	/**
+	 * Writes a poison pill for 'all' join successors of a failed node to prevent stalling.
+	 */
+	private async writePoisonPillForSuccessors(
+		runId: string,
+		blueprint: WorkflowBlueprint,
+		failedNodeId: string,
+	): Promise<void> {
+		const successors = blueprint.edges
+			.filter((edge) => edge.source === failedNodeId)
+			.map((edge) => edge.target)
+			.map((targetId) => blueprint.nodes.find((node) => node.id === targetId))
+			.filter((node) => node && (node.config?.joinStrategy || 'all') === 'all')
+
+		for (const successor of successors) {
+			if (successor) {
+				const poisonKey = `flowcraft:fanin:poison:${runId}:${successor.id}`
+				await this.store.setIfNotExist(poisonKey, 'poisoned', 3600)
+				console.log(
+					`[Adapter] Wrote poison pill for join node '${successor.id}' due to failed predecessor '${failedNodeId}'`,
+				)
+			}
+		}
 	}
 }
