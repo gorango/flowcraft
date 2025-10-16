@@ -1,9 +1,10 @@
 import type { DynamoDBClient } from '@aws-sdk/client-dynamodb'
 import { UpdateItemCommand } from '@aws-sdk/client-dynamodb'
-import type { SQSClient } from '@aws-sdk/client-sqs'
-import { DeleteMessageCommand, ReceiveMessageCommand, SendMessageCommand } from '@aws-sdk/client-sqs'
+import type { Message, SQSClient } from '@aws-sdk/client-sqs'
+import { SendMessageCommand } from '@aws-sdk/client-sqs'
 import type { AdapterOptions, JobPayload, WorkflowResult } from 'flowcraft'
 import { BaseDistributedAdapter } from 'flowcraft'
+import { Consumer } from 'sqs-consumer'
 import { DynamoDbContext } from './context'
 
 export interface SqsAdapterOptions extends AdapterOptions {
@@ -24,7 +25,7 @@ export class SqsAdapter extends BaseDistributedAdapter {
 	private readonly queueUrl: string
 	private readonly contextTableName: string
 	private readonly statusTableName: string
-	private isPolling = false
+	private consumer?: Consumer
 
 	constructor(options: SqsAdapterOptions) {
 		super(options)
@@ -93,57 +94,39 @@ export class SqsAdapter extends BaseDistributedAdapter {
 	}
 
 	protected processJobs(handler: (job: JobPayload) => Promise<void>): void {
-		if (this.isPolling) {
-			console.warn('[SqsAdapter] Polling is already active.')
+		if (this.consumer) {
+			console.warn('[SqsAdapter] Consumer is already active.')
 			return
 		}
-		this.isPolling = true
 		console.log('[SqsAdapter] Worker starting to poll for jobs...')
-		this.poll(handler)
-	}
-
-	private async poll(handler: (job: JobPayload) => Promise<void>): Promise<void> {
-		while (this.isPolling) {
-			try {
-				const command = new ReceiveMessageCommand({
-					QueueUrl: this.queueUrl,
-					MaxNumberOfMessages: 10,
-					WaitTimeSeconds: 20, // use long polling
-				})
-
-				const { Messages } = await this.sqs.send(command)
-
-				if (Messages && Messages.length > 0) {
-					await Promise.all(
-						Messages.map(async (message) => {
-							if (message.Body) {
-								try {
-									const job = JSON.parse(message.Body) as JobPayload
-									console.log(`[SqsAdapter] ==> Picked up job for Node: ${job.nodeId}, Run: ${job.runId}`)
-									await handler(job)
-								} catch (err) {
-									console.error('[SqsAdapter] Error processing message body:', err)
-								} finally {
-									const deleteCommand = new DeleteMessageCommand({
-										QueueUrl: this.queueUrl,
-										ReceiptHandle: message.ReceiptHandle,
-									})
-									await this.sqs.send(deleteCommand)
-								}
-							}
-						}),
-					)
+		this.consumer = Consumer.create({
+			queueUrl: this.queueUrl,
+			sqs: this.sqs,
+			handleMessage: async (message: Message) => {
+				try {
+					const job = JSON.parse(message.Body || '{}') as JobPayload
+					console.log(`[SqsAdapter] ==> Picked up job for Node: ${job.nodeId}, Run: ${job.runId}`)
+					await handler(job)
+				} catch (err: unknown) {
+					console.error('[SqsAdapter] Error processing message body:', err)
+					throw err // Let sqs-consumer handle retries or dead letter queue
 				}
-			} catch (error) {
-				console.error('[SqsAdapter] Error during SQS polling:', error)
-				// wait before retrying to prevent rapid-fire errors
-				await new Promise((resolve) => setTimeout(resolve, 5000))
-			}
-		}
+			},
+		})
+		this.consumer.on('error', (err: Error) => {
+			console.error('[SqsAdapter] Consumer error:', err)
+		})
+		this.consumer.on('processing_error', (err: Error) => {
+			console.error('[SqsAdapter] Processing error:', err)
+		})
+		this.consumer.start()
 	}
 
 	public stop(): void {
 		console.log('[SqsAdapter] Stopping worker polling.')
-		this.isPolling = false
+		if (this.consumer) {
+			this.consumer.stop()
+			this.consumer = undefined
+		}
 	}
 }

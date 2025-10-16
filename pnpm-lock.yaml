@@ -343,6 +343,9 @@ importers:
       flowcraft:
         specifier: ^2.1.0
         version: 2.1.0
+      sqs-consumer:
+        specifier: ^11.0.0
+        version: 11.6.0(@aws-sdk/client-sqs@3.908.0)
     devDependencies:
       '@testcontainers/localstack':
         specifier: ^11.7.1
@@ -3407,6 +3410,12 @@ packages:
   split2@4.2.0:
     resolution: {integrity: sha512-UcjcJOWknrNkF6PLX83qcHM6KHgVKNkV62Y8a5uYDVv9ydGQVwAHMKqHdJje1VTWpljG0WYpCDhrCdAOYH4TWg==}
     engines: {node: '>= 10.x'}
+
+  sqs-consumer@11.6.0:
+    resolution: {integrity: sha512-S2rJeIs/TrH0voz2L3VsRPvDa713QWK6Bc3fXZvtip1JZj0osxNTpq4r6vYEgoCsLO5lgjW5yrb4Rt6QucuwMw==}
+    engines: {node: '>=18.0.0'}
+    peerDependencies:
+      '@aws-sdk/client-sqs': ^3.723.0
 
   ssh-remote-port-forward@1.0.4:
     resolution: {integrity: sha512-x0LV1eVDwjf1gmG7TTnfqIzf+3VPRz7vrNIjX6oYLbeCrf/PeVY6hkT68Mg+q02qXxQhrLjB0jfgvhevoCRmLQ==}
@@ -7562,6 +7571,13 @@ snapshots:
   split-ca@1.0.1: {}
 
   split2@4.2.0: {}
+
+  sqs-consumer@11.6.0(@aws-sdk/client-sqs@3.908.0):
+    dependencies:
+      '@aws-sdk/client-sqs': 3.908.0
+      debug: 4.4.3
+    transitivePeerDependencies:
+      - supports-color
 
   ssh-remote-port-forward@1.0.4:
     dependencies:
