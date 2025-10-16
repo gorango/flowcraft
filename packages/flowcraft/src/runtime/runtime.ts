@@ -451,22 +451,58 @@ export class FlowRuntime<TContext extends Record<string, any>, TDependencies ext
 				if (!Array.isArray(inputArray))
 					throw new FatalNodeExecutionError(`Input for batch-scatter node '${id}' must be an array.`, id, '')
 				const batchId = globalThis.crypto.randomUUID()
+				const chunkSize = params.chunkSize || inputArray.length
+				const currentIndex = (await (context as any).get(`${id}_currentIndex`)) || 0
+				const endIndex = Math.min(currentIndex + chunkSize, inputArray.length)
 				const dynamicNodes: NodeDefinition[] = []
-				for (let i = 0; i < inputArray.length; i++) {
+				const workerIds = []
+				for (let i = currentIndex; i < endIndex; i++) {
 					const item = inputArray[i]
 					const itemInputKey = `${id}_${batchId}_item_${i}`
-					await context.set(itemInputKey as any, item)
+					await (context as any).set(itemInputKey, item)
+					const workerId = `${params.workerUsesKey}_${batchId}_${i}`
+					workerIds.push(workerId)
 					dynamicNodes.push({
-						id: `${params.workerUsesKey}_${batchId}_${i}`,
+						id: workerId,
 						uses: params.workerUsesKey,
 						inputs: itemInputKey,
 					})
 				}
+				// update current index for next chunk
+				await (context as any).set(`${id}_currentIndex`, endIndex)
 				const gatherNodeId = params.gatherNodeId
-				return { dynamicNodes, output: { gatherNodeId } }
+				const hasMore = endIndex < inputArray.length
+				await (context as any).set(`${gatherNodeId}_hasMore`, hasMore)
+				// accumulate worker ids for all chunks
+				const existingWorkerIds = (await (context as any).get(`${gatherNodeId}_allWorkerIds`)) || []
+				const allWorkerIds = [...existingWorkerIds, ...workerIds]
+				await (context as any).set(`${gatherNodeId}_allWorkerIds`, allWorkerIds)
+				return { dynamicNodes, output: { gatherNodeId, hasMore } }
 			}
 			case 'batch-gather': {
-				return { output: {} }
+				const { gatherNodeId, outputKey } = params
+				const hasMore = (await (context as any).get(`${gatherNodeId}_hasMore`)) || false
+				const dynamicNodes: NodeDefinition[] = []
+				if (hasMore) {
+					// create a new scatter node for the next chunk
+					const newScatterId = `${gatherNodeId}_scatter_next`
+					dynamicNodes.push({
+						id: newScatterId,
+						uses: 'batch-scatter',
+						inputs: inputs, // use the same input as the original scatter
+						params: { ...params, gatherNodeId },
+					})
+				} else {
+					// collect results from all chunks into outputKey
+					const allWorkerIds = (await (context as any).get(`${gatherNodeId}_allWorkerIds`)) || []
+					const results = []
+					for (const workerId of allWorkerIds) {
+						const result = await context.get(`${workerId}_output` as any)
+						if (result !== undefined) results.push(result)
+					}
+					await (context as any).set(outputKey, results)
+				}
+				return { dynamicNodes, output: {} }
 			}
 			case 'loop-controller': {
 				const contextData = await context.toJSON()

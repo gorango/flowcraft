@@ -30,6 +30,7 @@ export class Flow<
 		startNodeId: string
 		endNodeId: string
 	}>
+	private cycleEntryPoints: Map<string, string>
 
 	constructor(id: string) {
 		this.blueprint = { id, nodes: [], edges: [] }
@@ -89,6 +90,8 @@ export class Flow<
 			inputKey: keyof TContext
 			/** The key in the context where the array of results will be stored. */
 			outputKey: keyof TContext
+			/** The number of items to process in each chunk to limit memory usage. */
+			chunkSize?: number
 		},
 	): this {
 		const { inputKey, outputKey } = options
@@ -111,14 +114,14 @@ export class Flow<
 			id: scatterId,
 			uses: 'batch-scatter', // built-in
 			inputs: inputKey as string,
-			params: { workerUsesKey, outputKey: outputKey as string, gatherNodeId: gatherId },
+			params: { workerUsesKey, outputKey: outputKey as string, gatherNodeId: gatherId, chunkSize: options.chunkSize },
 		})
 
 		// gather node: waits for all workers to finish and collects the results
 		this.blueprint.nodes?.push({
 			id: gatherId,
 			uses: 'batch-gather', // built-in
-			params: { outputKey },
+			params: { outputKey, gatherNodeId: gatherId },
 			config: { joinStrategy: 'all' }, // important: must wait for all scattered jobs
 		})
 
