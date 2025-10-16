@@ -107,6 +107,7 @@ export class SqsAdapter extends BaseDistributedAdapter {
 					const job = JSON.parse(message.Body || '{}') as JobPayload
 					console.log(`[SqsAdapter] ==> Picked up job for Node: ${job.nodeId}, Run: ${job.runId}`)
 					await handler(job)
+					return message
 				} catch (err: unknown) {
 					console.error('[SqsAdapter] Error processing message body:', err)
 					throw err // Let sqs-consumer handle retries or dead letter queue
