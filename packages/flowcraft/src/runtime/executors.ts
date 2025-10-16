@@ -114,11 +114,11 @@ export class ClassNodeExecutor implements ExecutionStrategy {
 		signal?: AbortSignal,
 	): Promise<NodeResult<any, any>> {
 		const instance = new this.implementation(nodeDef.params || {})
+		let lastError: Error | undefined
 		try {
 			signal?.throwIfAborted()
 			const prepResult = await instance.prep(context)
 			let execResult: Omit<NodeResult, 'error'> | undefined
-			let lastError: any
 			try {
 				execResult = await withRetries(
 					() => instance.exec(prepResult, context),
@@ -130,7 +130,7 @@ export class ClassNodeExecutor implements ExecutionStrategy {
 					this.eventBus,
 				)
 			} catch (error) {
-				lastError = error
+				lastError = error instanceof Error ? error : new Error(String(error))
 				if (error instanceof DOMException && error.name === 'AbortError') {
 					throw new CancelledWorkflowError('Workflow cancelled')
 				}
@@ -148,10 +148,24 @@ export class ClassNodeExecutor implements ExecutionStrategy {
 			}
 			return await instance.post(execResult, context)
 		} catch (error) {
+			lastError = error instanceof Error ? error : new Error(String(error))
 			if (error instanceof DOMException && error.name === 'AbortError') {
 				throw new CancelledWorkflowError('Workflow cancelled')
 			}
 			throw error
+		} finally {
+			if (lastError) {
+				try {
+					await instance.recover(lastError, context)
+				} catch (recoverError) {
+					context.dependencies.logger.warn(`Recover phase failed`, {
+						nodeId: nodeDef.id,
+						originalError: lastError.message,
+						recoverError: recoverError instanceof Error ? recoverError.message : String(recoverError),
+						executionId,
+					})
+				}
+			}
 		}
 	}
 }

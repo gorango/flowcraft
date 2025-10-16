@@ -67,6 +67,37 @@ In this example:
 3. The output of `secondary-api` will be passed to `process-data`.
 4. The workflow completes successfully, with the final context containing the output from the fallback path.
 
+## Cleanup with `recover`
+
+For class-based nodes extending `BaseNode`, you can implement a `recover` method to perform cleanup when non-retriable errors occur outside the main `exec` phase (e.g., in `prep`, `post`, or due to fatal errors). This ensures resources like database connections or locks are properly released.
+
+```typescript
+import { BaseNode, NodeContext, NodeResult } from 'flowcraft'
+
+class DatabaseNode extends BaseNode {
+  private connection: any // Mock database connection
+
+  async prep(context: NodeContext) {
+    this.connection = await openDatabaseConnection()
+    return { /* prep data */ }
+  }
+
+  async exec(prepResult: any, context: NodeContext): Promise<Omit<NodeResult, 'error'>> {
+    // Core logic using this.connection
+    return { output: 'data' }
+  }
+
+  async recover(error: Error, context: NodeContext): Promise<void> {
+    if (this.connection) {
+      await this.connection.close()
+      console.log('Database connection closed due to error')
+    }
+  }
+}
+```
+
+The `recover` method is called in a `finally` block, ensuring cleanup even if the node fails fatally.
+
 ## Custom Error Types
 
 Flowcraft uses custom error types to give you more control over failure modes:

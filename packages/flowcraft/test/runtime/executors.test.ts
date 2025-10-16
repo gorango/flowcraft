@@ -222,7 +222,7 @@ describe('ClassNodeExecutor', () => {
 			},
 			input: 'input',
 			params: {},
-			dependencies: { logger: { info: vi.fn() } },
+			dependencies: { logger: { info: vi.fn(), warn: vi.fn() } },
 			signal: controller.signal,
 		} as any
 		await expect(executor.execute(nodeDef, context, undefined, controller.signal)).rejects.toThrow('Workflow cancelled')

@@ -27,7 +27,7 @@ Because blueprints are just data, they can be stored as JSON, sent over a networ
 A node represents a single unit of work in your workflow.It encapsulates the logic you want to execute. For a detailed guide, see [Nodes and Edges](/guide/nodes-and-edges). Flowcraft supports two ways to define node logic:
 
 -   **Function-based**: A simple `async` function that receives a `NodeContext` and returns a `NodeResult`. Ideal for simple, self-contained tasks.
--   **Class-based**: A class that extends `BaseNode`. This provides a more structured lifecycle (`prep`, `exec`, `post`, `fallback`), which is useful for complex logic, dependency injection, and testability.
+-   **Class-based**: A class that extends `BaseNode`. This provides a more structured lifecycle (`prep`, `exec`, `post`, `fallback`, `recover`), which is useful for complex logic, dependency injection, and testability.
 
 ## 3. Context
 

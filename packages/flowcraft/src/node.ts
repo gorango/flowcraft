@@ -65,4 +65,15 @@ export abstract class BaseNode<
 		// By default, re-throw the error, failing the node.
 		throw error
 	}
+
+	/**
+	 * An optional cleanup phase for non-retriable errors that occur outside the main `exec` method.
+	 * This method is invoked in a `finally` block or equivalent construct if a fatal, unhandled exception occurs in the `prep`, `exec`, or `post` phases.
+	 * Allows nodes to perform crucial cleanup, such as closing database connections or releasing locks.
+	 * @param _error The error that caused the failure.
+	 * @param _context The node's execution context.
+	 */
+	async recover(_error: Error, _context: NodeContext<TContext, TDependencies, TInput>): Promise<void> {
+		// Default no-op implementation. Subclasses can override for cleanup.
+	}
 }

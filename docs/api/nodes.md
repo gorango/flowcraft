@@ -108,3 +108,9 @@ An optional safety net that runs if all `exec` retries fail.
 -   **`error`**: The final error from the last `exec` attempt.
 -   **`context`**: The node's `NodeContext<TContext, TDependencies, TInput>`.
 -   **Returns**: `Promise<Omit<NodeResult<TOutput, TAction>, 'error'>>`
+
+### `async recover(error, context)`
+An optional cleanup phase for non-retriable errors that occur outside the main `exec` method.
+-   **`error`**: The error that caused the failure.
+-   **`context`**: The node's `NodeContext<TContext, TDependencies, TInput>`.
+-   **Returns**: `Promise<void>`

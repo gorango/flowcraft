@@ -32,6 +32,7 @@ For more complex logic, dependency injection, or better testability, you can ext
 -   **`exec()`**: Contains the core, isolated logic. This is the **only** phase that is retried.
 -   **`post()`**: Processes the result from `exec` or `fallback`. Not retried.
 -   **`fallback()`**: An optional safety net that runs if all `exec` retries fail.
+-   **`recover()`**: An optional cleanup phase for non-retriable errors, ensuring resources are released.
 
 ```typescript
 import { BaseNode, NodeContext, NodeResult } from 'flowcraft'
