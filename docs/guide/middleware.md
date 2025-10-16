@@ -118,4 +118,79 @@ const runtime = new FlowRuntime({
 
 This middleware automatically creates spans for each node execution, propagates context between nodes, and records errors, enabling full observability in distributed environments.
 
+## Advanced Middleware: Modifying Results and Context
+
+The `aroundNode` hook is particularly powerful because it allows you to intercept, modify, or completely replace the `NodeResult` before it's returned to the runtime. Additionally, you can use the `ctx` argument to mutate the workflow's shared state via `ctx.set(...)`. This enables advanced use cases like custom caching, result enrichment, or dynamic context manipulation.
+
+### Modifying NodeResult
+
+In `aroundNode`, after calling `next()`, you receive the original `NodeResult`. You can modify its properties (e.g., `data`, `error`, or custom fields) or return an entirely new `NodeResult`. This is useful for tasks like adding metadata, filtering sensitive data, or implementing custom error handling.
+
+```typescript
+import { Middleware, NodeResult } from 'flowcraft'
+
+const resultEnrichmentMiddleware: Middleware = {
+  aroundNode: async (ctx, nodeId, next) => {
+    const result = await next()
+
+    // Modify the result by adding custom metadata
+    if (result.data) {
+      result.data = {
+        ...result.data,
+        enrichedAt: new Date().toISOString(),
+        nodeId: nodeId,
+        // Add any other custom fields
+      }
+    }
+
+    // Alternatively, return a completely new NodeResult
+    // For example, to mask errors in production:
+    if (result.error && process.env.NODE_ENV === 'production') {
+      return new NodeResult({
+        data: null,
+        error: new Error('An internal error occurred'), // Generic error
+      })
+    }
+
+    return result
+  },
+}
+```
+
+### Mutating Workflow Context
+
+The `ctx` object provides access to the workflow's shared state. You can read from it using `ctx.get(key)` and write to it using `ctx.set(key, value)`. This allows middleware to pass data between nodes or influence the workflow's behavior dynamically.
+
+```typescript
+const contextMutationMiddleware: Middleware = {
+  aroundNode: async (ctx, nodeId, next) => {
+    // Read existing context values
+    const previousCount = ctx.get('executionCount') || 0
+
+    // Mutate the context before node execution
+    ctx.set('executionCount', previousCount + 1)
+    ctx.set('lastNodeId', nodeId)
+
+    // You can also store node-specific data for later use
+    const startTime = Date.now()
+    ctx.set(`startTime_${nodeId}`, startTime)
+
+    const result = await next()
+
+    // Update context after node execution
+    const endTime = Date.now()
+    ctx.set(`endTime_${nodeId}`, endTime)
+    ctx.set(`duration_${nodeId}`, endTime - startTime)
+
+    return result
+  },
+}
+```
+
+These capabilities make `aroundNode` ideal for implementing features like:
+
+- **Custom Caching:** Check `ctx.get('cache')` before calling `next()`, and store results in the context for future nodes.
+- **Dynamic Configuration:** Modify node behavior based on context values set by previous middleware or nodes.
+- **Result Transformation:** Enrich or filter `NodeResult` data before it's processed further.
+
 Middleware provides a clean and modular way to enhance your workflows without modifying your core business logic.
