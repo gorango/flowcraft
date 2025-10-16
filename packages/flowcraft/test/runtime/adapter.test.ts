@@ -137,7 +137,7 @@ describe('BaseDistributedAdapter', () => {
 			expect(adapter.publishFinalResult).not.toHaveBeenCalled()
 		})
 
-		it('should publish a "completed" result when a terminal "output" node finishes', async () => {
+		it('should publish a "completed" result when all terminal nodes finish', async () => {
 			const job: JobPayload = {
 				runId: 'run1',
 				blueprintId: 'linear',
@@ -148,10 +148,12 @@ describe('BaseDistributedAdapter', () => {
 				output: 'Final Result',
 			})
 			vi.mocked(mockRuntime.determineNextNodes).mockResolvedValue([]) // No more nodes
+			vi.mocked(mockContext.toJSON).mockResolvedValue({ B: 'Final Result' })
 
 			await jobHandler(job)
 
 			expect(mockRuntime.executeNode).toHaveBeenCalledWith(linearBlueprint, 'B', expect.any(Object))
+			expect(mockContext.set).toHaveBeenCalledWith('B', 'Final Result')
 			expect(adapter.enqueueJob).not.toHaveBeenCalled()
 			expect(adapter.publishFinalResult).toHaveBeenCalledWith(
 				'run1',
@@ -162,7 +164,7 @@ describe('BaseDistributedAdapter', () => {
 			)
 		})
 
-		it('should terminate a branch without completing the workflow if a non-output terminal node is reached', async () => {
+		it('should complete the workflow when a terminal node finishes, even if not an output node', async () => {
 			const terminalNonOutputBlueprint: WorkflowBlueprint = {
 				id: 't',
 				nodes: [{ id: 'A', uses: 'test' }],
@@ -175,6 +177,43 @@ describe('BaseDistributedAdapter', () => {
 
 			vi.mocked(mockRuntime.executeNode).mockResolvedValue({
 				output: 'end of branch',
+			})
+			vi.mocked(mockRuntime.determineNextNodes).mockResolvedValue([])
+			vi.mocked(mockContext.toJSON).mockResolvedValue({ A: 'end of branch' })
+
+			await jobHandler(job)
+
+			expect(mockContext.set).toHaveBeenCalledWith('A', 'end of branch')
+			expect(adapter.enqueueJob).not.toHaveBeenCalled()
+			expect(adapter.publishFinalResult).toHaveBeenCalledWith(
+				'run1',
+				expect.objectContaining({
+					status: 'completed',
+					payload: expect.objectContaining({ status: 'completed' }),
+				}),
+			)
+		})
+
+		it('should not complete the workflow until all terminal nodes finish', async () => {
+			const multipleTerminalBlueprint: WorkflowBlueprint = {
+				id: 'multi-terminal',
+				nodes: [
+					{ id: 'A', uses: 'test' },
+					{ id: 'B', uses: 'test' },
+					{ id: 'C', uses: 'test' },
+				],
+				edges: [
+					{ source: 'A', target: 'B' },
+					{ source: 'A', target: 'C' },
+				],
+			}
+			if (mockRuntime.options.blueprints) {
+				vi.mocked(mockRuntime.options.blueprints)['multi-terminal'] = multipleTerminalBlueprint
+			}
+			const job: JobPayload = { runId: 'run1', blueprintId: 'multi-terminal', nodeId: 'B' }
+
+			vi.mocked(mockRuntime.executeNode).mockResolvedValue({
+				output: 'result from B',
 			})
 			vi.mocked(mockRuntime.determineNextNodes).mockResolvedValue([])
 

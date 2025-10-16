@@ -1,3 +1,4 @@
+import { analyzeBlueprint } from '../analysis'
 import { JsonSerializer } from '../serializer'
 import type {
 	IAsyncContext,
@@ -134,29 +135,41 @@ export abstract class BaseDistributedAdapter {
 			const result: NodeResult<any, any> = await this.runtime.executeNode(blueprint, nodeId, workerState)
 			await context.set(nodeId as any, result.output)
 
-			const nodeDef = blueprint.nodes.find((n) => n.id === nodeId)
-			// workflow is considered complete when the first 'output' node finishes.
-			if (nodeDef?.uses === 'output') {
-				console.log(`[Adapter] ✅ Output node '${nodeId}' finished. Declaring workflow complete for Run ID: ${runId}`)
-				const finalContext = await context.toJSON()
-				const finalResult: WorkflowResult = {
-					context: finalContext,
-					serializedContext: this.serializer.serialize(finalContext),
-					status: 'completed',
+			const analysis = analyzeBlueprint(blueprint)
+			const isTerminalNode = analysis.terminalNodeIds.includes(nodeId)
+
+			if (isTerminalNode) {
+				const completedNodes = new Set(
+					Object.keys(await context.toJSON()).filter((k) => blueprint.nodes.some((n) => n.id === k)),
+				)
+				const allTerminalNodesCompleted = analysis.terminalNodeIds.every((terminalId) => completedNodes.has(terminalId))
+
+				if (allTerminalNodesCompleted) {
+					console.log(`[Adapter] ✅ All terminal nodes completed for Run ID: ${runId}. Declaring workflow complete.`)
+					const finalContext = await context.toJSON()
+					const finalResult: WorkflowResult = {
+						context: finalContext,
+						serializedContext: this.serializer.serialize(finalContext),
+						status: 'completed',
+					}
+					await this.publishFinalResult(runId, {
+						status: 'completed',
+						payload: finalResult,
+					})
+					return
+				} else {
+					console.log(
+						`[Adapter] Terminal node '${nodeId}' completed for Run ID '${runId}', but other terminal nodes are still running.`,
+					)
 				}
-				await this.publishFinalResult(runId, {
-					status: 'completed',
-					payload: finalResult,
-				})
-				return
 			}
 
 			const nextNodes = await this.runtime.determineNextNodes(blueprint, nodeId, result, context)
 
-			// stop if a branch terminates but it wasn't an 'output' node
-			if (nextNodes.length === 0) {
+			// stop if a branch terminates but it wasn't a terminal node
+			if (nextNodes.length === 0 && !isTerminalNode) {
 				console.log(
-					`[Adapter] Terminal node '${nodeId}' reached for Run ID '${runId}', but it was not an 'output' node. This branch will now terminate.`,
+					`[Adapter] Non-terminal node '${nodeId}' reached end of branch for Run ID '${runId}'. This branch will now terminate.`,
 				)
 				return
 			}
