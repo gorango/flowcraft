@@ -439,7 +439,8 @@ export class FlowRuntime<TContext extends Record<string, any>, TDependencies ext
 		switch (nodeDef.uses) {
 			case 'batch-scatter': {
 				const inputArray = (await context.get(inputs as any)) || []
-				if (!Array.isArray(inputArray)) throw new Error(`Input for batch-scatter node '${id}' must be an array.`)
+				if (!Array.isArray(inputArray))
+					throw new FatalNodeExecutionError(`Input for batch-scatter node '${id}' must be an array.`, id, '')
 				const batchId = globalThis.crypto.randomUUID()
 				const dynamicNodes: NodeDefinition[] = []
 				for (let i = 0; i < inputArray.length; i++) {

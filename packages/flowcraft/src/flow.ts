@@ -86,9 +86,9 @@ export class Flow<
 			| NodeClass<TContext, TDependencies, TInput, TOutput, TAction>,
 		options: {
 			/** The key in the context that holds the input array for the batch. */
-			inputKey: string
+			inputKey: keyof TContext
 			/** The key in the context where the array of results will be stored. */
-			outputKey: string
+			outputKey: keyof TContext
 		},
 	): this {
 		const { inputKey, outputKey } = options
@@ -110,8 +110,8 @@ export class Flow<
 		this.blueprint.nodes?.push({
 			id: scatterId,
 			uses: 'batch-scatter', // built-in
-			inputs: inputKey,
-			params: { workerUsesKey, outputKey, gatherNodeId: gatherId },
+			inputs: inputKey as string,
+			params: { workerUsesKey, outputKey: outputKey as string, gatherNodeId: gatherId },
 		})
 
 		// gather node: waits for all workers to finish and collects the results

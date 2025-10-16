@@ -9,17 +9,19 @@ The `.batch()` method automatically creates the necessary nodes and logic to:
 2.	**Process**: Schedule a dynamic "worker" node for each item in the array, running them in parallel.
 3.	**Gather**: Wait for all worker nodes to complete and collect their results into a new array.
 
-Here's the method signature:
-```typescript
-flow.batch(
-	id: string, // A base ID for the batch operation
-	worker: NodeFunction | NodeClass, // The implementation for the worker node
-	options: {
-		inputKey: string, // The context key holding the source array
-		outputKey: string, // The context key where the results array will be saved
-	}
-)
-```
+ Here's the method signature:
+ ```typescript
+ flow.batch(
+ 	id: string, // A base ID for the batch operation
+ 	worker: NodeFunction | NodeClass, // The implementation for the worker node
+ 	options: {
+ 		inputKey: keyof TContext, // The context key holding the source array
+ 		outputKey: keyof TContext, // The context key where the results array will be saved
+ 	}
+ )
+ ```
+
+ **Note:** The `inputKey` and `outputKey` options now use `keyof TContext` for compile-time validation, ensuring they match valid keys in your workflow's context type. This provides better IDE support and catches type mismatches early.
 
 ## Example: Processing an Array in Parallel
 

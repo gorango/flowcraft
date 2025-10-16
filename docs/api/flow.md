@@ -42,7 +42,7 @@ Creates a scatter-gather batch processing pattern with full type safety.
 
 -   **`id`** `string`: A base ID for the batch operation. This will be used to create `_scatter` and `_gather` nodes.
 -   **`worker`** `NodeFunction<TContext, TDependencies, TInput, TOutput, TAction> | NodeClass<TContext, TDependencies, TInput, TOutput, TAction>`: The node implementation to run on each item in the input array.
--   **`options`** `{ inputKey: string, outputKey: string }`:
+-   **`options`** `{ inputKey: keyof TContext, outputKey: keyof TContext }`:
     -   `inputKey`: The key in the context that holds the input array.
     -   `outputKey`: The key in the context where the array of results will be stored.
 -   **Returns**: `this` (for chaining).
