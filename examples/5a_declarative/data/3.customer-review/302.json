@@ -2,8 +2,8 @@
 	"nodes": [
 		{
 			"id": "gen_ticket_data",
-			"type": "llm-process",
-			"data": {
+			"uses": "llm-process",
+			"params": {
 				"promptTemplate": "Generate a Jira-style ticket in JSON format. The JSON should have two keys: 'title' and 'description'. Title: 'Customer Feedback: {{category}}'. Description: 'User reported an issue summarized as: {{summary}}'.",
 				"inputs": {
 					"category": "category",
@@ -13,8 +13,8 @@
 		},
 		{
 			"id": "gen_customer_reply",
-			"type": "llm-process",
-			"data": {
+			"uses": "llm-process",
+			"params": {
 				"promptTemplate": "Write a polite, reassuring email to a customer. Inform them that you have received their feedback regarding '{{summary}}' and have created a ticket for the team to review. Do not include a subject line.",
 				"inputs": {
 					"summary": "summary"
@@ -23,8 +23,8 @@
 		},
 		{
 			"id": "output_ticket",
-			"type": "output",
-			"data": {
+			"uses": "output",
+			"params": {
 				"outputKey": "ticket_payload",
 				"promptTemplate": "{{result}}",
 				"inputs": {
@@ -34,8 +34,8 @@
 		},
 		{
 			"id": "output_reply",
-			"type": "output",
-			"data": {
+			"uses": "output",
+			"params": {
 				"outputKey": "customer_message",
 				"promptTemplate": "{{result}}",
 				"inputs": {

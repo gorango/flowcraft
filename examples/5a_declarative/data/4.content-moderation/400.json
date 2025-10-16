@@ -2,8 +2,8 @@
 	"nodes": [
 		{
 			"id": "check_for_pii",
-			"type": "llm-condition",
-			"data": {
+			"uses": "llm-condition",
+			"params": {
 				"promptTemplate": "Does the following text contain any Personally Identifiable Information (PII) like an email address, phone number, or physical address? Respond only with 'true' or 'false'.\n\nText: \"{{userPost}}\"",
 				"inputs": {
 					"userPost": "userPost"
@@ -12,8 +12,8 @@
 		},
 		{
 			"id": "check_for_hate_speech",
-			"type": "llm-process",
-			"data": {
+			"uses": "llm-process",
+			"params": {
 				"promptTemplate": "Analyze the following text for hate speech. Respond with only ONE of the following severity levels: 'none', 'moderate', or 'severe'.\n\nText: \"{{userPost}}\"",
 				"inputs": {
 					"userPost": "userPost"
@@ -22,8 +22,8 @@
 		},
 		{
 			"id": "check_for_spam",
-			"type": "llm-condition",
-			"data": {
+			"uses": "llm-condition",
+			"params": {
 				"promptTemplate": "Does the following text appear to be commercial spam, containing suspicious links or promotional language? Respond only with 'true' or 'false'.\n\nText: \"{{userPost}}\"",
 				"inputs": {
 					"userPost": "userPost"
@@ -32,8 +32,8 @@
 		},
 		{
 			"id": "triage_post",
-			"type": "llm-router",
-			"data": {
+			"uses": "llm-router",
+			"params": {
 				"promptTemplate": "Given the following analysis of a user post, decide on the single most appropriate action. Respond with ONLY ONE of the following action codes: 'action_ban', 'action_redact', 'action_delete_spam', 'action_approve'.\n\n- Hate Speech Level: {{hate_speech_level}}\n- PII Found: {{pii_found}}\n- Spam Detected: {{spam_detected}}\n\nRules:\n1. If Hate Speech is 'severe', the action is 'action_ban'.\n2. If PII is 'true' (and hate speech is not 'severe'), the action is 'action_redact'.\n3. If Spam is 'true' (and the above are false), the action is 'action_delete_spam'.\n4. Otherwise, the action is 'action_approve'.",
 				"inputs": {
 					"hate_speech_level": "check_for_hate_speech",
@@ -44,9 +44,9 @@
 		},
 		{
 			"id": "ban_user_branch",
-			"type": "sub-workflow",
-			"data": {
-				"workflowId": 401,
+			"uses": "subflow",
+			"params": {
+				"blueprintId": "401",
 				"inputs": {
 					"userId": "userId",
 					"reason": "check_for_hate_speech"
@@ -58,9 +58,9 @@
 		},
 		{
 			"id": "redact_post_branch",
-			"type": "sub-workflow",
-			"data": {
-				"workflowId": 402,
+			"uses": "subflow",
+			"params": {
+				"blueprintId": "402",
 				"inputs": {
 					"userPost": "userPost",
 					"userId": "userId"
@@ -72,9 +72,9 @@
 		},
 		{
 			"id": "delete_spam_branch",
-			"type": "sub-workflow",
-			"data": {
-				"workflowId": 403,
+			"uses": "subflow",
+			"params": {
+				"blueprintId": "403",
 				"inputs": {
 					"userId": "userId"
 				},
@@ -85,8 +85,8 @@
 		},
 		{
 			"id": "approve_post_branch",
-			"type": "llm-process",
-			"data": {
+			"uses": "llm-process",
+			"params": {
 				"promptTemplate": "The user post from {{userId}} was analyzed and approved with no issues. Create a simple log message confirming this.",
 				"inputs": {
 					"userId": "userId"
@@ -95,11 +95,11 @@
 		},
 		{
 			"id": "final_log",
-			"type": "output",
+			"uses": "output",
 			"config": {
 				"joinStrategy": "any"
 			},
-			"data": {
+			"params": {
 				"outputKey": "final_output",
 				"promptTemplate": "--- CONTENT MODERATION COMPLETE ---\n\nFinal Action Log:\n{{final_action_taken}}",
 				"inputs": {

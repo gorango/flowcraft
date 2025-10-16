@@ -2,8 +2,8 @@
 	"nodes": [
 		{
 			"id": "redact_pii",
-			"type": "llm-process",
-			"data": {
+			"uses": "llm-process",
+			"params": {
 				"promptTemplate": "Find any Personally Identifiable Information (PII) in the following text and replace it with '[REDACTED]'.\n\nOriginal Text: \"{{userPost}}\"",
 				"inputs": {
 					"userPost": "userPost"
@@ -12,8 +12,8 @@
 		},
 		{
 			"id": "generate_warning",
-			"type": "llm-process",
-			"data": {
+			"uses": "llm-process",
+			"params": {
 				"promptTemplate": "Write a polite, templated warning message to user {{userId}} explaining that their post was edited to remove personal information and reminding them not to share PII.",
 				"inputs": {
 					"userId": "userId"
@@ -22,8 +22,8 @@
 		},
 		{
 			"id": "output_redaction_summary",
-			"type": "output",
-			"data": {
+			"uses": "output",
+			"params": {
 				"outputKey": "redaction_summary",
 				"promptTemplate": "Post Edited for PII.\n--- Redacted Post ---\n{{redacted_post}}\n\n--- User Warning Message ---\n{{warning_message}}",
 				"inputs": {

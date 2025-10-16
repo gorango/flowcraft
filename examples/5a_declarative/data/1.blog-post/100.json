@@ -2,8 +2,8 @@
 	"nodes": [
 		{
 			"id": "generate_outline",
-			"type": "llm-process",
-			"data": {
+			"uses": "llm-process",
+			"params": {
 				"promptTemplate": "Generate a detailed, multi-point blog post outline for the topic: \"{{topic}}\".",
 				"inputs": {
 					"topic": "topic"
@@ -12,8 +12,8 @@
 		},
 		{
 			"id": "draft_post",
-			"type": "llm-process",
-			"data": {
+			"uses": "llm-process",
+			"params": {
 				"promptTemplate": "Write a full-length, engaging blog post based on the following outline:\n\n{{outline}}",
 				"inputs": {
 					"outline": "generate_outline"
@@ -22,8 +22,8 @@
 		},
 		{
 			"id": "suggest_titles",
-			"type": "llm-process",
-			"data": {
+			"uses": "llm-process",
+			"params": {
 				"promptTemplate": "Suggest 5 catchy, SEO-friendly titles for the following blog post. Respond with a simple numbered list.\n\nPost:\n{{draft}}",
 				"inputs": {
 					"draft": "draft_post"
@@ -32,8 +32,8 @@
 		},
 		{
 			"id": "final_output",
-			"type": "output",
-			"data": {
+			"uses": "output",
+			"params": {
 				"promptTemplate": "--- TITLES ---\n{{titles}}\n\n--- DRAFT ---\n{{draft}}",
 				"inputs": {
 					"titles": "suggest_titles",

@@ -24,17 +24,17 @@ async function loadAndProcessBlueprint(filePath: string): Promise<WorkflowBluepr
 		// Map the data format to the framework format
 		const node: NodeDefinition = {
 			id: n.id,
-			uses: n.type,
-			params: n.data,
+			uses: n.uses,
+			params: n.params,
 			config: n.config,
 		}
 
-		if (node.uses === 'sub-workflow') {
-			node.uses = 'subflow'
+		if (node.uses === 'subflow') {
+			// Ensure blueprintId is a string
 			node.params = {
-				blueprintId: n.data.workflowId.toString(),
-				inputs: n.data.inputs,
-				outputs: n.data.outputs,
+				blueprintId: n.params.blueprintId.toString(),
+				inputs: n.params.inputs,
+				outputs: n.params.outputs,
 			}
 		}
 

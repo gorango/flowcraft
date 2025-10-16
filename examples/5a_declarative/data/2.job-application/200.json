@@ -2,8 +2,8 @@
 	"nodes": [
 		{
 			"id": "extract_skills",
-			"type": "llm-process",
-			"data": {
+			"uses": "llm-process",
+			"params": {
 				"promptTemplate": "Extract a list of all technical skills from this resume. Format as a simple comma-separated string:\n\n{{resume}}",
 				"inputs": {
 					"resume": "resume"
@@ -12,8 +12,8 @@
 		},
 		{
 			"id": "analyze_tone",
-			"type": "llm-process",
-			"data": {
+			"uses": "llm-process",
+			"params": {
 				"promptTemplate": "Analyze the tone of this cover letter. Respond with a single word: \"professional\", \"casual\", or \"unprofessional\".\n\n{{coverLetter}}",
 				"inputs": {
 					"coverLetter": "coverLetter"
@@ -22,8 +22,8 @@
 		},
 		{
 			"id": "check_qualifications",
-			"type": "llm-condition",
-			"data": {
+			"uses": "llm-condition",
+			"params": {
 				"promptTemplate": "Does this list of skills `{{skills}}` contain all of the following required skills: `TypeScript, Node.js, SQL`? Also, is the cover letter tone `{{tone}}` professional? Respond only 'true' if both conditions are met, otherwise 'false'.",
 				"inputs": {
 					"skills": "extract_skills",
@@ -33,9 +33,9 @@
 		},
 		{
 			"id": "send_interview_email",
-			"type": "sub-workflow",
-			"data": {
-				"workflowId": 201,
+			"uses": "subflow",
+			"params": {
+				"blueprintId": "201",
 				"outputs": {
 					"send_interview_email": "final_output"
 				},
@@ -46,9 +46,9 @@
 		},
 		{
 			"id": "send_rejection_email",
-			"type": "sub-workflow",
-			"data": {
-				"workflowId": 202,
+			"uses": "subflow",
+			"params": {
+				"blueprintId": "202",
 				"outputs": {
 					"send_rejection_email": "final_output"
 				},
@@ -59,8 +59,8 @@
 		},
 		{
 			"id": "final_output",
-			"type": "output",
-			"data": {
+			"uses": "output",
+			"params": {
 				"promptTemplate": "Final email sent to {{applicantName}}:\n\n{{email_body}}",
 				"inputs": {
 					"applicantName": "applicantName",

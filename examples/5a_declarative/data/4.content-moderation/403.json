@@ -2,8 +2,8 @@
 	"nodes": [
 		{
 			"id": "delete_and_flag_user",
-			"type": "llm-process",
-			"data": {
+			"uses": "llm-process",
+			"params": {
 				"promptTemplate": "Simulate the actions of deleting a spam post and flagging the user. Respond with a summary of actions taken for user ID {{userId}}.",
 				"inputs": {
 					"userId": "userId"
@@ -12,8 +12,8 @@
 		},
 		{
 			"id": "output_spam_summary",
-			"type": "output",
-			"data": {
+			"uses": "output",
+			"params": {
 				"outputKey": "spam_deletion_summary",
 				"promptTemplate": "{{result}}",
 				"inputs": {

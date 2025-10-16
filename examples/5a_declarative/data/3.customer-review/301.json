@@ -2,8 +2,8 @@
 	"nodes": [
 		{
 			"id": "gen_thanks",
-			"type": "llm-process",
-			"data": {
+			"uses": "llm-process",
+			"params": {
 				"promptTemplate": "Write a friendly \"thank you\" email to a customer for their positive feedback. Mention that you appreciate them highlighting: \"{{summary}}\".",
 				"inputs": {
 					"summary": "summary"
@@ -12,8 +12,8 @@
 		},
 		{
 			"id": "output_thanks",
-			"type": "output",
-			"data": {
+			"uses": "output",
+			"params": {
 				"outputKey": "final_output",
 				"promptTemplate": "{{result}}",
 				"inputs": {

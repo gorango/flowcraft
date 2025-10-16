@@ -2,8 +2,8 @@
 	"nodes": [
 		{
 			"id": "gen_rejection_email",
-			"type": "llm-process",
-			"data": {
+			"uses": "llm-process",
+			"params": {
 				"promptTemplate": "Write a polite and professional email to {{applicantName}} informing them that you will not be moving forward with their application at this time. Thank them for their interest.",
 				"inputs": {
 					"applicantName": "applicantName"
@@ -12,8 +12,8 @@
 		},
 		{
 			"id": "output_email",
-			"type": "output",
-			"data": {
+			"uses": "output",
+			"params": {
 				"promptTemplate": "{{result}}",
 				"inputs": {
 					"result": "gen_rejection_email"
