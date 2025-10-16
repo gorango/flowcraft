@@ -9,6 +9,63 @@ import type {
 	NodeResult,
 } from '../types'
 
+async function withRetries<T>(
+	executor: () => Promise<T>,
+	maxRetries: number,
+	nodeDef: NodeDefinition,
+	context: NodeContext<any, any, any>,
+	executionId?: string,
+	signal?: AbortSignal,
+	eventBus?: IEventBus,
+): Promise<T> {
+	let lastError: any
+	for (let attempt = 1; attempt <= maxRetries; attempt++) {
+		try {
+			signal?.throwIfAborted()
+			const result = await executor()
+			if (attempt > 1) {
+				context.dependencies.logger.info(`Node execution succeeded after retry`, {
+					nodeId: nodeDef.id,
+					attempt,
+					executionId,
+				})
+			}
+			return result
+		} catch (error) {
+			lastError = error
+			if (error instanceof DOMException && error.name === 'AbortError') {
+				throw new CancelledWorkflowError('Workflow cancelled')
+			}
+			if (error instanceof FatalNodeExecutionError) break
+			if (attempt < maxRetries) {
+				context.dependencies.logger.warn(`Node execution failed, retrying`, {
+					nodeId: nodeDef.id,
+					attempt,
+					maxRetries,
+					error: error instanceof Error ? error.message : String(error),
+					executionId,
+				})
+				if (eventBus) {
+					await eventBus.emit('node:retry', {
+						blueprintId: context.dependencies.blueprint?.id || '',
+						nodeId: nodeDef.id,
+						attempt,
+						executionId,
+					})
+				}
+			} else {
+				context.dependencies.logger.error(`Node execution failed after all retries`, {
+					nodeId: nodeDef.id,
+					attempts: maxRetries,
+					error: error instanceof Error ? error.message : String(error),
+					executionId,
+				})
+			}
+		}
+	}
+	throw lastError
+}
+
 export interface ExecutionStrategy {
 	execute: (
 		nodeDef: NodeDefinition,
@@ -31,50 +88,15 @@ export class FunctionNodeExecutor implements ExecutionStrategy {
 		executionId?: string,
 		signal?: AbortSignal,
 	): Promise<NodeResult<any, any>> {
-		let lastError: any
-		for (let attempt = 1; attempt <= this.maxRetries; attempt++) {
-			try {
-				signal?.throwIfAborted()
-				const result = await this.implementation(context)
-				if (attempt > 1) {
-					context.dependencies.logger.info(`Node execution succeeded after retry`, {
-						nodeId: nodeDef.id,
-						attempt,
-						executionId,
-					})
-				}
-				return result
-			} catch (error) {
-				lastError = error
-				if (error instanceof DOMException && error.name === 'AbortError') {
-					throw new CancelledWorkflowError('Workflow cancelled')
-				}
-				if (error instanceof FatalNodeExecutionError) break
-				if (attempt < this.maxRetries) {
-					context.dependencies.logger.warn(`Node execution failed, retrying`, {
-						nodeId: nodeDef.id,
-						attempt,
-						maxRetries: this.maxRetries,
-						error: error instanceof Error ? error.message : String(error),
-						executionId,
-					})
-					await this.eventBus.emit('node:retry', {
-						blueprintId: context.dependencies.blueprint?.id || '',
-						nodeId: nodeDef.id,
-						attempt,
-						executionId,
-					})
-				} else {
-					context.dependencies.logger.error(`Node execution failed after all retries`, {
-						nodeId: nodeDef.id,
-						attempts: this.maxRetries,
-						error: error instanceof Error ? error.message : String(error),
-						executionId,
-					})
-				}
-			}
-		}
-		throw lastError
+		return withRetries(
+			() => this.implementation(context),
+			this.maxRetries,
+			nodeDef,
+			context,
+			executionId,
+			signal,
+			this.eventBus,
+		)
 	}
 }
 
@@ -97,47 +119,23 @@ export class ClassNodeExecutor implements ExecutionStrategy {
 			const prepResult = await instance.prep(context)
 			let execResult: Omit<NodeResult, 'error'> | undefined
 			let lastError: any
-			for (let attempt = 1; attempt <= this.maxRetries; attempt++) {
-				try {
-					signal?.throwIfAborted()
-					execResult = await instance.exec(prepResult, context)
-					lastError = undefined
-					if (attempt > 1) {
-						context.dependencies.logger.info(`Node execution succeeded after retry`, {
-							nodeId: nodeDef.id,
-							attempt,
-							executionId,
-						})
-					}
-					break
-				} catch (error) {
-					lastError = error
-					if (error instanceof DOMException && error.name === 'AbortError') {
-						throw new CancelledWorkflowError('Workflow cancelled')
-					}
-					if (error instanceof FatalNodeExecutionError) break
-					if (attempt < this.maxRetries) {
-						context.dependencies.logger.warn(`Node execution failed, retrying`, {
-							nodeId: nodeDef.id,
-							attempt,
-							maxRetries: this.maxRetries,
-							error: error instanceof Error ? error.message : String(error),
-							executionId,
-						})
-						await this.eventBus.emit('node:retry', {
-							blueprintId: context.dependencies.blueprint?.id || '',
-							nodeId: nodeDef.id,
-							attempt,
-							executionId,
-						})
-					} else {
-						context.dependencies.logger.error(`Node execution failed after all retries`, {
-							nodeId: nodeDef.id,
-							attempts: this.maxRetries,
-							error: error instanceof Error ? error.message : String(error),
-							executionId,
-						})
-					}
+			try {
+				execResult = await withRetries(
+					() => instance.exec(prepResult, context),
+					this.maxRetries,
+					nodeDef,
+					context,
+					executionId,
+					signal,
+					this.eventBus,
+				)
+			} catch (error) {
+				lastError = error
+				if (error instanceof DOMException && error.name === 'AbortError') {
+					throw new CancelledWorkflowError('Workflow cancelled')
+				}
+				if (error instanceof FatalNodeExecutionError) {
+					throw error
 				}
 			}
 			if (lastError) {
