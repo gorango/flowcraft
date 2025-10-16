@@ -125,7 +125,7 @@ export abstract class BaseDistributedAdapter {
 		}
 		const workerState = {
 			getContext: () => context,
-			markFallbackExecuted: () => { },
+			markFallbackExecuted: () => {},
 			addError: (nodeId: string, error: Error) => {
 				console.error(`[Adapter] Error in node ${nodeId}:`, error)
 			},

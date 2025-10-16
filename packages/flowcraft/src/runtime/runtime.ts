@@ -35,7 +35,7 @@ import type { IRuntime } from './types'
 export class FlowRuntime<TContext extends Record<string, any>, TDependencies extends Record<string, any>>
 	implements IRuntime<TContext, TDependencies>
 {
-	private registry: Record<string, NodeFunction | NodeClass | typeof BaseNode>
+	public registry: Record<string, NodeFunction | NodeClass | typeof BaseNode>
 	private blueprints: Record<string, WorkflowBlueprint>
 	private dependencies: TDependencies
 	private logger: ILogger

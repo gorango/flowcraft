@@ -15,6 +15,7 @@ export interface IRuntime<
 	TDependencies extends RuntimeDependencies = RuntimeDependencies,
 > {
 	options: RuntimeOptions<TDependencies>
+	registry: Record<string, any>
 	executeNode: (
 		blueprint: WorkflowBlueprint,
 		nodeId: string,

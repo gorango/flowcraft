@@ -105,6 +105,7 @@ describe('GraphTraverser', () => {
 		}
 		const state = new WorkflowState({})
 		const runtime = {
+			registry: { test: vi.fn() },
 			executeNode: vi.fn().mockImplementation((_blueprint, nodeId) => {
 				if (nodeId === 'A') {
 					return Promise.resolve({
