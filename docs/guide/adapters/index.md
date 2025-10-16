@@ -15,7 +15,7 @@ Each adapter provides the necessary components to bridge Flowcraft's core runtim
 | **[@flowcraft/rabbitmq-adapter](/guide/adapters/rabbitmq)** | RabbitMQ | PostgreSQL | Redis | Classic, reliable enterprise messaging stack. |
 | **[@flowcraft/kafka-adapter](/guide/adapters/kafka)** | Apache Kafka | Cassandra | Redis | Extreme-scale, high-throughput streaming. |
 
-> [!NOTE]
+> [!TIP]
 > **Building Your Own Adapter**
 >
 > If your preferred infrastructure isn't listed, you can easily create your own. See the [Distributed Execution](/guide/distributed-execution) guide for details on the `BaseDistributedAdapter` pattern.

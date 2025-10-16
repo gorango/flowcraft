@@ -44,3 +44,15 @@ interface JobPayload {
 	blueprintId: string
 	nodeId: string
 }
+```
+
+## Built-in Adapters
+
+- **[`@flowcraft/bullmq-adapter`](https://www.npmjs.com/package/@flowcraft/bullmq-adapter)**: BullMQ and Redis.
+- **[`@flowcraft/sqs-adapter`](https://www.npmjs.com/package/@flowcraft/sqs-adapter)**: AWS SQS and DynamoDB.
+- **[`@flowcraft/gcp-adapter`](https://www.npmjs.com/package/@flowcraft/gcp-adapter)**: Google Pub/Sub, Firestore, and Redis.
+- **[`@flowcraft/azure-adapter`](https://www.npmjs.com/package/@flowcraft/azure-adapter)**: Azure Queues, Cosmos DB, and Redis.
+- **[`@flowcraft/kafka-adapter`](https://www.npmjs.com/package/@flowcraft/kafka-adapter)**: Apache Kafka, Cassandra, and Redis.
+- **[`@flowcraft/rabbitmq-adapter`](https://www.npmjs.com/package/@flowcraft/rabbitmq-adapter)**: RabbitMQ, PostgreSQL, and Redis.
+
+For examples, see the [Adapters Guide](/guide/adapters/).
