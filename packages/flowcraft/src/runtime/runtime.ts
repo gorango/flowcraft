@@ -1,3 +1,4 @@
+import type { BlueprintAnalysis } from '../analysis'
 import { analyzeBlueprint } from '../analysis'
 import { AsyncContextView } from '../context'
 import { CancelledWorkflowError, FatalNodeExecutionError, NodeExecutionError } from '../errors'
@@ -43,6 +44,7 @@ export class FlowRuntime<TContext extends Record<string, any>, TDependencies ext
 	private serializer: ISerializer
 	private middleware: Middleware[]
 	private evaluator: IEvaluator
+	private analysisCache: WeakMap<WorkflowBlueprint, BlueprintAnalysis>
 	public options: RuntimeOptions<TDependencies>
 
 	constructor(options: RuntimeOptions<TDependencies>) {
@@ -54,6 +56,7 @@ export class FlowRuntime<TContext extends Record<string, any>, TDependencies ext
 		this.serializer = options.serializer || new JsonSerializer()
 		this.middleware = options.middleware || []
 		this.evaluator = options.evaluator || new PropertyEvaluator()
+		this.analysisCache = new WeakMap()
 		this.options = options
 	}
 
@@ -84,7 +87,13 @@ export class FlowRuntime<TContext extends Record<string, any>, TDependencies ext
 				blueprintId: blueprint.id,
 				executionId,
 			})
-			const analysis = analyzeBlueprint(blueprint)
+			const analysis =
+				this.analysisCache.get(blueprint) ??
+				(() => {
+					const computed = analyzeBlueprint(blueprint)
+					this.analysisCache.set(blueprint, computed)
+					return computed
+				})()
 			if (options?.strict && !analysis.isDag) {
 				throw new Error(`Workflow '${blueprint.id}' failed strictness check: Cycles are not allowed.`)
 			}
