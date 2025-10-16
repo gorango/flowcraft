@@ -1,10 +1,10 @@
 # Static Analysis
 
-Before you even run a workflow, Flowcraft provides tools to statically analyze its `WorkflowBlueprint`. This can help you catch common errors, understand its structure, and prevent runtime issues.
+Before you even run a workflow, Flowcraft provides tools to statically analyze its [`WorkflowBlueprint`](/api/flow#workflowblueprint-interface). This can help you catch common errors, understand its structure, and prevent runtime issues.
 
 ## `analyzeBlueprint`
 
-The `analyzeBlueprint` function is the primary tool for static analysis. It takes a blueprint and returns a comprehensive `BlueprintAnalysis` object.
+The [`analyzeBlueprint`](/api/analysis#analyzeblueprint-blueprint) function is the primary tool for static analysis. It takes a blueprint and returns a comprehensive [`BlueprintAnalysis`](/api/analysis#blueprintanalysis-interface) object.
 
 ```typescript
 import { analyzeBlueprint, createFlow } from 'flowcraft'
@@ -63,18 +63,18 @@ console.log(cycles)
 // Output: [['A', 'B', 'A']]
 ```
 
-The `checkForCycles` function (which `analyzeBlueprint` uses internally) returns an array of paths that form cycles.
+The [`checkForCycles`](/api/analysis#checkforcycles-blueprint) function (which [`analyzeBlueprint`](/api/analysis#analyzeblueprint-blueprint) uses internally) returns an array of paths that form cycles.
 
 ## Linting a Blueprint
 
-For even more detailed checks, you can use `lintBlueprint`. This function validates the blueprint against a function registry to find common errors like missing node implementations or broken edges.
+For even more detailed checks, you can use [`lintBlueprint`](/api/linter#lintblueprint-blueprint-registry). This function validates the blueprint against a function registry to find common errors like missing node implementations or broken edges.
 
 ```typescript
 import { lintBlueprint } from 'flowcraft'
 
 const blueprint = createFlow('lint-example')
 	.node('A', async () => ({}))
-// Edge points to a node 'C' that doesn't exist.
+	// Edge points to a node 'C' that doesn't exist.
 	.edge('A', 'C')
 	.toBlueprint()
 

@@ -4,7 +4,7 @@ This page provides an overview of all Flowcraft examples, including summaries an
 
 ## Basic Workflow
 
-A basic, linear workflow that creates a greeting message. It demonstrates defining a workflow with `createFlow`, passing data between nodes, and executing with `FlowRuntime`.
+A basic, linear workflow that creates a greeting message. It demonstrates defining a workflow with [`createFlow`](/api/flow#createflow-id), passing data between nodes, and executing with [`FlowRuntime`](/api/runtime#flowruntime-class).
 
 ```mermaid
 flowchart TD
@@ -14,7 +14,7 @@ flowchart TD
 
 ## Parallel Batch Translation
 
-Demonstrates using Flowcraft's `.batch()` helper to translate a document into multiple languages concurrently, showcasing performance improvements for I/O-bound tasks.
+Demonstrates using Flowcraft's [`.batch()`](/api/flow#batch-tinput-toutput-taction-id-worker-options) helper to translate a document into multiple languages concurrently, showcasing performance improvements for I/O-bound tasks.
 
 ```mermaid
 graph TD
@@ -51,7 +51,7 @@ graph TD
 	D --> E[Generate Final Answer]
 ```
 
-## Dynamic AI Agent from Visual Graphs
+## Dynamic AI Agent from JSON Files
 
 A runtime engine for executing graph-based AI workflows defined as JSON files, with support for parallelism, branching, and nested workflows.
 

@@ -1,19 +1,19 @@
 {
-	"name": "@flowcraft/example-rag-workflow",
+	"name": "@flowcraft/example-declarative-shared-logic",
 	"type": "module",
+	"exports": {
+		".": "./dist/index.js"
+	},
 	"scripts": {
-		"start": "npx tsx src/main.ts",
+		"build": "tsc",
 		"typecheck": "tsc --noEmit"
 	},
 	"dependencies": {
 		"dotenv": "^17.2.3",
 		"flowcraft": "workspace:*",
-		"openai": "^6.3.0",
-		"superjson": "^2.2.2"
+		"openai": "^6.3.0"
 	},
 	"devDependencies": {
-		"@types/node": "^24.7.2",
-		"tsx": "^4.20.6",
 		"typescript": "^5.9.3"
 	}
 }

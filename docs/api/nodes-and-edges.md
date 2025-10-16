@@ -1,10 +1,10 @@
-# Nodes
+# Nodes and Edges
 
-This section covers the core types and classes for defining the logic of your workflow tasks.
+This section covers the core types and classes for defining the logic of your workflow tasks and the connections between them.
 
 ## `NodeDefinition` Interface
 
-This is the serializable representation of a node within a `WorkflowBlueprint`.
+This is the serializable representation of a node within a [`WorkflowBlueprint`](/api/flow#workflowblueprint-interface).
 
 ```typescript
 interface NodeDefinition {
@@ -13,7 +13,22 @@ interface NodeDefinition {
   params?: Record<string, any>;
   inputs?: string | Record<string, string>;
   config?: NodeConfig;
-}```
+}
+```
+
+## `EdgeDefinition` Interface
+
+Defines the connection and data flow between two nodes.
+
+```typescript
+interface EdgeDefinition {
+  source: string;
+  target: string;
+  action?: string; // An 'action' from the source node that triggers this edge.
+  condition?: string; // A condition that must be met for this edge to be taken.
+  transform?: string; // A string expression to transform the data before passing it to the target node.
+}
+```
 
 ## `NodeConfig` Interface
 
@@ -22,6 +37,8 @@ Configuration for a node's resiliency and execution behavior.
 ```typescript
 interface NodeConfig {
   maxRetries?: number;
+  retryDelay?: number;
+  timeout?: number;
   fallback?: string; // ID of a fallback node.
   joinStrategy?: 'all' | 'any'; // For nodes with multiple inputs.
 }
@@ -37,18 +54,28 @@ interface NodeResult<TOutput = any, TAction extends string = string> {
   action?: TAction; // For conditional branching.
   error?: { message: string, [key: string]: any };
   dynamicNodes?: NodeDefinition[]; // For dynamically scheduling new nodes.
-}```
+}
+```
 
 ## `NodeContext` Interface
 
 The context object passed to every node's execution logic.
 
 ```typescript
-interface NodeContext<TContext, TDependencies, TInput = any> {
+interface NodeContext<
+  TContext extends Record<string, any> = Record<string, any>,
+  TDependencies extends RuntimeDependencies = RuntimeDependencies,
+  TInput = any,
+> {
+  /** The async-only interface for interacting with the workflow's state. */
   context: IAsyncContext<TContext>;
+  /** The primary input data for this node, typically from its predecessor. */
   input?: TInput;
+  /** Static parameters defined in the blueprint. */
   params: Record<string, any>;
+  /** Shared, runtime-level dependencies (e.g., database clients, loggers). */
   dependencies: TDependencies;
+  /** A signal to gracefully cancel long-running node operations. */
   signal?: AbortSignal;
 }
 ```
@@ -84,7 +111,7 @@ abstract class BaseNode<
 ```
 
 ### `constructor(params)`
--   **`params`**: Static parameters for this node instance, passed from the `NodeDefinition`.
+-   **`params`**: Static parameters for this node instance, passed from the [`NodeDefinition`](/api/nodes-and-edges#nodedefinition-interface).
 
 ### `async prep(context)`
 Phase 1: Gathers and prepares data for execution. This phase is **not** retried.

@@ -21,4 +21,4 @@ A logger implementation that outputs to the `console`.
 
 ## `NullLogger` Class
 
-A logger implementation that performs no action (no-op). This is the default logger if none is provided to the `FlowRuntime`.
+A logger implementation that performs no action (no-op). This is the default logger if none is provided to the [`FlowRuntime`](/api/runtime#flowruntime-class).

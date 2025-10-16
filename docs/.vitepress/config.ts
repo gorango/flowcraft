@@ -9,13 +9,22 @@ export default defineConfig({
 		optimizeDeps: {
 			include: ['mermaid'],
 		},
-		plugins: [MermaidPlugin()],
+		plugins: [MermaidPlugin() as any],
 	},
 	markdown: {
 		config: (md) => {
 			MermaidMarkdown(md, {})
 		},
 	},
+	head: [
+		['link', { rel: 'icon', href: '/logo.svg', sizes: 'any', type: 'image/svg+xml' }],
+		['link', { rel: 'preconnect', href: 'https://fonts.googleapis.com' }],
+		['link', { rel: 'preconnect', href: 'https://fonts.gstatic.com', crossorigin: '' }],
+		[
+			'link',
+			{ href: 'https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500;600&display=swap', rel: 'stylesheet' },
+		],
+	],
 	themeConfig: {
 		search: { provider: 'local' },
 		nav: [
@@ -26,7 +35,7 @@ export default defineConfig({
 		socialLinks: [{ icon: 'github', link: 'https://github.com/gorango/flowcraft' }],
 		footer: {
 			message: 'Released under the MIT License.',
-			copyright: 'Copyright © 2025-present Goran Spasojevic',
+			copyright: 'Copyright © 2025-present @gorango',
 		},
 		sidebar: {
 			'/guide/': [
@@ -58,6 +67,7 @@ export default defineConfig({
 							text: 'Declarative Workflows',
 							link: '/guide/declarative-workflows',
 						},
+						{ text: 'Best Practices', link: '/guide/best-practices' },
 					],
 				},
 				{
@@ -109,16 +119,16 @@ export default defineConfig({
 					items: [
 						{ text: 'Overview', link: '/examples/' },
 						{ text: 'Basic Workflow', link: '/examples/1_basic' },
-						{ text: 'RAG Agent', link: '/examples/2_rag' },
-						{ text: 'Parallel Workflow', link: '/examples/3_translate' },
-						{ text: 'Research Agent', link: '/examples/4_research' },
+						{ text: 'Parallel Workflow', link: '/examples/2_translate' },
+						{ text: 'Research Agent', link: '/examples/3_research' },
 						{
 							text: 'Declarative Workflow',
 							items: [
-								{ text: 'In-Memory', link: '/examples/5a_declarative' },
-								{ text: 'Distributed', link: '/examples/5b_distributed' },
+								{ text: 'In-Memory', link: '/examples/4a_declarative-in-memory' },
+								{ text: 'Distributed', link: '/examples/4b_declarative-distributed' },
 							],
 						},
+						{ text: 'RAG Agent', link: '/examples/5_rag' },
 					],
 				},
 			],
@@ -129,7 +139,7 @@ export default defineConfig({
 						{ text: 'Overview', link: '/api/' },
 						{ text: 'Flow', link: '/api/flow' },
 						{ text: 'Runtime', link: '/api/runtime' },
-						{ text: 'Nodes', link: '/api/nodes' },
+						{ text: 'Nodes and Edges', link: '/api/nodes-and-edges' },
 						{ text: 'Context', link: '/api/context' },
 						{ text: 'Analysis', link: '/api/analysis' },
 						{ text: 'Linter', link: '/api/linter' },

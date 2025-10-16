@@ -49,11 +49,11 @@ Wraps the entire node execution. This is the most powerful hook as it can contro
   - `ctx`: The workflow context
   - `nodeId`: The ID of the node being executed
   - `next`: Function to call to proceed with execution
-- **Returns:** The `NodeResult` from the node or modified result
+- **Returns:** The [`NodeResult`](/api/nodes-and-edges#noderesult-interface) from the node or modified result
 
 ## Usage with FlowRuntime
 
-Middleware is provided to the `FlowRuntime` constructor:
+Middleware is provided to the [`FlowRuntime`](/api/runtime#flowruntime-class) constructor:
 
 ```typescript
 const runtime = new FlowRuntime({

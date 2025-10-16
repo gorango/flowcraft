@@ -1,9 +1,9 @@
 # Basic Workflow
 
 This example demonstrates a basic, linear workflow that creates a greeting message. It showcases:
-- Defining a workflow with `createFlow`.
+- Defining a workflow with [`createFlow`](/api/flow#createflow-id).
 - Passing data from one node to the next.
-- Executing the workflow with `FlowRuntime`.
+- Executing the workflow with [`FlowRuntime`](/api/runtime#flowruntime-class).
 
 ## The Goal
 

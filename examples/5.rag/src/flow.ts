@@ -7,13 +7,12 @@ import { callLLM, cosineSimilarity, getEmbedding, resolveTemplate } from './util
 interface RagContext {
 	document_path: string
 	question: string
-	chunks: Map<string, DocumentChunk>
 	vector_db: Map<string, { chunk: DocumentChunk; vector: number[] }>
 	search_results: SearchResult[]
 	final_answer: string
 	// For batch processing
 	load_and_chunk: DocumentChunk[]
-	embedding_results: { chunkId: string; vector: number[] }[]
+	embedding_results: { chunk: DocumentChunk; vector: number[] }[]
 }
 
 async function loadAndChunk(ctx: NodeContext<RagContext>): Promise<NodeResult> {
@@ -32,7 +31,6 @@ async function loadAndChunk(ctx: NodeContext<RagContext>): Promise<NodeResult> {
 		const chunk = new DocumentChunk(chunkId, paragraph.trim(), path)
 		chunks.set(chunkId, chunk)
 	}
-	await ctx.context.set('chunks', chunks)
 	console.log(`[Node] Created ${chunks.size} chunks.`)
 	// The runtime will store this output array in the context under the key 'load_and_chunk'.
 	return { output: Array.from(chunks.values()) }
@@ -40,24 +38,20 @@ async function loadAndChunk(ctx: NodeContext<RagContext>): Promise<NodeResult> {
 
 async function generateSingleEmbedding(
 	ctx: NodeContext<RagContext, any, DocumentChunk>,
-): Promise<NodeResult<{ chunkId: string; vector: number[] }>> {
+): Promise<NodeResult<{ chunk: DocumentChunk; vector: number[] }>> {
 	const chunk = ctx.input
 	if (!chunk || !chunk.text) {
 		throw new TypeError('Batch worker for embeddings received an invalid chunk.')
 	}
 	const vector = await getEmbedding(chunk.text)
-	return { output: { chunkId: chunk.id, vector } }
+	return { output: { chunk, vector } }
 }
 
 async function storeInVectorDB(
-	ctx: NodeContext<RagContext, any, { chunkId: string; vector: number[] }[]>,
+	ctx: NodeContext<RagContext, any, { chunk: DocumentChunk; vector: number[] }[]>,
 ): Promise<NodeResult<string>> {
 	console.log('[Node] Simulating storage of chunks and vectors.')
 	const embeddingResults = ctx.input
-	const chunks = await ctx.context.get('chunks')
-	if (!chunks) {
-		throw new TypeError('chunks is required')
-	}
 	const db = new Map<string, { chunk: DocumentChunk; vector: number[] }>()
 
 	if (!embeddingResults || embeddingResults.length === 0) {
@@ -65,10 +59,9 @@ async function storeInVectorDB(
 		return { output: 'DB Ready (empty)' }
 	}
 
-	for (const { chunkId, vector } of embeddingResults) {
-		const chunk = chunks.get(chunkId)
+	for (const { chunk, vector } of embeddingResults) {
 		if (chunk && vector) {
-			db.set(chunkId, { chunk, vector })
+			db.set(chunk.id, { chunk, vector })
 		}
 	}
 	await ctx.context.set('vector_db', db)

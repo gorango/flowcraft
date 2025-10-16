@@ -1,10 +1,10 @@
 # Linter
 
-The linter statically analyzes a `WorkflowBlueprint` against a registry of implementations to find common errors before runtime.
+The linter statically analyzes a [`WorkflowBlueprint`](/api/flow#workflowblueprint-interface) against a registry of implementations to find common errors before runtime.
 
 ## `lintBlueprint(blueprint, registry)`
 
--   **`blueprint`** `WorkflowBlueprint`: The workflow blueprint to analyze.
+-   **`blueprint`** [`WorkflowBlueprint`](/api/flow#workflowblueprint-interface): The workflow blueprint to analyze.
 -   **`registry`** `Map<string, NodeImplementation> | Record<string, NodeImplementation>`: A map or record of node implementations to check against.
 -   **Returns**: `LinterResult`
 

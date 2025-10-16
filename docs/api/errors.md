@@ -14,7 +14,7 @@ The base error thrown when a node fails during execution after all retries have 
 
 ## `FatalNodeExecutionError`
 
-A subclass of `NodeExecutionError`. When this error is thrown from within a node's logic, the `FlowRuntime` will immediately halt the workflow. It will **not** attempt any further retries or execute any configured fallbacks.
+A subclass of `NodeExecutionError`. When this error is thrown from within a node's logic, the [`FlowRuntime`](/api/runtime#flowruntime-class) will immediately halt the workflow. It will **not** attempt any further retries or execute any configured fallbacks.
 
 Use this for unrecoverable errors where continuing the workflow is impossible or unsafe.
 

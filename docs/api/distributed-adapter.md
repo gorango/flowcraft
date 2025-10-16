@@ -8,7 +8,7 @@ The base class for all distributed adapters. It handles the technology-agnostic 
 
 ### `constructor(options)`
 -   **`options`** `AdapterOptions`:
-    -   **`runtimeOptions`**: The `RuntimeOptions` to configure the internal `FlowRuntime` instance.
+    -   **`runtimeOptions`**: The `RuntimeOptions` to configure the internal [`FlowRuntime`](/api/runtime#flowruntime-class) instance.
     -   **`coordinationStore`**: An instance of `ICoordinationStore`.
 
 ### Abstract Methods to Implement

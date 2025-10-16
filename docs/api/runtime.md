@@ -1,6 +1,6 @@
 # Runtime
 
-The `FlowRuntime` is the engine that executes workflows.
+The [`FlowRuntime`](/api/runtime#flowruntime-class) is the engine that executes workflows.
 
 ## `FlowRuntime` Class
 
@@ -23,7 +23,7 @@ Creates a new runtime instance.
 
 Executes a workflow.
 
--   **`blueprint`** `WorkflowBlueprint`: The workflow to execute.
+-   **`blueprint`** [`WorkflowBlueprint`](/api/flow#workflowblueprint-interface): The workflow to execute.
 -   **`initialState?`** `Partial<TContext> | string`: The initial state for the workflow's context. Can be an object or a serialized string.
  -   **`options?`**:
      -   **`functionRegistry?`**: A `Map` of node implementations, typically from `flow.getFunctionRegistry()`.

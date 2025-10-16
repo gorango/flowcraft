@@ -6,6 +6,8 @@ This example demonstrates a sophisticated Retrieval-Augmented Generation (RAG) a
 
 Build a RAG agent that ingests a document, generates embeddings, performs vector searches, and synthesizes answers using complex data structures and robust serialization.
 
+This example highlights the use of `superjson` for handling complex data types like `Map`, `Date`, and custom class instances in the workflow context. For more details on serialization, read about [Serializers](/guide/serializers).
+
 ```mermaid
 graph TD
 	A[Load & Chunk Document] --> B[Generate Embeddings]
@@ -59,10 +61,10 @@ async function main() {
 		serializer: new SuperJsonSerializer(), // Plug in the custom serializer
 	})
 
-	const documentPath = path.join(process.cwd(), 'documents', 'sample-flowcraft.txt')
+	const documentPath = path.join(process.cwd(), 'documents', 'sample.md')
 	const initialContext = {
 		document_path: documentPath,
-		question: 'How does Flowcraft handle conditional branching?',
+		question: 'How does Flowcraft implement declarative workflows?',
 	}
 
 	const result = await runtime.run(blueprint, initialContext, { functionRegistry })
@@ -92,17 +94,16 @@ import { createFlow } from 'flowcraft'
 import { DocumentChunk, SearchResult } from './types.js'
 import { callLLM, cosineSimilarity, getEmbedding, resolveTemplate } from './utils.js'
 
-interface RagContext {
-	document_path: string
-	question: string
-	chunks: Map<string, DocumentChunk>
-	vector_db: Map<string, { chunk: DocumentChunk, vector: number[] }>
-	search_results: SearchResult[]
-	final_answer: string
-	// For batch processing
-	load_and_chunk: DocumentChunk[]
-	embedding_results: { chunkId: string, vector: number[] }[]
-}
+ interface RagContext {
+ 	document_path: string
+ 	question: string
+ 	vector_db: Map<string, { chunk: DocumentChunk, vector: number[] }>
+ 	search_results: SearchResult[]
+ 	final_answer: string
+ 	// For batch processing
+ 	load_and_chunk: DocumentChunk[]
+ 	embedding_results: { chunk: DocumentChunk, vector: number[] }[]
+ }
 
 async function loadAndChunk(ctx: NodeContext<RagContext>): Promise<NodeResult> {
 	const path = (await ctx.context.get('document_path'))!
@@ -117,42 +118,43 @@ async function loadAndChunk(ctx: NodeContext<RagContext>): Promise<NodeResult> {
 		const chunk = new DocumentChunk(chunkId, paragraph.trim(), path!)
 		chunks.set(chunkId, chunk)
 	}
-	await ctx.context.set('chunks', chunks)
-	console.log(`[Node] Created ${chunks.size} chunks.`)
+ 	console.log(`[Node] Created ${chunks.size} chunks.`)
 	// The runtime will store this output array in the context under the key 'load_and_chunk'.
 	return { output: Array.from(chunks.values()) }
 }
 
-async function generateSingleEmbedding(ctx: NodeContext<RagContext>): Promise<NodeResult> {
-	const chunk = ctx.input as DocumentChunk
-	if (!chunk || !chunk.text) {
-		throw new TypeError('Batch worker for embeddings received an invalid chunk.')
-	}
-	const vector = await getEmbedding(chunk.text)
-	return { output: { chunkId: chunk.id, vector } }
-}
+ async function generateSingleEmbedding(
+ 	ctx: NodeContext<RagContext, any, DocumentChunk>,
+ ): Promise<NodeResult<{ chunk: DocumentChunk; vector: number[] }>> {
+ 	const chunk = ctx.input
+ 	if (!chunk || !chunk.text) {
+ 		throw new TypeError('Batch worker for embeddings received an invalid chunk.')
+ 	}
+ 	const vector = await getEmbedding(chunk.text)
+ 	return { output: { chunk, vector } }
+ }
 
-async function storeInVectorDB(ctx: NodeContext<RagContext>): Promise<NodeResult> {
-	console.log('[Node] Simulating storage of chunks and vectors.')
-	const embeddingResults = ctx.input as { chunkId: string, vector: number[] }[]
-	const chunks = (await ctx.context.get('chunks'))!
-	const db = new Map<string, { chunk: DocumentChunk, vector: number[] }>()
+ async function storeInVectorDB(
+ 	ctx: NodeContext<RagContext, any, { chunk: DocumentChunk; vector: number[] }[]>,
+ ): Promise<NodeResult<string>> {
+ 	console.log('[Node] Simulating storage of chunks and vectors.')
+ 	const embeddingResults = ctx.input
+ 	const db = new Map<string, { chunk: DocumentChunk; vector: number[] }>()
 
-	if (!embeddingResults || embeddingResults.length === 0) {
-		console.warn('[Node] No embedding results to store in DB. Upstream might have failed.')
-		return { output: 'DB Ready (empty)' }
-	}
+ 	if (!embeddingResults || embeddingResults.length === 0) {
+ 		console.warn('[Node] No embedding results to store in DB. Upstream might have failed.')
+ 		return { output: 'DB Ready (empty)' }
+ 	}
 
-	for (const { chunkId, vector } of embeddingResults) {
-		const chunk = chunks.get(chunkId)
-		if (chunk && vector) {
-			db.set(chunkId, { chunk, vector })
-		}
-	}
-	await ctx.context.set('vector_db', db)
-	console.log(`[Node] DB is ready with ${db.size} entries.`)
-	return { output: 'DB Ready' }
-}
+ 	for (const { chunk, vector } of embeddingResults) {
+ 		if (chunk && vector) {
+ 			db.set(chunk.id, { chunk, vector })
+ 		}
+ 	}
+ 	await ctx.context.set('vector_db', db)
+ 	console.log(`[Node] DB is ready with ${db.size} entries.`)
+ 	return { output: 'DB Ready' }
+ }
 
 async function vectorSearch(ctx: NodeContext<RagContext>): Promise<NodeResult> {
 	const question = (await ctx.context.get('question'))

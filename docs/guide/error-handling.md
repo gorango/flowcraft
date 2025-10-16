@@ -69,7 +69,7 @@ In this example:
 
 ## Cleanup with `recover`
 
-For class-based nodes extending `BaseNode`, you can implement a `recover` method to perform cleanup when non-retriable errors occur outside the main `exec` phase (e.g., in `prep`, `post`, or due to fatal errors). This ensures resources like database connections or locks are properly released.
+For class-based nodes extending [`BaseNode`](/api/nodes-and-edges#basenode-abstract-class), you can implement a `recover` method to perform cleanup when non-retriable errors occur outside the main `exec` phase (e.g., in `prep`, `post`, or due to fatal errors). This ensures resources like database connections or locks are properly released.
 
 ```typescript
 import { BaseNode, NodeContext, NodeResult } from 'flowcraft'

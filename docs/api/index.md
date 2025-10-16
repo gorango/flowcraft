@@ -6,11 +6,11 @@ This section provides detailed technical documentation for the Flowcraft API. It
 
 The Flowcraft API is organized into several key modules, each responsible for a specific aspect of the framework.
 
--   **[Flow (`createFlow`)](/api/flow)**: The fluent builder API for programmatically constructing a `WorkflowBlueprint`.
+-   **[Flow (`createFlow`)](/api/flow)**: The fluent builder API for programmatically constructing a [`WorkflowBlueprint`](/api/flow#workflowblueprint-interface).
 -   **[Runtime (`FlowRuntime`)](/api/runtime)**: The engine responsible for executing workflows.
--   **[Nodes](/api/nodes)**: The interfaces and base classes for defining node implementations (`BaseNode`, `NodeFunction`).
--   **[Context](/api/context)**: The interfaces and classes for managing workflow state (`ISyncContext`, `IAsyncContext`).
--   **[Analysis](/api/analysis)**: Utilities for validating and visualizing blueprints (`analyzeBlueprint`, `generateMermaid`).
+-   **[Nodes](/api/nodes-and-edges)**: The interfaces and base classes for defining node implementations ([`BaseNode`](/api/nodes-and-edges#basenode-abstract-class), `NodeFunction`).
+-   **[Context](/api/context)**: The interfaces and classes for managing workflow state ([`ISyncContext`](/api/context#isynccontext-interface), `IAsyncContext`).
+-   **[Analysis](/api/analysis)**: Utilities for validating and visualizing blueprints ([`analyzeBlueprint`](/api/analysis#analyzeblueprint-blueprint), `generateMermaid`).
 -   **[Linter](/api/linter)**: Tools for static analysis to find common errors before runtime.
 -   **Extensibility Interfaces**:
     -   **[Middleware](/api/middleware)**: The `Middleware` interface for adding cross-cutting concerns like tracing and transactions.

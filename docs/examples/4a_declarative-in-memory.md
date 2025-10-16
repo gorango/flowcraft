@@ -1,4 +1,4 @@
-# Dynamic AI Agent from Visual Graphs
+# Dynamic AI Agent from JSON Files
 
 This example demonstrates a runtime engine that can execute complex, graph-based AI workflows defined as simple JSON files. It showcases how to build a powerful AI agent that can reason, branch, and call other workflows recursively using the `workflow` framework.
 
@@ -31,7 +31,7 @@ graph TD
 
 ## The Scenarios
 
-#### [`blog-post`]()
+#### [`blog-post`](https://github.com/gorango/flowcraft/tree/master/examples/5.declarative-shared-logic/data/1.blog-post)
 ```mermaid
 graph TD
     subgraph "Blog Post Generation (ID: 100)"
@@ -41,7 +41,7 @@ graph TD
     end
 ```
 
-#### [`job-application`]()
+#### [`job-application`](https://github.com/gorango/flowcraft/tree/master/examples/5.declarative-shared-logic/data/2.job-application)
 ```mermaid
 graph TD
     subgraph "Job Application Screener (ID: 200)"
@@ -56,7 +56,7 @@ graph TD
     end
 ```
 
-#### [`customer-review`]()
+#### [`customer-review`](https://github.com/gorango/flowcraft/tree/master/examples/5.declarative-shared-logic/data/3.customer-review)
 ```mermaid
 graph TD
     subgraph "Customer Review Analysis (ID: 300)"
@@ -78,7 +78,7 @@ graph TD
     end
 ```
 
-#### [`content-moderation`]()
+#### [`content-moderation`](https://github.com/gorango/flowcraft/tree/master/examples/5.declarative-shared-logic/data/4.content-moderation)
 ```mermaid
 graph TD
     subgraph "Content Moderation (ID: 400)"

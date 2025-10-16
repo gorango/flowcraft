@@ -17,7 +17,7 @@ This example demonstrates how to execute the declarative AI agent workflows from
     ```
 
 2.  **Set your OpenAI API key**:
-    Create a `.env` file in this project's root directory (`examples/5a_declarative-in-memory/`):
+    Create a `.env` file in this project's root directory (`examples/4a.declarative-in-memory/`):
 
     ```
     OPENAI_API_KEY="your-api-key-here"
@@ -47,4 +47,4 @@ This example is a lightweight runner that demonstrates the core runtime:
 
 All the complex logic (subflows, conditional branching, fan-out) is defined in the shared JSON files and handled transparently by the in-memory runtime.
 
-For a detailed breakdown of the available use-cases and their workflow graphs, see the **[Shared Logic README](../5_declarative-shared-logic/README.md)**.
+For a detailed breakdown of the available use-cases and their workflow graphs, see the **[Shared Logic README](../4.declarative-shared-logic/README.md)**.

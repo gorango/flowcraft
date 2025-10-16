@@ -33,10 +33,10 @@ async function main() {
 		serializer: new SuperJsonSerializer(), // Plug in the custom serializer
 	})
 
-	const documentPath = path.join(process.cwd(), 'documents', 'sample-flowcraft.txt')
+	const documentPath = path.join(process.cwd(), 'documents', 'sample.md')
 	const initialContext = {
 		document_path: documentPath,
-		question: 'How does Flowcraft handle conditional branching?',
+		question: 'How does Flowcraft implement declarative workflows?',
 	}
 
 	const result = await runtime.run(blueprint, initialContext, {

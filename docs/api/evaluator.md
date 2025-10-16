@@ -55,7 +55,7 @@ const runtime = new FlowRuntime({
 >
 > `UnsafeEvaluator` uses `new Function()` to execute code from blueprint strings. This poses a **severe security vulnerability** that can lead to Remote Code Execution (RCE) if workflow blueprints contain untrusted input.
 >
-> **Never use `UnsafeEvaluator` in production systems** where blueprints might be defined by untrusted third parties. It should only be used in controlled environments where all workflow definitions are static and authored by trusted developers.
+> Never use `UnsafeEvaluator` in production systems where blueprints might be **defined by untrusted third parties**. It should only be used in controlled environments where all workflow definitions are static and authored by trusted developers.
 >
 > For complex expressions in production, implement a custom evaluator using a sandboxed library like [jsep](https://www.npmjs.com/package/jsep). See the [Custom Evaluators guide](/guide/evaluators) for an example.
 

@@ -2,7 +2,7 @@
 
 One of Flowcraft's core strengths is its ability to scale from a simple, in-memory script to a distributed system of workers processing jobs from a queue. This is achieved through the **Adapter** pattern.
 
-The `FlowRuntime` handles in-memory execution. For distributed systems, you use a **Distributed Adapter** that handles the technology-specific parts of queueing and state management.
+The [`FlowRuntime`](/api/runtime#flowruntime-class) handles in-memory execution. For distributed systems, you use a **Distributed Adapter** that handles the technology-specific parts of queueing and state management.
 
 ## The Adapter Pattern
 
@@ -11,7 +11,7 @@ A distributed system requires three key components:
 2.  **A Distributed Context**: To store the shared workflow state (e.g., Redis, DynamoDB).
 3.  **A Coordination Store**: To handle complex synchronization tasks like fan-in joins (e.g., Redis, ZooKeeper).
 
-The `BaseDistributedAdapter` provides the core, technology-agnostic orchestration logic. To create a concrete implementation (like the official `@flowcraft/bullmq-adapter`), you extend this base class and implement a few key methods.
+The [`BaseDistributedAdapter`](/api/distributed-adapter#basedistributedadapter-abstract-class) provides the core, technology-agnostic orchestration logic. To create a concrete implementation (like the official [`@flowcraft/bullmq-adapter`](/guide/adapters/bullmq)), you extend this base class and implement a few key methods.
 
 ## Core Concepts
 
@@ -20,9 +20,9 @@ The `BaseDistributedAdapter` provides the core, technology-agnostic orchestratio
 -   **`IAsyncContext`**: The asynchronous context interface used to manage state remotely.
 -   **`JobPayload`**: The data structure for a job placed on the queue.
 
-## Example: Using the BullMQ Adapter (Conceptual)
+## Example: Using BullMQ
 
-Flowcraft provides an official adapter for [BullMQ](https://bullmq.io/), which uses Redis for both the queue and state management.
+Flowcraft provides an [official adapter](/guide/adapters/bullmq) for [BullMQ](https://bullmq.io/), which uses Redis for both the queue and state management.
 
 Here's how you might set up a worker:
 

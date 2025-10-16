@@ -8,7 +8,7 @@ A node is a single, executable task. Flowcraft offers two primary ways to implem
 
 ### Function-Based Nodes
 
-For simple, self-contained logic, an `async` function is the easiest approach. The function receives a `NodeContext` object and must return a `NodeResult`.
+For simple, self-contained logic, an `async` function is the easiest approach. The function receives a [`NodeContext`](/api/nodes-and-edges#nodecontext-interface) object and must return a [`NodeResult`](/api/nodes-and-edges#noderesult-interface).
 
 ```typescript
 import { NodeContext, NodeResult } from 'flowcraft'
@@ -26,7 +26,7 @@ async function fetchUserData(ctx: NodeContext): Promise<NodeResult> {
 
 ### Class-Based Nodes
 
-For more complex logic, dependency injection, or better testability, you can extend the `BaseNode` class. This provides a structured lifecycle.
+For more complex logic, dependency injection, or better testability, you can extend the [`BaseNode`](/api/nodes-and-edges#basenode-abstract-class) class. This provides a structured lifecycle.
 
 -   **`prep()`**: Prepares data for execution. This phase is **not** retried on failure.
 -   **`exec()`**: Contains the core, isolated logic. This is the **only** phase that is retried.
@@ -76,7 +76,7 @@ flow.edge('A', 'B')
 
 ### Edge Options
 
-You can add an options object to `.edge()` to control branching and data transformation.
+You can add an options object to [`.edge()`](/api/flow#edge-source-target-options) to control branching and data transformation.
 
 -   **`action`**: The edge is only taken if the source node returns a matching `action` string in its result. This is the primary way to implement conditional branching.
 -   **`condition`**: A string expression that is evaluated at runtime. The edge is only taken if the expression evaluates to `true`. This allows for more complex, data-driven conditions.

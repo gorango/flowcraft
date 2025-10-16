@@ -20,7 +20,7 @@ interface SearchWorkflowContext {
 
 ## How it Works
 
-The context is a strongly-typed key-value store. When a node completes, the `FlowRuntime` automatically saves its `output` to the context using the node's `id` as the key.
+The context is a strongly-typed key-value store. When a node completes, the [`FlowRuntime`](/api/runtime#flowruntime-class) automatically saves its `output` to the context using the node's `id` as the key.
 
 ```typescript
 const flow = createFlow<SearchWorkflowContext>('state-example')
@@ -46,7 +46,7 @@ After this workflow runs, the final context will be:
 }
 ```
 
-## The Strongly-Typed Context API
+## Strongly-Typed Context API
 
 Inside any node implementation, you get access to the `context` object, which provides a consistent, asynchronous API with full type safety:
 
@@ -74,7 +74,7 @@ await context.get('invalid_key')
 await context.set('query', 123) // Expected string, got number
 ```
 
-## Example: Strongly-Typed Stateful Workflow
+## Example: Typed Workflow
 
 This workflow demonstrates type-safe state accumulation:
 
@@ -111,7 +111,7 @@ After execution, the final context will contain `count: 2` and `history: ['Step 
 ## Sync vs. Async Context
 
 Flowcraft has two internal context implementations:
--   **`ISyncContext<TContext>` (`Context<TContext>`)**: An in-memory `Map`-based implementation used by the default in-memory runtime. Provides full type safety.
--   **`IAsyncContext<TContext>`**: An `async` interface for contexts that might store state remotely (e.g., in Redis). Used for distributed execution with maintained type safety.
+-   **[`ISyncContext<TContext>`](/api/context#isynccontext-interface) (`Context<TContext>`)**: An in-memory `Map`-based implementation used by the default in-memory runtime. Provides full type safety.
+-   **[`IAsyncContext<TContext>`](/api/context#iasynccontext-interface)**: An `async` interface for contexts that might store state remotely (e.g., in Redis). Used for distributed execution with maintained type safety.
 
 Your node logic **always** interacts with the `IAsyncContext<TContext>` view. This ensures your node code works consistently whether running locally or in a distributed environment, with full type safety in both cases.

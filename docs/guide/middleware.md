@@ -30,7 +30,7 @@ You can provide an array of middleware objects to the [`FlowRuntime`](/api/runti
 
 ## Example: Transaction Middleware
 
-The most common use case for [`aroundNode`](api/middleware#aroundnode) is managing database transactions. We want to start a transaction before a node runs, commit it if the node succeeds, or roll it back if it fails.
+The most common use case for [`aroundNode`](/api/middleware#aroundnode) is managing database transactions. We want to start a transaction before a node runs, commit it if the node succeeds, or roll it back if it fails.
 
 ```typescript
 import { Middleware, NodeResult } from 'flowcraft'
@@ -71,7 +71,7 @@ const runtime = new FlowRuntime({
 
 ## Example: Performance Monitoring
 
-You can use [`beforeNode`](api/middleware#beforenode) and [`afterNode`](api/middleware#afternode) for simpler tasks like performance logging.
+You can use [`beforeNode`](/api/middleware#beforenode) and [`afterNode`](/api/middleware#afternode) for simpler tasks like performance logging.
 
 ```typescript
 const performanceMiddleware: Middleware = {
@@ -118,13 +118,13 @@ const runtime = new FlowRuntime({
 
 This middleware automatically creates spans for each node execution, propagates context between nodes, and records errors, enabling full observability in distributed environments.
 
-## Advanced Middleware: Modifying Results and Context
+## Advanced: Modifying Results and Context
 
-The `aroundNode` hook is particularly powerful because it allows you to intercept, modify, or completely replace the `NodeResult` before it's returned to the runtime. Additionally, you can use the `ctx` argument to mutate the workflow's shared state via `ctx.set(...)`. This enables advanced use cases like custom caching, result enrichment, or dynamic context manipulation.
+The [`aroundNode`](/api/middleware#aroundnode) hook is particularly powerful because it allows you to intercept, modify, or completely replace the [`NodeResult`](/api/nodes-and-edges#noderesult-interface) before it's returned to the runtime. Additionally, you can use the `ctx` argument to mutate the workflow's shared state via `ctx.set(...)`. This enables advanced use cases like custom caching, result enrichment, or dynamic context manipulation.
 
 ### Modifying NodeResult
 
-In `aroundNode`, after calling `next()`, you receive the original `NodeResult`. You can modify its properties (e.g., `data`, `error`, or custom fields) or return an entirely new `NodeResult`. This is useful for tasks like adding metadata, filtering sensitive data, or implementing custom error handling.
+In [`aroundNode`](/api/middleware#aroundnode), after calling `next()`, you receive the original [`NodeResult`](/api/nodes-and-edges#noderesult-interface). You can modify its properties (e.g., `data`, `error`, or custom fields) or return an entirely new [`NodeResult`](/api/nodes-and-edges#noderesult-interface). This is useful for tasks like adding metadata, filtering sensitive data, or implementing custom error handling.
 
 ```typescript
 import { Middleware, NodeResult } from 'flowcraft'
@@ -187,10 +187,10 @@ const contextMutationMiddleware: Middleware = {
 }
 ```
 
-These capabilities make `aroundNode` ideal for implementing features like:
+These capabilities make [`aroundNode`](/api/middleware#aroundnode) ideal for implementing features like:
 
 - **Custom Caching:** Check `ctx.get('cache')` before calling `next()`, and store results in the context for future nodes.
 - **Dynamic Configuration:** Modify node behavior based on context values set by previous middleware or nodes.
-- **Result Transformation:** Enrich or filter `NodeResult` data before it's processed further.
+- **Result Transformation:** Enrich or filter [`NodeResult`](/api/nodes-and-edges#noderesult-interface) data before it's processed further.
 
 Middleware provides a clean and modular way to enhance your workflows without modifying your core business logic.

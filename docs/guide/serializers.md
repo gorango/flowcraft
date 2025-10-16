@@ -1,13 +1,13 @@
 # Serializers
 
-The workflow `Context` often needs to be serialized, especially when:
+The workflow [`Context`](/api/context#context-class) often needs to be serialized, especially when:
 -   Running in a distributed system where the context is stored in a remote database (like Redis).
 -   Persisting the final state of a completed workflow.
--   Passing initial state to the `runtime.run()` method as a string.
+-   Passing initial state to the [`runtime.run()`](/api/runtime#run-blueprint-initialstate-options) method as a string.
 
 ## The Default: `JsonSerializer`
 
-Flowcraft's default serializer, `JsonSerializer`, uses `JSON.stringify()` and `JSON.parse()`. This is simple and universal, but it has limitations. Standard JSON cannot represent complex data types like:
+Flowcraft's default serializer, [`JsonSerializer`](/api/serializer#jsonserializer-class), uses `JSON.stringify()` and `JSON.parse()`. This is simple and universal, but it has limitations. Standard JSON cannot represent complex data types like:
 
 -   `Date` objects (are converted to strings)
 -   `Map` and `Set` objects
@@ -16,7 +16,7 @@ Flowcraft's default serializer, `JsonSerializer`, uses `JSON.stringify()` and `J
 
 ## Replacing the Serializer
 
-If your workflows need to handle complex data types, you can provide a custom serializer that implements the `ISerializer` interface.
+If your workflows need to handle complex data types, you can provide a custom serializer that implements the [`ISerializer`](/api/serializer#iserializer-interface) interface.
 
 #### The `ISerializer` Interface
 
@@ -29,7 +29,7 @@ interface ISerializer {
 
 #### Example: Using `superjson`
 
-[superjson](https://www.npmjs.com/package/superjson) is an excellent library that extends JSON to support a wide range of types, including dates, maps, sets, and class instances.
+[`superjson`](https://www.npmjs.com/package/superjson) is an excellent library that extends JSON to support a wide range of types, including dates, maps, sets, and class instances.
 
 1.  **Install `superjson`**:
 	```bash
@@ -52,9 +52,9 @@ interface ISerializer {
 		}
 	}
 	```
-	If you are serializing custom classes, you may need to register them with `superjson` first.
+	If you are serializing custom classes, you may need to register them with [`superjson`](https://www.npmjs.com/package/superjson) first.
 
-3.  **Provide it to the `FlowRuntime`**:
+3.  **Provide it to the [`FlowRuntime`](/api/runtime#flowruntime-class)**:
 	```typescript
 	const runtime = new FlowRuntime({
 		serializer: new SuperJsonSerializer(),
@@ -75,4 +75,4 @@ interface ISerializer {
 	console.log(deserialized.start instanceof Date) // true
 	```
 
-By plugging in a powerful serializer like `superjson`, you can maintain data fidelity throughout your workflows.
+By plugging in a powerful serializer like [`superjson`](https://www.npmjs.com/package/superjson), you can maintain data fidelity throughout your workflows.

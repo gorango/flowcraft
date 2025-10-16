@@ -1,10 +1,10 @@
 # Flow
 
-The `Flow` class and `createFlow` function provide a fluent, type-safe API for programmatically building a `WorkflowBlueprint`.
+The [`Flow`](/api/flow#flow-class) class and `createFlow` function provide a fluent, type-safe API for programmatically building a [`WorkflowBlueprint`](/api/flow#workflowblueprint-interface).
 
 ## `createFlow(id)`
 
-Creates and returns a new `Flow` builder instance.
+Creates and returns a new [`Flow`](/api/flow#flow-class) builder instance.
 
 -   **`id`** `string`: A unique identifier for the workflow.
 -   **Returns**: `Flow<TContext, TDependencies>`
@@ -60,12 +60,25 @@ Creates an iterative loop in the workflow graph.
 
 ### `.toBlueprint()`
 
-Finalizes the definition and returns the serializable `WorkflowBlueprint`.
+Finalizes the definition and returns the serializable [`WorkflowBlueprint`](/api/flow#workflowblueprint-interface).
 
--   **Returns**: `WorkflowBlueprint`
+-   **Returns**: [`WorkflowBlueprint`](/api/flow#workflowblueprint-interface)
+
+#### `WorkflowBlueprint` Interface
+
+The central, serializable representation of a workflow.
+
+```typescript
+interface WorkflowBlueprint {
+  id: string;
+  nodes: NodeDefinition[];
+  edges: EdgeDefinition[];
+  metadata?: Record<string, any>;
+}
+```
 
 ### `.getFunctionRegistry()`
 
-Returns a `Map` containing the node implementations (`NodeFunction` or `NodeClass`) provided to the builder, keyed by a unique internal identifier. This registry is required by the `FlowRuntime`.
+Returns a `Map` containing the node implementations (`NodeFunction` or `NodeClass`) provided to the builder, keyed by a unique internal identifier. This registry is required by the [`FlowRuntime`](/api/runtime#flowruntime-class).
 
 -   **Returns**: `Map<string, NodeFunction | NodeClass>`

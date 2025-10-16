@@ -1,6 +1,6 @@
 # Defining Workflows
 
-Workflows are defined programmatically using the fluent `Flow` builder API. This provides a strongly-typed and intuitive way to construct your `WorkflowBlueprint` with compile-time type safety.
+Workflows are defined programmatically using the fluent [`Flow`](/api/flow#flow-class) builder API. This provides a strongly-typed and intuitive way to construct your [`WorkflowBlueprint`](/api/flow#workflowblueprint-interface) with compile-time type safety.
 
 ## Defining Context Types
 
@@ -16,7 +16,7 @@ interface UserProcessingContext {
 
 ## Using `createFlow`
 
-The entry point to the builder is the `createFlow` function. It takes a unique ID for your workflow and is generic over your context type for full type safety.
+The entry point to the builder is the [`createFlow`](/api/flow#createflow-id) function. It takes a unique ID for your workflow and is generic over your context type for full type safety.
 
 ```typescript
 import { createFlow } from 'flowcraft'
@@ -27,7 +27,7 @@ const flowBuilder = createFlow<UserProcessingContext>('my-first-workflow')
 
 ## Adding Nodes with `.node()`
 
-You add tasks to your workflow using the `.node()` method. Node functions receive a strongly-typed `NodeContext` that provides access to the typed context.
+You add tasks to your workflow using the `.node()` method. Node functions receive a strongly-typed [`NodeContext`](/api/nodes-and-edges#nodecontext-interface) that provides access to the typed context.
 
 ```typescript
 const flowBuilder = createFlow<UserProcessingContext>('user-processing')
@@ -103,7 +103,7 @@ The strongly-typed workflow system provides:
 
 ## Finalizing the Blueprint
 
-Once your workflow is defined, call `.toBlueprint()` to get the serializable `WorkflowBlueprint` object. You will also need the function registry, which contains the node implementations.
+Once your workflow is defined, call [`.toBlueprint()`](/api/flow#toblueprint) to get the serializable [`WorkflowBlueprint`](/api/flow#workflowblueprint-interface) object. You will also need the function registry, which contains the node implementations.
 
 ```typescript
 // Continuing from above...

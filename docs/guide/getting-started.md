@@ -16,7 +16,7 @@ Install Flowcraft into your project using your preferred package manager:
 npm install flowcraft
 ```
 
-## Your First Strongly-Typed Workflow
+## Your First Workflow
 
 Let's create a simple workflow with two steps: one node to provide a starting number, and a second node to double it, using Flowcraft's strongly-typed context system.
 
@@ -26,13 +26,13 @@ Let's create a simple workflow with two steps: one node to provide a starting nu
 ```typescript
 import { ConsoleLogger, createFlow, FlowRuntime } from 'flowcraft'
 
-// 1. Define your context interface for type safety
+// 1. Define your context interface for type safety (optional)
 interface SimpleWorkflowContext {
   initial_value?: number
   doubled_value?: number
 }
 
-// 2. Define the workflow structure with strong typing
+// 2. Define the workflow structure with (optional) strong typing
 const flow = createFlow<SimpleWorkflowContext>('simple-workflow')
 	// The first node, 'start', takes no input and outputs the number 42.
 	.node('start', async ({ context }) => {

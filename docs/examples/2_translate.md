@@ -1,6 +1,6 @@
 # Parallel Batch Translation
 
-This example demonstrates using Flowcraft's `.batch()` helper to translate a document into multiple languages concurrently, showcasing significant performance improvements for I/O-bound tasks.
+This example demonstrates using Flowcraft's [`.batch()`](/api/flow#batch-tinput-toutput-taction-id-worker-options) helper to translate a document into multiple languages concurrently, showcasing significant performance improvements for I/O-bound tasks.
 
 ## The Goal
 

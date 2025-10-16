@@ -1,6 +1,6 @@
 # Data-Driven Workflows
 
-While Flowcraft's fluent [`.node()`](/api/flow#node-tinput-toutput-taction-id-implementation-options) and [`.edge()`](/api/flow#edge-source-target-options) API is great for defining workflows in code, one of the framework's most powerful features is its ability to execute workflows from **serializable JSON objects** (the [`WorkflowBlueprint`](/api/flow#workflowblueprint-interface)).
+While Flowcraft's fluent `.node()` and `.edge()` API is great for defining workflows in code, one of the framework's most powerful features is its ability to execute workflows from **serializable JSON objects** (the `WorkflowBlueprint`).
 
 This decouples your business logic from the workflow's structure, enabling you to:
 
@@ -19,7 +19,7 @@ The core pattern involves three components:
 
 ## Example: Content Moderation
 
-The **[Dynamic AI Agent example](/examples/4a_declarative-in-memory)** demonstrates this perfectly. The entire moderation logic is defined in [`400.json`](https://github.com/gorango/flowcraft/tree/master/examples/4.declarative-shared-logic/data/4.content-moderation/400.json).
+The **[Dynamic AI Agent example](/examples/4a_declarative-in-memory)** demonstrates this perfectly. The entire moderation logic is defined in [`400.json`](https://github.com/gorango/flowcraft/tree/master/examples/5.declarative-shared-logic/data/4.content-moderation/400.json).
 
 ```mermaid
 graph TD

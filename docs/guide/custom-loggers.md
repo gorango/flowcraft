@@ -1,8 +1,8 @@
 # Custom Loggers
 
-Flowcraft includes a simple `ConsoleLogger` and a `NullLogger` (which does nothing). For production systems, you'll likely want to integrate with a more robust logging framework like Winston, Pino, or your cloud provider's logging service.
+Flowcraft includes a simple [`ConsoleLogger`](/api/logger#consolelogger-class) and a [`NullLogger`](/api/logger#nulllogger-class) (which does nothing). For production systems, you'll likely want to integrate with a more robust logging framework like Winston, Pino, or your cloud provider's logging service.
 
-You can do this by creating a custom logger that implements the `ILogger` interface.
+You can do this by creating a custom logger that implements the [`ILogger`](/api/logger#ilogger-interface) interface.
 
 ## The `ILogger` Interface
 
@@ -18,7 +18,7 @@ interface ILogger {
 ```
 
 -   `message`: The log message string.
--   `meta`: An optional object containing structured metadata (e.g., `nodeId`, `executionId`). The `FlowRuntime` automatically provides this where applicable.
+-   `meta`: An optional object containing structured metadata (e.g., `nodeId`, `executionId`). The [`FlowRuntime`](/api/runtime#flowruntime-class) automatically provides this where applicable.
 
 ## Example: A Simple File Logger
 
@@ -58,7 +58,7 @@ class FileLogger implements ILogger {
 
 ## Using the Custom Logger
 
-To use your custom logger, simply pass an instance of it to the `FlowRuntime` constructor.
+To use your custom logger, simply pass an instance of it to the [`FlowRuntime`](/api/runtime#flowruntime-class) constructor.
 
 ```typescript
 import { FlowRuntime } from 'flowcraft'

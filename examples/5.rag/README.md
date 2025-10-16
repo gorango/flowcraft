@@ -1,4 +1,4 @@
-# Advanced RAG Agent Workflow
+# Advanced RAG Workflow
 
 This workflow demonstrates a complete Retrieval-Augmented Generation (RAG) agent built with Flowcraft. The workflow ingests and analyzes a document, uses embeddings to find relevant information, and generates a precise answer to a user's question.
 
@@ -12,7 +12,6 @@ This project serves two main purposes:
 - **RAG Pipeline**: Implements a full RAG pipeline: document loading, chunking, embedding generation, vector search, and final answer synthesis.
 - **Complex Data Structures**: The workflow creates and manages `Map` objects, `Date` objects, and custom `DocumentChunk` and `SearchResult` class instances.
 - **Robust Serialization**: At the end of the workflow, it demonstrates how `superjson` can correctly serialize the entire final context, preserving all complex data types that would be lost with `JSON.stringify`.
-- **Declarative & Modular**: The entire workflow is defined in a single `rag.json` file, and the logic is broken down into reusable, single-responsibility nodes.
 
 ## How to Run
 
@@ -35,11 +34,11 @@ This project serves two main purposes:
     npm start
     ```
 
-    The application will process the `documents/sample-flowcraft.txt` file and answer a hard-coded question. You can change the question in `src/main.ts`.
+    The application will process the `documents/sample.md` file and answer a hard-coded question. You can change the question in `src/main.ts`.
 
 ## How It Works
 
-The workflow is defined in `data/rag.json` and executed by the `InMemoryExecutor`.
+The workflow is defined using `createFlow` in `src/flow.ts` and consists of several nodes connected by edges.
 
 ```mermaid
 graph TD
@@ -50,15 +49,15 @@ graph TD
 		B --> B3[2]
 		B --> B4[n]
 	end
-	B1 & b2 & B3 & B4 --> C[Store in Vector DB]
+	B1 & B2 & B3 & B4 --> C[Store in Vector DB]
 	C --> D[Vector Search for Question]
 	D --> E[Generate Final Answer]
 ```
 
-1. **`LoadAndChunkNode`**: Reads the source document and splits it into smaller text chunks, creating `DocumentChunk` class instances which include an `ingestedAt: Date`.
-2. **`GenerateEmbeddingsNode`**: A `ParallelBatchFlow` that concurrently generates a vector embedding for each document chunk.
-3. **`StoreInVectorDBNode`**: Simulates storing the chunks and their embeddings in a vector database (represented as a `Map` in the context).
-4. **`VectorSearchNode`**: Takes a user's question, generates an embedding for it, and performs a cosine similarity search to find the most relevant chunks from the "database".
-5. **`LLMProcessNode`**: Takes the original question and the retrieved chunks (the "context") and passes them to an LLM to generate a final, synthesized answer.
+1. **`loadAndChunk`**: Reads the source document and splits it into smaller text chunks, creating `DocumentChunk` class instances which include an `ingestedAt: Date`.
+2. **`generateEmbeddings`**: A batch node that concurrently generates a vector embedding for each document chunk.
+3. **`storeInVectorDB`**: Simulates storing the chunks and their embeddings in a vector database (represented as a `Map` in the context).
+4. **`vectorSearch`**: Takes a user's question, generates an embedding for it, and performs a cosine similarity search to find the most relevant chunks from the "database".
+5. **`generateFinalAnswer`**: Takes the original question and the retrieved chunks (the "context") and passes them to an LLM to generate a final, synthesized answer.
 
 At the conclusion, `main.ts` prints the final answer and then logs the entire `Context` object, serialized with `superjson`, to show that all the rich data types were preserved throughout the workflow's execution.

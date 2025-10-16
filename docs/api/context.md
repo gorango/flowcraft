@@ -19,7 +19,7 @@ interface ISyncContext<TContext extends Record<string, any> = Record<string, any
 
 ### `Context` Class
 
-The default, high-performance, in-memory implementation of `ISyncContext`, backed by a `Map`.
+The default, high-performance, in-memory implementation of [`ISyncContext`](/api/context#isynccontext-interface), backed by a `Map`.
 
 -   **`new Context<TContext>(initialData?)`**: Creates a new context with full type safety, optionally seeding it with initial data.
 
@@ -40,7 +40,7 @@ interface IAsyncContext<TContext extends Record<string, any> = Record<string, an
 
 ### `AsyncContextView` Class
 
-An adapter that provides a consistent, `Promise`-based view of a synchronous `ISyncContext` with full type safety. This is created automatically by the runtime for in-memory execution, so your node logic remains consistent.
+An adapter that provides a consistent, `Promise`-based view of a synchronous [`ISyncContext`](/api/context#isynccontext-interface) with full type safety. This is created automatically by the runtime for in-memory execution, so your node logic remains consistent.
 
 ## Type Safety Benefits
 

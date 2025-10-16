@@ -1,12 +1,12 @@
 # Visualizing Workflows
 
-Understanding the structure of a complex workflow can be challenging just by reading code or JSON. Flowcraft includes a utility to generate [Mermaid](https://mermaid.js.org/) diagram syntax directly from a `WorkflowBlueprint`.
+Understanding the structure of a complex workflow can be challenging just by reading code or JSON. Flowcraft includes a utility to generate [Mermaid](https://mermaid.js.org/) diagram syntax directly from a [`WorkflowBlueprint`](/api/flow#workflowblueprint-interface).
 
 This makes it easy to visualize, document, and debug your workflows.
 
 ## `generateMermaid`
 
-The `generateMermaid` function takes a blueprint and returns a string of Mermaid flowchart syntax. Node labels include the node ID and, if present, the node's parameters for richer visualization.
+The [`generateMermaid`](/api/analysis#generatemermaid-blueprint) function takes a blueprint and returns a string of Mermaid flowchart syntax. Node labels include the node ID and, if present, the node's parameters for richer visualization.
 
 ```typescript
 import { createFlow, generateMermaid } from 'flowcraft'
@@ -46,13 +46,14 @@ When this syntax is rendered by a tool that supports Mermaid (like this document
 ```mermaid
 flowchart TD
 	fetch["fetch"]
-	check["check<br/>params: {"threshold":5}"]
+	check["check<br/>params: {&quot;threshold&quot;: 5}"]
 	process-big["process-big"]
 	process-small["process-small"]
 	fetch --> check
 	check -- "big | result.output > 0" --> process-big
 	check -- "small" --> process-small
 ```
+
 Notice how the `action` and `condition` from the edges are automatically added as labels to the connections in the diagram.
 
 Visualizing your workflows is an invaluable tool for:

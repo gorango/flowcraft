@@ -28,7 +28,7 @@ It showcases a client-worker architecture where a client can initiate a workflow
     ```
 
 3.  **Set your OpenAI API key**:
-    Create a `.env` file in this project's root directory (`examples/5b_declarative-distributed/`):
+    Create a `.env` file in this project's root directory (`examples/4b.declarative-distributed/`):
 
     ```
     OPENAI_API_KEY="your-api-key-here"
@@ -64,4 +64,4 @@ This example leverages the `BullMQAdapter` to decouple workflow orchestration fr
     - The adapter handles all the complex orchestration logic: determining the next nodes, managing fan-in/fan-out joins with Redis, and enqueuing subsequent jobs.
     - When the workflow completes or fails, the adapter publishes the final result back to Redis for the client.
 
-For a detailed breakdown of the available use-cases and their workflow graphs, see the **[Shared Logic README](../5_declarative-shared-logic/README.md)**.
+For a detailed breakdown of the available use-cases and their workflow graphs, see the **[Shared Logic README](../4.declarative-shared-logic/README.md)**.
