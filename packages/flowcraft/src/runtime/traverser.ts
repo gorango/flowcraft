@@ -18,6 +18,10 @@ export class GraphTraverser<TContext extends Record<string, any>, TDependencies 
 		private signal?: AbortSignal,
 		private concurrency?: number,
 	) {
+		if (this.concurrency === undefined) {
+			const hardwareConcurrency = globalThis.navigator?.hardwareConcurrency || 4
+			this.concurrency = Math.min(hardwareConcurrency, 10)
+		}
 		this.dynamicBlueprint = structuredClone(blueprint) as WorkflowBlueprint
 		this.allPredecessors = new Map<string, Set<string>>()
 		for (const node of this.dynamicBlueprint.nodes) {
