@@ -1,5 +1,5 @@
 {
-	"name": "research-workflow",
+	"name": "@flowcraft/example-research-workflow",
 	"type": "module",
 	"scripts": {
 		"start": "npx tsx src/main.ts",

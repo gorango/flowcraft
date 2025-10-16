@@ -103,7 +103,7 @@ importers:
         specifier: ^5.9.3
         version: 5.9.3
 
-  examples/5a_declarative:
+  examples/5_declarative-shared-logic:
     dependencies:
       dotenv:
         specifier: ^17.2.3
@@ -111,19 +111,23 @@ importers:
       flowcraft:
         specifier: workspace:*
         version: link:../../packages/flowcraft
-      lodash-es:
-        specifier: ^4.17.21
-        version: 4.17.21
       openai:
         specifier: ^6.3.0
         version: 6.3.0
-      yaml:
-        specifier: ^2.8.1
-        version: 2.8.1
     devDependencies:
-      '@types/lodash-es':
-        specifier: ^4.17.12
-        version: 4.17.12
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
+
+  examples/5a_declarative-in-memory:
+    dependencies:
+      '@flowcraft/example-declarative-shared-logic':
+        specifier: workspace:*
+        version: link:../5_declarative-shared-logic
+      flowcraft:
+        specifier: workspace:*
+        version: link:../../packages/flowcraft
+    devDependencies:
       '@types/node':
         specifier: ^24.7.2
         version: 24.7.2
@@ -131,11 +135,14 @@ importers:
         specifier: ^5.9.3
         version: 5.9.3
 
-  examples/5b_distributed:
+  examples/5b_declarative-distributed:
     dependencies:
       '@flowcraft/bullmq-adapter':
         specifier: workspace:*
         version: link:../../packages/adapter-bullmq
+      '@flowcraft/example-declarative-shared-logic':
+        specifier: workspace:*
+        version: link:../5_declarative-shared-logic
       bullmq:
         specifier: ^5.61.0
         version: 5.61.0
@@ -1750,12 +1757,6 @@ packages:
 
   '@types/linkify-it@5.0.0':
     resolution: {integrity: sha512-sVDA58zAw4eWAffKOaQH5/5j3XeayukzDk+ewSsnv3p4yJEZHCCzMDiZM8e0OUrRvmpGZ85jf4yDHkHsgBNr9Q==}
-
-  '@types/lodash-es@4.17.12':
-    resolution: {integrity: sha512-0NgftHUcV4v34VhXm8QBSftKVXtbkBG3ViCjs6+eJ5a6y6Mi/jiFGPc1sC7QK+9BFhWrURE3EOggmWaSxL9OzQ==}
-
-  '@types/lodash@4.17.20':
-    resolution: {integrity: sha512-H3MHACvFUEiujabxhaI/ImO6gUrd8oOurg7LQtS7mbwIXA/cUqWrvBsaeJ23aZEPk1TAYkurjfMbSELfoCXlGA==}
 
   '@types/long@4.0.2':
     resolution: {integrity: sha512-MqTGEo5bj5t157U6fA/BiDynNkn0YknVdh48CMPkTSpFTVmvao5UQmm7uEF6xBEo7qIMAlY/JSleYaE6VOdpaA==}
@@ -5701,12 +5702,6 @@ snapshots:
       '@types/unist': 3.0.3
 
   '@types/linkify-it@5.0.0': {}
-
-  '@types/lodash-es@4.17.12':
-    dependencies:
-      '@types/lodash': 4.17.20
-
-  '@types/lodash@4.17.20': {}
 
   '@types/long@4.0.2': {}
 

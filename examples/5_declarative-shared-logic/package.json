@@ -1,15 +1,17 @@
 {
-	"name": "@flowcraft/example-parallel-workflow",
+	"name": "@flowcraft/example-declarative-shared-logic",
 	"type": "module",
+	"exports": {
+		".": "./dist/index.js"
+	},
 	"scripts": {
-		"start": "npx tsx src/main.ts",
+		"build": "tsc",
 		"typecheck": "tsc --noEmit"
 	},
 	"dependencies": {
-		"dotenv": "^17.2.3",
 		"flowcraft": "workspace:*",
 		"openai": "^6.3.0",
-		"yaml": "^2.8.1"
+		"dotenv": "^17.2.3"
 	},
 	"devDependencies": {
 		"typescript": "^5.9.3"

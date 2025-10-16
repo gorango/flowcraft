@@ -1,11 +1,8 @@
-import { promises as fs } from 'node:fs'
-import path from 'node:path'
-import process from 'node:process'
+import { blueprints, config } from '@flowcraft/example-declarative-shared-logic'
 import { Queue } from 'bullmq'
 import type { WorkflowResult } from 'flowcraft'
 import { analyzeBlueprint } from 'flowcraft'
 import IORedis from 'ioredis'
-import { config } from '../../5a_declarative/src/config'
 import 'dotenv/config'
 
 const QUEUE_NAME = 'flowcraft-queue'
@@ -36,11 +33,6 @@ export async function waitForWorkflow(
 	}
 }
 
-async function loadBlueprint(blueprintPath: string) {
-	const blueprintContent = await fs.readFile(blueprintPath, 'utf-8')
-	return JSON.parse(blueprintContent)
-}
-
 async function main() {
 	console.log('--- Distributed Workflow Client ---')
 
@@ -49,15 +41,7 @@ async function main() {
 	const queue = new Queue(QUEUE_NAME, { connection: redisConnection })
 
 	const useCase = config[ACTIVE_USE_CASE]
-	const blueprintPath = path.join(
-		process.cwd(),
-		'..',
-		'5.dag',
-		'data',
-		ACTIVE_USE_CASE,
-		`${useCase.mainWorkflowId}.json`,
-	)
-	const blueprint = await loadBlueprint(blueprintPath)
+	const blueprint = blueprints[useCase.mainWorkflowId]
 
 	const analysis = analyzeBlueprint(blueprint)
 	const startNodeIds = analysis.startNodeIds

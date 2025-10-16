@@ -1,5 +1,5 @@
 {
-	"name": "basic-workflow",
+	"name": "@flowcraft/example-basic-workflow",
 	"type": "module",
 	"scripts": {
 		"start": "npx tsx src/main.ts",
