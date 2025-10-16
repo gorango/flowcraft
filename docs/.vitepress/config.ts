@@ -133,6 +133,7 @@ export default defineConfig({
 						{ text: 'Context', link: '/api/context' },
 						{ text: 'Analysis', link: '/api/analysis' },
 						{ text: 'Linter', link: '/api/linter' },
+						{ text: 'Middleware', link: '/api/middleware' },
 						{ text: 'Serializer', link: '/api/serializer' },
 						{ text: 'Evaluator', link: '/api/evaluator' },
 						{ text: 'Logger', link: '/api/logger' },

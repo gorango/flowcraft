@@ -13,6 +13,7 @@ The Flowcraft API is organized into several key modules, each responsible for a 
 -   **[Analysis](/api/analysis)**: Utilities for validating and visualizing blueprints (`analyzeBlueprint`, `generateMermaid`).
 -   **[Linter](/api/linter)**: Tools for static analysis to find common errors before runtime.
 -   **Extensibility Interfaces**:
+    -   **[Middleware](/api/middleware)**: The `Middleware` interface for adding cross-cutting concerns like tracing and transactions.
     -   **[Serializer](/api/serializer)**: The `ISerializer` interface for custom data serialization.
     -   **[Evaluator](/api/evaluator)**: The `IEvaluator` interface for custom expression evaluation.
     -   **[Logger](/api/logger)**: The `ILogger` interface for plugging in custom logging providers.

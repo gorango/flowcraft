@@ -9,7 +9,7 @@ Middleware allows you to add cross-cutting concerns to your workflows by wrappin
 
 ## The `Middleware` Interface
 
-A middleware object can implement one or more of three hooks:
+A [`Middleware`](/api/middleware) object can implement one or more of three hooks:
 
 ```typescript
 interface Middleware {
@@ -26,11 +26,11 @@ interface Middleware {
 }
 ```
 
-You can provide an array of middleware objects to the `FlowRuntime` constructor. They are executed in a "wraparound" or LIFO (Last-In, First-Out) order.
+You can provide an array of middleware objects to the [`FlowRuntime`](/api/runtime) constructor. They are executed in a "wraparound" or LIFO (Last-In, First-Out) order.
 
 ## Example: Transaction Middleware
 
-The most common use case for `aroundNode` is managing database transactions. We want to start a transaction before a node runs, commit it if the node succeeds, or roll it back if it fails.
+The most common use case for [`aroundNode`](api/middleware#aroundnode) is managing database transactions. We want to start a transaction before a node runs, commit it if the node succeeds, or roll it back if it fails.
 
 ```typescript
 import { Middleware, NodeResult } from 'flowcraft'
@@ -71,7 +71,7 @@ const runtime = new FlowRuntime({
 
 ## Example: Performance Monitoring
 
-You can use `beforeNode` and `afterNode` for simpler tasks like performance logging.
+You can use [`beforeNode`](api/middleware#beforenode) and [`afterNode`](api/middleware#afternode) for simpler tasks like performance logging.
 
 ```typescript
 const performanceMiddleware: Middleware = {
@@ -92,4 +92,30 @@ const performanceMiddleware: Middleware = {
 	}
 }
 ```
+## Example: OpenTelemetry Observability
+
+For [distributed](/guide/distributed-execution) tracing and observability, you can use the [`@flowcraft/opentelemetry-middleware`](https://npmjs.com/package/@flowcraft/opentelemetry-middleware) package. This middleware integrates with [OpenTelemetry](https://opentelemetry.io/) to provide end-to-end visibility into workflow executions.
+
+```typescript
+import { OpenTelemetryMiddleware } from '@flowcraft/opentelemetry-middleware'
+import { NodeSDK } from '@opentelemetry/sdk-node'
+import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http'
+
+// Set up OpenTelemetry SDK (standard OTel setup)
+const sdk = new NodeSDK({
+  traceExporter: new OTLPTraceExporter(), // Point to Jaeger, Datadog, etc.
+})
+sdk.start()
+
+// Create the middleware
+const otelMiddleware = new OpenTelemetryMiddleware('flowcraft-worker')
+
+// Add to runtime
+const runtime = new FlowRuntime({
+  middleware: [otelMiddleware],
+})
+```
+
+This middleware automatically creates spans for each node execution, propagates context between nodes, and records errors, enabling full observability in distributed environments.
+
 Middleware provides a clean and modular way to enhance your workflows without modifying your core business logic.

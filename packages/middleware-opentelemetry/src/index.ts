@@ -1,0 +1,1 @@
+export { OpenTelemetryMiddleware } from './middleware'
