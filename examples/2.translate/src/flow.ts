@@ -10,7 +10,6 @@ interface TranslationContext {
 	output_dir: string
 	'prepare-jobs': { language: string; text: string }[]
 	translations: { language: string; translation: string }[]
-	'translate-batch_gather_allWorkerIds': string[]
 }
 
 // 1. Prepare the list of translation jobs
@@ -53,33 +52,25 @@ ${text}`
 // 3. This node runs AFTER the entire batch is complete
 async function saveResults(ctx: NodeContext<TranslationContext>): Promise<NodeResult<string>> {
 	const outputDir = await ctx.context.get('output_dir')
+	const translations = await ctx.context.get('translations')
+
 	if (!outputDir) {
 		throw new TypeError('output_dir is required')
 	}
 
-	// Collect translations from worker outputs in context
-	const allWorkerIds = (await ctx.context.get('translate-batch_gather_allWorkerIds')) || []
-	const collectedTranslations: { language: string; translation: string }[] = []
-	for (const workerId of allWorkerIds) {
-		const trans = await ctx.context.get(workerId as keyof TranslationContext)
-		if (trans && typeof trans === 'object' && 'language' in trans && 'translation' in trans) {
-			collectedTranslations.push(trans as { language: string; translation: string })
-		}
-	}
-
-	if (!collectedTranslations || collectedTranslations.length === 0) {
+	if (!translations || translations.length === 0) {
 		console.warn('No translations to save.')
 		return { output: 'Saved 0 files.' }
 	}
 
-	const promises = collectedTranslations.map(({ language, translation }) => {
+	const promises = translations.map(({ language, translation }) => {
 		const filename = path.join(outputDir, `README_${language.toUpperCase()}.md`)
 		console.log(`Saving translation to ${filename}`)
 		return fs.writeFile(filename, translation, 'utf-8')
 	})
 
 	await Promise.all(promises)
-	return { output: `Saved ${collectedTranslations.length} files.` }
+	return { output: `Saved ${translations.length} files.` }
 }
 
 export function createTranslateFlow() {

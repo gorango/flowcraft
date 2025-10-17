@@ -530,13 +530,14 @@ export class FlowRuntime<TContext extends Record<string, any>, TDependencies ext
 					})
 				} else {
 					// collect results from all chunks into outputKey
-					const allWorkerIds = (await (context as any).get(`${gatherNodeId}_allWorkerIds`)) || []
+					const allWorkerIds = ((await context.get(`${gatherNodeId}_allWorkerIds`)) as string[]) || []
 					const results = []
 					for (const workerId of allWorkerIds) {
-						const result = await context.get(`${workerId}_output` as any)
+						// the output of a node is stored with the node's ID as the key.
+						const result = await context.get(workerId)
 						if (result !== undefined) results.push(result)
 					}
-					await (context as any).set(outputKey, results)
+					await context.set(outputKey as any, results)
 				}
 				return { dynamicNodes, output: {} }
 			}
