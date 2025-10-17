@@ -1,7 +1,7 @@
 {
 	"name": "@flowcraft/kafka-adapter",
 	"type": "module",
-	"version": "1.2.0",
+	"version": "1.2.1",
 	"exports": {
 		".": {
 			"types": "./dist/index.d.ts",

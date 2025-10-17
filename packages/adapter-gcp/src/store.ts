@@ -23,4 +23,8 @@ export class RedisCoordinationStore implements ICoordinationStore {
 	async delete(key: string): Promise<void> {
 		await this.redis.del(key)
 	}
+
+	async get(key: string): Promise<string | undefined> {
+		return (await this.redis.get(key)) ?? undefined
+	}
 }

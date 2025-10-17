@@ -1,5 +1,5 @@
 import type { DynamoDBClient } from '@aws-sdk/client-dynamodb'
-import { DeleteItemCommand, UpdateItemCommand } from '@aws-sdk/client-dynamodb'
+import { DeleteItemCommand, GetItemCommand, UpdateItemCommand } from '@aws-sdk/client-dynamodb'
 import type { ICoordinationStore } from 'flowcraft'
 
 export interface DynamoDbCoordinationStoreOptions {
@@ -82,5 +82,14 @@ export class DynamoDbCoordinationStore implements ICoordinationStore {
 			Key: { coordinationKey: { S: key } },
 		})
 		await this.client.send(command)
+	}
+
+	async get(key: string): Promise<string | undefined> {
+		const command = new GetItemCommand({
+			TableName: this.tableName,
+			Key: { coordinationKey: { S: key } },
+		})
+		const result = await this.client.send(command)
+		return result.Item?.value?.S ?? undefined
 	}
 }
