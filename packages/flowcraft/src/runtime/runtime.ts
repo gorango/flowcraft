@@ -37,7 +37,8 @@ import type { IRuntime } from './types'
 type InternalFlowContext<TContext extends Record<string, any>> = TContext & Partial<DynamicKeys>
 
 export class FlowRuntime<TContext extends Record<string, any>, TDependencies extends Record<string, any>>
-	implements IRuntime<TContext, TDependencies> {
+	implements IRuntime<TContext, TDependencies>
+{
 	public registry: Record<string, NodeFunction | NodeClass | typeof BaseNode>
 	private blueprints: Record<string, WorkflowBlueprint>
 	private dependencies: TDependencies
@@ -58,7 +59,7 @@ export class FlowRuntime<TContext extends Record<string, any>, TDependencies ext
 		this.blueprints = options.blueprints || {}
 		this.dependencies = options.dependencies || ({} as TDependencies)
 		this.logger = options.logger || new NullLogger()
-		this.eventBus = options.eventBus || { emit: () => { } }
+		this.eventBus = options.eventBus || { emit: () => {} }
 		this.serializer = options.serializer || new JsonSerializer()
 		this.middleware = options.middleware || []
 		this.evaluator = options.evaluator || new PropertyEvaluator()
@@ -294,7 +295,11 @@ export class FlowRuntime<TContext extends Record<string, any>, TDependencies ext
 	private getExecutor(nodeDef: NodeDefinition, functionRegistry?: Map<string, any>): ExecutionStrategy {
 		if (nodeDef.uses.startsWith('batch-') || nodeDef.uses.startsWith('loop-') || nodeDef.uses === 'subflow') {
 			return new BuiltInNodeExecutor((nodeDef, context) =>
-				this._executeBuiltInNode(nodeDef, context as ContextImplementation<InternalFlowContext<TContext>>),
+				this._executeBuiltInNode(
+					nodeDef,
+					context as ContextImplementation<InternalFlowContext<TContext>>,
+					functionRegistry,
+				),
 			)
 		}
 		const implementation = functionRegistry?.get(nodeDef.uses) || this.registry[nodeDef.uses]
@@ -433,9 +438,9 @@ export class FlowRuntime<TContext extends Record<string, any>, TDependencies ext
 		const asyncContext = context.type === 'sync' ? new AsyncContextView(context) : context
 		const finalInput = edge.transform
 			? this.evaluator.evaluate(edge.transform, {
-				input: sourceResult.output,
-				context: await asyncContext.toJSON(),
-			})
+					input: sourceResult.output,
+					context: await asyncContext.toJSON(),
+				})
 			: sourceResult.output
 		const inputKey = `${targetNode.id}_input`
 		await asyncContext.set(inputKey as any, finalInput)
@@ -478,6 +483,7 @@ export class FlowRuntime<TContext extends Record<string, any>, TDependencies ext
 	protected async _executeBuiltInNode(
 		nodeDef: NodeDefinition,
 		contextImpl: ContextImplementation<InternalFlowContext<TContext>>,
+		functionRegistry?: Map<string, any>,
 	): Promise<NodeResult<any, any>> {
 		const context = contextImpl.type === 'sync' ? new AsyncContextView(contextImpl) : contextImpl
 		const { params = {}, id, inputs } = nodeDef
@@ -569,7 +575,9 @@ export class FlowRuntime<TContext extends Record<string, any>, TDependencies ext
 					}
 				}
 
-				const subflowResult = await this.run(subBlueprint, subflowInitialContext as Partial<TContext>)
+				const subflowResult = await this.run(subBlueprint, subflowInitialContext as Partial<TContext>, {
+					functionRegistry,
+				})
 
 				if (subflowResult.status !== 'completed') {
 					const errorMessage = `Sub-workflow '${blueprintId}' did not complete successfully. Status: ${subflowResult.status}`
@@ -577,7 +585,9 @@ export class FlowRuntime<TContext extends Record<string, any>, TDependencies ext
 
 					if (subflowResult.errors && subflowResult.errors.length > 0) {
 						const firstError = subflowResult.errors[0]
-						originalError = new Error(`${firstError.message} (Node: ${firstError.nodeId})`)
+						const innerError = firstError.originalError?.originalError
+						const errorDetails = innerError ? `: ${innerError.message}` : ''
+						originalError = new Error(`${firstError.message}${errorDetails} (Node: ${firstError.nodeId})`)
 						originalError.stack = firstError.stack || originalError.stack
 					}
 
