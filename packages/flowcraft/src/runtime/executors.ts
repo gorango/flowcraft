@@ -1,4 +1,4 @@
-import { CancelledWorkflowError, FatalNodeExecutionError } from '../errors'
+import { FlowcraftError } from '../errors'
 import type {
 	ContextImplementation,
 	IEventBus,
@@ -34,9 +34,11 @@ async function withRetries<T>(
 		} catch (error) {
 			lastError = error
 			if (error instanceof DOMException && error.name === 'AbortError') {
-				throw new CancelledWorkflowError('Workflow cancelled')
+				throw new FlowcraftError('Workflow cancelled', {
+					isFatal: false,
+				})
 			}
-			if (error instanceof FatalNodeExecutionError) break
+			if (error instanceof FlowcraftError && error.isFatal) break
 			if (attempt < maxRetries) {
 				context.dependencies.logger.warn(`Node execution failed, retrying`, {
 					nodeId: nodeDef.id,
@@ -132,9 +134,11 @@ export class ClassNodeExecutor implements ExecutionStrategy {
 			} catch (error) {
 				lastError = error instanceof Error ? error : new Error(String(error))
 				if (error instanceof DOMException && error.name === 'AbortError') {
-					throw new CancelledWorkflowError('Workflow cancelled')
+					throw new FlowcraftError('Workflow cancelled', {
+						isFatal: false,
+					})
 				}
-				if (error instanceof FatalNodeExecutionError) {
+				if (error instanceof FlowcraftError && error.isFatal) {
 					throw error
 				}
 			}
@@ -150,7 +154,9 @@ export class ClassNodeExecutor implements ExecutionStrategy {
 		} catch (error) {
 			lastError = error instanceof Error ? error : new Error(String(error))
 			if (error instanceof DOMException && error.name === 'AbortError') {
-				throw new CancelledWorkflowError('Workflow cancelled')
+				throw new FlowcraftError('Workflow cancelled', {
+					isFatal: false,
+				})
 			}
 			throw error
 		} finally {

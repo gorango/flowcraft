@@ -1,4 +1,5 @@
 import { Context } from '../context'
+import { FlowcraftError } from '../errors'
 import type { ContextImplementation, ISerializer, WorkflowError, WorkflowResult } from '../types'
 
 export class WorkflowState<TContext extends Record<string, any>> {
@@ -17,12 +18,15 @@ export class WorkflowState<TContext extends Record<string, any>> {
 	}
 
 	addError(nodeId: string, error: Error) {
-		this.errors.push({
+		const flowcraftError = new FlowcraftError(error.message, {
+			cause: error,
 			nodeId,
-			message: error.message,
-			originalError: error,
+			isFatal: false,
+		})
+		this.errors.push({
+			...flowcraftError,
 			timestamp: new Date().toISOString(),
-			stack: error.stack,
+			originalError: error, // Legacy compatibility
 		})
 	}
 

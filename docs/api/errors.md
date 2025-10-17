@@ -1,23 +1,45 @@
 # Errors
 
-Flowcraft uses a set of custom error classes to handle specific failure scenarios during workflow execution.
+Flowcraft uses a centralized error handling system to provide consistent and debuggable error information across the framework.
 
-## `NodeExecutionError`
+## `FlowcraftError`
 
-The base error thrown when a node fails during execution after all retries have been exhausted.
+The primary error class for all workflow-related failures. This class provides a unified structure for errors, using the standard `cause` property for chaining and rich metadata for debugging.
+
+### Constructor
+
+```typescript
+new FlowcraftError(message: string, options?: {
+  cause?: Error;
+  nodeId?: string;
+  blueprintId?: string;
+  executionId?: string;
+  isFatal?: boolean;
+})
+```
 
 ### Properties
--   **`nodeId`** `string`: The ID of the node that failed.
--   **`blueprintId`** `string`: The ID of the blueprint being executed.
--   **`originalError?`** `Error`: The original error that caused the failure.
--   **`executionId?`** `string`: The unique ID for the workflow run.
+-   **`nodeId?`** `string`: The ID of the node that failed (optional).
+-   **`blueprintId?`** `string`: The ID of the blueprint being executed (optional).
+-   **`executionId?`** `string`: The unique ID for the workflow run (optional).
+-   **`isFatal`** `boolean`: Whether the error should halt the workflow immediately (default: `false`).
+-   **`cause?`** `Error`: The underlying error that caused this failure (via standard Error chaining).
 
-## `FatalNodeExecutionError`
+### Usage
 
-A subclass of `NodeExecutionError`. When this error is thrown from within a node's logic, the [`FlowRuntime`](/api/runtime#flowruntime-class) will immediately halt the workflow. It will **not** attempt any further retries or execute any configured fallbacks.
+```typescript
+// Non-fatal error with cause
+throw new FlowcraftError('Node execution failed', {
+  cause: originalError,
+  nodeId: 'my-node',
+  blueprintId: 'my-blueprint',
+  executionId: 'exec-123',
+  isFatal: false,
+});
 
-Use this for unrecoverable errors where continuing the workflow is impossible or unsafe.
-
-## `CancelledWorkflowError`
-
-This error is thrown when a workflow is gracefully stopped via an `AbortSignal`.
+// Fatal error
+throw new FlowcraftError('Unrecoverable failure', {
+  nodeId: 'critical-node',
+  isFatal: true,
+});
+```

@@ -99,7 +99,7 @@ This modular approach is invaluable for building large, maintainable workflow sy
 
 ## Error Handling in Subflows
 
-When a subflow fails, the error is propagated to the parent workflow with details for better debugging. The `NodeExecutionError` thrown by a failed subflow includes:
+When a subflow fails, the error is propagated to the parent workflow with details for better debugging. The `FlowcraftError` thrown by a failed subflow includes:
 
 - The original error message from the specific node that failed within the subflow
 - The node ID where the failure occurred
@@ -112,11 +112,11 @@ This allows you to trace failures back to their source, even in deeply nested su
 try {
   const result = await runtime.run(parentFlow.toBlueprint(), {})
 } catch (error) {
-  if (error instanceof NodeExecutionError) {
+  if (error instanceof FlowcraftError) {
     console.log(`Subflow failed: ${error.message}`)
-    if (error.originalError) {
-      console.log(`Original error: ${error.originalError.message}`)
-      console.log(`Failed node in subflow: ${error.originalError.nodeId}`)
+    if (error.cause) {
+      console.log(`Original error: ${error.cause.message}`)
+      console.log(`Failed node in subflow: ${error.cause.nodeId}`)
     }
   }
 }

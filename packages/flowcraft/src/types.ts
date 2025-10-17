@@ -1,3 +1,4 @@
+import type { FlowcraftError } from './errors'
 import type { BaseNode } from './node'
 
 // =================================================================================
@@ -217,12 +218,9 @@ export interface Middleware<TContext extends Record<string, any> = Record<string
 }
 
 /** A structured error object returned from a failed workflow execution. */
-export interface WorkflowError {
-	nodeId: string
-	message: string
-	originalError?: any
+export interface WorkflowError extends FlowcraftError {
 	timestamp: string // ISO 8601 format
-	stack?: string
+	originalError?: any // Legacy compatibility
 }
 
 /** The final result of a workflow execution. */

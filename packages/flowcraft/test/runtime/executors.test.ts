@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { FatalNodeExecutionError } from '../../src/errors'
+import { FlowcraftError } from '../../src/errors'
 import { BuiltInNodeExecutor, ClassNodeExecutor, FunctionNodeExecutor } from '../../src/runtime/executors'
 
 describe('FunctionNodeExecutor', () => {
@@ -79,7 +79,13 @@ describe('FunctionNodeExecutor', () => {
 	})
 
 	it('should stop on fatal errors', async () => {
-		const mockFunction = vi.fn().mockRejectedValue(new FatalNodeExecutionError('Fatal', 'test', ''))
+		const mockFunction = vi.fn().mockRejectedValue(
+			new FlowcraftError('Fatal', {
+				nodeId: 'test',
+				blueprintId: '',
+				isFatal: true,
+			}),
+		)
 		const executor = new FunctionNodeExecutor(mockFunction, 3, {
 			emit: vi.fn(),
 		})

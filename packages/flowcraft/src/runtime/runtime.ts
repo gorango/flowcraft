@@ -1,7 +1,7 @@
 import type { BlueprintAnalysis } from '../analysis'
 import { analyzeBlueprint } from '../analysis'
 import { AsyncContextView } from '../context'
-import { CancelledWorkflowError, FatalNodeExecutionError, NodeExecutionError } from '../errors'
+import { FlowcraftError } from '../errors'
 import { PropertyEvaluator } from '../evaluator'
 import { NullLogger } from '../logger'
 import type { BaseNode } from '../node'
@@ -155,7 +155,11 @@ export class FlowRuntime<TContext extends Record<string, any>, TDependencies ext
 			return result
 		} catch (error) {
 			const duration = Date.now() - startTime
-			if (error instanceof DOMException ? error.name === 'AbortError' : error instanceof CancelledWorkflowError) {
+			if (
+				error instanceof DOMException
+					? error.name === 'AbortError'
+					: error instanceof FlowcraftError && error.message.includes('cancelled')
+			) {
 				this.logger.info(`Workflow execution cancelled`, {
 					blueprintId: blueprint.id,
 					executionId,
@@ -198,13 +202,12 @@ export class FlowRuntime<TContext extends Record<string, any>, TDependencies ext
 	): Promise<NodeResult<any, any>> {
 		const nodeDef = blueprint.nodes.find((n) => n.id === nodeId)
 		if (!nodeDef) {
-			throw new NodeExecutionError(
-				`Node '${nodeId}' not found in blueprint.`,
+			throw new FlowcraftError(`Node '${nodeId}' not found in blueprint.`, {
 				nodeId,
-				blueprint.id,
-				undefined,
+				blueprintId: blueprint.id,
 				executionId,
-			)
+				isFatal: false,
+			})
 		}
 
 		const contextImpl = state.getContext()
@@ -284,11 +287,20 @@ export class FlowRuntime<TContext extends Record<string, any>, TDependencies ext
 				executionId,
 			})
 			if (error instanceof DOMException && error.name === 'AbortError') {
-				throw new CancelledWorkflowError('Workflow cancelled')
+				throw new FlowcraftError('Workflow cancelled', {
+					executionId,
+					isFatal: false,
+				})
 			}
-			throw error instanceof NodeExecutionError
+			throw error instanceof FlowcraftError && !error.isFatal
 				? error
-				: new NodeExecutionError(`Node '${nodeId}' failed execution.`, nodeId, blueprint.id, error, executionId)
+				: new FlowcraftError(`Node '${nodeId}' failed execution.`, {
+						cause: error,
+						nodeId,
+						blueprintId: blueprint.id,
+						executionId,
+						isFatal: false,
+					})
 		}
 	}
 
@@ -304,11 +316,11 @@ export class FlowRuntime<TContext extends Record<string, any>, TDependencies ext
 		}
 		const implementation = functionRegistry?.get(nodeDef.uses) || this.registry[nodeDef.uses]
 		if (!implementation) {
-			throw new FatalNodeExecutionError(
-				`Implementation for '${nodeDef.uses}' not found for node '${nodeDef.id}'.`,
-				nodeDef.id,
-				'',
-			)
+			throw new FlowcraftError(`Implementation for '${nodeDef.uses}' not found for node '${nodeDef.id}'.`, {
+				nodeId: nodeDef.id,
+				blueprintId: '',
+				isFatal: true,
+			})
 		}
 		const maxRetries = nodeDef.config?.maxRetries ?? 1
 		return isNodeClass(implementation)
@@ -330,8 +342,11 @@ export class FlowRuntime<TContext extends Record<string, any>, TDependencies ext
 			return await executor.execute(nodeDef, context, executionId, signal)
 		} catch (error) {
 			const isFatal =
-				error instanceof FatalNodeExecutionError ||
-				(error instanceof NodeExecutionError && error.originalError instanceof FatalNodeExecutionError)
+				(error instanceof FlowcraftError && error.isFatal) ||
+				(error instanceof FlowcraftError &&
+					!error.isFatal &&
+					error.cause instanceof FlowcraftError &&
+					error.cause.isFatal)
 			if (isFatal) throw error
 			const fallbackNodeId = nodeDef.config?.fallback
 			if (fallbackNodeId && state) {
@@ -349,13 +364,12 @@ export class FlowRuntime<TContext extends Record<string, any>, TDependencies ext
 				})
 				const fallbackNode = blueprint.nodes.find((n: NodeDefinition) => n.id === fallbackNodeId)
 				if (!fallbackNode) {
-					throw new NodeExecutionError(
-						`Fallback node '${fallbackNodeId}' not found in blueprint.`,
-						nodeDef.id,
-						blueprint.id,
-						undefined,
+					throw new FlowcraftError(`Fallback node '${fallbackNodeId}' not found in blueprint.`, {
+						nodeId: nodeDef.id,
+						blueprintId: blueprint.id,
 						executionId,
-					)
+						isFatal: false,
+					})
 				}
 				const fallbackExecutor = this.getExecutor(fallbackNode, functionRegistry)
 				const fallbackResult = await fallbackExecutor.execute(fallbackNode, context, executionId, signal)
@@ -491,7 +505,11 @@ export class FlowRuntime<TContext extends Record<string, any>, TDependencies ext
 			case 'batch-scatter': {
 				const inputArray = (await context.get(inputs as any)) || []
 				if (!Array.isArray(inputArray))
-					throw new FatalNodeExecutionError(`Input for batch-scatter node '${id}' must be an array.`, id, '')
+					throw new FlowcraftError(`Input for batch-scatter node '${id}' must be an array.`, {
+						nodeId: id,
+						blueprintId: '',
+						isFatal: true,
+					})
 				const batchId = globalThis.crypto.randomUUID()
 				const chunkSize = params.chunkSize || inputArray.length
 				const currentIndex = (await context.get(`${id}_currentIndex`)) || 0
@@ -555,15 +573,19 @@ export class FlowRuntime<TContext extends Record<string, any>, TDependencies ext
 			case 'subflow': {
 				const { blueprintId, inputs: inputMapping, outputs: outputMapping } = params
 				if (!blueprintId)
-					throw new FatalNodeExecutionError(`Subflow node '${id}' is missing the 'blueprintId' parameter.`, id, '')
+					throw new FlowcraftError(`Subflow node '${id}' is missing the 'blueprintId' parameter.`, {
+						nodeId: id,
+						blueprintId: '',
+						isFatal: true,
+					})
 
 				const subBlueprint = this.blueprints[blueprintId]
 				if (!subBlueprint)
-					throw new FatalNodeExecutionError(
-						`Sub-blueprint with ID '${blueprintId}' not found in runtime registry.`,
-						id,
-						'',
-					)
+					throw new FlowcraftError(`Sub-blueprint with ID '${blueprintId}' not found in runtime registry.`, {
+						nodeId: id,
+						blueprintId: '',
+						isFatal: true,
+					})
 
 				const subflowInitialContext: Record<string, any> = {}
 
@@ -585,13 +607,18 @@ export class FlowRuntime<TContext extends Record<string, any>, TDependencies ext
 
 					if (subflowResult.errors && subflowResult.errors.length > 0) {
 						const firstError = subflowResult.errors[0]
-						const innerError = firstError.originalError?.originalError
-						const errorDetails = innerError ? `: ${innerError.message}` : ''
+						const rootCause = firstError.cause
+						const errorDetails = rootCause ? `: ${(rootCause as Error).message}` : ''
 						originalError = new Error(`${firstError.message}${errorDetails} (Node: ${firstError.nodeId})`)
 						originalError.stack = firstError.stack || originalError.stack
 					}
 
-					throw new NodeExecutionError(errorMessage, id, subBlueprint.id, originalError)
+					throw new FlowcraftError(errorMessage, {
+						cause: originalError,
+						nodeId: id,
+						blueprintId: subBlueprint.id,
+						isFatal: false,
+					})
 				}
 
 				if (outputMapping) {
@@ -606,7 +633,11 @@ export class FlowRuntime<TContext extends Record<string, any>, TDependencies ext
 				return { output: subflowResult.context }
 			}
 			default:
-				throw new FatalNodeExecutionError(`Unknown built-in node type: '${nodeDef.uses}'`, id, '')
+				throw new FlowcraftError(`Unknown built-in node type: '${nodeDef.uses}'`, {
+					nodeId: id,
+					blueprintId: '',
+					isFatal: true,
+				})
 		}
 	}
 }

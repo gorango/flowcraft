@@ -239,9 +239,10 @@ describe('Built-In Nodes', () => {
 			expect(
 				result.errors?.some(
 					(e) =>
+						e.message.includes('Sub-workflow') ||
+						e.originalError?.message?.includes('Sub-workflow') ||
 						e.message.includes('Subflow failed') ||
-						e.originalError?.message?.includes('Subflow failed') ||
-						(e.originalError as any)?.originalError?.message?.includes('Subflow failed'),
+						e.originalError?.message?.includes('Subflow failed'),
 				),
 			).toBe(true)
 		})
