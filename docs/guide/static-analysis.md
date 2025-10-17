@@ -67,7 +67,7 @@ The [`checkForCycles`](/api/analysis#checkforcycles-blueprint) function (which [
 
 ## Linting a Blueprint
 
-For even more detailed checks, you can use [`lintBlueprint`](/api/linter#lintblueprint-blueprint-registry). This function validates the blueprint against a function registry to find common errors like missing node implementations or broken edges.
+For even more detailed checks, you can use [`lintBlueprint`](/api/linter#lintblueprint-blueprint-registry). This function validates the blueprint against a function registry to find common errors like missing node implementations or broken edges. It also performs dynamic validations for built-in node types.
 
 ```typescript
 import { lintBlueprint } from 'flowcraft'
@@ -90,6 +90,45 @@ console.log(result)
 //			relatedId: 'A'
 //		}]
 // }
+```
+
+### Dynamic Node Validations
+
+The linter also checks for issues specific to built-in node types:
+
+- **Batch Nodes**: Validates that `params.workerUsesKey` exists in the registry for nodes with `uses` starting with `batch-`.
+- **Subflow Nodes**: Validates that `params.blueprintId` exists in the blueprints registry for nodes with `uses: 'subflow'`.
+
+```typescript
+const blueprintWithIssues = createFlow('batch-example')
+	.node('scatter', {
+		uses: 'batch-scatter',
+		params: {
+			workerUsesKey: 'non-existent-worker' // This will trigger an error
+		}
+	})
+	.node('subflow-node', {
+		uses: 'subflow',
+		params: {
+			blueprintId: 'missing-blueprint' // This will trigger an error
+		}
+	})
+	.toBlueprint()
+
+const result = lintBlueprint(blueprintWithIssues, registry, blueprints)
+console.log(result.issues)
+// [
+//   {
+//     code: 'INVALID_BATCH_WORKER_KEY',
+//     message: "Batch node 'scatter' references workerUsesKey 'non-existent-worker' which is not found in the registry.",
+//     nodeId: 'scatter'
+//   },
+//   {
+//     code: 'INVALID_SUBFLOW_BLUEPRINT_ID',
+//     message: "Subflow node 'subflow-node' references blueprintId 'missing-blueprint' which is not found in the blueprints registry.",
+//     nodeId: 'subflow-node'
+//   }
+// ]
 ```
 
 Using these analysis tools as part of your development or CI/CD process can significantly improve the reliability of your workflows.

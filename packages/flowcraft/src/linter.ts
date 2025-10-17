@@ -6,6 +6,8 @@ export type LinterIssueCode =
 	| 'INVALID_EDGE_TARGET'
 	| 'MISSING_NODE_IMPLEMENTATION'
 	| 'ORPHAN_NODE'
+	| 'INVALID_BATCH_WORKER_KEY'
+	| 'INVALID_SUBFLOW_BLUEPRINT_ID'
 
 export interface LinterIssue {
 	code: LinterIssueCode
@@ -30,6 +32,7 @@ export interface LinterResult {
 export function lintBlueprint(
 	blueprint: WorkflowBlueprint,
 	registry: Map<string, NodeFunction | NodeClass> | Record<string, NodeFunction | NodeClass>,
+	blueprints?: Record<string, WorkflowBlueprint>,
 ): LinterResult {
 	const issues: LinterIssue[] = []
 	const nodeIds = new Set(blueprint.nodes.map((n) => n.id))
@@ -43,6 +46,28 @@ export function lintBlueprint(
 				message: `Node implementation key '${node.uses}' is not found in the provided registry.`,
 				nodeId: node.id,
 			})
+		}
+	}
+
+	// check for dynamic node validation
+	for (const node of blueprint.nodes) {
+		if (node.uses.startsWith('batch-') && node.params?.workerUsesKey) {
+			if (!registryKeys.has(node.params.workerUsesKey)) {
+				issues.push({
+					code: 'INVALID_BATCH_WORKER_KEY',
+					message: `Batch node '${node.id}' references workerUsesKey '${node.params.workerUsesKey}' which is not found in the registry.`,
+					nodeId: node.id,
+				})
+			}
+		}
+		if (node.uses === 'subflow' && node.params?.blueprintId) {
+			if (!blueprints || !blueprints[node.params.blueprintId]) {
+				issues.push({
+					code: 'INVALID_SUBFLOW_BLUEPRINT_ID',
+					message: `Subflow node '${node.id}' references blueprintId '${node.params.blueprintId}' which is not found in the blueprints registry.`,
+					nodeId: node.id,
+				})
+			}
 		}
 	}
 

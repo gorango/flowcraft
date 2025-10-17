@@ -277,4 +277,99 @@ describe('Blueprint Linter', () => {
 			expect(result.issues[0]).toHaveProperty('nodeId')
 		})
 	})
+
+	describe('Dynamic Node Validations', () => {
+		it('should detect invalid workerUsesKey for batch nodes', () => {
+			const blueprint: WorkflowBlueprint = {
+				id: 'test',
+				nodes: [
+					{
+						id: 'scatter',
+						uses: 'batch-scatter',
+						params: { workerUsesKey: 'non-existent-worker' },
+					},
+				],
+				edges: [],
+			}
+			const registry = { 'existing-worker': async () => ({}) }
+			const result = lintBlueprint(blueprint, registry)
+			expect(result.isValid).toBe(false)
+			expect(result.issues).toHaveLength(1)
+			expect(result.issues[0].code).toBe('INVALID_BATCH_WORKER_KEY')
+			expect(result.issues[0].message).toContain('non-existent-worker')
+		})
+
+		it('should detect invalid blueprintId for subflow nodes', () => {
+			const blueprint: WorkflowBlueprint = {
+				id: 'test',
+				nodes: [
+					{
+						id: 'subflow-node',
+						uses: 'subflow',
+						params: { blueprintId: 'missing-blueprint' },
+					},
+				],
+				edges: [],
+			}
+			const registry = { subflow: async () => ({}) }
+			const blueprints = { 'existing-blueprint': { id: 'existing', nodes: [], edges: [] } }
+			const result = lintBlueprint(blueprint, registry, blueprints)
+			expect(result.isValid).toBe(false)
+			expect(result.issues).toHaveLength(1)
+			expect(result.issues[0].code).toBe('INVALID_SUBFLOW_BLUEPRINT_ID')
+			expect(result.issues[0].message).toContain('missing-blueprint')
+		})
+
+		it('should not report issues for valid batch workerUsesKey', () => {
+			const blueprint: WorkflowBlueprint = {
+				id: 'test',
+				nodes: [
+					{
+						id: 'scatter',
+						uses: 'batch-scatter',
+						params: { workerUsesKey: 'existing-worker' },
+					},
+				],
+				edges: [],
+			}
+			const registry = { 'existing-worker': async () => ({}) }
+			const result = lintBlueprint(blueprint, registry)
+			expect(result.isValid).toBe(true)
+			expect(result.issues).toHaveLength(0)
+		})
+
+		it('should not report issues for valid subflow blueprintId', () => {
+			const blueprint: WorkflowBlueprint = {
+				id: 'test',
+				nodes: [
+					{
+						id: 'subflow-node',
+						uses: 'subflow',
+						params: { blueprintId: 'existing-blueprint' },
+					},
+				],
+				edges: [],
+			}
+			const registry = { subflow: async () => ({}) }
+			const blueprints = { 'existing-blueprint': { id: 'existing', nodes: [], edges: [] } }
+			const result = lintBlueprint(blueprint, registry, blueprints)
+			expect(result.isValid).toBe(true)
+			expect(result.issues).toHaveLength(0)
+		})
+
+		it('should handle missing params gracefully for batch and subflow nodes', () => {
+			const blueprint: WorkflowBlueprint = {
+				id: 'test',
+				nodes: [
+					{ id: 'batch-node', uses: 'batch-scatter' },
+					{ id: 'subflow-node', uses: 'subflow' },
+				],
+				edges: [],
+			}
+			const registry = { subflow: async () => ({}) }
+			const result = lintBlueprint(blueprint, registry)
+			expect(result.isValid).toBe(true)
+			expect(result.issues).toHaveLength(0)
+		})
+	})
 })
