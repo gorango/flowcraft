@@ -87,6 +87,10 @@ export class FlowRuntime<TContext extends Record<string, any>, TDependencies ext
 				blueprintId: blueprint.id,
 				executionId,
 			})
+			await this.eventBus.emit('workflow:resume', {
+				blueprintId: blueprint.id,
+				executionId,
+			})
 			const analysis =
 				this.analysisCache.get(blueprint) ??
 				(() => {
@@ -122,6 +126,10 @@ export class FlowRuntime<TContext extends Record<string, any>, TDependencies ext
 					executionId,
 					remainingNodes: traverser.getAllNodeIds().size - state.getCompletedNodes().size,
 				})
+				await this.eventBus.emit('workflow:pause', {
+					blueprintId: blueprint.id,
+					executionId,
+				})
 			}
 			this.logger.info(`Workflow execution completed`, {
 				blueprintId: blueprint.id,
@@ -144,6 +152,10 @@ export class FlowRuntime<TContext extends Record<string, any>, TDependencies ext
 					blueprintId: blueprint.id,
 					executionId,
 					duration,
+				})
+				await this.eventBus.emit('workflow:pause', {
+					blueprintId: blueprint.id,
+					executionId,
 				})
 				await this.eventBus.emit('workflow:finish', {
 					blueprintId: blueprint.id,
@@ -351,6 +363,7 @@ export class FlowRuntime<TContext extends Record<string, any>, TDependencies ext
 		nodeId: string,
 		result: NodeResult<any, any>,
 		context: ContextImplementation<TContext>,
+		executionId?: string,
 	): Promise<{ node: NodeDefinition; edge: EdgeDefinition }[]> {
 		const outgoingEdges = blueprint.edges.filter((edge) => edge.source === nodeId)
 		const matched: { node: NodeDefinition; edge: EdgeDefinition }[] = []
@@ -368,6 +381,13 @@ export class FlowRuntime<TContext extends Record<string, any>, TDependencies ext
 				if (await evaluateEdge(edge)) {
 					const targetNode = blueprint.nodes.find((n) => n.id === edge.target)
 					if (targetNode) matched.push({ node: targetNode, edge })
+				} else {
+					await this.eventBus.emit('node:skipped', {
+						blueprintId: blueprint.id,
+						nodeId,
+						edge,
+						executionId,
+					})
 				}
 			}
 		}
@@ -377,6 +397,13 @@ export class FlowRuntime<TContext extends Record<string, any>, TDependencies ext
 				if (await evaluateEdge(edge)) {
 					const targetNode = blueprint.nodes.find((n) => n.id === edge.target)
 					if (targetNode) matched.push({ node: targetNode, edge })
+				} else {
+					await this.eventBus.emit('node:skipped', {
+						blueprintId: blueprint.id,
+						nodeId,
+						edge,
+						executionId,
+					})
 				}
 			}
 		}

@@ -24,7 +24,7 @@ interface BlueprintAnalysis {
 
 ## `checkForCycles(blueprint)`
 
-Analyzes a blueprint specifically to detect cyclic dependencies. This function is used internally by [`analyzeBlueprint`](/api/analysis#analyzeblueprint-blueprint).
+Analyzes a blueprint specifically to detect cyclic dependencies using an iterative depth-first search algorithm. This approach avoids stack overflow issues for deep graphs compared to recursive implementations. This function is used internally by [`analyzeBlueprint`](/api/analysis#analyzeblueprint-blueprint).
 
 -   **`blueprint`** [`WorkflowBlueprint`](/api/flow#workflowblueprint-interface): The blueprint to check.
 -   **Returns**: `string[][]` - An array of cycles found. Each cycle is an array of node IDs representing the path.

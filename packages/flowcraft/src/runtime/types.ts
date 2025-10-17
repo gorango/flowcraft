@@ -30,6 +30,7 @@ export interface IRuntime<
 		nodeId: string,
 		result: NodeResult,
 		context: ContextImplementation<TContext>,
+		executionId?: string,
 	) => Promise<{ node: NodeDefinition; edge: EdgeDefinition }[]>
 	applyEdgeTransform: (
 		edge: EdgeDefinition,

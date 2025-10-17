@@ -108,6 +108,7 @@ export class GraphTraverser<TContext extends Record<string, any>, TDependencies 
 							nodeId,
 							result,
 							this.state.getContext(),
+							this.executionId,
 						)
 
 						// if one of the next nodes is a loop controller, prioritize it to avoid ambiguity from manual cycle edges.

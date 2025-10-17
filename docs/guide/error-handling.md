@@ -115,3 +115,40 @@ When a subflow fails, the error is wrapped in a `NodeExecutionError` that includ
 - The stack trace from the subflow's execution
 
 This ensures that failures in nested workflows are traceable back to their source, making it easier to diagnose issues in complex workflow hierarchies.
+
+## Observability and Events
+
+Flowcraft provides an event bus for observability, allowing you to monitor workflow execution in real-time. The runtime emits various events during execution, which can be used for logging, monitoring, or triggering external actions.
+
+### Available Events
+
+- **`workflow:start`**: Emitted when a workflow execution begins.
+- **`workflow:finish`**: Emitted when a workflow completes, fails, or is cancelled.
+- **`workflow:stall`**: Emitted when a workflow cannot proceed (e.g., due to unresolved dependencies).
+- **`workflow:pause`**: Emitted when a workflow is paused (e.g., due to cancellation or stalling).
+- **`workflow:resume`**: Emitted when a workflow resumes execution.
+- **`node:start`**: Emitted when a node begins execution.
+- **`node:finish`**: Emitted when a node completes successfully.
+- **`node:error`**: Emitted when a node fails.
+- **`node:fallback`**: Emitted when a fallback node is executed.
+- **`node:skipped`**: Emitted when a conditional edge is not taken (i.e., the condition evaluates to false).
+
+### Using the Event Bus
+
+You can provide a custom event bus when creating the runtime:
+
+```typescript
+const eventBus = {
+  emit: (eventName: string, payload: Record<string, any>) => {
+    console.log(`Event: ${eventName}`, payload)
+    // Send to monitoring service, etc.
+  }
+}
+
+const runtime = new FlowRuntime({
+  registry: myNodeRegistry,
+  eventBus,
+})
+```
+
+This allows you to integrate with tools like OpenTelemetry, DataDog, or custom logging systems for comprehensive observability.

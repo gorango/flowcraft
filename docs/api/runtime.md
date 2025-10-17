@@ -13,7 +13,7 @@ Creates a new runtime instance.
     -   **`blueprints?`**: A record of all available blueprints, required for subflow execution.
     -   **`dependencies?`**: Shared dependencies to be injected into every node's context.
     -   **`logger?`**: A pluggable logger instance (defaults to `NullLogger`).
-    -   **`eventBus?`**: A pluggable event bus for observability.
+     -   **`eventBus?`**: A pluggable event bus for observability. Emits events such as `workflow:start`, `workflow:finish`, `workflow:stall`, `workflow:pause`, `workflow:resume`, `node:start`, `node:finish`, `node:error`, `node:fallback`, and `node:skipped`.
     -   **`evaluator?`**: A pluggable expression evaluator (defaults to `SimpleEvaluator`).
     -   **`middleware?`**: An array of middleware to wrap node execution.
     -   **`serializer?`**: A pluggable serializer (defaults to `JsonSerializer`).
@@ -36,9 +36,16 @@ Executes a workflow.
 
 A lower-level method to execute a single node within a workflow's state. This is primarily used internally by the `GraphTraverser` and `BaseDistributedAdapter`.
 
-### `.determineNextNodes(...)`
+### `.determineNextNodes(blueprint, nodeId, result, context, executionId?)`
 
 Determines which nodes should run next based on the result of a completed node and the graph's structure.
+
+-   **`blueprint`** [`WorkflowBlueprint`](/api/flow#workflowblueprint-interface): The workflow blueprint.
+-   **`nodeId`** `string`: The ID of the completed node.
+-   **`result`** [`NodeResult`](/api/flow#noderesult-interface): The result of the completed node.
+-   **`context`** [`ContextImplementation`](/api/context): The current context.
+-   **`executionId?`** `string`: Optional execution ID for observability events.
+-   **Returns**: `Promise<{ node: NodeDefinition; edge: EdgeDefinition }[]>`
 
 ### `.applyEdgeTransform(...)`
 
