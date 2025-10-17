@@ -2,18 +2,18 @@ import { describe, expect, it, vi } from 'vitest'
 import { UnsafeEvaluator } from '../src/evaluator'
 import { createFlow } from '../src/flow'
 import { FlowRuntime } from '../src/runtime'
-import type { IEventBus, Middleware, NodeResult } from '../src/types'
+import type { FlowcraftEvent, IEventBus, Middleware, NodeResult } from '../src/types'
 
 // A mock event bus for testing observability
 class MockEventBus implements IEventBus {
-	events: { eventName: string; payload: Record<string, any> }[] = []
+	events: { type: string; payload: Record<string, any> }[] = []
 
-	emit(eventName: string, payload: Record<string, any>) {
-		this.events.push({ eventName, payload })
+	async emit(event: FlowcraftEvent) {
+		this.events.push({ type: event.type, payload: event.payload })
 	}
 
-	has(eventName: string) {
-		return this.events.some((e) => e.eventName === eventName)
+	has(eventType: string) {
+		return this.events.some((e) => e.type === eventType)
 	}
 }
 

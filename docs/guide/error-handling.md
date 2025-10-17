@@ -147,25 +147,34 @@ Flowcraft provides an event bus for observability, allowing you to monitor workf
 
 ### Available Events
 
+The event bus uses structured events for observability. See the [`FlowcraftEvent`](/api/runtime#flowcraftevent-type) type definition and detailed descriptions of all available events.
+
+### Event Descriptions
+
 - **`workflow:start`**: Emitted when a workflow execution begins.
 - **`workflow:finish`**: Emitted when a workflow completes, fails, or is cancelled.
 - **`workflow:stall`**: Emitted when a workflow cannot proceed (e.g., due to unresolved dependencies).
 - **`workflow:pause`**: Emitted when a workflow is paused (e.g., due to cancellation or stalling).
 - **`workflow:resume`**: Emitted when a workflow resumes execution.
-- **`node:start`**: Emitted when a node begins execution.
+- **`node:start`**: Emitted when a node begins execution, including the resolved input.
 - **`node:finish`**: Emitted when a node completes successfully.
 - **`node:error`**: Emitted when a node fails.
 - **`node:fallback`**: Emitted when a fallback node is executed.
-- **`node:skipped`**: Emitted when a conditional edge is not taken (i.e., the condition evaluates to false).
+- **`node:retry`**: Emitted when a node execution is retried.
+- **`node:skipped`**: Emitted when a conditional edge is not taken.
+- **`edge:evaluate`**: Emitted when an edge condition is evaluated, showing the condition and result.
+- **`context:change`**: Emitted when data is written to the workflow context.
 
 ### Using the Event Bus
 
 You can provide a custom event bus when creating the runtime:
 
 ```typescript
-const eventBus = {
-  emit: (eventName: string, payload: Record<string, any>) => {
-    console.log(`Event: ${eventName}`, payload)
+import type { IEventBus } from 'flowcraft'
+
+const eventBus: IEventBus = {
+  async emit(event) {
+    console.log(`Event: ${event.type}`, event.payload)
     // Send to monitoring service, etc.
   }
 }
@@ -175,5 +184,7 @@ const runtime = new FlowRuntime({
   eventBus,
 })
 ```
+
+For the complete `FlowcraftEvent` type definition, see the [Runtime API documentation](/api/runtime#event-bus).
 
 This allows you to integrate with tools like OpenTelemetry, DataDog, or custom logging systems for comprehensive observability.

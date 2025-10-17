@@ -48,11 +48,14 @@ async function withRetries<T>(
 					executionId,
 				})
 				if (eventBus) {
-					await eventBus.emit('node:retry', {
-						blueprintId: context.dependencies.blueprint?.id || '',
-						nodeId: nodeDef.id,
-						attempt,
-						executionId,
+					await eventBus.emit({
+						type: 'node:retry',
+						payload: {
+							nodeId: nodeDef.id,
+							attempt,
+							executionId: executionId || '',
+							blueprintId: context.dependencies.blueprint?.id || '',
+						},
 					})
 				}
 			} else {

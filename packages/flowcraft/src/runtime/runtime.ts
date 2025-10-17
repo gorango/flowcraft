@@ -25,6 +25,7 @@ import type {
 	NodeResult,
 	RuntimeOptions,
 	WorkflowBlueprint,
+	WorkflowError,
 	WorkflowResult,
 } from '../types'
 import type { DynamicKeys } from './builtin-keys'
@@ -59,7 +60,7 @@ export class FlowRuntime<TContext extends Record<string, any>, TDependencies ext
 		this.blueprints = options.blueprints || {}
 		this.dependencies = options.dependencies || ({} as TDependencies)
 		this.logger = options.logger || new NullLogger()
-		this.eventBus = options.eventBus || { emit: () => {} }
+		this.eventBus = options.eventBus || { emit: async () => {} }
 		this.serializer = options.serializer || new JsonSerializer()
 		this.middleware = options.middleware || []
 		this.evaluator = options.evaluator || new PropertyEvaluator()
@@ -90,14 +91,8 @@ export class FlowRuntime<TContext extends Record<string, any>, TDependencies ext
 		})
 
 		try {
-			await this.eventBus.emit('workflow:start', {
-				blueprintId: blueprint.id,
-				executionId,
-			})
-			await this.eventBus.emit('workflow:resume', {
-				blueprintId: blueprint.id,
-				executionId,
-			})
+			await this.eventBus.emit({ type: 'workflow:start', payload: { blueprintId: blueprint.id, executionId } })
+			await this.eventBus.emit({ type: 'workflow:resume', payload: { blueprintId: blueprint.id, executionId } })
 			// use cached analysis if available, otherwise compute and cache it
 			const analysis =
 				this.analysisCache.get(blueprint) ??
@@ -129,15 +124,15 @@ export class FlowRuntime<TContext extends Record<string, any>, TDependencies ext
 			result.status = status
 			const duration = Date.now() - startTime
 			if (status === 'stalled') {
-				await this.eventBus.emit('workflow:stall', {
-					blueprintId: blueprint.id,
-					executionId,
-					remainingNodes: traverser.getAllNodeIds().size - state.getCompletedNodes().size,
+				await this.eventBus.emit({
+					type: 'workflow:stall',
+					payload: {
+						blueprintId: blueprint.id,
+						executionId,
+						remainingNodes: traverser.getAllNodeIds().size - state.getCompletedNodes().size,
+					},
 				})
-				await this.eventBus.emit('workflow:pause', {
-					blueprintId: blueprint.id,
-					executionId,
-				})
+				await this.eventBus.emit({ type: 'workflow:pause', payload: { blueprintId: blueprint.id, executionId } })
 			}
 			this.logger.info(`Workflow execution completed`, {
 				blueprintId: blueprint.id,
@@ -146,15 +141,33 @@ export class FlowRuntime<TContext extends Record<string, any>, TDependencies ext
 				duration,
 				errors: result.errors?.length || 0,
 			})
-			await this.eventBus.emit('workflow:finish', {
-				blueprintId: blueprint.id,
-				executionId,
-				status,
-				errors: result.errors,
+			await this.eventBus.emit({
+				type: 'workflow:finish',
+				payload: {
+					blueprintId: blueprint.id,
+					executionId,
+					status,
+					errors: result.errors,
+				},
 			})
 			return result
 		} catch (error) {
 			const duration = Date.now() - startTime
+			const workflowError: WorkflowError = {
+				message: error instanceof Error ? error.message : String(error),
+				timestamp: new Date().toISOString(),
+				isFatal: false,
+				name: 'WorkflowError',
+			}
+			await this.eventBus.emit({
+				type: 'workflow:finish',
+				payload: {
+					blueprintId: blueprint.id,
+					executionId,
+					status: 'cancelled',
+					errors: [workflowError],
+				},
+			})
 			if (
 				error instanceof DOMException
 					? error.name === 'AbortError'
@@ -165,15 +178,15 @@ export class FlowRuntime<TContext extends Record<string, any>, TDependencies ext
 					executionId,
 					duration,
 				})
-				await this.eventBus.emit('workflow:pause', {
-					blueprintId: blueprint.id,
-					executionId,
-				})
-				await this.eventBus.emit('workflow:finish', {
-					blueprintId: blueprint.id,
-					executionId,
-					status: 'cancelled',
-					error,
+				await this.eventBus.emit({ type: 'workflow:pause', payload: { blueprintId: blueprint.id, executionId } })
+				await this.eventBus.emit({
+					type: 'workflow:finish',
+					payload: {
+						blueprintId: blueprint.id,
+						executionId,
+						status: 'cancelled',
+						errors: [workflowError],
+					},
 				})
 				return {
 					context: {} as TContext,
@@ -266,25 +279,20 @@ export class FlowRuntime<TContext extends Record<string, any>, TDependencies ext
 		}
 
 		try {
-			await this.eventBus.emit('node:start', {
-				blueprintId: blueprint.id,
-				nodeId,
-				executionId,
+			await this.eventBus.emit({
+				type: 'node:start',
+				payload: { nodeId, executionId: executionId || '', input: nodeContext.input, blueprintId: blueprint.id },
 			})
 			const result = await executionChain()
-			await this.eventBus.emit('node:finish', {
-				blueprintId: blueprint.id,
-				nodeId,
-				result,
-				executionId,
+			await this.eventBus.emit({
+				type: 'node:finish',
+				payload: { nodeId, result, executionId: executionId || '', blueprintId: blueprint.id },
 			})
 			return result
 		} catch (error: any) {
-			await this.eventBus.emit('node:error', {
-				blueprintId: blueprint.id,
-				nodeId,
-				error,
-				executionId,
+			await this.eventBus.emit({
+				type: 'node:error',
+				payload: { nodeId, error, executionId: executionId || '', blueprintId: blueprint.id },
 			})
 			if (error instanceof DOMException && error.name === 'AbortError') {
 				throw new FlowcraftError('Workflow cancelled', {
@@ -356,11 +364,14 @@ export class FlowRuntime<TContext extends Record<string, any>, TDependencies ext
 					error: error instanceof Error ? error.message : String(error),
 					executionId,
 				})
-				await this.eventBus.emit('node:fallback', {
-					blueprintId: blueprint.id,
-					nodeId: nodeDef.id,
-					executionId,
-					fallback: fallbackNodeId,
+				await this.eventBus.emit({
+					type: 'node:fallback',
+					payload: {
+						nodeId: nodeDef.id,
+						executionId: executionId || '',
+						fallback: fallbackNodeId,
+						blueprintId: blueprint.id,
+					},
 				})
 				const fallbackNode = blueprint.nodes.find((n: NodeDefinition) => n.id === fallbackNodeId)
 				if (!fallbackNode) {
@@ -398,10 +409,15 @@ export class FlowRuntime<TContext extends Record<string, any>, TDependencies ext
 		const evaluateEdge = async (edge: EdgeDefinition): Promise<boolean> => {
 			if (!edge.condition) return true
 			const contextData = context.type === 'sync' ? context.toJSON() : await context.toJSON()
-			return !!this.evaluator.evaluate(edge.condition, {
+			const evaluationResult = !!this.evaluator.evaluate(edge.condition, {
 				...contextData,
 				result,
 			})
+			await this.eventBus.emit({
+				type: 'edge:evaluate',
+				payload: { source: nodeId, target: edge.target, condition: edge.condition, result: evaluationResult },
+			})
+			return evaluationResult
 		}
 		if (result.action) {
 			const actionEdges = outgoingEdges.filter((edge) => edge.action === result.action)
@@ -410,11 +426,9 @@ export class FlowRuntime<TContext extends Record<string, any>, TDependencies ext
 					const targetNode = blueprint.nodes.find((n) => n.id === edge.target)
 					if (targetNode) matched.push({ node: targetNode, edge })
 				} else {
-					await this.eventBus.emit('node:skipped', {
-						blueprintId: blueprint.id,
-						nodeId,
-						edge,
-						executionId,
+					await this.eventBus.emit({
+						type: 'node:skipped',
+						payload: { nodeId, edge, executionId: executionId || '', blueprintId: blueprint.id },
 					})
 				}
 			}
@@ -426,11 +440,9 @@ export class FlowRuntime<TContext extends Record<string, any>, TDependencies ext
 					const targetNode = blueprint.nodes.find((n) => n.id === edge.target)
 					if (targetNode) matched.push({ node: targetNode, edge })
 				} else {
-					await this.eventBus.emit('node:skipped', {
-						blueprintId: blueprint.id,
-						nodeId,
-						edge,
-						executionId,
+					await this.eventBus.emit({
+						type: 'node:skipped',
+						payload: { nodeId, edge, executionId: executionId || '', blueprintId: blueprint.id },
 					})
 				}
 			}
@@ -458,6 +470,10 @@ export class FlowRuntime<TContext extends Record<string, any>, TDependencies ext
 			: sourceResult.output
 		const inputKey = `${targetNode.id}_input`
 		await asyncContext.set(inputKey as any, finalInput)
+		await this.eventBus.emit({
+			type: 'context:change',
+			payload: { sourceNode: edge.source, key: inputKey, value: finalInput },
+		})
 		if (targetNode.config?.joinStrategy === 'any') {
 			targetNode.inputs = inputKey
 		} else if (!targetNode.inputs) {

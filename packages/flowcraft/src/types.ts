@@ -190,9 +190,31 @@ export interface ILogger {
 	error: (message: string, meta?: Record<string, any>) => void
 }
 
+/** Structured event types for detailed execution tracing. */
+export type FlowcraftEvent =
+	| { type: 'workflow:start'; payload: { blueprintId: string; executionId: string } }
+	| { type: 'workflow:resume'; payload: { blueprintId: string; executionId: string } }
+	| { type: 'workflow:stall'; payload: { blueprintId: string; executionId: string; remainingNodes: number } }
+	| { type: 'workflow:pause'; payload: { blueprintId: string; executionId: string } }
+	| {
+			type: 'workflow:finish'
+			payload: { blueprintId: string; executionId: string; status: string; errors?: WorkflowError[] }
+	  }
+	| { type: 'node:start'; payload: { nodeId: string; executionId: string; input: any; blueprintId: string } }
+	| { type: 'node:finish'; payload: { nodeId: string; result: NodeResult; executionId: string; blueprintId: string } }
+	| { type: 'node:error'; payload: { nodeId: string; error: FlowcraftError; executionId: string; blueprintId: string } }
+	| { type: 'node:fallback'; payload: { nodeId: string; executionId: string; fallback: string; blueprintId: string } }
+	| { type: 'node:retry'; payload: { nodeId: string; attempt: number; executionId: string; blueprintId: string } }
+	| {
+			type: 'node:skipped'
+			payload: { nodeId: string; edge: EdgeDefinition; executionId: string; blueprintId: string }
+	  }
+	| { type: 'edge:evaluate'; payload: { source: string; target: string; condition?: string; result: boolean } }
+	| { type: 'context:change'; payload: { sourceNode: string; key: string; value: any } }
+
 /** Interface for a pluggable event bus. */
 export interface IEventBus {
-	emit: (eventName: string, payload: Record<string, any>) => void | Promise<void>
+	emit: (event: FlowcraftEvent) => void | Promise<void>
 }
 
 /** Interface for a pluggable serializer. */
