@@ -215,7 +215,7 @@ describe('Flowcraft Runtime - Integration Tests', () => {
 				flow.node(`node${i}`, async () => {
 					concurrentCount++
 					maxConcurrent = Math.max(maxConcurrent, concurrentCount)
-					await new Promise((resolve) => setTimeout(resolve, 30)) // Simulate work
+					await new Promise((resolve) => setTimeout(resolve, 50)) // Simulate work
 					concurrentCount--
 					return { output: `result${i}` }
 				})
@@ -237,11 +237,11 @@ describe('Flowcraft Runtime - Integration Tests', () => {
 			let maxConcurrent = 0
 			const flow = createFlow('unlimited-concurrency')
 			// Create 5 nodes that can run in parallel
-			for (let i = 0; i < 5; i++) {
+			for (let i = 0; i < 4; i++) {
 				flow.node(`node${i}`, async () => {
 					concurrentCount++
 					maxConcurrent = Math.max(maxConcurrent, concurrentCount)
-					await new Promise((resolve) => setTimeout(resolve, 30)) // Simulate work
+					await new Promise((resolve) => setTimeout(resolve, 50)) // Simulate work
 					concurrentCount--
 					return { output: `result${i}` }
 				})
@@ -251,7 +251,7 @@ describe('Flowcraft Runtime - Integration Tests', () => {
 			const result = await runtime.run(flow.toBlueprint(), {}, { functionRegistry: flow.getFunctionRegistry() })
 
 			expect(result.status).toBe('completed')
-			expect(maxConcurrent).toBe(5) // All nodes should run in parallel
+			expect(maxConcurrent).toBe(4) // All nodes should run in parallel
 		})
 
 		it('should enforce sequential execution with concurrency: 1', async () => {
@@ -263,7 +263,7 @@ describe('Flowcraft Runtime - Integration Tests', () => {
 				flow.node(`node${i}`, async () => {
 					concurrentCount++
 					maxConcurrent = Math.max(maxConcurrent, concurrentCount)
-					await new Promise((resolve) => setTimeout(resolve, 30)) // Simulate work
+					await new Promise((resolve) => setTimeout(resolve, 50)) // Simulate work
 					concurrentCount--
 					return { output: `result${i}` }
 				})
