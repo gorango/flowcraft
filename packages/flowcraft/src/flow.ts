@@ -74,27 +74,27 @@ export class Flow<
 	/**
 	 * Creates a batch processing pattern.
 	 * It takes an input array, runs a worker node on each item in parallel, and gathers the results.
+	 * This method augments the Flow's TContext with a new key for the output array.
+	 *
 	 * @param id The base ID for this batch operation.
 	 * @param worker The node implementation to run on each item.
 	 * @param options Configuration for the batch operation.
-	 * @param options.inputKey The key in the context that holds the input array for the batch.
-	 * @param options.outputKey The key in the context where the array of results will be stored.
-	 * @returns The Flow instance for chaining.
+	 * @returns The Flow instance with an updated context type for chaining.
 	 */
-	batch<TInput = any, TOutput = any, TAction extends string = string>(
+	batch<TWorkerInput, TWorkerOutput, TWorkerAction extends string, TOutputKey extends string>(
 		id: string,
 		worker:
-			| NodeFunction<TContext, TDependencies, TInput, TOutput, TAction>
-			| NodeClass<TContext, TDependencies, TInput, TOutput, TAction>,
+			| NodeFunction<TContext, TDependencies, TWorkerInput, TWorkerOutput, TWorkerAction>
+			| NodeClass<TContext, TDependencies, TWorkerInput, TWorkerOutput, TWorkerAction>,
 		options: {
 			/** The key in the context that holds the input array for the batch. */
 			inputKey: keyof TContext
 			/** The key in the context where the array of results will be stored. */
-			outputKey: keyof TContext
+			outputKey: TOutputKey
 			/** The number of items to process in each chunk to limit memory usage. */
 			chunkSize?: number
 		},
-	): this {
+	): Flow<TContext & { [K in TOutputKey]: TWorkerOutput[] }, TDependencies> {
 		const { inputKey, outputKey } = options
 		const scatterId = `${id}_scatter`
 		const gatherId = `${id}_gather`
@@ -126,10 +126,10 @@ export class Flow<
 			config: { joinStrategy: 'all' }, // important: must wait for all scattered jobs
 		})
 
-		// edge to connect scatter and gather nodes. orchestrator will manage dynamic workers
+		// edge to connect scatter and gather nodes, orchestrator will manage dynamic workers
 		this.edge(scatterId, gatherId)
 
-		return this
+		return this as unknown as Flow<TContext & { [K in TOutputKey]: TWorkerOutput[] }, TDependencies>
 	}
 
 	/**

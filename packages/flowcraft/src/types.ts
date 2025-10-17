@@ -115,20 +115,28 @@ export type ContextImplementation<T extends Record<string, any>> = ISyncContext<
 /** The synchronous context interface for high-performance, in-memory state. */
 export interface ISyncContext<TContext extends Record<string, any> = Record<string, any>> {
 	readonly type: 'sync'
-	get: <K extends keyof TContext>(key: K) => TContext[K] | undefined
-	set: <K extends keyof TContext>(key: K, value: TContext[K]) => void
-	has: <K extends keyof TContext>(key: K) => boolean
-	delete: <K extends keyof TContext>(key: K) => boolean
+	get<K extends keyof TContext>(key: K): TContext[K] | undefined
+	get(key: string): any | undefined
+	set<K extends keyof TContext>(key: K, value: TContext[K]): void
+	set(key: string, value: any): void
+	has<K extends keyof TContext>(key: K): boolean
+	has(key: string): boolean
+	delete<K extends keyof TContext>(key: K): boolean
+	delete(key: string): boolean
 	toJSON: () => Record<string, any>
 }
 
 /** The asynchronous context interface for remote or distributed state. */
 export interface IAsyncContext<TContext extends Record<string, any> = Record<string, any>> {
 	readonly type: 'async'
-	get: <K extends keyof TContext>(key: K) => Promise<TContext[K] | undefined>
-	set: <K extends keyof TContext>(key: K, value: TContext[K]) => Promise<void>
-	has: <K extends keyof TContext>(key: K) => Promise<boolean>
-	delete: <K extends keyof TContext>(key: K) => Promise<boolean>
+	get<K extends keyof TContext>(key: K): Promise<TContext[K] | undefined>
+	get(key: string): Promise<any | undefined>
+	set<K extends keyof TContext>(key: K, value: TContext[K]): Promise<void>
+	set(key: string, value: any): Promise<void>
+	has<K extends keyof TContext>(key: K): Promise<boolean>
+	has(key: string): Promise<boolean>
+	delete<K extends keyof TContext>(key: K): Promise<boolean>
+	delete(key: string): Promise<boolean>
 	toJSON: () => Promise<Record<string, any>>
 }
 

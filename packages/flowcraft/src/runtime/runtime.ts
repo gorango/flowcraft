@@ -27,15 +27,17 @@ import type {
 	WorkflowBlueprint,
 	WorkflowResult,
 } from '../types'
+import type { DynamicKeys } from './builtin-keys'
 import type { ExecutionStrategy } from './executors'
 import { BuiltInNodeExecutor, ClassNodeExecutor, FunctionNodeExecutor } from './executors'
 import { WorkflowState } from './state'
 import { GraphTraverser } from './traverser'
 import type { IRuntime } from './types'
 
+type InternalFlowContext<TContext extends Record<string, any>> = TContext & Partial<DynamicKeys>
+
 export class FlowRuntime<TContext extends Record<string, any>, TDependencies extends Record<string, any>>
-	implements IRuntime<TContext, TDependencies>
-{
+	implements IRuntime<TContext, TDependencies> {
 	public registry: Record<string, NodeFunction | NodeClass | typeof BaseNode>
 	private blueprints: Record<string, WorkflowBlueprint>
 	private dependencies: TDependencies
@@ -56,7 +58,7 @@ export class FlowRuntime<TContext extends Record<string, any>, TDependencies ext
 		this.blueprints = options.blueprints || {}
 		this.dependencies = options.dependencies || ({} as TDependencies)
 		this.logger = options.logger || new NullLogger()
-		this.eventBus = options.eventBus || { emit: () => {} }
+		this.eventBus = options.eventBus || { emit: () => { } }
 		this.serializer = options.serializer || new JsonSerializer()
 		this.middleware = options.middleware || []
 		this.evaluator = options.evaluator || new PropertyEvaluator()
@@ -95,7 +97,7 @@ export class FlowRuntime<TContext extends Record<string, any>, TDependencies ext
 				blueprintId: blueprint.id,
 				executionId,
 			})
-			// Use cached analysis if available, otherwise compute and cache it
+			// use cached analysis if available, otherwise compute and cache it
 			const analysis =
 				this.analysisCache.get(blueprint) ??
 				(() => {
@@ -291,7 +293,9 @@ export class FlowRuntime<TContext extends Record<string, any>, TDependencies ext
 
 	private getExecutor(nodeDef: NodeDefinition, functionRegistry?: Map<string, any>): ExecutionStrategy {
 		if (nodeDef.uses.startsWith('batch-') || nodeDef.uses.startsWith('loop-') || nodeDef.uses === 'subflow') {
-			return new BuiltInNodeExecutor((nodeDef, context) => this._executeBuiltInNode(nodeDef, context))
+			return new BuiltInNodeExecutor((nodeDef, context) =>
+				this._executeBuiltInNode(nodeDef, context as ContextImplementation<InternalFlowContext<TContext>>),
+			)
 		}
 		const implementation = functionRegistry?.get(nodeDef.uses) || this.registry[nodeDef.uses]
 		if (!implementation) {
@@ -429,9 +433,9 @@ export class FlowRuntime<TContext extends Record<string, any>, TDependencies ext
 		const asyncContext = context.type === 'sync' ? new AsyncContextView(context) : context
 		const finalInput = edge.transform
 			? this.evaluator.evaluate(edge.transform, {
-					input: sourceResult.output,
-					context: await asyncContext.toJSON(),
-				})
+				input: sourceResult.output,
+				context: await asyncContext.toJSON(),
+			})
 			: sourceResult.output
 		const inputKey = `${targetNode.id}_input`
 		await asyncContext.set(inputKey as any, finalInput)
@@ -473,7 +477,7 @@ export class FlowRuntime<TContext extends Record<string, any>, TDependencies ext
 
 	protected async _executeBuiltInNode(
 		nodeDef: NodeDefinition,
-		contextImpl: ContextImplementation<TContext>,
+		contextImpl: ContextImplementation<InternalFlowContext<TContext>>,
 	): Promise<NodeResult<any, any>> {
 		const context = contextImpl.type === 'sync' ? new AsyncContextView(contextImpl) : contextImpl
 		const { params = {}, id, inputs } = nodeDef
@@ -484,14 +488,14 @@ export class FlowRuntime<TContext extends Record<string, any>, TDependencies ext
 					throw new FatalNodeExecutionError(`Input for batch-scatter node '${id}' must be an array.`, id, '')
 				const batchId = globalThis.crypto.randomUUID()
 				const chunkSize = params.chunkSize || inputArray.length
-				const currentIndex = (await (context as any).get(`${id}_currentIndex`)) || 0
+				const currentIndex = (await context.get(`${id}_currentIndex`)) || 0
 				const endIndex = Math.min(currentIndex + chunkSize, inputArray.length)
 				const dynamicNodes: NodeDefinition[] = []
 				const workerIds = []
 				for (let i = currentIndex; i < endIndex; i++) {
 					const item = inputArray[i]
 					const itemInputKey = `${id}_${batchId}_item_${i}`
-					await (context as any).set(itemInputKey, item)
+					await context.set(itemInputKey, item)
 					const workerId = `${params.workerUsesKey}_${batchId}_${i}`
 					workerIds.push(workerId)
 					dynamicNodes.push({
@@ -501,19 +505,19 @@ export class FlowRuntime<TContext extends Record<string, any>, TDependencies ext
 					})
 				}
 				// update current index for next chunk
-				await (context as any).set(`${id}_currentIndex`, endIndex)
+				await context.set(`${id}_currentIndex`, endIndex)
 				const gatherNodeId = params.gatherNodeId
 				const hasMore = endIndex < inputArray.length
-				await (context as any).set(`${gatherNodeId}_hasMore`, hasMore)
+				await context.set(`${gatherNodeId}_hasMore`, hasMore)
 				// accumulate worker ids for all chunks
-				const existingWorkerIds = (await (context as any).get(`${gatherNodeId}_allWorkerIds`)) || []
+				const existingWorkerIds = (await context.get(`${gatherNodeId}_allWorkerIds`)) || []
 				const allWorkerIds = [...existingWorkerIds, ...workerIds]
-				await (context as any).set(`${gatherNodeId}_allWorkerIds`, allWorkerIds)
+				await context.set(`${gatherNodeId}_allWorkerIds`, allWorkerIds)
 				return { dynamicNodes, output: { gatherNodeId, hasMore } }
 			}
 			case 'batch-gather': {
 				const { gatherNodeId, outputKey } = params
-				const hasMore = (await (context as any).get(`${gatherNodeId}_hasMore`)) || false
+				const hasMore = (await context.get(`${gatherNodeId}_hasMore`)) || false
 				const dynamicNodes: NodeDefinition[] = []
 				if (hasMore) {
 					// create a new scatter node for the next chunk

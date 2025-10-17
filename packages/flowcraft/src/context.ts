@@ -11,20 +11,24 @@ export class Context<TContext extends Record<string, any>> implements ISyncConte
 		this.data = new Map(Object.entries(initialData))
 	}
 
-	get<K extends keyof TContext>(key: K): TContext[K] | undefined {
-		return this.data.get(String(key))
+	get<K extends keyof TContext>(key: K): TContext[K] | undefined
+	get(key: string): any | undefined {
+		return this.data.get(key)
 	}
 
-	set<K extends keyof TContext>(key: K, value: TContext[K]): void {
-		this.data.set(String(key), value)
+	set<K extends keyof TContext>(key: K, value: TContext[K]): void
+	set(key: string, value: any): void {
+		this.data.set(key, value)
 	}
 
-	has<K extends keyof TContext>(key: K): boolean {
-		return this.data.has(String(key))
+	has<K extends keyof TContext>(key: K): boolean
+	has(key: string): boolean {
+		return this.data.has(key)
 	}
 
-	delete<K extends keyof TContext>(key: K): boolean {
-		return this.data.delete(String(key))
+	delete<K extends keyof TContext>(key: K): boolean
+	delete(key: string): boolean {
+		return this.data.delete(key)
 	}
 
 	toJSON(): Record<string, any> {
@@ -41,20 +45,24 @@ export class AsyncContextView<TContext extends Record<string, any>> implements I
 
 	constructor(private syncContext: ISyncContext<TContext>) {}
 
-	get<K extends keyof TContext>(key: K): Promise<TContext[K] | undefined> {
+	get<K extends keyof TContext>(key: K): Promise<TContext[K] | undefined>
+	get(key: string): Promise<any | undefined> {
 		return Promise.resolve(this.syncContext.get(key))
 	}
 
-	set<K extends keyof TContext>(key: K, value: TContext[K]): Promise<void> {
+	set<K extends keyof TContext>(key: K, value: TContext[K]): Promise<void>
+	set(key: string, value: any): Promise<void> {
 		this.syncContext.set(key, value)
 		return Promise.resolve()
 	}
 
-	has<K extends keyof TContext>(key: K): Promise<boolean> {
+	has<K extends keyof TContext>(key: K): Promise<boolean>
+	has(key: string): Promise<boolean> {
 		return Promise.resolve(this.syncContext.has(key))
 	}
 
-	delete<K extends keyof TContext>(key: K): Promise<boolean> {
+	delete<K extends keyof TContext>(key: K): Promise<boolean>
+	delete(key: string): Promise<boolean> {
 		return Promise.resolve(this.syncContext.delete(key))
 	}
 
