@@ -534,12 +534,18 @@ export class FlowRuntime<TContext extends Record<string, any>, TDependencies ext
 
 				const subflowResult = await this.run(subBlueprint, subflowInitialContext as Partial<TContext>)
 
-				if (subflowResult.status !== 'completed')
-					throw new NodeExecutionError(
-						`Sub-workflow '${blueprintId}' did not complete successfully. Status: ${subflowResult.status}`,
-						id,
-						subBlueprint.id,
-					)
+				if (subflowResult.status !== 'completed') {
+					const errorMessage = `Sub-workflow '${blueprintId}' did not complete successfully. Status: ${subflowResult.status}`
+					let originalError: Error | undefined
+
+					if (subflowResult.errors && subflowResult.errors.length > 0) {
+						const firstError = subflowResult.errors[0]
+						originalError = new Error(`${firstError.message} (Node: ${firstError.nodeId})`)
+						originalError.stack = firstError.stack || originalError.stack
+					}
+
+					throw new NodeExecutionError(errorMessage, id, subBlueprint.id, originalError)
+				}
 
 				if (outputMapping) {
 					for (const [parentKey, subKey] of Object.entries(outputMapping)) {

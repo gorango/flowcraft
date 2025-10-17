@@ -96,3 +96,30 @@ console.log(result.context)
 ```
 
 This modular approach is invaluable for building large, maintainable workflow systems.
+
+## Error Handling in Subflows
+
+When a subflow fails, the error is propagated to the parent workflow with details for better debugging. The `NodeExecutionError` thrown by a failed subflow includes:
+
+- The original error message from the specific node that failed within the subflow
+- The node ID where the failure occurred
+- The stack trace from the subflow's execution
+
+This allows you to trace failures back to their source, even in deeply nested subflow hierarchies.
+
+```typescript
+// Example: Handling subflow errors
+try {
+  const result = await runtime.run(parentFlow.toBlueprint(), {})
+} catch (error) {
+  if (error instanceof NodeExecutionError) {
+    console.log(`Subflow failed: ${error.message}`)
+    if (error.originalError) {
+      console.log(`Original error: ${error.originalError.message}`)
+      console.log(`Failed node in subflow: ${error.originalError.nodeId}`)
+    }
+  }
+}
+```
+
+If a subflow fails, it will prevent the parent workflow from continuing unless handled appropriately (e.g., via retries or fallbacks).

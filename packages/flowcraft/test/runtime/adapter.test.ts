@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { AdapterOptions, ICoordinationStore, JobPayload } from '../../src/runtime'
 import { BaseDistributedAdapter, FlowRuntime } from '../../src/runtime'
 import type { IAsyncContext, NodeDefinition, WorkflowBlueprint } from '../../src/types'
+import { NodeExecutionError } from '../../src/errors'
 
 const mockRuntime = {
 	executeNode: vi.fn(),
@@ -445,6 +446,45 @@ describe('BaseDistributedAdapter', () => {
 				expect.anything(),
 				expect.anything(),
 			)
+		})
+
+		it('should propagate enhanced error details from failed subflows', async () => {
+			const subflowBlueprint: WorkflowBlueprint = {
+				id: 'subflow-blueprint',
+				nodes: [{ id: 'sub-node', uses: 'test' }],
+				edges: [],
+			}
+			if (mockRuntime.options.blueprints) {
+				vi.mocked(mockRuntime.options.blueprints)['subflow-blueprint'] = subflowBlueprint
+			}
+
+			const job: JobPayload = {
+				runId: 'run1',
+				blueprintId: 'linear',
+				nodeId: 'subflow-node',
+			}
+
+			const subflowError = new Error('Subflow failure (Node: sub-node)')
+			subflowError.stack = 'Stack trace from subflow'
+			const enhancedError = new NodeExecutionError(
+				"Sub-workflow 'subflow-blueprint' did not complete successfully. Status: failed",
+				'subflow-node',
+				'subflow-blueprint',
+				subflowError,
+			)
+
+			vi.mocked(mockRuntime.executeNode).mockRejectedValue(enhancedError)
+
+			await jobHandler(job)
+
+			expect(adapter.publishFinalResult).toHaveBeenCalledWith('run1', {
+				status: 'failed',
+				reason: enhancedError.message,
+			})
+			// Verify that the error has originalError with details
+			expect(enhancedError.originalError).toBeDefined()
+			expect(enhancedError.originalError!.message).toBe('Subflow failure (Node: sub-node)')
+			expect(enhancedError.originalError!.stack).toBe('Stack trace from subflow')
 		})
 	})
 
