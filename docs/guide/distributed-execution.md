@@ -84,3 +84,38 @@ async function startWorkflow() {
 }
 ```
 This architecture decouples the core workflow logic from the distributed systems infrastructure, allowing you to scale your application without rewriting your business logic.
+
+## Error Handling in Distributed Joins
+
+In distributed execution, handling failures in join scenarios is critical to prevent workflows from stalling or entering ambiguous states.
+
+### Poison Pill Mechanism for 'all' Joins
+
+For nodes with `joinStrategy: 'all'`, if a predecessor fails, a "poison pill" is written to the coordination store. This prevents the join node from waiting indefinitely for the failed predecessor and causes it to fail immediately when it tries to check readiness.
+
+### Cancellation Mechanism for 'any' Joins
+
+For nodes with `joinStrategy: 'any'`, if a predecessor fails, a "cancellation pill" is written to the coordination store. This ensures that:
+
+1. The join node cannot be locked by other predecessors after a failure
+2. If the join node is already locked, it will fail when it tries to execute, preventing ambiguous states
+
+This mechanism ensures that `any` joins fail fast when a predecessor fails, rather than remaining in an indeterminate state.
+
+```typescript
+// Example: A workflow with 'any' join
+const workflow = createFlow('any-join-example')
+  .node('A', async () => { throw new Error('A failed') })
+  .node('B', async () => ({ output: 'B succeeded' }))
+  .node('C', async ({ input }) => ({ output: `Result: ${input}` }), {
+    config: { joinStrategy: 'any' }
+  })
+  .edge('A', 'C')
+  .edge('B', 'C')
+  .toBlueprint()
+
+// In distributed execution, if 'A' fails, 'C' will be cancelled
+// and the workflow will fail, preventing 'B' from executing 'C' alone
+```
+
+This robust error handling ensures that distributed workflows maintain consistency and reliability even when individual nodes fail.

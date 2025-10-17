@@ -216,7 +216,18 @@ export abstract class BaseDistributedAdapter {
 
 		if (joinStrategy === 'any') {
 			const lockKey = `flowcraft:joinlock:${runId}:${targetNodeId}`
-			return await this.store.setIfNotExist(lockKey, 'locked', 3600)
+			const isLocked = await this.store.setIfNotExist(lockKey, 'locked', 3600)
+			if (!isLocked) {
+				// Check if it's cancelled
+				const cancelKey = `flowcraft:fanin:cancel:${runId}:${targetNodeId}`
+				const isCancelled = !(await this.store.setIfNotExist(cancelKey, 'cancelled', 3600))
+				if (isCancelled) {
+					console.log(`[Adapter] Node '${targetNodeId}' is cancelled due to failed predecessor. Failing immediately.`)
+					throw new Error(`Node '${targetNodeId}' failed due to cancelled predecessor in run '${runId}'`)
+				}
+				return false // Already locked by another predecessor
+			}
+			return true
 		} else {
 			const fanInKey = `flowcraft:fanin:${runId}:${targetNodeId}`
 			const readyCount = await this.store.increment(fanInKey, 3600)
@@ -326,7 +337,7 @@ export abstract class BaseDistributedAdapter {
 	}
 
 	/**
-	 * Writes a poison pill for 'all' join successors of a failed node to prevent stalling.
+	 * Writes a poison pill for 'all' join successors and a cancellation pill for 'any' join successors of a failed node to prevent stalling or ambiguous states.
 	 */
 	private async writePoisonPillForSuccessors(
 		runId: string,
@@ -337,15 +348,24 @@ export abstract class BaseDistributedAdapter {
 			.filter((edge) => edge.source === failedNodeId)
 			.map((edge) => edge.target)
 			.map((targetId) => blueprint.nodes.find((node) => node.id === targetId))
-			.filter((node) => node && (node.config?.joinStrategy || 'all') === 'all')
+			.filter((node) => node)
 
 		for (const successor of successors) {
 			if (successor) {
-				const poisonKey = `flowcraft:fanin:poison:${runId}:${successor.id}`
-				await this.store.setIfNotExist(poisonKey, 'poisoned', 3600)
-				console.log(
-					`[Adapter] Wrote poison pill for join node '${successor.id}' due to failed predecessor '${failedNodeId}'`,
-				)
+				const joinStrategy = successor.config?.joinStrategy || 'all'
+				if (joinStrategy === 'all') {
+					const poisonKey = `flowcraft:fanin:poison:${runId}:${successor.id}`
+					await this.store.setIfNotExist(poisonKey, 'poisoned', 3600)
+					console.log(
+						`[Adapter] Wrote poison pill for 'all' join node '${successor.id}' due to failed predecessor '${failedNodeId}'`,
+					)
+				} else if (joinStrategy === 'any') {
+					const cancelKey = `flowcraft:fanin:cancel:${runId}:${successor.id}`
+					await this.store.setIfNotExist(cancelKey, 'cancelled', 3600)
+					console.log(
+						`[Adapter] Wrote cancellation pill for 'any' join node '${successor.id}' due to failed predecessor '${failedNodeId}'`,
+					)
+				}
 			}
 		}
 	}
