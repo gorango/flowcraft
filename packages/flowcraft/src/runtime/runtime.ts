@@ -44,6 +44,10 @@ export class FlowRuntime<TContext extends Record<string, any>, TDependencies ext
 	private serializer: ISerializer
 	private middleware: Middleware[]
 	private evaluator: IEvaluator
+	/**
+	 * Cache for blueprint analysis results to avoid recomputing for the same blueprint object.
+	 * Uses WeakMap to allow garbage collection of unused blueprints.
+	 */
 	private analysisCache: WeakMap<WorkflowBlueprint, BlueprintAnalysis>
 	public options: RuntimeOptions<TDependencies>
 
@@ -91,6 +95,7 @@ export class FlowRuntime<TContext extends Record<string, any>, TDependencies ext
 				blueprintId: blueprint.id,
 				executionId,
 			})
+			// Use cached analysis if available, otherwise compute and cache it
 			const analysis =
 				this.analysisCache.get(blueprint) ??
 				(() => {

@@ -24,7 +24,8 @@ export interface BlueprintAnalysis {
 }
 
 /**
- * Analyzes a workflow blueprint to detect cycles.
+ * Analyzes a workflow blueprint to detect cycles using an iterative DFS algorithm.
+ * This avoids stack overflow issues for deep graphs compared to the recursive version.
  * @param blueprint The WorkflowBlueprint object containing nodes and edges.
  * @returns An array of cycles found. Each cycle is represented as an array of node IDs.
  */
@@ -43,32 +44,51 @@ export function checkForCycles(blueprint: WorkflowBlueprint): Cycles {
 		adj.get(edge.source)?.push(edge.target)
 	}
 
-	const visited = new Set<string>()
-	const recursionStack = new Set<string>()
-
-	function detectCycleUtil(nodeId: string, path: string[]) {
-		visited.add(nodeId)
-		recursionStack.add(nodeId)
-		path.push(nodeId)
-
-		const neighbors = adj.get(nodeId) || []
-		for (const neighbor of neighbors) {
-			if (recursionStack.has(neighbor)) {
-				const cycleStartIndex = path.indexOf(neighbor)
-				const cycle = path.slice(cycleStartIndex)
-				cycles.push([...cycle, neighbor])
-			} else if (!visited.has(neighbor)) {
-				detectCycleUtil(neighbor, path)
-			}
-		}
-
-		recursionStack.delete(nodeId)
-		path.pop()
+	// 0 = not visited, 1 = visiting, 2 = visited
+	const state = new Map<string, number>()
+	for (const id of allNodeIds) {
+		state.set(id, 0)
 	}
 
-	for (const nodeId of allNodeIds) {
-		if (!visited.has(nodeId)) {
-			detectCycleUtil(nodeId, [])
+	for (const startNode of allNodeIds) {
+		if (state.get(startNode) !== 0) continue
+
+		const stack: { node: string; path: string[] }[] = [{ node: startNode, path: [] }]
+		const pathSet = new Set<string>()
+
+		while (stack.length > 0) {
+			const { node, path } = stack[stack.length - 1]
+
+			if (state.get(node) === 0) {
+				// first visit
+				state.set(node, 1) // visiting
+				pathSet.add(node)
+				path.push(node)
+			}
+
+			const neighbors = adj.get(node) || []
+			let foundUnvisited = false
+
+			for (const neighbor of neighbors) {
+				if (state.get(neighbor) === 1) {
+					// back edge, cycle found
+					const cycleStartIndex = path.indexOf(neighbor)
+					const cycle = path.slice(cycleStartIndex)
+					cycles.push([...cycle, neighbor])
+				} else if (state.get(neighbor) === 0) {
+					// unvisited neighbor
+					stack.push({ node: neighbor, path: [...path] })
+					foundUnvisited = true
+					break
+				}
+			}
+
+			if (!foundUnvisited) {
+				// all neighbors visited
+				state.set(node, 2) // visited
+				stack.pop()
+				pathSet.delete(node)
+			}
 		}
 	}
 
