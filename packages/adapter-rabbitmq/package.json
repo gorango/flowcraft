@@ -1,7 +1,7 @@
 {
 	"name": "@flowcraft/rabbitmq-adapter",
 	"type": "module",
-	"version": "1.1.0",
+	"version": "1.2.0",
 	"exports": {
 		".": {
 			"types": "./dist/index.d.ts",
@@ -18,7 +18,7 @@
 	},
 	"dependencies": {
 		"amqplib": "^0.10.9",
-		"flowcraft": "^2.1.0",
+		"flowcraft": "^2.2.0",
 		"ioredis": "^5.8.1",
 		"pg": "^8.16.3"
 	},
