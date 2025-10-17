@@ -21,6 +21,8 @@ export interface ICoordinationStore {
 	setIfNotExist: (key: string, value: string, ttlSeconds: number) => Promise<boolean>
 	/** Deletes a key. Used for cleanup. */
 	delete: (key: string) => Promise<void>
+	/** Gets the value of a key. */
+	get: (key: string) => Promise<string | undefined>
 }
 
 /** Configuration options for constructing a BaseDistributedAdapter. */
@@ -122,6 +124,9 @@ export abstract class BaseDistributedAdapter {
 		const hasBlueprintId = await context.has('blueprintId' as any)
 		if (!hasBlueprintId) {
 			await context.set('blueprintId' as any, blueprintId)
+			// also store in coordination store as fallback
+			const blueprintKey = `flowcraft:blueprint:${runId}`
+			await this.store.setIfNotExist(blueprintKey, blueprintId, 3600)
 		}
 		const workerState = {
 			getContext: () => context,
@@ -164,7 +169,7 @@ export abstract class BaseDistributedAdapter {
 				}
 			}
 
-			const nextNodes = await this.runtime.determineNextNodes(blueprint, nodeId, result, context)
+			const nextNodes = await this.runtime.determineNextNodes(blueprint, nodeId, result, context, runId)
 
 			// stop if a branch terminates but it wasn't a terminal node
 			if (nextNodes.length === 0 && !isTerminalNode) {
@@ -250,10 +255,18 @@ export abstract class BaseDistributedAdapter {
 	 */
 	public async reconcile(runId: string): Promise<Set<string>> {
 		const context = this.createContext(runId)
-		const blueprintId = (await context.get('blueprintId' as any)) as string | undefined
+		let blueprintId = (await context.get('blueprintId' as any)) as string | undefined
 
 		if (!blueprintId) {
-			throw new Error(`Cannot reconcile runId '${runId}': blueprintId not found in context.`)
+			// fallback to coordination store
+			const blueprintKey = `flowcraft:blueprint:${runId}`
+			blueprintId = await this.store.get(blueprintKey)
+			if (blueprintId) {
+				// set it back in context for future use
+				await context.set('blueprintId' as any, blueprintId)
+			} else {
+				throw new Error(`Cannot reconcile runId '${runId}': blueprintId not found in context or coordination store.`)
+			}
 		}
 		const blueprint = this.runtime.options.blueprints?.[blueprintId]
 		if (!blueprint) {

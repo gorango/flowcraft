@@ -119,3 +119,9 @@ const workflow = createFlow('any-join-example')
 ```
 
 This robust error handling ensures that distributed workflows maintain consistency and reliability even when individual nodes fail.
+
+## Reconciliation Resilience
+
+The `reconcile` method in `BaseDistributedAdapter` is used to resume a workflow run by inspecting the persisted context, determining the next executable nodes, and enqueuing jobs for them. To increase resilience, the adapter stores the `blueprintId` in both the context and the coordination store as a fallback. If the `blueprintId` is missing from the context during reconciliation, it will be retrieved from the coordination store, preventing failures due to lost context data.
+
+This mechanism ensures that workflow runs can be reliably resumed even if parts of the distributed state are temporarily unavailable or corrupted.

@@ -31,6 +31,9 @@ interface ICoordinationStore {
 
 	// Deletes a key.
 	delete: (key: string) => Promise<void>
+
+	// Gets the value of a key.
+	get: (key: string) => Promise<string | undefined>
 }
 ```
 

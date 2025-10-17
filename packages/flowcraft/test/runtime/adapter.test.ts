@@ -1,8 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { NodeExecutionError } from '../../src/errors'
 import type { AdapterOptions, ICoordinationStore, JobPayload } from '../../src/runtime'
 import { BaseDistributedAdapter, FlowRuntime } from '../../src/runtime'
 import type { IAsyncContext, NodeDefinition, WorkflowBlueprint } from '../../src/types'
-import { NodeExecutionError } from '../../src/errors'
 
 const mockRuntime = {
 	executeNode: vi.fn(),
@@ -75,6 +75,7 @@ describe('BaseDistributedAdapter', () => {
 			increment: vi.fn(),
 			setIfNotExist: vi.fn().mockResolvedValue(true), // Default to allowing locks
 			delete: vi.fn(),
+			get: vi.fn(),
 		}
 
 		mockRuntime = {
@@ -302,8 +303,9 @@ describe('BaseDistributedAdapter', () => {
 			vi.mocked(mockRuntime.determineNextNodes).mockResolvedValue([
 				{ node: fanInAnyBlueprint.nodes[2], edge: fanInAnyBlueprint.edges[1] },
 			])
-			// Poison check returns true (not poisoned), join lock returns false
+			// BlueprintId set, poison check returns true (not poisoned), join lock returns false
 			vi.mocked(mockCoordinationStore.setIfNotExist)
+				.mockResolvedValueOnce(true) // BlueprintId set
 				.mockResolvedValueOnce(true) // Poison check
 				.mockResolvedValue(false) // Join lock
 
@@ -338,8 +340,9 @@ describe('BaseDistributedAdapter', () => {
 			vi.mocked(mockRuntime.determineNextNodes).mockResolvedValue([
 				{ node: poisonedFanInBlueprint.nodes[2], edge: poisonedFanInBlueprint.edges[1] },
 			])
-			// Simulate poison pill already set for 'C' (first call for poison check returns false)
+			// BlueprintId set, poison pill already set for 'C' (poison check returns false)
 			vi.mocked(mockCoordinationStore.setIfNotExist)
+				.mockResolvedValueOnce(true) // BlueprintId set
 				.mockResolvedValueOnce(false) // Poison check fails
 				.mockResolvedValue(true) // Other calls succeed
 
@@ -483,8 +486,8 @@ describe('BaseDistributedAdapter', () => {
 			})
 			// Verify that the error has originalError with details
 			expect(enhancedError.originalError).toBeDefined()
-			expect(enhancedError.originalError!.message).toBe('Subflow failure (Node: sub-node)')
-			expect(enhancedError.originalError!.stack).toBe('Stack trace from subflow')
+			expect(enhancedError.originalError?.message).toBe('Subflow failure (Node: sub-node)')
+			expect(enhancedError.originalError?.stack).toBe('Stack trace from subflow')
 		})
 	})
 
@@ -629,9 +632,10 @@ describe('BaseDistributedAdapter', () => {
 
 		it('should throw error if blueprintId is not found in context', async () => {
 			vi.mocked(mockContext.get).mockResolvedValue(undefined)
+			vi.mocked(mockCoordinationStore.get).mockResolvedValue(undefined)
 
 			await expect(adapter.reconcile('run1')).rejects.toThrow(
-				"Cannot reconcile runId 'run1': blueprintId not found in context.",
+				"Cannot reconcile runId 'run1': blueprintId not found in context or coordination store.",
 			)
 		})
 
