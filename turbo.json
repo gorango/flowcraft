@@ -9,7 +9,8 @@
 		},
 		"test": {
 			"dependsOn": [],
-			"inputs": ["src/**/*.test.js", "src/**/*.test.ts"]
+			"inputs": ["src/**/*.test.js", "src/**/*.test.ts"],
+			"cache": false
 		}
 	}
 }
