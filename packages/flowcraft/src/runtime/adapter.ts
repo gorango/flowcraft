@@ -138,7 +138,7 @@ export abstract class BaseDistributedAdapter {
 
 		try {
 			const result: NodeResult<any, any> = await this.runtime.executeNode(blueprint, nodeId, workerState)
-			await context.set(nodeId as any, result.output)
+			await context.set(`_outputs.${nodeId}` as any, result.output)
 
 			const analysis = analyzeBlueprint(blueprint)
 			const isTerminalNode = analysis.terminalNodeIds.includes(nodeId)

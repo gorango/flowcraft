@@ -12,7 +12,7 @@ describe('WorkflowState', () => {
 		const state = new WorkflowState({})
 		state.addCompletedNode('node1', 'output1')
 		expect(state.getCompletedNodes().has('node1')).toBe(true)
-		expect(state.getContext().get('node1')).toBe('output1')
+		expect(state.getContext().get('_outputs.node1')).toBe('output1')
 	})
 
 	it('should add errors correctly', () => {

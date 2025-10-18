@@ -33,7 +33,7 @@ describe('Flowcraft Runtime - Integration Tests', () => {
 			const result = await runtime.run(flow.toBlueprint(), {}, { functionRegistry: flow.getFunctionRegistry() })
 
 			expect(result.status).toBe('completed')
-			expect(result.context.B).toBe('resultA_B')
+			expect(result.context['_outputs.B']).toBe('resultA_B')
 		})
 
 		it('should correctly traverse a DAG with fan-out and fan-in', async () => {
@@ -54,7 +54,7 @@ describe('Flowcraft Runtime - Integration Tests', () => {
 
 			expect(result.status).toBe('completed')
 			// A fan-in node with no explicit `inputs` mapping receives `undefined` as input.
-			expect(result.context.D).toBe('input was undefined')
+			expect(result.context['_outputs.D']).toBe('input was undefined')
 		})
 
 		it('should fail the workflow if a branch fails in a fan-in scenario', async () => {
@@ -76,7 +76,7 @@ describe('Flowcraft Runtime - Integration Tests', () => {
 			expect(result.status).toBe('failed')
 			expect(result.errors).toBeDefined()
 			expect(result.errors?.some((e) => e.nodeId === 'B')).toBe(true)
-			expect(result.context.D).toBeUndefined()
+			expect(result.context['_outputs.D']).toBeUndefined()
 		})
 
 		it('should handle a blueprint with multiple start nodes', async () => {
@@ -95,7 +95,7 @@ describe('Flowcraft Runtime - Integration Tests', () => {
 
 			expect(result.status).toBe('completed')
 			// A fan-in node with no explicit `inputs` mapping receives `undefined` as input.
-			expect(result.context.C).toBe('input was undefined')
+			expect(result.context['_outputs.C']).toBe('input was undefined')
 		})
 
 		it('should correctly execute a graph with a cycle when strict mode is off', async () => {
@@ -163,7 +163,7 @@ describe('Flowcraft Runtime - Integration Tests', () => {
 			// After 2 iterations, the condition should be false and it should break
 			expect(executionCount).toBe(2) // decide should only run 2 times
 			expect(result.status).toBe('completed')
-			expect(result.context.answer).toBe('final_answer')
+			expect(result.context['_outputs.answer']).toBe('final_answer')
 		})
 
 		it('should execute fallback node when main node fails', async () => {
@@ -184,7 +184,7 @@ describe('Flowcraft Runtime - Integration Tests', () => {
 			const result = await runtime.run(blueprint, {}, { functionRegistry: flow.getFunctionRegistry() })
 
 			expect(result.status).toBe('completed')
-			expect(result.context.B).toBe('fallback success')
+			expect(result.context['_outputs.B']).toBe('fallback success')
 			expect(result.errors).toBeUndefined()
 		})
 
@@ -289,7 +289,7 @@ describe('Flowcraft Runtime - Integration Tests', () => {
 			const runtime = new FlowRuntime({})
 			const result = await runtime.run(flow.toBlueprint(), {}, { functionRegistry: flow.getFunctionRegistry() })
 
-			expect(result.context.A).toBe('test')
+			expect(result.context['_outputs.A']).toBe('test')
 		})
 
 		it('should correctly resolve a simple string `inputs` mapping', async () => {
@@ -304,7 +304,7 @@ describe('Flowcraft Runtime - Integration Tests', () => {
 			const runtime = new FlowRuntime({})
 			const result = await runtime.run(flow.toBlueprint(), {}, { functionRegistry: flow.getFunctionRegistry() })
 
-			expect(result.context.B).toBe('data_B')
+			expect(result.context['_outputs.B']).toBe('data_B')
 		})
 
 		it('should correctly resolve a complex object `inputs` mapping', async () => {
@@ -319,7 +319,7 @@ describe('Flowcraft Runtime - Integration Tests', () => {
 			const runtime = new FlowRuntime({})
 			const result = await runtime.run(flow.toBlueprint(), {}, { functionRegistry: flow.getFunctionRegistry() })
 
-			expect(result.context.B).toBe('value_B')
+			expect(result.context['_outputs.B']).toBe('value_B')
 		})
 
 		it('should use the single-predecessor output as `input` if no mapping is provided', async () => {
@@ -332,7 +332,7 @@ describe('Flowcraft Runtime - Integration Tests', () => {
 			const runtime = new FlowRuntime({})
 			const result = await runtime.run(flow.toBlueprint(), {}, { functionRegistry: flow.getFunctionRegistry() })
 
-			expect(result.context.B).toBe('data_B')
+			expect(result.context['_outputs.B']).toBe('data_B')
 		})
 
 		it('should apply an edge `transform` expression to the data flow', async () => {
@@ -345,7 +345,7 @@ describe('Flowcraft Runtime - Integration Tests', () => {
 			const runtime = new FlowRuntime({ evaluator: new UnsafeEvaluator() })
 			const result = await runtime.run(flow.toBlueprint(), {}, { functionRegistry: flow.getFunctionRegistry() })
 
-			expect(result.context.B).toBe(20)
+			expect(result.context['_outputs.B']).toBe(20)
 		})
 
 		it('should handle "undefined" as a valid node output and save it to the context', async () => {
@@ -355,8 +355,8 @@ describe('Flowcraft Runtime - Integration Tests', () => {
 			const runtime = new FlowRuntime({})
 			const result = await runtime.run(flow.toBlueprint(), {}, { functionRegistry: flow.getFunctionRegistry() })
 
-			expect(result.context).toHaveProperty('A')
-			expect(result.context.A).toBeUndefined()
+			expect(result.context).toHaveProperty('_outputs.A')
+			expect(result.context['_outputs.A']).toBeUndefined()
 		})
 
 		it('should not have input for a node with multiple predecessors and no explicit "inputs" mapping', async () => {
@@ -373,7 +373,7 @@ describe('Flowcraft Runtime - Integration Tests', () => {
 			const runtime = new FlowRuntime({})
 			const result = await runtime.run(flow.toBlueprint(), {}, { functionRegistry: flow.getFunctionRegistry() })
 
-			expect(result.context.C).toBe('no-input')
+			expect(result.context['_outputs.C']).toBe('no-input')
 		})
 	})
 
@@ -390,8 +390,8 @@ describe('Flowcraft Runtime - Integration Tests', () => {
 			const runtime = new FlowRuntime({})
 			const result = await runtime.run(flow.toBlueprint(), {}, { functionRegistry: flow.getFunctionRegistry() })
 
-			expect(result.context.B).toBe('B')
-			expect(result.context.C).toBeUndefined()
+			expect(result.context['_outputs.B']).toBe('B')
+			expect(result.context['_outputs.C']).toBeUndefined()
 		})
 
 		it('should evaluate an edge `condition` and route correctly if true', async () => {
@@ -406,8 +406,8 @@ describe('Flowcraft Runtime - Integration Tests', () => {
 			const runtime = new FlowRuntime({ evaluator: new UnsafeEvaluator() })
 			const result = await runtime.run(flow.toBlueprint(), {}, { functionRegistry: flow.getFunctionRegistry() })
 
-			expect(result.context.B).toBe('B')
-			expect(result.context.C).toBeUndefined()
+			expect(result.context['_outputs.B']).toBe('B')
+			expect(result.context['_outputs.C']).toBeUndefined()
 		})
 
 		it('should not follow a conditional edge if the condition is false', async () => {
@@ -422,8 +422,8 @@ describe('Flowcraft Runtime - Integration Tests', () => {
 			const runtime = new FlowRuntime({ evaluator: new UnsafeEvaluator() })
 			const result = await runtime.run(flow.toBlueprint(), {}, { functionRegistry: flow.getFunctionRegistry() })
 
-			expect(result.context.B).toBeUndefined()
-			expect(result.context.C).toBe('C')
+			expect(result.context['_outputs.B']).toBeUndefined()
+			expect(result.context['_outputs.C']).toBe('C')
 		})
 
 		it('should follow the default (unconditional) edge if no other paths match', async () => {
@@ -438,8 +438,8 @@ describe('Flowcraft Runtime - Integration Tests', () => {
 			const runtime = new FlowRuntime({})
 			const result = await runtime.run(flow.toBlueprint(), {}, { functionRegistry: flow.getFunctionRegistry() })
 
-			expect(result.context.B).toBeUndefined()
-			expect(result.context.C).toBe('C')
+			expect(result.context['_outputs.B']).toBeUndefined()
+			expect(result.context['_outputs.C']).toBe('C')
 		})
 	})
 
@@ -487,7 +487,7 @@ describe('Flowcraft Runtime - Integration Tests', () => {
 			const runtime = new FlowRuntime({ middleware })
 			const result = await runtime.run(flow.toBlueprint(), {}, { functionRegistry: flow.getFunctionRegistry() })
 
-			expect(result.context.A).toBe('short-circuit')
+			expect(result.context['_outputs.A']).toBe('short-circuit')
 		})
 
 		it('should call `beforeNode` and `afterNode` middleware for each node', async () => {

@@ -38,8 +38,7 @@ import type { IRuntime } from './types'
 type InternalFlowContext<TContext extends Record<string, any>> = TContext & Partial<DynamicKeys>
 
 export class FlowRuntime<TContext extends Record<string, any>, TDependencies extends Record<string, any>>
-	implements IRuntime<TContext, TDependencies>
-{
+	implements IRuntime<TContext, TDependencies> {
 	public registry: Record<string, NodeFunction | NodeClass | typeof BaseNode>
 	private blueprints: Record<string, WorkflowBlueprint>
 	private dependencies: TDependencies
@@ -60,7 +59,7 @@ export class FlowRuntime<TContext extends Record<string, any>, TDependencies ext
 		this.blueprints = options.blueprints || {}
 		this.dependencies = options.dependencies || ({} as TDependencies)
 		this.logger = options.logger || new NullLogger()
-		this.eventBus = options.eventBus || { emit: async () => {} }
+		this.eventBus = options.eventBus || { emit: async () => { } }
 		this.serializer = options.serializer || new JsonSerializer()
 		this.middleware = options.middleware || []
 		this.evaluator = options.evaluator || new PropertyEvaluator()
@@ -208,7 +207,7 @@ export class FlowRuntime<TContext extends Record<string, any>, TDependencies ext
 		blueprint: WorkflowBlueprint,
 		nodeId: string,
 		state: WorkflowState<TContext>,
-		allPredecessors?: Map<string, Set<string>>,
+		_allPredecessors?: Map<string, Set<string>>,
 		functionRegistry?: Map<string, any>,
 		executionId?: string,
 		signal?: AbortSignal,
@@ -230,7 +229,7 @@ export class FlowRuntime<TContext extends Record<string, any>, TDependencies ext
 				: (contextImpl as IAsyncContext<TContext>)
 		const nodeContext: NodeContext<TContext, TDependencies, any> = {
 			context: asyncContext,
-			input: await this._resolveNodeInput(nodeDef, asyncContext, allPredecessors),
+			input: await this._resolveNodeInput(nodeDef, asyncContext),
 			params: nodeDef.params || {},
 			dependencies: { ...this.dependencies, logger: this.logger },
 			signal,
@@ -303,12 +302,12 @@ export class FlowRuntime<TContext extends Record<string, any>, TDependencies ext
 			throw error instanceof FlowcraftError && !error.isFatal
 				? error
 				: new FlowcraftError(`Node '${nodeId}' failed execution.`, {
-						cause: error,
-						nodeId,
-						blueprintId: blueprint.id,
-						executionId,
-						isFatal: false,
-					})
+					cause: error,
+					nodeId,
+					blueprintId: blueprint.id,
+					executionId,
+					isFatal: false,
+				})
 		}
 	}
 
@@ -462,52 +461,62 @@ export class FlowRuntime<TContext extends Record<string, any>, TDependencies ext
 		allPredecessors?: Map<string, Set<string>>,
 	): Promise<void> {
 		const asyncContext = context.type === 'sync' ? new AsyncContextView(context) : context
+		const predecessors = allPredecessors?.get(targetNode.id)
+		const hasSinglePredecessor = predecessors && predecessors.size === 1
+		const hasExplicitInputs = targetNode.inputs !== undefined
+		const hasEdgeTransform = edge.transform !== undefined
+		if (!hasExplicitInputs && !hasSinglePredecessor && !hasEdgeTransform) {
+			return
+		}
 		const finalInput = edge.transform
 			? this.evaluator.evaluate(edge.transform, {
-					input: sourceResult.output,
-					context: await asyncContext.toJSON(),
-				})
+				input: sourceResult.output,
+				context: await asyncContext.toJSON(),
+			})
 			: sourceResult.output
-		const inputKey = `${targetNode.id}_input`
+		const inputKey = `_inputs.${targetNode.id}`
 		await asyncContext.set(inputKey as any, finalInput)
 		await this.eventBus.emit({
 			type: 'context:change',
 			payload: { sourceNode: edge.source, key: inputKey, value: finalInput },
 		})
-		if (targetNode.config?.joinStrategy === 'any') {
+		if (!hasExplicitInputs) {
 			targetNode.inputs = inputKey
-		} else if (!targetNode.inputs) {
-			const predecessors = allPredecessors?.get(targetNode.id)
-			if (!predecessors || predecessors.size === 1) {
-				targetNode.inputs = inputKey
-			}
 		}
 	}
 
-	private async _resolveNodeInput(
-		nodeDef: NodeDefinition,
-		context: IAsyncContext<TContext>,
-		allPredecessors?: Map<string, Set<string>>,
-	): Promise<any> {
+	private async _resolveNodeInput(nodeDef: NodeDefinition, context: IAsyncContext<TContext>): Promise<any> {
 		if (nodeDef.inputs) {
-			if (typeof nodeDef.inputs === 'string') return await context.get(nodeDef.inputs as any)
+			if (typeof nodeDef.inputs === 'string') {
+				const key = nodeDef.inputs
+				if (key.startsWith('_')) return await context.get(key as any)
+				const outputKey = `_outputs.${key}`
+				if (await context.has(outputKey as any)) {
+					return await context.get(outputKey as any)
+				}
+				return await context.get(key as any)
+			}
 			if (typeof nodeDef.inputs === 'object') {
 				const input: Record<string, any> = {}
 				for (const key in nodeDef.inputs) {
 					const contextKey = nodeDef.inputs[key]
-					input[key] = await context.get(contextKey as any)
+					if (contextKey.startsWith('_')) {
+						input[key] = await context.get(contextKey as any)
+					} else {
+						const outputKey = `_outputs.${contextKey}`
+						if (await context.has(outputKey as any)) {
+							input[key] = await context.get(outputKey as any)
+						} else {
+							input[key] = await context.get(contextKey as any)
+						}
+					}
 				}
 				return input
 			}
 		}
-		if (allPredecessors) {
-			const predecessors = allPredecessors.get(nodeDef.id)
-			if (predecessors && predecessors.size === 1) {
-				const singlePredecessorId = predecessors.values().next().value
-				return await context.get(singlePredecessorId as any)
-			}
-		}
-		return undefined
+		// Default to standardized input key
+		const inputKey = `_inputs.${nodeDef.id}`
+		return await context.get(inputKey as any)
 	}
 
 	protected async _executeBuiltInNode(
@@ -517,9 +526,10 @@ export class FlowRuntime<TContext extends Record<string, any>, TDependencies ext
 	): Promise<NodeResult<any, any>> {
 		const context = contextImpl.type === 'sync' ? new AsyncContextView(contextImpl) : contextImpl
 		const { params = {}, id, inputs } = nodeDef
+		const resolvedInput = await this._resolveNodeInput(nodeDef, context)
 		switch (nodeDef.uses) {
 			case 'batch-scatter': {
-				const inputArray = (await context.get(inputs as any)) || []
+				const inputArray = resolvedInput || []
 				if (!Array.isArray(inputArray))
 					throw new FlowcraftError(`Input for batch-scatter node '${id}' must be an array.`, {
 						nodeId: id,
@@ -534,8 +544,8 @@ export class FlowRuntime<TContext extends Record<string, any>, TDependencies ext
 				const workerIds = []
 				for (let i = currentIndex; i < endIndex; i++) {
 					const item = inputArray[i]
-					const itemInputKey = `${id}_${batchId}_item_${i}`
-					await context.set(itemInputKey, item)
+					const itemInputKey = `_batch.${id}_${batchId}_item_${i}`
+					await context.set(itemInputKey as any, item)
 					const workerId = `${params.workerUsesKey}_${batchId}_${i}`
 					workerIds.push(workerId)
 					dynamicNodes.push({
@@ -559,6 +569,7 @@ export class FlowRuntime<TContext extends Record<string, any>, TDependencies ext
 				const { gatherNodeId, outputKey } = params
 				const hasMore = (await context.get(`${gatherNodeId}_hasMore`)) || false
 				const dynamicNodes: NodeDefinition[] = []
+				let results: any[] = []
 				if (hasMore) {
 					// create a new scatter node for the next chunk
 					const newScatterId = `${gatherNodeId}_scatter_next`
@@ -571,20 +582,23 @@ export class FlowRuntime<TContext extends Record<string, any>, TDependencies ext
 				} else {
 					// collect results from all chunks into outputKey
 					const allWorkerIds = ((await context.get(`${gatherNodeId}_allWorkerIds`)) as string[]) || []
-					const results = []
+					results = []
 					for (const workerId of allWorkerIds) {
-						// the output of a node is stored with the node's ID as the key.
-						const result = await context.get(workerId)
+						// the output of a node is stored in the _outputs namespace.
+						const result = await context.get(`_outputs.${workerId}` as any)
 						if (result !== undefined) results.push(result)
 					}
 					await context.set(outputKey as any, results)
 				}
-				return { dynamicNodes, output: {} }
+				return { dynamicNodes, output: results }
 			}
 			case 'loop-controller': {
 				const contextData = await context.toJSON()
 				const shouldContinue = !!this.evaluator.evaluate(params.condition, contextData)
-				return { action: shouldContinue ? 'continue' : 'break' }
+				return {
+					action: shouldContinue ? 'continue' : 'break',
+					output: shouldContinue ? undefined : await context.get('_inputs.loop-controller'),
+				}
 			}
 			case 'subflow': {
 				const { blueprintId, inputs: inputMapping, outputs: outputMapping } = params
@@ -607,8 +621,15 @@ export class FlowRuntime<TContext extends Record<string, any>, TDependencies ext
 
 				if (inputMapping) {
 					for (const [targetKey, sourceKey] of Object.entries(inputMapping)) {
-						if (await context.has(sourceKey as any)) {
-							subflowInitialContext[targetKey] = await context.get(sourceKey as any)
+						const sourceKeyStr = String(sourceKey)
+						let actualKey = sourceKeyStr
+						if (!sourceKeyStr.startsWith('_')) {
+							actualKey = `_outputs.${sourceKeyStr}`
+						}
+						if (await context.has(actualKey as any)) {
+							subflowInitialContext[targetKey] = await context.get(actualKey as any)
+						} else if (await context.has(sourceKeyStr as any)) {
+							subflowInitialContext[targetKey] = await context.get(sourceKeyStr as any)
 						}
 					}
 				}
@@ -640,8 +661,15 @@ export class FlowRuntime<TContext extends Record<string, any>, TDependencies ext
 				if (outputMapping) {
 					for (const [parentKey, subKey] of Object.entries(outputMapping)) {
 						const subflowFinalContext = subflowResult.context as Record<string, any>
-						if (Object.hasOwn(subflowFinalContext, subKey as string)) {
-							await context.set(parentKey as any, subflowFinalContext[subKey as string])
+						const subKeyStr = String(subKey)
+						let actualSubKey = subKeyStr
+						if (!subKeyStr.startsWith('_')) {
+							actualSubKey = `_outputs.${subKeyStr}`
+						}
+						if (Object.hasOwn(subflowFinalContext, actualSubKey)) {
+							await context.set(parentKey as any, subflowFinalContext[actualSubKey])
+						} else if (Object.hasOwn(subflowFinalContext, subKeyStr)) {
+							await context.set(parentKey as any, subflowFinalContext[subKeyStr])
 						}
 					}
 				}

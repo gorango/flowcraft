@@ -53,7 +53,7 @@ describe('FlowRuntime', () => {
 			toJSON: vi.fn().mockReturnValue({}),
 		} as any
 		await runtime.applyEdgeTransform(edge, sourceResult, targetNode, context)
-		expect(context.set).toHaveBeenCalledWith('B_input', 10)
+		expect(context.set).toHaveBeenCalledWith('_inputs.B', 10)
 	})
 
 	it('should handle built-in nodes', async () => {
@@ -68,6 +68,7 @@ describe('FlowRuntime', () => {
 			type: 'sync',
 			get: vi.fn().mockResolvedValue(['item1']),
 			set: vi.fn(),
+			has: vi.fn().mockReturnValue(false),
 		} as any
 		const result = await (runtime as any)._executeBuiltInNode(nodeDef, context)
 		expect(result.dynamicNodes).toBeDefined()

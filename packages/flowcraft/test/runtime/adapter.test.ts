@@ -130,7 +130,7 @@ describe('BaseDistributedAdapter', () => {
 			await jobHandler(job)
 
 			expect(mockRuntime.executeNode).toHaveBeenCalledWith(linearBlueprint, 'A', expect.any(Object))
-			expect(mockContext.set).toHaveBeenCalledWith('A', 'Result from A')
+			expect(mockContext.set).toHaveBeenCalledWith('_outputs.A', 'Result from A')
 			expect(adapter.enqueueJob).toHaveBeenCalledWith({
 				runId: 'run1',
 				blueprintId: 'linear',
@@ -155,7 +155,7 @@ describe('BaseDistributedAdapter', () => {
 			await jobHandler(job)
 
 			expect(mockRuntime.executeNode).toHaveBeenCalledWith(linearBlueprint, 'B', expect.any(Object))
-			expect(mockContext.set).toHaveBeenCalledWith('B', 'Final Result')
+			expect(mockContext.set).toHaveBeenCalledWith('_outputs.B', 'Final Result')
 			expect(adapter.enqueueJob).not.toHaveBeenCalled()
 			expect(adapter.publishFinalResult).toHaveBeenCalledWith(
 				'run1',
@@ -185,7 +185,7 @@ describe('BaseDistributedAdapter', () => {
 
 			await jobHandler(job)
 
-			expect(mockContext.set).toHaveBeenCalledWith('A', 'end of branch')
+			expect(mockContext.set).toHaveBeenCalledWith('_outputs.A', 'end of branch')
 			expect(adapter.enqueueJob).not.toHaveBeenCalled()
 			expect(adapter.publishFinalResult).toHaveBeenCalledWith(
 				'run1',

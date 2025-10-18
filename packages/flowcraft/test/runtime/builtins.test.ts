@@ -21,7 +21,7 @@ describe('Built-In Nodes', () => {
 				],
 			}))
 			flow.node('verify', async (ctx) => {
-				const results = await ctx.context.get('results')
+				const results = ctx.input
 				expect(results).toHaveLength(3)
 				expect(results).toEqual(['processed_1_item1', 'processed_2_item2', 'processed_3_item3'])
 				return { output: 'verified' }
@@ -36,8 +36,12 @@ describe('Built-In Nodes', () => {
 			const runtime = new FlowRuntime({})
 			const result = await runtime.run(flow.toBlueprint(), {}, { functionRegistry: flow.getFunctionRegistry() })
 
+			if (result.status !== 'completed') {
+				console.log('Errors:', result.errors)
+			}
+			console.log('Final context:', result.context)
 			expect(result.status).toBe('completed')
-			expect(result.context.verify).toBe('verified')
+			expect(result.context['_outputs.verify']).toBe('verified')
 			expect(workerExecutionCount).toBe(3)
 		})
 
@@ -48,7 +52,7 @@ describe('Built-In Nodes', () => {
 			const flow = createFlow('empty-batch-test')
 			flow.node('prepare', async () => ({ output: [] }))
 			flow.node('verify', async (ctx) => {
-				const results = await ctx.context.get('results')
+				const results = ctx.input
 				expect(results).toEqual([])
 				return { output: 'verified' }
 			})
@@ -63,7 +67,7 @@ describe('Built-In Nodes', () => {
 			const result = await runtime.run(flow.toBlueprint(), {}, { functionRegistry: flow.getFunctionRegistry() })
 
 			expect(result.status).toBe('completed')
-			expect(result.context.verify).toBe('verified')
+			expect(result.context['_outputs.verify']).toBe('verified')
 		})
 
 		it('should handle worker failures in batch', async () => {
@@ -138,7 +142,7 @@ describe('Built-In Nodes', () => {
 			const result = await runtime.run(flow.toBlueprint(), {}, { functionRegistry: flow.getFunctionRegistry() })
 
 			expect(result.status).toBe('completed')
-			expect(result.context.final).toBe('final')
+			expect(result.context['_outputs.final']).toBe('final')
 			expect(executionCount).toBe(3)
 		})
 
@@ -204,7 +208,7 @@ describe('Built-In Nodes', () => {
 			const result = await runtime.run(blueprint, {}, { functionRegistry: combinedRegistry })
 
 			expect(result.status).toBe('completed')
-			expect(result.context.output).toBe('main_complete')
+			expect(result.context['_outputs.output']).toBe('main_complete')
 		})
 
 		it('should handle subflow errors and propagate them', async () => {

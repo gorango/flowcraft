@@ -14,7 +14,7 @@ export class WorkflowState<TContext extends Record<string, any>> {
 
 	addCompletedNode(nodeId: string, output: any) {
 		this._completedNodes.add(nodeId)
-		this.context.set(nodeId, output)
+		this.context.set(`_outputs.${nodeId}` as any, output)
 	}
 
 	addError(nodeId: string, error: Error) {
