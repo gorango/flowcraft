@@ -105,7 +105,7 @@ describe('Built-In Nodes', () => {
 
 			expect(result.status).toBe('failed')
 			expect(result.errors?.length).toBeGreaterThan(0)
-			expect(result.errors?.[0]?.message).toContain('failed execution')
+			expect(result.errors?.[0]?.message).toContain('execution failed')
 			expect(workerExecutionCount).toBe(2)
 		})
 	})

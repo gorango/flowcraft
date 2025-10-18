@@ -375,40 +375,6 @@ export class FlowRuntime<TContext extends Record<string, any>, TDependencies ext
 		const input = await this._resolveNodeInput(nodeDef, asyncContext)
 		const strategy = this.getExecutor(nodeDef, functionRegistry)
 
-		const fallbackExecutor = async (fallbackNodeId: string): Promise<NodeResult<any, any>> => {
-			const fallbackNode = blueprint.nodes.find((n: NodeDefinition) => n.id === fallbackNodeId)
-			if (!fallbackNode) {
-				throw new FlowcraftError(`Fallback node '${fallbackNodeId}' not found in blueprint.`, {
-					nodeId: nodeDef.id,
-					blueprintId: blueprint.id,
-					executionId,
-					isFatal: false,
-				})
-			}
-			const fallbackStrategy = this.getExecutor(fallbackNode, functionRegistry)
-			const fallbackExecutorInstance = new NodeExecutor<TContext, TDependencies>({
-				blueprint,
-				nodeDef: fallbackNode,
-				state,
-				dependencies: this.dependencies,
-				logger: this.logger,
-				eventBus: this.eventBus,
-				middleware: this.middleware,
-				strategy: fallbackStrategy,
-				executionId,
-				signal,
-			})
-			const fallbackResult = await fallbackExecutorInstance.execute(input)
-			state.markFallbackExecuted()
-			state.addCompletedNode(fallbackNodeId, fallbackResult.output)
-			this.logger.info(`Fallback execution completed`, {
-				nodeId: nodeDef.id,
-				fallbackNodeId,
-				executionId,
-			})
-			return fallbackResult
-		}
-
 		const executor = new NodeExecutor<TContext, TDependencies>({
 			blueprint,
 			nodeDef,
@@ -420,10 +386,56 @@ export class FlowRuntime<TContext extends Record<string, any>, TDependencies ext
 			strategy,
 			executionId,
 			signal,
-			fallbackExecutor,
 		})
 
-		return executor.execute(input)
+		const executionResult = await executor.execute(input)
+
+		if (executionResult.status === 'success') {
+			return executionResult.result
+		}
+
+		if (executionResult.status === 'failed_with_fallback') {
+			const fallbackNode = blueprint.nodes.find((n: NodeDefinition) => n.id === executionResult.fallbackNodeId)
+			if (!fallbackNode) {
+				throw new FlowcraftError(`Fallback node '${executionResult.fallbackNodeId}' not found in blueprint.`, {
+					nodeId: nodeDef.id,
+					blueprintId: blueprint.id,
+					executionId,
+					isFatal: false,
+				})
+			}
+
+			const fallbackInput = await this._resolveNodeInput(fallbackNode, asyncContext)
+			const fallbackStrategy = this.getExecutor(fallbackNode, functionRegistry)
+			const fallbackExecutor = new NodeExecutor<TContext, TDependencies>({
+				blueprint,
+				nodeDef: fallbackNode,
+				state,
+				dependencies: this.dependencies,
+				logger: this.logger,
+				eventBus: this.eventBus,
+				middleware: this.middleware,
+				strategy: fallbackStrategy,
+				executionId,
+				signal,
+			})
+
+			const fallbackResult = await fallbackExecutor.execute(fallbackInput)
+			if (fallbackResult.status === 'success') {
+				state.markFallbackExecuted()
+				state.addCompletedNode(executionResult.fallbackNodeId, fallbackResult.result.output)
+				this.logger.info(`Fallback execution completed`, {
+					nodeId: nodeDef.id,
+					fallbackNodeId: executionResult.fallbackNodeId,
+					executionId,
+				})
+				return { ...fallbackResult.result, _fallbackExecuted: true }
+			}
+
+			throw fallbackResult.error
+		}
+
+		throw executionResult.error
 	}
 
 	private getExecutor(nodeDef: NodeDefinition, functionRegistry?: Map<string, any>): ExecutionStrategy {
