@@ -150,7 +150,7 @@ export abstract class BaseDistributedAdapter {
 				const allTerminalNodesCompleted = analysis.terminalNodeIds.every((terminalId) => completedNodes.has(terminalId))
 
 				if (allTerminalNodesCompleted) {
-					console.log(`[Adapter] ✅ All terminal nodes completed for Run ID: ${runId}. Declaring workflow complete.`)
+					console.log(`[Adapter] All terminal nodes completed for Run ID: ${runId}. Declaring workflow complete.`)
 					const finalContext = await context.toJSON()
 					const finalResult: WorkflowResult = {
 						context: finalContext,

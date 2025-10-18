@@ -30,9 +30,10 @@ import type {
 import type { DynamicKeys } from './builtin-keys'
 import type { ExecutionStrategy } from './executors'
 import { BuiltInNodeExecutor, ClassNodeExecutor, FunctionNodeExecutor, NodeExecutor } from './executors'
+import { RunToCompletionOrchestrator } from './orchestrator'
 import { WorkflowState } from './state'
 import { GraphTraverser } from './traverser'
-import type { IRuntime } from './types'
+import type { ExecutionServices, IOrchestrator, IRuntime } from './types'
 
 type InternalFlowContext<TContext extends Record<string, any>> = TContext & Partial<DynamicKeys>
 
@@ -109,20 +110,54 @@ export class FlowRuntime<TContext extends Record<string, any>, TDependencies ext
 				})
 			}
 			const traverser = new GraphTraverser(blueprint, options?.strict === true)
-			await this.orchestrateExecution(
+			const nodeExecutorFactory = (dynamicBlueprint: WorkflowBlueprint) => (nodeId: string) => {
+				const nodeDef = dynamicBlueprint.nodes.find((n) => n.id === nodeId)
+				if (!nodeDef) {
+					throw new FlowcraftError(`Node '${nodeId}' not found in blueprint.`, {
+						nodeId,
+						blueprintId: dynamicBlueprint.id,
+						executionId,
+						isFatal: false,
+					})
+				}
+				return new NodeExecutor<TContext, TDependencies>({
+					blueprint: dynamicBlueprint,
+					nodeDef,
+					state,
+					dependencies: this.dependencies,
+					logger: this.logger,
+					eventBus: this.eventBus,
+					middleware: this.middleware,
+					strategy: this.getExecutor(nodeDef, options?.functionRegistry),
+					executionId,
+					signal: options?.signal,
+				})
+			}
+			const executionServices: ExecutionServices = {
+				determineNextNodes: this.determineNextNodes.bind(this),
+				applyEdgeTransform: this.applyEdgeTransform.bind(this),
+				resolveNodeInput: (nodeId: string, blueprint: WorkflowBlueprint, context: any) => {
+					const nodeDef = blueprint.nodes.find((n) => n.id === nodeId)
+					if (!nodeDef) return Promise.resolve(undefined)
+					return this._resolveNodeInput(nodeDef, context)
+				},
+			}
+			const orchestrator: IOrchestrator = new RunToCompletionOrchestrator()
+			const result = await orchestrator.run(
 				traverser,
-				blueprint,
+				nodeExecutorFactory,
 				state,
+				executionServices,
+				blueprint,
 				options?.functionRegistry,
 				executionId,
+				this.evaluator,
 				options?.signal,
 				options?.concurrency,
 			)
-			const status = state.getStatus(traverser.getAllNodeIds(), traverser.getFallbackNodeIds())
-			const result = state.toResult(this.serializer)
-			result.status = status
+
 			const duration = Date.now() - startTime
-			if (status === 'stalled') {
+			if (result.status === 'stalled') {
 				await this.eventBus.emit({
 					type: 'workflow:stall',
 					payload: {
@@ -136,7 +171,7 @@ export class FlowRuntime<TContext extends Record<string, any>, TDependencies ext
 			this.logger.info(`Workflow execution completed`, {
 				blueprintId: blueprint.id,
 				executionId,
-				status,
+				status: result.status,
 				duration,
 				errors: result.errors?.length || 0,
 			})
@@ -145,7 +180,7 @@ export class FlowRuntime<TContext extends Record<string, any>, TDependencies ext
 				payload: {
 					blueprintId: blueprint.id,
 					executionId,
-					status,
+					status: result.status,
 					errors: result.errors,
 				},
 			})
@@ -201,150 +236,6 @@ export class FlowRuntime<TContext extends Record<string, any>, TDependencies ext
 			})
 			throw error
 		}
-	}
-
-	private async orchestrateExecution(
-		traverser: GraphTraverser,
-		_blueprint: WorkflowBlueprint,
-		state: WorkflowState<TContext>,
-		functionRegistry: Map<string, any> | undefined,
-		executionId: string,
-		signal?: AbortSignal,
-		concurrency?: number,
-	): Promise<void> {
-		if (concurrency === undefined) {
-			const hardwareConcurrency = globalThis.navigator?.hardwareConcurrency || 4
-			concurrency = Math.min(hardwareConcurrency, 10)
-		}
-
-		try {
-			signal?.throwIfAborted()
-		} catch (error) {
-			if (error instanceof DOMException && error.name === 'AbortError') {
-				throw new FlowcraftError('Workflow cancelled', { isFatal: false })
-			}
-			throw error
-		}
-
-		let iterations = 0
-		const maxIterations = 10000
-
-		while (traverser.hasMoreWork()) {
-			if (++iterations > maxIterations) {
-				throw new Error('Traversal exceeded maximum iterations, possible infinite loop')
-			}
-
-			try {
-				signal?.throwIfAborted()
-			} catch (error) {
-				if (error instanceof DOMException && error.name === 'AbortError') {
-					throw new FlowcraftError('Workflow cancelled', { isFatal: false })
-				}
-				throw error
-			}
-
-			const readyNodes = traverser.getReadyNodes()
-			const settledResults = await this.executeNodesWithConcurrency(
-				readyNodes,
-				traverser.getDynamicBlueprint(),
-				state,
-				functionRegistry,
-				executionId,
-				signal,
-				concurrency,
-			)
-
-			for (const promiseResult of settledResults) {
-				if (promiseResult.status === 'rejected') {
-					const { nodeId, error } = promiseResult.reason
-					if (error instanceof FlowcraftError && error.message.includes('cancelled')) {
-						throw error
-					}
-					state.addError(nodeId, error as Error)
-					continue
-				}
-
-				const { nodeId, result } = promiseResult.value
-				state.addCompletedNode(nodeId, result.output)
-				if (result._fallbackExecuted) {
-					state.markFallbackExecuted()
-				}
-
-				if (!result._fallbackExecuted) {
-					const matched = await this.determineNextNodes(
-						traverser.getDynamicBlueprint(),
-						nodeId,
-						result,
-						state.getContext(),
-						executionId,
-					)
-
-					const loopControllerMatch = matched.find((m) => m.node.uses === 'loop-controller')
-					const finalMatched = loopControllerMatch ? [loopControllerMatch] : matched
-
-					for (const { node, edge } of finalMatched) {
-						await this.applyEdgeTransform(edge, result, node, state.getContext(), traverser.getAllPredecessors())
-					}
-
-					traverser.markNodeCompleted(
-						nodeId,
-						result,
-						finalMatched.map((m) => m.node),
-					)
-				}
-			}
-		}
-	}
-
-	private async executeNodesWithConcurrency(
-		readyNodes: Array<{ nodeId: string; nodeDef: NodeDefinition }>,
-		blueprint: WorkflowBlueprint,
-		state: WorkflowState<TContext>,
-		functionRegistry: Map<string, any> | undefined,
-		executionId: string,
-		signal?: AbortSignal,
-		maxConcurrency?: number,
-	): Promise<
-		Array<
-			| { status: 'fulfilled'; value: { nodeId: string; result: NodeResult<any, any> } }
-			| { status: 'rejected'; reason: { nodeId: string; error: unknown } }
-		>
-	> {
-		const concurrency = maxConcurrency || readyNodes.length
-		const results: Array<
-			| { status: 'fulfilled'; value: { nodeId: string; result: NodeResult<any, any> } }
-			| { status: 'rejected'; reason: { nodeId: string; error: unknown } }
-		> = []
-
-		for (let i = 0; i < readyNodes.length; i += concurrency) {
-			const batch = readyNodes.slice(i, i + concurrency)
-			const batchPromises = batch.map(async ({ nodeId }) => {
-				try {
-					const result = await this.executeNode(
-						blueprint,
-						nodeId,
-						state,
-						undefined,
-						functionRegistry,
-						executionId,
-						signal,
-					)
-					results.push({
-						status: 'fulfilled' as const,
-						value: { nodeId, result },
-					})
-				} catch (error) {
-					results.push({
-						status: 'rejected' as const,
-						reason: { nodeId, error },
-					})
-				}
-			})
-
-			await Promise.all(batchPromises)
-		}
-
-		return results
 	}
 
 	async executeNode(

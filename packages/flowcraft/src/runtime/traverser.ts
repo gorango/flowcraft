@@ -148,4 +148,13 @@ export class GraphTraverser {
 	getAllPredecessors(): Map<string, Set<string>> {
 		return this.allPredecessors
 	}
+
+	addDynamicNode(_nodeId: string, dynamicNode: NodeDefinition, predecessorId: string, gatherNodeId?: string): void {
+		this.dynamicBlueprint.nodes.push(dynamicNode)
+		this.allPredecessors.set(dynamicNode.id, new Set([predecessorId]))
+		if (gatherNodeId) {
+			this.allPredecessors.get(gatherNodeId)?.add(dynamicNode.id)
+		}
+		this.frontier.add(dynamicNode.id)
+	}
 }

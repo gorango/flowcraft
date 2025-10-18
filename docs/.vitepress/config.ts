@@ -85,6 +85,7 @@ export default defineConfig({
 						{ text: 'Evaluators', link: '/guide/evaluators' },
 						{ text: 'Serializers', link: '/guide/serializers' },
 						{ text: 'Middleware', link: '/guide/middleware' },
+						{ text: 'Orchestrators', link: '/guide/orchestrators' },
 						{
 							text: 'Distributed Execution',
 							link: '/guide/distributed-execution',
@@ -134,6 +135,7 @@ export default defineConfig({
 						{ text: 'Overview', link: '/api/' },
 						{ text: 'Flow', link: '/api/flow' },
 						{ text: 'Runtime', link: '/api/runtime' },
+						{ text: 'Orchestrators', link: '/api/orchestrators' },
 						{ text: 'Nodes and Edges', link: '/api/nodes-and-edges' },
 						{ text: 'Context', link: '/api/context' },
 						{ text: 'Analysis', link: '/api/analysis' },
