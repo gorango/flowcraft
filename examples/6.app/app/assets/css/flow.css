@@ -1,0 +1,78 @@
+@reference "./tailwind.css";
+
+:root {
+	--vf-node-bg: var(--color-muted);
+	--vf-node-text: var(--color-muted-foreground);
+	--vf-connection-path: var(--color-muted-foreground);
+	--vf-handle: var(--color-muted-foreground);
+}
+
+/* Handles */
+
+.vue-flow__handle {
+	width: 0.5rem;
+	height: 0.5rem;
+	background: var(--color-muted-foreground);
+	border: 1px solid var(--color-border);
+	border-radius: 100%;
+}
+
+/* Nodes */
+
+.vue-flow__node {
+	border-radius: var(--radius-lg);
+	border: 1px solid var(--color-border);
+	transition: box-shadow 0.1s ease-in-out;
+}
+
+.vue-flow__node.selected,
+.vue-flow__node.selected:hover {
+	@apply ring-ring/50 ring-[3px];
+}
+
+.vue-flow__node.selected,
+.vue-flow__node:focus,
+.vue-flow__node:focus-visible {
+	@apply ring-ring/50 ring-[3px];
+}
+
+.vue-flow__node.selectable:hover:not(.selected) {
+	@apply ring-ring/50 ring-[1.5px];
+}
+
+/* Connections */
+
+.vue-flow__connection-path {
+	stroke: var(--vf-connection-path);
+}
+
+.vue-flow__edge-text {
+	font-size: 10px;
+}
+
+.vue-flow__edge-textbg {
+	fill: var(--color-muted);
+}
+
+.vue-flow__edge.updating .vue-flow__edge-path {
+	stroke: var(--color-muted-foreground);
+}
+
+/* Selection */
+
+.vue-flow__node.selectable:focus,
+.vue-flow__node.selectable:focus-visible {
+	outline: none;
+}
+.vue-flow__nodesselection-rect,
+.vue-flow__selection {
+	background: --alpha(var(--color-foreground) / 10%);
+	border: 1px dashed var(--color-foreground);
+}
+
+.vue-flow__nodesselection-rect:focus,
+.vue-flow__nodesselection-rect:focus-visible,
+.vue-flow__selection:focus,
+.vue-flow__selection:focus-visible {
+	outline: none;
+}

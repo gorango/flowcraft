@@ -1,0 +1,35 @@
+export default defineNuxtConfig({
+	compatibilityDate: '2025-07-15',
+	devtools: { enabled: true },
+	css: [
+		'~/assets/css/tailwind.css',
+		'~/assets/css/flow.css',
+		'@vue-flow/core/dist/style.css',
+	],
+
+	modules: [
+		'@nuxtjs/tailwindcss',
+		'shadcn-nuxt',
+		'@vueuse/nuxt',
+		'@nuxtjs/color-mode',
+		'@nuxt/fonts',
+		'@nuxt/icon',
+	],
+
+	colorMode: {
+		preference: 'system',
+		fallback: 'dark',
+		hid: 'color-mode-script',
+		globalName: '__COLOR_MODE__',
+		classPrefix: '',
+		classSuffix: '',
+		storage: 'localStorage',
+		storageKey: 'color-mode',
+	},
+
+	shadcn: {
+		prefix: '',
+		componentDir: './app/components/ui',
+	},
+})
+
