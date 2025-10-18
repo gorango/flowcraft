@@ -1,27 +1,18 @@
 import { analyzeBlueprint } from '../analysis'
-import { FlowcraftError } from '../errors'
-import type { NodeResult, WorkflowBlueprint } from '../types'
-import type { WorkflowState } from './state'
-import type { IRuntime } from './types'
+import type { NodeDefinition, NodeResult, WorkflowBlueprint } from '../types'
 
-export class GraphTraverser<TContext extends Record<string, any>, TDependencies extends Record<string, any>> {
+export interface ReadyNode {
+	nodeId: string
+	nodeDef: NodeDefinition
+}
+
+export class GraphTraverser {
 	private frontier = new Set<string>()
 	private allPredecessors: Map<string, Set<string>>
 	private dynamicBlueprint: WorkflowBlueprint
+	private completedNodes = new Set<string>()
 
-	constructor(
-		blueprint: WorkflowBlueprint,
-		private runtime: IRuntime<TContext, TDependencies>,
-		private state: WorkflowState<TContext>,
-		private functionRegistry: Map<string, any> | undefined,
-		private executionId: string,
-		private signal?: AbortSignal,
-		private concurrency?: number,
-	) {
-		if (this.concurrency === undefined) {
-			const hardwareConcurrency = globalThis.navigator?.hardwareConcurrency || 4
-			this.concurrency = Math.min(hardwareConcurrency, 10)
-		}
+	constructor(blueprint: WorkflowBlueprint, isStrictMode: boolean = false) {
 		this.dynamicBlueprint = structuredClone(blueprint) as WorkflowBlueprint
 		this.allPredecessors = new Map<string, Set<string>>()
 		for (const node of this.dynamicBlueprint.nodes) {
@@ -32,12 +23,11 @@ export class GraphTraverser<TContext extends Record<string, any>, TDependencies 
 		}
 		const analysis = analyzeBlueprint(blueprint)
 		this.frontier = new Set(analysis.startNodeIds.filter((id) => !this.isFallbackNode(id)))
-		if (this.frontier.size === 0 && analysis.cycles.length > 0 && this.runtime.options.strict !== true) {
+		if (this.frontier.size === 0 && analysis.cycles.length > 0 && !isStrictMode) {
 			const uniqueStartNodes = new Set<string>()
 			const cycleEntryPoints = new Set(blueprint.metadata?.cycleEntryPoints || [])
 			for (const cycle of analysis.cycles) {
 				if (cycle.length > 0) {
-					// prefer entry points if specified, otherwise use the first node
 					const entryPoint = cycle.find((node) => cycleEntryPoints.has(node))
 					uniqueStartNodes.add(entryPoint || cycle[0])
 				}
@@ -71,156 +61,66 @@ export class GraphTraverser<TContext extends Record<string, any>, TDependencies 
 		return baseJoinStrategy
 	}
 
-	async traverse(): Promise<void> {
-		try {
-			this.signal?.throwIfAborted()
-		} catch (error) {
-			if (error instanceof DOMException && error.name === 'AbortError')
-				throw new FlowcraftError('Workflow cancelled', {
-					isFatal: false,
-				})
-			throw error
-		}
-		let iterations = 0
-		const maxIterations = 10000
-		while (this.frontier.size > 0) {
-			if (++iterations > maxIterations) throw new Error('Traversal exceeded maximum iterations, possible infinite loop')
-
-			try {
-				this.signal?.throwIfAborted()
-				const currentJobs = Array.from(this.frontier)
-				this.frontier.clear()
-				const settledResults = await this.executeWithConcurrency(currentJobs)
-				const completedThisTurn = new Set<string>()
-				for (const promiseResult of settledResults) {
-					if (promiseResult.status === 'rejected') {
-						const { nodeId, error } = promiseResult.reason
-						if (error instanceof FlowcraftError && error.message.includes('cancelled')) throw error
-						this.state.addError(nodeId, error as Error)
-						continue
-					}
-					const { nodeId, result } = promiseResult.value
-					this.state.addCompletedNode(nodeId, result.output)
-					completedThisTurn.add(nodeId)
-					if (result._fallbackExecuted) this.state.markFallbackExecuted()
-					await this.handleDynamicNodes(nodeId, result)
-					if (!result._fallbackExecuted) {
-						const matched = await this.runtime.determineNextNodes(
-							this.dynamicBlueprint,
-							nodeId,
-							result,
-							this.state.getContext(),
-							this.executionId,
-						)
-
-						// if one of the next nodes is a loop controller, prioritize it to avoid ambiguity from manual cycle edges.
-						const loopControllerMatch = matched.find((m) => m.node.uses === 'loop-controller')
-						const finalMatched = loopControllerMatch ? [loopControllerMatch] : matched
-
-						for (const { node, edge } of finalMatched) {
-							const joinStrategy = this.getEffectiveJoinStrategy(node.id)
-							if (joinStrategy !== 'any' && this.state.getCompletedNodes().has(node.id)) continue
-							await this.runtime.applyEdgeTransform(edge, result, node, this.state.getContext(), this.allPredecessors)
-							const requiredPredecessors = this.allPredecessors.get(node.id)
-							if (!requiredPredecessors) continue
-							const isReady =
-								joinStrategy === 'any'
-									? [...requiredPredecessors].some((p) => completedThisTurn.has(p))
-									: [...requiredPredecessors].every((p) => this.state.getCompletedNodes().has(p))
-							if (isReady) this.frontier.add(node.id)
-						}
-						if (matched.length === 0) {
-							for (const [potentialNextId, predecessors] of this.allPredecessors) {
-								if (predecessors.has(nodeId) && !this.state.getCompletedNodes().has(potentialNextId)) {
-									const joinStrategy = this.getEffectiveJoinStrategy(potentialNextId)
-									const isReady =
-										joinStrategy === 'any'
-											? [...predecessors].some((p) => completedThisTurn.has(p))
-											: [...predecessors].every((p) => this.state.getCompletedNodes().has(p))
-									if (isReady) this.frontier.add(potentialNextId)
-								}
-							}
-						}
-					}
-				}
-			} catch (error) {
-				if (error instanceof DOMException && error.name === 'AbortError') {
-					throw new FlowcraftError('Workflow cancelled', {
-						isFatal: false,
-					})
-				}
-				throw error
+	getReadyNodes(): ReadyNode[] {
+		const readyNodes: ReadyNode[] = []
+		for (const nodeId of this.frontier) {
+			const nodeDef = this.dynamicBlueprint.nodes.find((n) => n.id === nodeId)
+			if (nodeDef) {
+				readyNodes.push({ nodeId, nodeDef })
 			}
 		}
+		this.frontier.clear()
+		return readyNodes
 	}
 
-	private async executeWithConcurrency(
-		nodeIds: string[],
-	): Promise<
-		Array<
-			| { status: 'fulfilled'; value: { nodeId: string; result: NodeResult<any, any> } }
-			| { status: 'rejected'; reason: { nodeId: string; error: unknown } }
-		>
-	> {
-		const maxConcurrency = this.concurrency || nodeIds.length
-		const results: Array<
-			| { status: 'fulfilled'; value: { nodeId: string; result: NodeResult<any, any> } }
-			| { status: 'rejected'; reason: { nodeId: string; error: unknown } }
-		> = []
-
-		for (let i = 0; i < nodeIds.length; i += maxConcurrency) {
-			const batch = nodeIds.slice(i, i + maxConcurrency)
-			const batchPromises = batch.map(async (nodeId) => {
-				try {
-					const result = await this.runtime.executeNode(
-						this.dynamicBlueprint,
-						nodeId,
-						this.state,
-						this.allPredecessors,
-						this.functionRegistry,
-						this.executionId,
-						this.signal,
-					)
-					results.push({
-						status: 'fulfilled' as const,
-						value: { nodeId, result },
-					})
-				} catch (error) {
-					results.push({
-						status: 'rejected' as const,
-						reason: { nodeId, error },
-					})
-				}
-			})
-
-			await Promise.all(batchPromises)
-		}
-
-		return results
+	hasMoreWork(): boolean {
+		return this.frontier.size > 0
 	}
 
-	private async handleDynamicNodes(nodeId: string, result: NodeResult<any, any>) {
+	markNodeCompleted(nodeId: string, result: NodeResult<any, any>, nextNodes: NodeDefinition[]): void {
+		this.completedNodes.add(nodeId)
+
 		if (result.dynamicNodes && result.dynamicNodes.length > 0) {
 			const gatherNodeId = result.output?.gatherNodeId
 			for (const dynamicNode of result.dynamicNodes) {
-				const implementation = this.functionRegistry?.get(dynamicNode.uses) || this.runtime.registry[dynamicNode.uses]
-				if (!implementation) {
-					throw new FlowcraftError(
-						`Implementation for '${dynamicNode.uses}' not found for dynamic node '${dynamicNode.id}' generated by node '${nodeId}'.`,
-						{
-							nodeId: dynamicNode.id,
-							blueprintId: this.dynamicBlueprint.id,
-							executionId: this.executionId,
-							isFatal: false,
-						},
-					)
-				}
 				this.dynamicBlueprint.nodes.push(dynamicNode)
 				this.allPredecessors.set(dynamicNode.id, new Set([nodeId]))
 				if (gatherNodeId) {
 					this.allPredecessors.get(gatherNodeId)?.add(dynamicNode.id)
 				}
 				this.frontier.add(dynamicNode.id)
+			}
+		}
+
+		for (const node of nextNodes) {
+			const joinStrategy = this.getEffectiveJoinStrategy(node.id)
+			if (joinStrategy !== 'any' && this.completedNodes.has(node.id)) continue
+
+			const requiredPredecessors = this.allPredecessors.get(node.id)
+			if (!requiredPredecessors) continue
+
+			const isReady =
+				joinStrategy === 'any'
+					? requiredPredecessors.has(nodeId)
+					: [...requiredPredecessors].every((p) => this.completedNodes.has(p))
+
+			if (isReady) {
+				this.frontier.add(node.id)
+			}
+		}
+
+		if (nextNodes.length === 0) {
+			for (const [potentialNextId, predecessors] of this.allPredecessors) {
+				if (predecessors.has(nodeId) && !this.completedNodes.has(potentialNextId)) {
+					const joinStrategy = this.getEffectiveJoinStrategy(potentialNextId)
+					const isReady =
+						joinStrategy === 'any'
+							? predecessors.has(nodeId)
+							: [...predecessors].every((p) => this.completedNodes.has(p))
+					if (isReady) {
+						this.frontier.add(potentialNextId)
+					}
+				}
 			}
 		}
 	}
@@ -237,7 +137,15 @@ export class GraphTraverser<TContext extends Record<string, any>, TDependencies 
 		return fallbackNodeIds
 	}
 
+	getCompletedNodes(): Set<string> {
+		return new Set(this.completedNodes)
+	}
+
 	getDynamicBlueprint(): WorkflowBlueprint {
 		return this.dynamicBlueprint
+	}
+
+	getAllPredecessors(): Map<string, Set<string>> {
+		return this.allPredecessors
 	}
 }

@@ -9,7 +9,6 @@ import type {
 } from '../types'
 import type { WorkflowState } from './state'
 
-/** Interface for the core runtime operations used by the traverser. */
 export interface IRuntime<
 	TContext extends Record<string, any> = Record<string, any>,
 	TDependencies extends RuntimeDependencies = RuntimeDependencies,

@@ -1,13 +1,20 @@
+import { AsyncContextView } from '../context'
 import { FlowcraftError } from '../errors'
 import type {
 	ContextImplementation,
+	IAsyncContext,
 	IEventBus,
+	ILogger,
+	ISyncContext,
+	Middleware,
 	NodeClass,
 	NodeContext,
 	NodeDefinition,
 	NodeFunction,
 	NodeResult,
+	WorkflowBlueprint,
 } from '../types'
+import type { WorkflowState } from './state'
 
 async function withRetries<T>(
 	executor: () => Promise<T>,
@@ -192,5 +199,186 @@ export class BuiltInNodeExecutor implements ExecutionStrategy {
 		context: NodeContext<Record<string, unknown>, Record<string, unknown>, any>,
 	): Promise<NodeResult<any, any>> {
 		return this.executeBuiltIn(nodeDef, context.context as ContextImplementation<any>)
+	}
+}
+
+export interface NodeExecutorConfig<TContext extends Record<string, any>, TDependencies extends Record<string, any>> {
+	blueprint: WorkflowBlueprint
+	nodeDef: NodeDefinition
+	state: WorkflowState<TContext>
+	dependencies: TDependencies
+	logger: ILogger
+	eventBus: IEventBus
+	middleware: Middleware[]
+	strategy: ExecutionStrategy
+	executionId?: string
+	signal?: AbortSignal
+	fallbackExecutor?: (fallbackNodeId: string) => Promise<NodeResult<any, any>>
+}
+
+export class NodeExecutor<TContext extends Record<string, any>, TDependencies extends Record<string, any>> {
+	private blueprint: WorkflowBlueprint
+	private nodeDef: NodeDefinition
+	private state: WorkflowState<TContext>
+	private dependencies: TDependencies
+	private logger: ILogger
+	private eventBus: IEventBus
+	private middleware: Middleware[]
+	private strategy: ExecutionStrategy
+	private executionId?: string
+	private signal?: AbortSignal
+	private fallbackExecutor?: (fallbackNodeId: string) => Promise<NodeResult<any, any>>
+
+	constructor(config: NodeExecutorConfig<TContext, TDependencies>) {
+		this.blueprint = config.blueprint
+		this.nodeDef = config.nodeDef
+		this.state = config.state
+		this.dependencies = config.dependencies
+		this.logger = config.logger
+		this.eventBus = config.eventBus
+		this.middleware = config.middleware
+		this.strategy = config.strategy
+		this.executionId = config.executionId
+		this.signal = config.signal
+		this.fallbackExecutor = config.fallbackExecutor
+	}
+
+	async execute(input: any): Promise<NodeResult<any, any>> {
+		const contextImpl = this.state.getContext()
+		const asyncContext: IAsyncContext<TContext> =
+			contextImpl.type === 'sync'
+				? new AsyncContextView(contextImpl as ISyncContext<TContext>)
+				: (contextImpl as IAsyncContext<TContext>)
+
+		const nodeContext: NodeContext<TContext, TDependencies, any> = {
+			context: asyncContext,
+			input,
+			params: this.nodeDef.params || {},
+			dependencies: { ...this.dependencies, logger: this.logger },
+			signal: this.signal,
+		}
+
+		const beforeHooks = this.middleware
+			.map((m) => m.beforeNode)
+			.filter((hook): hook is NonNullable<Middleware['beforeNode']> => !!hook)
+		const afterHooks = this.middleware
+			.map((m) => m.afterNode)
+			.filter((hook): hook is NonNullable<Middleware['afterNode']> => !!hook)
+		const aroundHooks = this.middleware
+			.map((m) => m.aroundNode)
+			.filter((hook): hook is NonNullable<Middleware['aroundNode']> => !!hook)
+
+		const coreExecution = async (): Promise<NodeResult> => {
+			let result: NodeResult | undefined
+			let error: Error | undefined
+			try {
+				for (const hook of beforeHooks) await hook(nodeContext.context, this.nodeDef.id)
+				result = await this.executeWithFallback(this.strategy, nodeContext)
+				return result
+			} catch (e: any) {
+				error = e
+				throw e
+			} finally {
+				for (const hook of afterHooks) await hook(nodeContext.context, this.nodeDef.id, result, error)
+			}
+		}
+
+		let executionChain: () => Promise<NodeResult> = coreExecution
+		for (let i = aroundHooks.length - 1; i >= 0; i--) {
+			const hook = aroundHooks[i]
+			const next = executionChain
+			executionChain = () => hook(nodeContext.context, this.nodeDef.id, next)
+		}
+
+		try {
+			await this.eventBus.emit({
+				type: 'node:start',
+				payload: {
+					nodeId: this.nodeDef.id,
+					executionId: this.executionId || '',
+					input: nodeContext.input,
+					blueprintId: this.blueprint.id,
+				},
+			})
+			const result = await executionChain()
+			await this.eventBus.emit({
+				type: 'node:finish',
+				payload: {
+					nodeId: this.nodeDef.id,
+					result,
+					executionId: this.executionId || '',
+					blueprintId: this.blueprint.id,
+				},
+			})
+			return result
+		} catch (error: any) {
+			await this.eventBus.emit({
+				type: 'node:error',
+				payload: {
+					nodeId: this.nodeDef.id,
+					error,
+					executionId: this.executionId || '',
+					blueprintId: this.blueprint.id,
+				},
+			})
+			if (error instanceof DOMException && error.name === 'AbortError') {
+				throw new FlowcraftError('Workflow cancelled', {
+					executionId: this.executionId,
+					isFatal: false,
+				})
+			}
+			throw error instanceof FlowcraftError && !error.isFatal
+				? error
+				: new FlowcraftError(`Node '${this.nodeDef.id}' failed execution.`, {
+						cause: error,
+						nodeId: this.nodeDef.id,
+						blueprintId: this.blueprint.id,
+						executionId: this.executionId,
+						isFatal: false,
+					})
+		}
+	}
+
+	private async executeWithFallback(
+		executor: ExecutionStrategy,
+		context: NodeContext<TContext, TDependencies, any>,
+	): Promise<NodeResult<any, any>> {
+		try {
+			return await executor.execute(this.nodeDef, context, this.executionId, this.signal)
+		} catch (error) {
+			const isFatal =
+				(error instanceof FlowcraftError && error.isFatal) ||
+				(error instanceof FlowcraftError &&
+					!error.isFatal &&
+					error.cause instanceof FlowcraftError &&
+					error.cause.isFatal)
+			if (isFatal) throw error
+			const fallbackNodeId = this.nodeDef.config?.fallback
+			if (fallbackNodeId && this.fallbackExecutor) {
+				this.logger.warn(`Executing fallback for node`, {
+					nodeId: this.nodeDef.id,
+					fallbackNodeId,
+					error: error instanceof Error ? error.message : String(error),
+					executionId: this.executionId,
+				})
+				await this.eventBus.emit({
+					type: 'node:fallback',
+					payload: {
+						nodeId: this.nodeDef.id,
+						executionId: this.executionId || '',
+						fallback: fallbackNodeId,
+						blueprintId: this.blueprint.id,
+					},
+				})
+				const fallbackResult = await this.fallbackExecutor(fallbackNodeId)
+				this.logger.info(`Fallback execution completed`, {
+					nodeId: this.nodeDef.id,
+					fallbackNodeId,
+					executionId: this.executionId,
+				})
+				return { ...fallbackResult, _fallbackExecuted: true }
+			}
+			throw error
+		}
 	}
 }
