@@ -8,7 +8,7 @@ Deciding how to structure nodes is crucial for workflow clarity and reusability.
 
 ### Guidelines
 - **Single Responsibility**: Each node should handle one primary task. For example, use separate nodes for data fetching, processing, and saving rather than combining them into a monolithic node.
-- **Avoid Overloading**: Large nodes that perform multiple unrelated operations can complicate debugging, testing, and error handling.
+- **Avoid Overloading**: Large nodes that perform multiple unrelated operations can complicate debugging, testing, and error handling. For testing strategies, see [Testing and Debugging](/guide/testing).
 - **Leverage Subflows**: For complex logic, break it into subflows (see [Subflows](/guide/subflows)) to create composable, reusable components.
 
 ### Example
@@ -132,4 +132,4 @@ For detailed setup, see [Official Adapters](/guide/adapters/).
 
 ## Conclusion
 
-Applying these best practices will help you build robust, efficient workflows. Experiment with examples (e.g., [Distributed Workflow Example](/examples/4b_declarative-distributed.md)) and use static analysis (see [Static Analysis](/guide/static-analysis)) to validate your designs. For more, explore [Error Handling](/guide/error-handling) and [Distributed Execution](/guide/distributed-execution.md).
+Applying these best practices will help you build robust, efficient workflows. Experiment with examples (e.g., [Distributed Workflow Example](/examples/4b_declarative-distributed.md)) and use static analysis (see [Static Analysis](/guide/static-analysis)) to validate your designs. For testing and debugging, see [Testing and Debugging](/guide/testing). For more, explore [Error Handling](/guide/error-handling) and [Distributed Execution](/guide/distributed-execution.md).

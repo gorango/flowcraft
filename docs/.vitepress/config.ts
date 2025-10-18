@@ -72,6 +72,7 @@ export default defineConfig({
 							text: 'Visualizing Workflows',
 							link: '/guide/visualizing-workflows',
 						},
+						{ text: 'Testing and Debugging', link: '/guide/testing' },
 						{ text: 'Error Handling', link: '/guide/error-handling' },
 						// { text: 'Best Practices', link: '/guide/best-practices' },
 					],

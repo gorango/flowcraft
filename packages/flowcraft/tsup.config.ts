@@ -1,8 +1,8 @@
 import { defineConfig } from 'tsup'
 
 export default defineConfig({
-	entry: ['src/**/*.ts', '!src/**/*.test.ts'],
-	entryPoints: ['src/index.ts'],
+	entry: ['src/**/*.ts'],
+	entryPoints: ['src/index.ts', 'src/testing/index.ts'],
 	format: ['esm'],
 	target: 'esnext',
 	dts: true,
