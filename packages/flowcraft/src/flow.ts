@@ -1,5 +1,5 @@
 import { isNodeClass } from './node'
-import type { EdgeDefinition, NodeClass, NodeDefinition, NodeFunction, WorkflowBlueprint } from './types'
+import type { EdgeDefinition, NodeClass, NodeDefinition, NodeFunction, UIGraph, WorkflowBlueprint } from './types'
 
 /**
  * Generates a deterministic hash for a function based on its source code.
@@ -29,6 +29,7 @@ export class Flow<
 		id: string
 		startNodeId: string
 		endNodeId: string
+		condition: string
 	}>
 	private cycleEntryPoints: Map<string, string>
 
@@ -156,7 +157,7 @@ export class Flow<
 
 		this.loopControllerIds.set(id, controllerId)
 
-		this.loopDefinitions.push({ id, startNodeId, endNodeId })
+		this.loopDefinitions.push({ id, startNodeId, endNodeId, condition })
 
 		// controller node: evaluates the loop condition
 		this.blueprint.nodes?.push({
@@ -226,6 +227,100 @@ export class Flow<
 
 	getFunctionRegistry() {
 		return this.functionRegistry
+	}
+
+	toGraphRepresentation(): UIGraph {
+		const blueprint = this.toBlueprint()
+		const uiNodes: UIGraph['nodes'] = []
+		const uiEdges: UIGraph['edges'] = []
+
+		const ignoredNodeIds = new Set<string>()
+
+		// replace loop-controllers with direct, cyclical edges
+		for (const loopDef of this.loopDefinitions) {
+			const controllerId = this.loopControllerIds.get(loopDef.id)
+			if (!controllerId) continue
+
+			ignoredNodeIds.add(controllerId)
+
+			// direct edge from the end of loop to start
+			uiEdges.push({
+				source: loopDef.endNodeId,
+				target: loopDef.startNodeId,
+				data: {
+					isLoopback: true,
+					condition: loopDef.condition,
+					label: `continue if: ${loopDef.condition}`,
+				},
+			})
+
+			// re-wire any 'break' edges
+			const breakEdges = blueprint.edges.filter((edge) => edge.source === controllerId && edge.action === 'break')
+			for (const breakEdge of breakEdges) {
+				uiEdges.push({
+					...breakEdge,
+					source: loopDef.endNodeId,
+				})
+			}
+		}
+
+		// replace scatter/gather pairs with a single representative "worker" node
+		const scatterNodes = blueprint.nodes.filter((n) => n.uses === 'batch-scatter')
+		for (const scatterNode of scatterNodes) {
+			const gatherNodeId = scatterNode.params?.gatherNodeId
+			if (!gatherNodeId) continue
+
+			ignoredNodeIds.add(scatterNode.id)
+			ignoredNodeIds.add(gatherNodeId)
+
+			// single node to represent parallel work
+			const batchId = scatterNode.id.replace('_scatter', '')
+			const gatherNode = blueprint.nodes.find((n) => n.id === gatherNodeId)
+
+			uiNodes.push({
+				id: batchId,
+				uses: scatterNode.params?.workerUsesKey,
+				type: 'batch-worker',
+				data: {
+					label: `Batch: ${batchId}`,
+					isBatchPlaceholder: true,
+					workerUsesKey: scatterNode.params?.workerUsesKey,
+					inputKey: scatterNode.inputs,
+					outputKey: gatherNode?.params?.outputKey,
+				},
+			})
+
+			// re-wire incoming edges
+			const incomingEdges = blueprint.edges.filter((e) => e.target === scatterNode.id)
+			for (const edge of incomingEdges) {
+				uiEdges.push({ ...edge, target: batchId })
+			}
+
+			// re-wire outgoing edges
+			const outgoingEdges = blueprint.edges.filter((e) => e.source === gatherNodeId)
+			for (const edge of outgoingEdges) {
+				uiEdges.push({ ...edge, source: batchId })
+			}
+		}
+
+		for (const node of blueprint.nodes) {
+			if (!ignoredNodeIds.has(node.id)) {
+				uiNodes.push(node)
+			}
+		}
+
+		for (const edge of blueprint.edges) {
+			if (!ignoredNodeIds.has(edge.source) && !ignoredNodeIds.has(edge.target)) {
+				const alreadyAdded = uiEdges.some(
+					(e) => e.source === edge.source && e.target === edge.target && e.action === edge.action,
+				)
+				if (!alreadyAdded) {
+					uiEdges.push(edge)
+				}
+			}
+		}
+
+		return { nodes: uiNodes, edges: uiEdges }
 	}
 }
 
