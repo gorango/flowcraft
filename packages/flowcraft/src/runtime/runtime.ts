@@ -511,6 +511,17 @@ export class FlowRuntime<TContext extends Record<string, any>, TDependencies ext
 						inputs: itemInputKey,
 					})
 				}
+
+				const parentBatchId = id.replace('_scatter', '')
+				await this.eventBus.emit({
+					type: 'batch:start',
+					payload: {
+						batchId: parentBatchId,
+						scatterNodeId: id,
+						workerNodeIds: workerIds,
+					},
+				})
+
 				// update current index for next chunk
 				await context.set(`${id}_currentIndex`, endIndex)
 				const gatherNodeId = params.gatherNodeId

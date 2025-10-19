@@ -211,6 +211,10 @@ export type FlowcraftEvent =
 	  }
 	| { type: 'edge:evaluate'; payload: { source: string; target: string; condition?: string; result: boolean } }
 	| { type: 'context:change'; payload: { sourceNode: string; key: string; value: any } }
+	| {
+			type: 'batch:start'
+			payload: { batchId: string; scatterNodeId: string; workerNodeIds: string[] }
+	  }
 
 /** Interface for a pluggable event bus. */
 export interface IEventBus {
@@ -251,4 +255,14 @@ export interface WorkflowResult<TContext = Record<string, any>> {
 	serializedContext: string
 	status: 'completed' | 'failed' | 'stalled' | 'cancelled'
 	errors?: WorkflowError[]
+}
+
+// =================================================================================
+// UI Graph Interface (For Visualization)
+// =================================================================================
+
+/** A graph representation of a workflow blueprint. */
+export interface UIGraph {
+	nodes: Array<Partial<NodeDefinition> & { id: string; data?: Record<string, any>; type?: string }>
+	edges: Array<Partial<EdgeDefinition> & { source: string; target: string; data?: Record<string, any> }>
 }

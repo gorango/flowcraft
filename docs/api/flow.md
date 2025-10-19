@@ -82,3 +82,26 @@ interface WorkflowBlueprint {
 Returns a `Map` containing the node implementations (`NodeFunction` or `NodeClass`) provided to the builder, keyed by a unique internal identifier. This registry is required by the [`FlowRuntime`](/api/runtime#flowruntime-class).
 
 -   **Returns**: `Map<string, NodeFunction | NodeClass>`
+
+### `.toGraphRepresentation()`
+
+Returns a [`UIGraph`](/api/flow#uigraph-interface) representation of the workflow, optimized for visualization. This method transforms the blueprint by:
+
+-   Replacing loop controllers with direct cyclical edges
+-   Replacing batch scatter/gather pairs with a single representative "batch-worker" node
+-   Preserving all other nodes and edges
+
+This is useful for UI rendering, debugging, or any scenario where a simplified graph view is needed.
+
+-   **Returns**: [`UIGraph`](/api/flow#uigraph-interface)
+
+#### `UIGraph` Interface
+
+A graph representation of a workflow blueprint for visualization purposes.
+
+```typescript
+interface UIGraph {
+  nodes: Array<Partial<NodeDefinition> & { id: string; data?: Record<string, any>; type?: string }>;
+  edges: Array<Partial<EdgeDefinition> & { source: string; target: string; data?: Record<string, any> }>;
+}
+```
