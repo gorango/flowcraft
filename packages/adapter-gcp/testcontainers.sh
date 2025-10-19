@@ -12,11 +12,11 @@ else
 fi
 
 # Pull Redis image
-docker pull redis:latest
+docker pull redis:8.2.2
 if [ $? -eq 0 ]; then
-	echo "Successfully pulled redis:latest"
+	echo "Successfully pulled redis:8.2.2"
 else
-	echo "Failed to pull redis:latest"
+	echo "Failed to pull redis:8.2.2"
 	exit 1
 fi
 

@@ -12,20 +12,20 @@ else
 fi
 
 # Pull PostgreSQL image
-docker pull postgres:latest
+docker pull postgres:18.0
 if [ $? -eq 0 ]; then
-	echo "Successfully pulled postgres:latest"
+	echo "Successfully pulled postgres:18.0"
 else
-	echo "Failed to pull postgres:latest"
+	echo "Failed to pull postgres:18.0"
 	exit 1
 fi
 
 # Pull Redis image
-docker pull redis:latest
+docker pull redis:8.2.2
 if [ $? -eq 0 ]; then
-	echo "Successfully pulled redis:latest"
+	echo "Successfully pulled redis:8.2.2"
 else
-	echo "Failed to pull redis:latest"
+	echo "Failed to pull redis:8.2.2"
 	exit 1
 fi
 
