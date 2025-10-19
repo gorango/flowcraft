@@ -19,7 +19,7 @@ The core pattern involves three components:
 
 ## Example: Content Moderation
 
-The **[Dynamic AI Agent example](/examples/4a_declarative-in-memory)** demonstrates this perfectly. The entire moderation logic is defined in [`400.json`](https://github.com/gorango/flowcraft/tree/master/examples/4.declarative-shared-logic/data/4.content-moderation/400.json).
+The **[Dynamic AI Agent example](/examples/declarative)** demonstrates this perfectly. The entire moderation logic is defined in [`400.json`](https://github.com/gorango/flowcraft/tree/master/examples/4.declarative/data/4.content-moderation/400.json).
 
 ```mermaid
 graph TD

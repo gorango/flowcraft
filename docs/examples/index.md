@@ -6,7 +6,7 @@ This page provides an overview of all Flowcraft examples, including summaries an
 
 You can clone the [Flowcraft repository](https://github.com/gorango/flowcraft/tree/master/examples) to run them all locally.
 
-## [Basic Workflow](/examples/1_basic)
+## [Basic Workflow](/examples/basic)
 
 A basic, linear workflow that creates a greeting message. It demonstrates defining a workflow with [`createFlow`](/api/flow#createflow-id), passing data between nodes, and executing with [`FlowRuntime`](/api/runtime#flowruntime-class).
 
@@ -16,7 +16,7 @@ flowchart TD
 	B --> C["create-greeting"]
 ```
 
-## [Parallel Batch Translation](/examples/2_translate)
+## [Parallel Batch Translation](/examples/translate)
 
 Demonstrates using Flowcraft's [`.batch()`](/api/flow#batch-tinput-toutput-taction-id-worker-options) helper to translate a document into multiple languages concurrently, showcasing performance improvements for I/O-bound tasks.
 
@@ -26,7 +26,7 @@ graph TD
     B --> C[Save Results];
 ```
 
-## [Research Agent](/examples/3_research)
+## [Research Agent](/examples/research)
 
 A simple research agent that searches the web and answers questions using conditional branching and [loops](/guide/loops).
 
@@ -37,7 +37,7 @@ graph TD
     B -->|"decide"| A
 ```
 
-## [Dynamic AI Workflows from JSON Files](/examples/4a_declarative-in-memory)
+## [Dynamic AI Workflows from JSON Files](/examples/declarative)
 
 An in-memory runtime engine for executing [declarative workflows](/guide/declarative-workflows) defined as JSON files, with support for parallelism, branching, and [subflows](/guide/subflows).
 
@@ -64,7 +64,7 @@ graph TD
     Registry -- "Maps string types to" --> Functions
 ```
 
-## [Distributed Dynamic Workflows](/examples/4b_declarative-distributed)
+## [Distributed Dynamic Workflows](/examples/distributed)
 
 Implements the previous example, but in a distributed environment using [BullMQ](/guide/adapters/bullmq), with client-worker separation and awaitable workflows.
 
@@ -95,7 +95,7 @@ graph TD
     State -- "7. Client reads final result" --> Client
 ```
 
-## [RAG Workflow for Document Analysis](/examples/5_rag)
+## [RAG Workflow for Document Analysis](/examples/rag)
 
 A sophisticated RAG agent that implements a custom [serializer](/guide/serializers), ingests documents, generates embeddings, performs vector searches, and synthesizes answers.
 

@@ -57,7 +57,7 @@ In distributed systems, context is serialized and transmitted between nodes or w
 - **Profile and Optimize**: Monitor context size in distributed setups to reduce serialization overhead.
 
 ### Example
-In a RAG workflow (see [RAG Agent Example](/examples/5_rag)):
+In a RAG workflow (see [RAG Agent Example](/examples/rag)):
 
 ```typescript
 // Poor: Large context
@@ -132,4 +132,4 @@ For detailed setup, see [Official Adapters](/guide/adapters/).
 
 ## Conclusion
 
-Applying these best practices will help you build robust, efficient workflows. Experiment with examples (e.g., [Distributed Workflow Example](/examples/4b_declarative-distributed.md)) and use static analysis (see [Static Analysis](/guide/static-analysis)) to validate your designs. For testing and debugging, see [Testing and Debugging](/guide/testing). For more, explore [Error Handling](/guide/error-handling) and [Distributed Execution](/guide/distributed-execution.md).
+Applying these best practices will help you build robust, efficient workflows. Experiment with examples (e.g., [Distributed Workflow Example](/examples/distributed.md)) and use static analysis (see [Static Analysis](/guide/static-analysis)) to validate your designs. For testing and debugging, see [Testing and Debugging](/guide/testing). For more, explore [Error Handling](/guide/error-handling) and [Distributed Execution](/guide/distributed-execution.md).
