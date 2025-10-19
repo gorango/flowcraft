@@ -122,4 +122,47 @@
 		font-family: "Geist Mono", system-ui, sans-serif;
 		min-height: 100dvh;
 	}
+
+	::-webkit-scrollbar {
+		width: 0.5rem;
+		height: 0.5rem;
+	}
+
+	::-webkit-scrollbar-track {
+		background: --alpha(var(--muted) / 20%);
+	}
+
+	::-webkit-scrollbar-thumb {
+		background-color: --alpha(var(--muted-foreground) / 50%);
+		border-radius: 1rem;
+		cursor: auto !important;
+	}
+
+	::-webkit-scrollbar-button {
+		display: none;
+	}
+
+	::-webkit-scrollbar-corner {
+		display: none;
+	}
 }
+
+@utility container {
+	width: 100%;
+	margin-left: auto;
+	margin-right: auto;
+	padding-inline: --spacing(2);
+
+	@variant sm {
+		padding-inline: --spacing(3);
+	}
+
+	@variant lg {
+		padding-inline: --spacing(4);
+	}
+
+	@variant xl {
+		padding-inline: --spacing(6);
+	}
+}
+

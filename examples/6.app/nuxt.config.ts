@@ -1,3 +1,5 @@
+import process from 'node:process'
+
 export default defineNuxtConfig({
 	compatibilityDate: '2025-07-15',
 	devtools: { enabled: true },
@@ -16,6 +18,10 @@ export default defineNuxtConfig({
 		'@nuxt/icon',
 	],
 
+	runtimeConfig: {
+		openaiApiKey: process.env.NUXT_OPENAI_API_KEY,
+	},
+
 	colorMode: {
 		preference: 'system',
 		fallback: 'dark',
@@ -32,4 +38,3 @@ export default defineNuxtConfig({
 		componentDir: './app/components/ui',
 	},
 })
-

@@ -15,6 +15,7 @@
 	},
 	"dependencies": {
 		"@antfu/eslint-config": "^6.0.0",
+		"@dagrejs/dagre": "^1.1.5",
 		"@flowcraft/bullmq-adapter": "workspace:*",
 		"@nuxt/fonts": "0.11.4",
 		"@nuxt/icon": "2.0.0",
@@ -33,6 +34,7 @@
 		"flowcraft": "workspace:*",
 		"lucide-vue-next": "^0.546.0",
 		"nuxt": "^4.1.3",
+		"openai": "^6.4.0",
 		"reka-ui": "^2.5.1",
 		"shadcn-nuxt": "2.3.1",
 		"tailwind-merge": "^3.3.1",
