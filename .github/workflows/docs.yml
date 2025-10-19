@@ -2,8 +2,8 @@ name: Docs
 
 on:
   push:
-    branches: [master]
-  workflow_dispatch:
+    tags:
+      - 'flowcraft@*'
 
 permissions:
   contents: read
