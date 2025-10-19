@@ -252,6 +252,9 @@ importers:
       reka-ui:
         specifier: ^2.5.1
         version: 2.5.1(typescript@5.9.3)(vue@3.5.22(typescript@5.9.3))
+      serpapi:
+        specifier: ^2.2.1
+        version: 2.2.1
       shadcn-nuxt:
         specifier: 2.3.1
         version: 2.3.1(magicast@0.3.5)

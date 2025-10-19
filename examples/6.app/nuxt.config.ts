@@ -20,6 +20,7 @@ export default defineNuxtConfig({
 
 	runtimeConfig: {
 		openaiApiKey: process.env.NUXT_OPENAI_API_KEY,
+		serpApiKey: process.env.NUXT_SERP_API_KEY,
 	},
 
 	colorMode: {

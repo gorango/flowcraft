@@ -6,7 +6,7 @@ export default defineEventHandler(async (event) => {
 		apiKey: config.openaiApiKey,
 	})
 
-	const { prompt } = await readBody(event)
+	const { prompt, systemMessage } = await readBody(event)
 	if (!prompt) {
 		throw createError({
 			statusCode: 400,
@@ -14,11 +14,16 @@ export default defineEventHandler(async (event) => {
 		})
 	}
 	try {
+		const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [{ role: 'user' as const, content: prompt }]
+		if (systemMessage) {
+			messages.unshift({ role: 'system' as const, content: systemMessage })
+		}
 		const response = await client.chat.completions.create({
 			model: 'gpt-4o-mini',
-			messages: [{ role: 'user', content: prompt }],
+			messages,
+			temperature: 0.2,
 		})
-		return { translation: response.choices[0].message.content || '' }
+		return { response: response.choices[0].message.content || '' }
 	}
 	catch (error: any) {
 		console.error('Error calling OpenAI API:', error)
@@ -28,4 +33,3 @@ export default defineEventHandler(async (event) => {
 		})
 	}
 })
-

@@ -14,7 +14,6 @@ interface TranslationContext {
 	'translations': { language: string, translation: string }[]
 }
 
-// 1. Prepare the list of translation jobs
 async function prepareJobs(ctx: any) {
 	const languages = await ctx.context.get('languages')
 	const text = await ctx.context.get('text')
@@ -26,7 +25,6 @@ async function prepareJobs(ctx: any) {
 	return { output: jobs }
 }
 
-// 2. This function will be executed FOR EACH item in the batch
 async function translateItem(ctx: any) {
 	const input = ctx.input as { language: string, text: string }
 	if (!input) {
@@ -47,7 +45,6 @@ ${text}`
 	return { output: { language, translation } }
 }
 
-// 3. This node runs AFTER the entire batch is complete
 async function collectResults(ctx: any) {
 	const translations = await ctx.context.get('translations')
 	if (!translations || translations.length === 0) {
@@ -57,14 +54,13 @@ async function collectResults(ctx: any) {
 	return { output: `Collected ${translations.length} translations.` }
 }
 
-// LLM call using server endpoint
 async function callLLM(prompt: string): Promise<string> {
 	try {
-		const { translation } = await $fetch('/api/llm', {
+		const { response } = await $fetch('/api/llm', {
 			method: 'POST',
 			body: { prompt },
 		})
-		return translation
+		return response
 	}
 	catch (error: any) {
 		console.error('Error calling LLM:', error)
@@ -73,6 +69,66 @@ async function callLLM(prompt: string): Promise<string> {
 }
 
 const flow = useVueFlow('translate-workflow')
+const { layout } = useLayout()
+
+/**
+ * Pre-processes a UI graph to replace a batch placeholder with static worker nodes.
+ * @param baseGraph The graph from toGraphRepresentation.
+ * @param languages The static array of languages to generate nodes for.
+ */
+function createInitialUIGraph(baseGraph: { nodes: any[], edges: any[] }, languages: string[]) {
+	const nodes = [...baseGraph.nodes]
+	const edges = [...baseGraph.edges]
+
+	const placeholderIndex = nodes.findIndex(n => n.data?.isBatchPlaceholder)
+	if (placeholderIndex === -1) {
+		return { nodes, edges }
+	}
+
+	const placeholderNode = nodes[placeholderIndex]
+	const batchId = placeholderNode.id
+
+	const incomingEdges = edges.filter(e => e.target === batchId)
+	const outgoingEdges = edges.filter(e => e.source === batchId)
+	const predecessors = incomingEdges.map(e => e.source)
+	const successors = outgoingEdges.map(e => e.target)
+
+	nodes.splice(placeholderIndex, 1)
+	const remainingEdges = edges.filter(e => e.target !== batchId && e.source !== batchId)
+
+	const workerNodes = languages.map((lang) => {
+		return {
+			id: `${batchId}-worker-${lang.toLowerCase()}`,
+			position: { ...placeholderNode.position },
+			data: { label: `Translate to ${lang}` },
+		}
+	})
+
+	const newEdges: Edge[] = []
+	predecessors.forEach(p => workerNodes.forEach(w => newEdges.push({
+		id: `${p}->${w.id}`,
+		source: p,
+		target: w.id,
+		// type: 'smoothstep'
+	})))
+	successors.forEach(s => workerNodes.forEach(w => newEdges.push({
+		id: `${w.id}->${s}`,
+		source: w.id,
+		target: s,
+		// type: 'smoothstep'
+	})))
+
+	return {
+		nodes: [...nodes.map((node, index) => ({
+			id: node.id,
+			position: { x: 1 + index * (256 + 48), y: 100 },
+			data: { label: node.id.replace('-', ' ').replace(/\b\w/g, (l: string) => l.toUpperCase()) },
+			targetPosition: Position.Left,
+			sourcePosition: Position.Right,
+		})), ...workerNodes],
+		edges: [...remainingEdges, ...newEdges],
+	}
+}
 
 const greetingFlow = createFlow<TranslationContext>('parallel-translation')
 	.node('prepare-jobs', prepareJobs)
@@ -84,88 +140,68 @@ const greetingFlow = createFlow<TranslationContext>('parallel-translation')
 	.edge('prepare-jobs', 'translate-batch_scatter')
 	.edge('translate-batch_gather', 'collect-results')
 
+const LANGUAGES = [
+	'Spanish',
+	'German',
+	'French',
+]
+const TEXT = 'Hello world! This is a test document.'
+
+const baseUIGraph = greetingFlow.toGraphRepresentation()
 const blueprint = greetingFlow.toBlueprint()
 const functionRegistry = greetingFlow.getFunctionRegistry()
-const languages = ['Spanish', 'German']
 
-console.log(blueprint)
+const initialGraph = createInitialUIGraph(baseUIGraph, LANGUAGES)
 
-const vueFlowNodes: Node[] = blueprint.nodes.map((node, index) => ({
-	id: node.id,
-	position: { x: 1 + index * (256 + 48), y: 1 + index * (128 + 48) },
-	data: { label: node.id.replace('-', ' ').replace(/\b\w/g, l => l.toUpperCase()) },
-}))
+const initialNodes = ref<Node[]>(layout(
+	initialGraph.nodes.map(node => ({ ...node, position: { x: 0, y: 0 } })),
+	initialGraph.edges,
+	'LR',
+))
 
-const vueFlowEdges: Edge[] = blueprint.edges.map((edge, index) => ({
-	id: `edge-${index}`,
+const initialEdges = ref<Edge[]>(initialGraph.edges.map((edge, index) => ({
+	id: edge.id || `edge-${index}`,
 	source: edge.source,
 	target: edge.target,
-	type: 'smoothstep',
-}))
+	// type: 'smoothstep',
+})))
 
-const { layout } = useLayout()
-
-flow.setNodes(layout(vueFlowNodes, vueFlowEdges, 'LR'))
-flow.setEdges(vueFlowEdges)
-
-const nodes = ref(flow.nodes.value)
-const edges = ref(flow.edges.value)
-
-onMounted(async () => {
-	// await new Promise(r => setTimeout(r))
-	// await nextTick()
-	// layoutGraph()
-})
-
-const direction = ref<'TB' | 'LR'>('LR')
-
-async function layoutGraph(d?: 'TB' | 'LR') {
-	if (d)
-		direction.value = d
-
-	if (!nodes.value || !edges.value)
-		return
-
-	const newNodes = layout(nodes.value, edges.value, direction.value)
-	console.log({ newNodes })
-	if (newNodes) {
-		nodes.value = newNodes
-	}
-	await new Promise(r => setTimeout(r))
-	flow.fitView()
-}
+flow.setNodes(initialNodes.value)
+flow.setEdges(initialEdges.value)
 
 const { eventBus } = useEventBus()
-
-const nodeData = ref(new Map<string, { inputs?: any, outputs?: any, contextChanges?: Record<string, any>, status?: 'idle' | 'pending' | 'completed' | 'failed' }>())
+const nodeData = ref(new Map<string, any>())
+const runtimeToUINodeMap = ref(new Map<string, string>())
 
 function getNodeData(nodeId: string) {
 	return nodeData.value.get(nodeId) || {}
 }
 
 function getNodeStatus(nodeId: string) {
-	const data = getNodeData(nodeId)
-	return data.status || 'idle'
+	return getNodeData(nodeId).status || 'idle'
 }
+
+eventBus.on('batch:start', (event) => {
+	const { batchId, workerNodeIds } = event.payload as any
+	workerNodeIds.forEach((runtimeId: string, index: number) => {
+		const lang = LANGUAGES[index]
+		if (lang) {
+			const staticId = `${batchId}-worker-${lang.toLowerCase()}`
+			runtimeToUINodeMap.value.set(runtimeId, staticId)
+		}
+	})
+})
 
 eventBus.on('node:start', (event) => {
 	const { nodeId, input } = event.payload as any
-	const currentData = nodeData.value.get(nodeId) || { status: 'idle' as const }
-	nodeData.value.set(nodeId, { ...currentData, status: 'pending' as const, inputs: input })
+	const uiNodeId = runtimeToUINodeMap.value.get(nodeId) || nodeId
+	nodeData.value.set(uiNodeId, { ...nodeData.value.get(uiNodeId), status: 'pending', inputs: input })
 })
 
 eventBus.on('node:finish', (event) => {
-	// layoutGraph()
 	const { nodeId, result } = event.payload as any
-	const currentData = nodeData.value.get(nodeId) || { status: 'idle' as const }
-	nodeData.value.set(nodeId, { ...currentData, status: 'completed' as const, outputs: result.output })
-})
-
-eventBus.on('context:change', (event) => {
-	const { sourceNode, key, value } = event.payload as any
-	const currentData = nodeData.value.get(sourceNode) || { contextChanges: {} }
-	const updatedContextChanges = { ...currentData.contextChanges, [key]: value }
-	nodeData.value.set(sourceNode, { ...currentData, contextChanges: updatedContextChanges })
+	const uiNodeId = runtimeToUINodeMap.value.get(nodeId) || nodeId
+	nodeData.value.set(uiNodeId, { ...nodeData.value.get(uiNodeId), status: 'completed', outputs: result.output })
 })
 
 const runtime = new FlowRuntime({
@@ -181,12 +217,18 @@ async function runWorkflow() {
 	isRunning.value = true
 	executionError.value = null
 	nodeData.value.clear()
-	blueprint.nodes.forEach((node) => {
+	runtimeToUINodeMap.value.clear()
+
+	initialNodes.value.forEach((node) => {
 		nodeData.value.set(node.id, { status: 'idle' })
 	})
+
 	try {
-		const text = 'Hello world! This is a test document.'
-		const result = await runtime.run(blueprint, { text, languages, output_dir: '/tmp' }, { functionRegistry })
+		const result = await runtime.run(blueprint, {
+			text: TEXT,
+			languages: LANGUAGES,
+			output_dir: '/tmp',
+		}, { functionRegistry })
 		executionResult.value = result
 	}
 	catch (error) {
@@ -195,7 +237,6 @@ async function runWorkflow() {
 	}
 	finally {
 		isRunning.value = false
-		await new Promise(r => setTimeout(r))
 	}
 }
 
@@ -203,7 +244,10 @@ async function clearWorkflow() {
 	executionResult.value = null
 	executionError.value = null
 	nodeData.value.clear()
-	await new Promise(r => setTimeout(r))
+	runtimeToUINodeMap.value.clear()
+	initialNodes.value.forEach((node) => {
+		nodeData.value.set(node.id, { status: 'idle' })
+	})
 }
 </script>
 
@@ -235,26 +279,17 @@ async function clearWorkflow() {
 
 				<div class="h-full border rounded-lg aspect-square md:aspect-video">
 					<ClientOnly>
+						<!-- The v-model binding will now correctly handle dynamic updates -->
 						<VueFlow
+							id="translate-workflow"
 							class="flow"
-							:nodes="nodes"
-							:edges="edges"
 							:fit-view-on-init="true"
 						>
 							<Background />
-							<!-- <div class="absolute top-0 right-0 z-10 flex gap-2 p-2">
-								<Button size="icon" @click="layoutGraph('TB')">
-									<Icon name="lucide:arrow-up-down" />
-								</Button>
-								<Button size="icon" @click="layoutGraph('LR')">
-									<Icon name="lucide:arrow-left-right" />
-								</Button>
-							</div> -->
 							<template #node-default="nodeProps">
 								<FlowNodeGeneric
 									v-bind="nodeProps"
-									:direction
-									:node-data="getNodeData(nodeProps.id)"
+									direction="LR"
 									:inputs="getNodeData(nodeProps.id).inputs"
 									:outputs="getNodeData(nodeProps.id).outputs"
 									:status="getNodeStatus(nodeProps.id)"
@@ -274,4 +309,3 @@ async function clearWorkflow() {
 		</Card>
 	</div>
 </template>
-

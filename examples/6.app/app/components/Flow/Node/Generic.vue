@@ -13,12 +13,14 @@ const props = withDefaults(defineProps<NodeProps & {
 	outputs?: Record<string, any> | string
 	status?: StatusType
 	progress?: number
+	batchProgress?: any[]
 }>(), {
 	direction: 'LR',
 })
 
 const hasInputs = computed(() => props.inputs && Object.keys(props.inputs).length > 0)
 const hasOutputs = computed(() => props.outputs && Object.keys(props.outputs).length > 0)
+const hasBatchProgress = computed(() => props.batchProgress && props.batchProgress.length > 0)
 
 const targetPosition = computed(() => props.direction === 'TB' ? Position.Top : Position.Left)
 const sourcePosition = computed(() => props.direction === 'TB' ? Position.Bottom : Position.Right)
@@ -51,7 +53,19 @@ const sourcePosition = computed(() => props.direction === 'TB' ? Position.Bottom
 				</div>
 			</div>
 
-			<div v-if="!hasInputs && !hasOutputs" class="text-sm text-muted-foreground">
+			<div v-if="hasBatchProgress" class="text-sm">
+				<div class="font-medium text-muted-foreground mb-1">
+					Progress:
+				</div>
+				<div class="bg-muted p-2 rounded text-xs space-y-2">
+					<!-- Loop through each completed worker item -->
+					<div v-for="(item, index) in batchProgress" :key="index">
+						<pre class="overflow-auto nowheel nodrag cursor-text select-text">{{ JSON.stringify(item, null, 2) }}</pre>
+					</div>
+				</div>
+			</div>
+
+			<div v-if="!hasInputs && !hasOutputs && !hasBatchProgress" class="text-sm text-muted-foreground">
 				No data available
 			</div>
 		</div>
