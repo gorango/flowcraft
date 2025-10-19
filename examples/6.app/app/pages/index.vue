@@ -1,5 +1,12 @@
 <script setup lang="ts">
-const { isRunning, executionResult, executionError, addWorkflowNode, runWorkflow, clearWorkflow } = useWorkflow()
+const {
+	isRunning,
+	executionResult,
+	executionError,
+	addWorkflowNode,
+	runWorkflow,
+	clearWorkflow,
+} = useWorkflow()
 
 function addStartNode() {
 	addWorkflowNode({
