@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { Background } from '@vue-flow/background'
 import type { Edge, Node } from '@vue-flow/core'
+import { Background } from '@vue-flow/background'
 import { Position, useVueFlow, VueFlow } from '@vue-flow/core'
 import { ConsoleLogger, createFlow, FlowRuntime } from 'flowcraft'
 import FlowNodeGeneric from '~/components/Flow/Node/Generic.vue'

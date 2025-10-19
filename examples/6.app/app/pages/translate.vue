@@ -1,10 +1,8 @@
 <script setup lang="ts">
-import type { Edge, GraphEdge, GraphNode, Node } from '@vue-flow/core'
+import type { Edge, Node } from '@vue-flow/core'
 import { Background } from '@vue-flow/background'
 import { Position, useVueFlow, VueFlow } from '@vue-flow/core'
 import { ConsoleLogger, createFlow, FlowRuntime } from 'flowcraft'
-import FlowNodeGeneric from '~/components/Flow/Node/Generic.vue'
-import { useEventBus } from '~/composables/useEventBus'
 
 interface TranslationContext {
 	'text': string
@@ -71,11 +69,7 @@ async function callLLM(prompt: string): Promise<string> {
 const flow = useVueFlow('translate-workflow')
 const { layout } = useLayout()
 
-/**
- * Pre-processes a UI graph to replace a batch placeholder with static worker nodes.
- * @param baseGraph The graph from toGraphRepresentation.
- * @param languages The static array of languages to generate nodes for.
- */
+/** Pre-processes a UI graph to replace a batch placeholder with static worker nodes. */
 function createInitialUIGraph(baseGraph: { nodes: any[], edges: any[] }, languages: string[]) {
 	const nodes = [...baseGraph.nodes]
 	const edges = [...baseGraph.edges]
@@ -88,44 +82,49 @@ function createInitialUIGraph(baseGraph: { nodes: any[], edges: any[] }, languag
 	const placeholderNode = nodes[placeholderIndex]
 	const batchId = placeholderNode.id
 
-	const incomingEdges = edges.filter(e => e.target === batchId)
-	const outgoingEdges = edges.filter(e => e.source === batchId)
-	const predecessors = incomingEdges.map(e => e.source)
-	const successors = outgoingEdges.map(e => e.target)
+	const predecessors = edges.filter(e => e.target === batchId).map(e => e.source)
+	const successors = edges.filter(e => e.source === batchId).map(e => e.target)
 
 	nodes.splice(placeholderIndex, 1)
+	const defaultNodes = nodes.map(node => ({
+		id: node.id,
+		position: { x: 0, y: 0 },
+		data: { label: node.id.replace('-', ' ').replace(/\b\w/g, (l: string) => l.toUpperCase()) },
+	}))
+	const workerNodes = languages.map(lang => ({
+		id: `${batchId}-worker-${lang.toLowerCase()}`,
+		position: { ...placeholderNode.position },
+		data: { label: `Translate to ${lang}` },
+		targetPosition: Position.Left,
+		sourcePosition: Position.Right,
+	}))
+
 	const remainingEdges = edges.filter(e => e.target !== batchId && e.source !== batchId)
 
-	const workerNodes = languages.map((lang) => {
-		return {
-			id: `${batchId}-worker-${lang.toLowerCase()}`,
-			position: { ...placeholderNode.position },
-			data: { label: `Translate to ${lang}` },
-		}
-	})
-
 	const newEdges: Edge[] = []
-	predecessors.forEach(p => workerNodes.forEach(w => newEdges.push({
-		id: `${p}->${w.id}`,
-		source: p,
-		target: w.id,
-		// type: 'smoothstep'
-	})))
-	successors.forEach(s => workerNodes.forEach(w => newEdges.push({
-		id: `${w.id}->${s}`,
-		source: w.id,
-		target: s,
-		// type: 'smoothstep'
-	})))
+	for (const predecessor of predecessors) {
+		for (const worker of workerNodes) {
+			newEdges.push({
+				id: `${predecessor}->${worker.id}`,
+				source: predecessor,
+				target: worker.id,
+				// type: 'smoothstep',
+			})
+		}
+	}
+	for (const successor of successors) {
+		for (const worker of workerNodes) {
+			newEdges.push({
+				id: `${worker.id}->${successor}`,
+				source: worker.id,
+				target: successor,
+				// type: 'smoothstep',
+			})
+		}
+	}
 
 	return {
-		nodes: [...nodes.map((node, index) => ({
-			id: node.id,
-			position: { x: 1 + index * (256 + 48), y: 100 },
-			data: { label: node.id.replace('-', ' ').replace(/\b\w/g, (l: string) => l.toUpperCase()) },
-			targetPosition: Position.Left,
-			sourcePosition: Position.Right,
-		})), ...workerNodes],
+		nodes: [...defaultNodes, ...workerNodes],
 		edges: [...remainingEdges, ...newEdges],
 	}
 }
@@ -140,18 +139,19 @@ const greetingFlow = createFlow<TranslationContext>('parallel-translation')
 	.edge('prepare-jobs', 'translate-batch_scatter')
 	.edge('translate-batch_gather', 'collect-results')
 
-const LANGUAGES = [
+const languages = ref([
 	'Spanish',
 	'German',
 	'French',
-]
-const TEXT = 'Hello world! This is a test document.'
+])
+const text = ref('Hello world! This is a test document.')
+const newLanguage = ref('')
 
 const baseUIGraph = greetingFlow.toGraphRepresentation()
 const blueprint = greetingFlow.toBlueprint()
 const functionRegistry = greetingFlow.getFunctionRegistry()
 
-const initialGraph = createInitialUIGraph(baseUIGraph, LANGUAGES)
+const initialGraph = createInitialUIGraph(baseUIGraph, languages.value)
 
 const initialNodes = ref<Node[]>(layout(
 	initialGraph.nodes.map(node => ({ ...node, position: { x: 0, y: 0 } })),
@@ -184,7 +184,7 @@ function getNodeStatus(nodeId: string) {
 eventBus.on('batch:start', (event) => {
 	const { batchId, workerNodeIds } = event.payload as any
 	workerNodeIds.forEach((runtimeId: string, index: number) => {
-		const lang = LANGUAGES[index]
+		const lang = languages.value[index]
 		if (lang) {
 			const staticId = `${batchId}-worker-${lang.toLowerCase()}`
 			runtimeToUINodeMap.value.set(runtimeId, staticId)
@@ -225,8 +225,8 @@ async function runWorkflow() {
 
 	try {
 		const result = await runtime.run(blueprint, {
-			text: TEXT,
-			languages: LANGUAGES,
+			text: text.value,
+			languages: languages.value,
 			output_dir: '/tmp',
 		}, { functionRegistry })
 		executionResult.value = result
@@ -240,7 +240,42 @@ async function runWorkflow() {
 	}
 }
 
-async function clearWorkflow() {
+async function addLanguage() {
+	if (newLanguage.value && !languages.value.includes(newLanguage.value)) {
+		languages.value.push(newLanguage.value)
+		newLanguage.value = ''
+		updateGraph()
+	}
+}
+
+function removeLanguage(lang: string) {
+	languages.value = languages.value.filter(l => l !== lang)
+	updateGraph()
+}
+
+function updateGraph() {
+	const newGraph = createInitialUIGraph(baseUIGraph, languages.value)
+	initialNodes.value = layout(
+		newGraph.nodes.map(node => ({ ...node, position: { x: 0, y: 0 } })),
+		newGraph.edges,
+		'LR',
+	)
+	initialEdges.value = newGraph.edges.map((edge, index) => ({
+		id: edge.id || `edge-${index}`,
+		source: edge.source,
+		target: edge.target,
+		// type: 'smoothstep',
+	}))
+	flow.setNodes(initialNodes.value)
+	flow.setEdges(initialEdges.value)
+	// eslint-disable-next-line no-new
+	new Promise(resolve => setTimeout(() => {
+		flow.fitView()
+		resolve(true)
+	}, 100))
+}
+
+function clearWorkflow() {
 	executionResult.value = null
 	executionError.value = null
 	nodeData.value.clear()
@@ -268,18 +303,44 @@ async function clearWorkflow() {
 					</ol>
 				</div>
 
-				<div class="flex gap-2">
-					<Button :disabled="isRunning" @click="runWorkflow">
-						{{ isRunning ? 'Running...' : 'Run Workflow' }}
-					</Button>
-					<Button variant="outline" @click="clearWorkflow">
-						Clear Results
-					</Button>
-				</div>
+				<ClientOnly>
+					<div class="space-y-4">
+						<div>
+							<label class="block text-sm font-medium mb-2">Text to Translate</label>
+							<Textarea v-model="text" placeholder="Enter text to translate" class="min-h-[100px]" />
+						</div>
+
+						<div>
+							<label class="block text-sm font-medium mb-2">Languages</label>
+							<div class="flex flex-wrap gap-2 mb-2">
+								<span v-for="lang in languages" :key="lang" class="inline-flex items-center px-2 py-1 bg-primary text-primary-foreground rounded">
+									{{ lang }}
+									<Button variant="ghost" size="sm" class="ml-1 h-4 w-4 p-0" @click="removeLanguage(lang)">
+										&times;
+									</Button>
+								</span>
+							</div>
+							<div class="flex gap-2">
+								<Input v-model="newLanguage" placeholder="Add language" @keyup.enter="addLanguage" />
+								<Button @click="addLanguage">
+									Add
+								</Button>
+							</div>
+						</div>
+					</div>
+
+					<div class="flex gap-2">
+						<Button :disabled="isRunning" @click="runWorkflow">
+							{{ isRunning ? 'Running...' : 'Run Workflow' }}
+						</Button>
+						<Button variant="outline" @click="clearWorkflow">
+							Clear Results
+						</Button>
+					</div>
+				</ClientOnly>
 
 				<div class="h-full border rounded-lg aspect-square md:aspect-video">
 					<ClientOnly>
-						<!-- The v-model binding will now correctly handle dynamic updates -->
 						<VueFlow
 							id="translate-workflow"
 							class="flow"

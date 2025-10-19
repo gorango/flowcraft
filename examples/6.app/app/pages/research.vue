@@ -236,7 +236,7 @@ async function clearWorkflow() {
 
 				<div class="space-y-2">
 					<label for="question" class="text-sm font-medium">Research Question:</label>
-					<Textarea id="question" v-model="question" class="h-content resize-none" placeholder="Enter your research question..." />
+					<Input id="question" v-model="question" placeholder="Enter your research question..." />
 				</div>
 
 				<div class="flex gap-2">
