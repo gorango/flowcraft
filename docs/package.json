@@ -1,0 +1,25 @@
+{
+	"name": "@flowcraft/docs",
+	"type": "module",
+	"private": true,
+	"scripts": {
+		"lint": "biome check",
+		"dev": "vitepress dev src",
+		"build": "vitepress build src",
+		"preview": "vitepress preview src"
+	},
+	"dependencies": {
+		"@antfu/eslint-config": "^6.0.0",
+		"@vue-flow/background": "^1.3.2",
+		"@vue-flow/core": "^1.47.0",
+		"eslint": "^9.38.0",
+		"vue": "^3.5.22"
+	},
+	"devDependencies": {
+		"mermaid": "^11.12.0",
+		"unplugin-vue-components": "^30.0.0",
+		"vitepress": "^1.6.4",
+		"vitepress-plugin-llms": "^1.8.0",
+		"vitepress-plugin-mermaid": "^2.0.17"
+	}
+}

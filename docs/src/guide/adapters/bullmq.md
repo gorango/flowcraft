@@ -206,7 +206,7 @@ This client example demonstrates how to:
 - Enqueue the initial jobs to start workflow execution
 - Wait for workflow completion
 
-For a complete working example with more detailed setup, see the [distributed example](/examples/4b_declarative-distributed).
+For a complete working example with more detailed setup, see the [distributed example](/examples/distributed).
 
 ## Workflow Reconciliation
 

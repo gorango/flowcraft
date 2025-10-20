@@ -3,7 +3,7 @@ layout: home
 
 hero:
   name: flowcraft
-  text: a workflow framework
+  text: a workflow engine
   tagline: Build complex, multi-step processes, from simple sequences to dynamic AI agents, running in-memory or across distributed systems.
   actions:
     - theme: brand

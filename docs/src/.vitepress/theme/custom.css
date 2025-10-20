@@ -105,6 +105,10 @@
 		"DepartureMono", ui-monospace, "Menlo", "Monaco", "Consolas", "Liberation Mono", "Courier New", monospace;
 }
 
+body {
+	font-size: 14px;
+}
+
 header,
 aside,
 .aside,

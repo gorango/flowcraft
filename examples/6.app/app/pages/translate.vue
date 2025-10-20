@@ -164,6 +164,7 @@ const initialEdges = ref<Edge[]>(initialGraph.edges.map((edge, index) => ({
 	source: edge.source,
 	target: edge.target,
 	// type: 'smoothstep',
+	// animated: true,
 })))
 
 flow.setNodes(initialNodes.value)

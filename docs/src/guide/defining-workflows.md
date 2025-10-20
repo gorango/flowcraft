@@ -85,12 +85,24 @@ const flowBuilder = createFlow<UserProcessingContext>('user-processing')
 
 This workflow can be visualized as:
 
-```mermaid
-flowchart TD
-    fetch["fetch-user"] --> validate["validate-user"]
-    validate -- "action: valid" --> valid["process-valid"]
-    validate -- "action: invalid" --> invalid["handle-invalid"]
-```
+<script setup>
+import { ref } from 'vue'
+
+const nodes = ref([
+	{ id: 'fetch-user', type: 'input', label: 'fetch-user', position: { x: 250, y: 20 } },
+	{ id: 'validate-user', label: 'validate-user', position: { x: 250, y: 100 } },
+	{ id: 'process-valid', type: 'output', label: 'process-valid', position: { x: 100, y: 200 } },
+	{ id: 'handle-invalid', type: 'output', label: 'handle-invalid', position: { x: 400, y: 200 } },
+])
+
+const edges = ref([
+	{ id: 'e1', source: 'fetch-user', target: 'validate-user', animated: true },
+	{ id: 'e2', source: 'validate-user', target: 'process-valid', label: 'valid', animated: true },
+	{ id: 'e3', source: 'validate-user', target: 'handle-invalid', label: 'invalid', animated: true },
+])
+</script>
+
+<Flow :nodes="nodes" :edges="edges" />
 
 ## Type Safety Benefits
 

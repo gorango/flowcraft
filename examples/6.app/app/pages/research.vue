@@ -116,9 +116,16 @@ const functionRegistry = greetingFlow.getFunctionRegistry()
 
 console.log({ blueprint, graph: uiGraph })
 
+const postions = {
+	initialize: { x: 0, y: 0 },
+	decide: { x: 256 + 150, y: 50 },
+	search: { x: 256 + 150, y: 350 },
+	answer: { x: 256 * 2 + 150 * 2, y: 125 },
+}
+
 const vueFlowNodes: Node[] = uiGraph.nodes.map((node, index) => ({
 	id: node.id,
-	position: { x: 1 + index * (256 + 48), y: 100 },
+	position: postions[node.id],
 	data: { label: node.id.replace('-', ' ').replace(/\b\w/g, l => l.toUpperCase()) },
 	targetPosition: Position.Left,
 	sourcePosition: Position.Right,
@@ -128,14 +135,12 @@ const vueFlowEdges: Edge[] = uiGraph.edges.map((edge, index) => ({
 	id: `edge-${index}`,
 	source: edge.source,
 	target: edge.target,
-	type: 'smoothstep',
+	// type: 'smoothstep',
+	pathOptions: { curvature: 0.5 },
 	animated: true,
 }))
 
-const { layout } = useLayout()
-
-flow.setNodes(layout(vueFlowNodes, vueFlowEdges, 'LR'))
-// flow.setNodes(vueFlowNodes)
+flow.setNodes(vueFlowNodes)
 flow.setEdges(vueFlowEdges)
 
 const nodes = ref(flow.nodes.value)
