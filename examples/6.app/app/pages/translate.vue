@@ -178,10 +178,6 @@ function getNodeData(nodeId: string) {
 	return nodeData.value.get(nodeId) || {}
 }
 
-function getNodeStatus(nodeId: string) {
-	return getNodeData(nodeId).status || 'idle'
-}
-
 eventBus.on('batch:start', (event) => {
 	const { batchId, workerNodeIds } = event.payload as any
 	workerNodeIds.forEach((runtimeId: string, index: number) => {
@@ -352,9 +348,7 @@ function clearWorkflow() {
 								<FlowNodeGeneric
 									v-bind="nodeProps"
 									direction="LR"
-									:inputs="getNodeData(nodeProps.id).inputs"
-									:outputs="getNodeData(nodeProps.id).outputs"
-									:status="getNodeStatus(nodeProps.id)"
+									:node-data="getNodeData(nodeProps.id)"
 								/>
 							</template>
 						</VueFlow>

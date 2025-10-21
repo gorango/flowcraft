@@ -77,11 +77,6 @@ function getNodeData(nodeId: string) {
 	return nodeData.value.get(nodeId) || {}
 }
 
-function getNodeStatus(nodeId: string) {
-	const data = getNodeData(nodeId)
-	return data.status || 'idle'
-}
-
 eventBus.on('node:start', (event) => {
 	const { nodeId, input } = event.payload as any
 	const currentData = nodeData.value.get(nodeId) || { status: 'idle' as const }
@@ -182,9 +177,6 @@ async function clearWorkflow() {
 								<FlowNodeGeneric
 									v-bind="nodeProps"
 									:node-data="getNodeData(nodeProps.id)"
-									:inputs="getNodeData(nodeProps.id).inputs"
-									:outputs="getNodeData(nodeProps.id).outputs"
-									:status="getNodeStatus(nodeProps.id)"
 								/>
 							</template>
 						</VueFlow>

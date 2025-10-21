@@ -1,4 +1,4 @@
-import type { NodeDefinition, WorkflowBlueprint } from 'flowcraft'
+import type { WorkflowBlueprint } from 'flowcraft'
 
 // Cloned from 4.declarative-shared-logic/src/utils.ts
 async function callLLM(prompt: string): Promise<string> {
@@ -177,11 +177,11 @@ export function processBlueprint(blueprint: WorkflowBlueprint): WorkflowBlueprin
 			const firstPredecessor = predecessors[0]
 			if (predecessors.every((p) => p === firstPredecessor)) {
 				console.log(`[Blueprint Loader] Automatically setting joinStrategy='any' for convergence node '${node.id}'`)
-				return { ...node, config: { ...node.config, joinStrategy: 'any' } }
+				return { ...node, config: { ...node.config, joinStrategy: 'any' as 'any' } }
 			} else {
 				// For conditional branches, set joinStrategy to 'any'
 				console.log(`[Blueprint Loader] Automatically setting joinStrategy='any' for conditional convergence node '${node.id}'`)
-				return { ...node, config: { ...node.config, joinStrategy: 'any' } }
+				return { ...node, config: { ...node.config, joinStrategy: 'any' as 'any' } }
 			}
 		}
 		return node

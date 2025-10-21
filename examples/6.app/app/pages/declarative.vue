@@ -2,7 +2,7 @@
 import type { Edge, Node } from '@vue-flow/core'
 import { Background } from '@vue-flow/background'
 import { Position, useVueFlow, VueFlow } from '@vue-flow/core'
-import { ConsoleLogger, FlowRuntime } from 'flowcraft'
+import { ConsoleLogger, FlowRuntime, type WorkflowBlueprint, type WorkflowResult } from 'flowcraft'
 import FlowNodeGeneric from '~/components/Flow/Node/Generic.vue'
 import { useEventBus } from '~/composables/useEventBus'
 import { useLayout } from '~/composables/useLayout'
@@ -13,7 +13,7 @@ const flow = useVueFlow('declarative-workflow')
 const direction = ref<'TB' | 'LR'>('LR')
 const selectedUseCase = ref<keyof typeof config>('1.blog-post')
 const isRunning = ref(false)
-const executionResult = ref<unknown>(null)
+const executionResult = ref<WorkflowResult | null>(null)
 const executionError = ref<string | null>(null)
 
 const currentBlueprint = computed(() => {
@@ -21,7 +21,7 @@ const currentBlueprint = computed(() => {
 	const blueprint = blueprints[blueprintId]
 	return blueprint ? processBlueprint(blueprint) : null
 })
-const graph = computed(() => toGraphRepresentation(currentBlueprint.value))
+const graph = computed(() => toGraphRepresentation(currentBlueprint.value as WorkflowBlueprint))
 
 const vueFlowNodes = computed<Node[]>(() =>
 	graph.value.nodes.map((node, index) => ({
@@ -96,7 +96,7 @@ async function runWorkflow() {
 	isRunning.value = true
 	executionError.value = null
 	nodeData.value.clear()
-	currentBlueprint.value.nodes.forEach((node) => {
+	currentBlueprint.value?.nodes.forEach((node) => {
 		nodeData.value.set(node.id, { status: 'idle' })
 	})
 	try {
@@ -105,7 +105,7 @@ async function runWorkflow() {
 		}
 		const result = await runtime.run(currentBlueprint.value, config[selectedUseCase.value].initialContext)
 		executionResult.value = result
-		console.log(executionResult.value.context)
+		console.log(executionResult.value?.context)
 	} catch (error) {
 		executionError.value = error instanceof Error ? error.message : 'Unknown error'
 		console.error('Error running workflow:', error)

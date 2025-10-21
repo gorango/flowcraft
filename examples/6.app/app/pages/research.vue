@@ -117,10 +117,10 @@ const functionRegistry = greetingFlow.getFunctionRegistry()
 console.log({ blueprint, graph: uiGraph })
 
 const postions = {
-	initialize: { x: 0, y: 0 },
+	initialize: { x: 0, y: 200 },
 	decide: { x: 256 + 150, y: 50 },
 	search: { x: 256 + 150, y: 350 },
-	answer: { x: 256 * 2 + 150 * 2, y: 125 },
+	answer: { x: 256 * 2 + 150 * 2, y: 200 },
 }
 
 const vueFlowNodes: Node[] = uiGraph.nodes.map((node, index) => ({
@@ -136,7 +136,7 @@ const vueFlowEdges: Edge[] = uiGraph.edges.map((edge, index) => ({
 	source: edge.source,
 	target: edge.target,
 	// type: 'smoothstep',
-	pathOptions: { curvature: 0.5 },
+	pathOptions: { curvature: 0.35 },
 	animated: true,
 }))
 
@@ -266,9 +266,6 @@ async function clearWorkflow() {
 								<FlowNodeGeneric
 									v-bind="nodeProps"
 									:node-data="getNodeData(nodeProps.id)"
-									:inputs="getNodeData(nodeProps.id).inputs"
-									:outputs="getNodeData(nodeProps.id).outputs"
-									:status="getNodeStatus(nodeProps.id)"
 								/>
 							</template>
 						</VueFlow>
