@@ -20,8 +20,8 @@ export function useLayout() {
 		for (const node of nodes) {
 			const graphNode = findNode(node.id)
 			dagreGraph.setNode(node.id, {
-				width: graphNode?.dimensions.width || 256,
-				height: graphNode?.dimensions.height || 128,
+				width: graphNode?.dimensions.width || 256 + 24,
+				height: graphNode?.dimensions.height || 128 + 24,
 			})
 		}
 		for (const edge of edges) {

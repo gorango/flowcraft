@@ -156,6 +156,7 @@ export function toGraphRepresentation(blueprint: WorkflowBlueprint) {
 		id: `edge-${index}`,
 		source: edge.source,
 		target: edge.target,
+		...(edge.action ? { label: edge.action } : {}),
 	}))
 	return { nodes, edges }
 }

@@ -7,6 +7,7 @@ const pages = [
 	{ name: 'Research', path: '/research' },
 	{ name: 'Declarative', path: '/declarative' },
 	{ name: 'RAG', path: '/rag' },
+	{ name: 'Simple Examples', path: '/simple-examples' },
 ]
 </script>
 
