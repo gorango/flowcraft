@@ -2,7 +2,7 @@
 </script>
 
 <template>
-	<div class="w-64 flex flex-col gap-2 p-2 rounded-lg bg-muted/50 backdrop-blur-sm">
+	<div class="w-64 flex flex-col gap-2 p-2 rounded-lg bg-muted/80 backdrop-blur-sm">
 		<slot />
 	</div>
 </template>

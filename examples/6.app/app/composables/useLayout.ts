@@ -21,7 +21,7 @@ export function useLayout() {
 			const graphNode = findNode(node.id)
 			dagreGraph.setNode(node.id, {
 				width: graphNode?.dimensions.width || 256,
-				height: graphNode?.dimensions.height || 256,
+				height: graphNode?.dimensions.height || 128,
 			})
 		}
 		for (const edge of edges) {
