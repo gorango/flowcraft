@@ -40,7 +40,7 @@ const sourcePosition = computed(() => props.direction === 'TB' ? Position.Bottom
 					Inputs:
 				</div>
 				<div class="bg-muted p-2 rounded text-xs">
-					<pre class="overflow-auto nowheel nodrag cursor-text select-text">{{ JSON.stringify(nodeData.inputs, null, 2) }}</pre>
+					<pre class="max-h-80 overflow-auto nowheel nodrag cursor-text select-text">{{ JSON.stringify(nodeData.inputs, null, 2) }}</pre>
 				</div>
 			</div>
 
@@ -49,7 +49,7 @@ const sourcePosition = computed(() => props.direction === 'TB' ? Position.Bottom
 					Outputs:
 				</div>
 				<div class="bg-muted p-2 rounded text-xs">
-					<pre class="overflow-auto nowheel nodrag cursor-text select-text">{{ JSON.stringify(nodeData.outputs, null, 2) }}</pre>
+					<pre class="max-h-80 overflow-auto nowheel nodrag cursor-text select-text">{{ JSON.stringify(nodeData.outputs, null, 2) }}</pre>
 				</div>
 			</div>
 
@@ -60,13 +60,13 @@ const sourcePosition = computed(() => props.direction === 'TB' ? Position.Bottom
 				<div class="bg-muted p-2 rounded text-xs space-y-2">
 					<!-- Loop through each completed worker item -->
 					<div v-for="(item, index) in batchProgress" :key="index">
-						<pre class="overflow-auto nowheel nodrag cursor-text select-text">{{ JSON.stringify(item, null, 2) }}</pre>
+						<pre class="max-h-80 overflow-auto nowheel nodrag cursor-text select-text">{{ JSON.stringify(item, null, 2) }}</pre>
 					</div>
 				</div>
 			</div>
 
 			<div v-if="!hasInputs && !hasOutputs && !hasBatchProgress" class="text-sm text-muted-foreground">
-				Waiting to start...
+				Waiting for inputs...
 			</div>
 		</div>
 		<Handle type="source" :position="sourcePosition" />

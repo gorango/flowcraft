@@ -6,6 +6,7 @@ const pages = [
 	{ name: 'Translate', path: '/translate' },
 	{ name: 'Research', path: '/research' },
 	{ name: 'Declarative', path: '/declarative' },
+	{ name: 'RAG', path: '/rag' },
 ]
 </script>
 

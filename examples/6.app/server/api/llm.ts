@@ -6,24 +6,32 @@ export default defineEventHandler(async (event) => {
 		apiKey: config.openaiApiKey,
 	})
 
-	const { prompt, systemMessage } = await readBody(event)
-	if (!prompt) {
+	const { prompt, systemMessage, type, input } = await readBody(event)
+	if (!prompt && !input) {
 		throw createError({
 			statusCode: 400,
-			statusMessage: 'Prompt is required',
+			statusMessage: 'Prompt or input is required',
 		})
 	}
 	try {
-		const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [{ role: 'user' as const, content: prompt }]
-		if (systemMessage) {
-			messages.unshift({ role: 'system' as const, content: systemMessage })
+		if (type === 'embedding') {
+			const response = await client.embeddings.create({
+				model: 'text-embedding-3-small',
+				input: input,
+			})
+			return { response: response.data[0].embedding }
+		} else {
+			const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [{ role: 'user' as const, content: prompt }]
+			if (systemMessage) {
+				messages.unshift({ role: 'system' as const, content: systemMessage })
+			}
+			const response = await client.chat.completions.create({
+				model: 'gpt-4o-mini',
+				messages,
+				temperature: 0.2,
+			})
+			return { response: response.choices[0]?.message?.content || '' }
 		}
-		const response = await client.chat.completions.create({
-			model: 'gpt-4o-mini',
-			messages,
-			temperature: 0.2,
-		})
-		return { response: response.choices[0].message.content || '' }
 	}
 	catch (error: any) {
 		console.error('Error calling OpenAI API:', error)
