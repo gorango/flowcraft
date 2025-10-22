@@ -8,13 +8,18 @@ export class WorkflowState<TContext extends Record<string, any>> {
 	private anyFallbackExecuted = false
 	private context: IAsyncContext<TContext>
 	private _isAwaiting = false
-	private _awaitingNodeId: string | null = null
+	private _awaitingNodeIds = new Set<string>()
 
 	constructor(initialData: Partial<TContext>) {
 		this.context = new AsyncContextView(new SyncContext<TContext>(initialData))
-		if ((initialData as any)._awaitingNodeId) {
+		if ((initialData as any)._awaitingNodeIds) {
 			this._isAwaiting = true
-			this._awaitingNodeId = (initialData as any)._awaitingNodeId
+			const awaitingIds = (initialData as any)._awaitingNodeIds
+			if (Array.isArray(awaitingIds)) {
+				for (const id of awaitingIds) {
+					this._awaitingNodeIds.add(id)
+				}
+			}
 		}
 		for (const key of Object.keys(initialData)) {
 			if (key.startsWith('_outputs.')) {
@@ -68,36 +73,45 @@ export class WorkflowState<TContext extends Record<string, any>> {
 
 	markAsAwaiting(nodeId: string): void {
 		this._isAwaiting = true
-		this._awaitingNodeId = nodeId
-		this.context.set('_awaitingNodeId' as any, nodeId)
+		this._awaitingNodeIds.add(nodeId)
+		const awaitingArray = Array.from(this._awaitingNodeIds)
+		this.context.set('_awaitingNodeIds' as any, awaitingArray)
 	}
 
 	isAwaiting(): boolean {
-		return this._isAwaiting
+		return this._isAwaiting && this._awaitingNodeIds.size > 0
 	}
 
-	getAwaitingNodeId(): string | null {
-		return this._awaitingNodeId
+	getAwaitingNodeIds(): string[] {
+		return Array.from(this._awaitingNodeIds)
 	}
 
-	clearAwaiting(): void {
-		this._isAwaiting = false
-		this._awaitingNodeId = null
-		this.context.delete('_awaitingNodeId' as any)
+	clearAwaiting(nodeId?: string): void {
+		if (nodeId) {
+			this._awaitingNodeIds.delete(nodeId)
+		} else {
+			this._awaitingNodeIds.clear()
+		}
+		this._isAwaiting = this._awaitingNodeIds.size > 0
+		const awaitingArray = Array.from(this._awaitingNodeIds)
+		if (awaitingArray.length > 0) {
+			this.context.set('_awaitingNodeIds' as any, awaitingArray)
+		} else {
+			this.context.delete('_awaitingNodeIds' as any)
+		}
 	}
 
 	getStatus(allNodeIds: Set<string>, _fallbackNodeIds: Set<string>): WorkflowResult['status'] {
-		if (this._isAwaiting) return 'awaiting'
+		if (this._isAwaiting && this._awaitingNodeIds.size > 0) return 'awaiting'
 		if (this.anyFallbackExecuted) return 'completed'
 		if (this.errors.length > 0) return 'failed'
-		// const _remainingNodes = [...allNodeIds].filter((id) => !this._completedNodes.has(id) && !fallbackNodeIds.has(id))
 		return this._completedNodes.size < allNodeIds.size ? 'stalled' : 'completed'
 	}
 
 	async toResult(serializer: ISerializer): Promise<WorkflowResult<TContext>> {
 		const contextJSON = (await this.context.toJSON()) as TContext
-		if (!this._isAwaiting && (contextJSON as any)._awaitingNodeId) {
-			delete (contextJSON as any)._awaitingNodeId
+		if (!this._isAwaiting && (contextJSON as any)._awaitingNodeIds) {
+			delete (contextJSON as any)._awaitingNodeIds
 		}
 		return {
 			context: contextJSON,

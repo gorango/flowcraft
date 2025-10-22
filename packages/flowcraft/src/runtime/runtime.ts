@@ -312,6 +312,7 @@ export class FlowRuntime<TContext extends Record<string, any>, TDependencies ext
 		blueprint: WorkflowBlueprint,
 		serializedContext: string,
 		resumeData: { output?: any; action?: string },
+		nodeId?: string,
 		options?: {
 			functionRegistry?: Map<string, any>
 			strict?: boolean
@@ -324,9 +325,16 @@ export class FlowRuntime<TContext extends Record<string, any>, TDependencies ext
 			this.serializer.deserialize(serializedContext) as Partial<TContext>,
 		)
 
-		const awaitingNodeId = workflowState.getAwaitingNodeId()
-		if (!awaitingNodeId) {
+		const awaitingNodeIds = workflowState.getAwaitingNodeIds()
+		if (awaitingNodeIds.length === 0) {
 			throw new FlowcraftError('Cannot resume: The provided context is not in an awaiting state.', {
+				isFatal: true,
+			})
+		}
+
+		const awaitingNodeId = nodeId || awaitingNodeIds[0]
+		if (!awaitingNodeIds.includes(awaitingNodeId)) {
+			throw new FlowcraftError(`Cannot resume: Node '${awaitingNodeId}' is not in an awaiting state.`, {
 				isFatal: true,
 			})
 		}
@@ -373,7 +381,7 @@ export class FlowRuntime<TContext extends Record<string, any>, TDependencies ext
 				})
 			}
 
-			const subflowResumeResult = await this.resume(subBlueprint, subflowContext, resumeData, options)
+			const subflowResumeResult = await this.resume(subBlueprint, subflowContext, resumeData, undefined, options)
 
 			if (subflowResumeResult.status !== 'completed') {
 				throw new FlowcraftError(
@@ -414,7 +422,7 @@ export class FlowRuntime<TContext extends Record<string, any>, TDependencies ext
 		const nextSteps = await this.determineNextNodes(blueprint, awaitingNodeId, resumeData, contextImpl, executionId)
 
 		if (nextSteps.length === 0) {
-			workflowState.clearAwaiting()
+			workflowState.clearAwaiting(awaitingNodeId)
 			const result = await workflowState.toResult(this.serializer)
 			result.status = 'completed'
 			return result
@@ -434,7 +442,7 @@ export class FlowRuntime<TContext extends Record<string, any>, TDependencies ext
 			traverser.addToFrontier(nodeDef.id)
 		}
 
-		workflowState.clearAwaiting()
+		workflowState.clearAwaiting(awaitingNodeId)
 
 		const executionContext = this._setupResumedExecutionContext(blueprint, workflowState, options)
 

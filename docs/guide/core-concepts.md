@@ -80,8 +80,9 @@ Flowcraft supports human-in-the-loop workflows, allowing workflows to pause at d
 ### Key Features
 
 - **Wait Nodes**: Use the `.wait()` method in the `Flow` builder to create pause points.
+- **Multiple Concurrent Waits**: Support for multiple wait nodes running in parallel, each tracked separately in the workflow state.
 - **Awaiting Status**: Workflows in a paused state have a status of `'awaiting'`.
-- **Resume Functionality**: Use the `runtime.resume()` method to provide input and continue execution.
+- **Resume Functionality**: Use the `runtime.resume()` method with an optional `nodeId` parameter to specify which waiting node to resume.
 - **State Persistence**: Awaiting state is preserved in the serialized context for durability.
 
 ### Workflow Statuses
