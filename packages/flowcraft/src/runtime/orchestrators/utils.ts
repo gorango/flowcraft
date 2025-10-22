@@ -3,14 +3,13 @@ import type { NodeDefinition, WorkflowBlueprint } from '../../types'
 import type { NodeExecutionResult } from '../executors'
 import type { WorkflowState } from '../state'
 import type { GraphTraverser } from '../traverser'
-import type { ExecutionServices, NodeExecutorFactory } from '../types'
 
 export async function executeBatch(
 	readyNodes: Array<{ nodeId: string; nodeDef: any }>,
 	blueprint: WorkflowBlueprint,
 	state: WorkflowState<any>,
-	executorFactory: NodeExecutorFactory,
-	services: ExecutionServices,
+	executorFactory: (nodeId: string) => any,
+	runtime: any,
 	maxConcurrency?: number,
 ): Promise<
 	Array<
@@ -28,10 +27,10 @@ export async function executeBatch(
 		const batch = readyNodes.slice(i, i + concurrency)
 		const batchPromises = batch.map(async ({ nodeId }) => {
 			try {
-				const executor = executorFactory(blueprint)(nodeId)
+				const executor = executorFactory(nodeId)
 				if (!executor) throw new Error(`No executor for node ${nodeId}`)
 				const executionResult = await executor.execute(
-					await services.resolveNodeInput(nodeId, blueprint, state.getContext()),
+					await runtime.resolveNodeInput(nodeId, blueprint, state.getContext()),
 				)
 				results.push({
 					status: 'fulfilled' as const,
@@ -58,9 +57,8 @@ export async function processResults(
 	>,
 	traverser: GraphTraverser,
 	state: WorkflowState<any>,
-	services: ExecutionServices,
-	blueprint: WorkflowBlueprint,
-	executorFactory: NodeExecutorFactory,
+	runtime: any,
+	_blueprint: WorkflowBlueprint,
 	executionId?: string,
 ): Promise<void> {
 	for (const promiseResult of settledResults) {
@@ -90,7 +88,7 @@ export async function processResults(
 			}
 
 			if (!result._fallbackExecuted) {
-				const matched = await services.determineNextNodes(
+				const matched = await runtime.determineNextNodes(
 					traverser.getDynamicBlueprint(),
 					nodeId,
 					result,
@@ -104,7 +102,7 @@ export async function processResults(
 				const finalMatched = loopControllerMatch ? [loopControllerMatch] : matched
 
 				for (const { node, edge } of finalMatched) {
-					await services.applyEdgeTransform(edge, result, node, state.getContext(), traverser.getAllPredecessors())
+					await runtime.applyEdgeTransform(edge, result, node, state.getContext(), traverser.getAllPredecessors())
 				}
 
 				traverser.markNodeCompleted(
@@ -113,54 +111,39 @@ export async function processResults(
 					finalMatched.map((m: { node: NodeDefinition; edge: any }) => m.node),
 				)
 			}
-		} else if (executionResult.status === 'failed_with_fallback') {
-			const fallbackNodeId = executionResult.fallbackNodeId
-			const fallbackNode = blueprint.nodes.find((n: any) => n.id === fallbackNodeId)
-			if (fallbackNode) {
-				const fallbackExecutor = executorFactory(blueprint)(fallbackNodeId)
-				const fallbackExecutionResult = await fallbackExecutor.execute(
-					await services.resolveNodeInput(fallbackNodeId, blueprint, state.getContext()),
+		} else {
+			const hasFallbackEdges = _blueprint.edges.some((edge) => edge.source === nodeId && edge.action === 'fallback')
+
+			if (hasFallbackEdges) {
+				state.addCompletedNode(nodeId, null)
+				state.markFallbackExecuted()
+
+				const matched = await runtime.determineNextNodes(
+					traverser.getDynamicBlueprint(),
+					nodeId,
+					{ action: 'fallback', output: null },
+					state.getContext(),
+					executionId,
 				)
-				if (fallbackExecutionResult.status === 'success') {
-					const fallbackResult = fallbackExecutionResult.result
-					state.addCompletedNode(fallbackNodeId, fallbackResult.output)
-					state.markFallbackExecuted()
-					const matched = await services.determineNextNodes(
-						traverser.getDynamicBlueprint(),
-						nodeId,
-						{ ...fallbackResult, _fallbackExecuted: true },
+
+				for (const { node, edge } of matched) {
+					await runtime.applyEdgeTransform(
+						edge,
+						{ action: 'fallback', output: null },
+						node,
 						state.getContext(),
-						executionId,
+						traverser.getAllPredecessors(),
 					)
-
-					const loopControllerMatch = matched.find(
-						(m: { node: NodeDefinition; edge: any }) => m.node.uses === 'loop-controller',
-					)
-					const finalMatched = loopControllerMatch ? [loopControllerMatch] : matched
-
-					for (const { node, edge } of finalMatched) {
-						await services.applyEdgeTransform(
-							edge,
-							{ ...fallbackResult, _fallbackExecuted: true },
-							node,
-							state.getContext(),
-							traverser.getAllPredecessors(),
-						)
-					}
-
-					traverser.markNodeCompleted(
-						nodeId,
-						{ ...fallbackResult, _fallbackExecuted: true },
-						finalMatched.map((m: { node: NodeDefinition; edge: any }) => m.node),
-					)
-				} else {
-					state.addError(nodeId, fallbackExecutionResult.error)
 				}
+
+				traverser.markNodeCompleted(
+					nodeId,
+					{ action: 'fallback', output: null },
+					matched.map((m) => m.node),
+				)
 			} else {
 				state.addError(nodeId, executionResult.error)
 			}
-		} else {
-			state.addError(nodeId, executionResult.error)
 		}
 	}
 }

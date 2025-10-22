@@ -31,14 +31,14 @@ describe('createStepper', () => {
 		const result1 = await stepper.next()
 		expect(result1).toBeDefined()
 		expect(result1?.status).toBe('stalled')
-		expect(stepper.state.getContext().get('_outputs.A')).toBe('resultA')
+		expect(await stepper.state.getContext().get('_outputs.A')).toBe('resultA')
 		expect(stepper.isDone()).toBe(false)
 
 		// Second step: execute node B
 		const result2 = await stepper.next()
 		expect(result2).toBeDefined()
 		expect(result2?.status).toBe('completed')
-		expect(stepper.state.getContext().get('_outputs.B')).toBe('resultA_B')
+		expect(await stepper.state.getContext().get('_outputs.B')).toBe('resultA_B')
 		expect(stepper.isDone()).toBe(true)
 
 		// No more steps
@@ -58,8 +58,8 @@ describe('createStepper', () => {
 		const result1 = await stepper.next()
 		expect(result1).toBeDefined()
 		expect(result1?.status).toBe('completed')
-		expect(stepper.state.getContext().get('_outputs.A')).toBe('resultA')
-		expect(stepper.state.getContext().get('_outputs.B')).toBe('resultB')
+		expect(await stepper.state.getContext().get('_outputs.A')).toBe('resultA')
+		expect(await stepper.state.getContext().get('_outputs.B')).toBe('resultB')
 		expect(stepper.isDone()).toBe(true)
 
 		// No more steps
@@ -84,32 +84,32 @@ describe('createStepper', () => {
 		const result1 = await stepper.next({ concurrency: 1 })
 		expect(result1).toBeDefined()
 		expect(result1?.status).toBe('stalled')
-		expect(stepper.state.getContext().get('_outputs.A')).toBe('A')
-		expect(stepper.state.getContext().get('_outputs.B')).toBeUndefined()
-		expect(stepper.state.getContext().get('_outputs.C')).toBeUndefined()
+		expect(await stepper.state.getContext().get('_outputs.A')).toBe('A')
+		expect(await stepper.state.getContext().get('_outputs.B')).toBeUndefined()
+		expect(await stepper.state.getContext().get('_outputs.C')).toBeUndefined()
 		expect(stepper.isDone()).toBe(false)
 
 		// Second step
 		const result2 = await stepper.next({ concurrency: 1 })
 		expect(result2).toBeDefined()
 		expect(result2?.status).toBe('stalled')
-		expect(stepper.state.getContext().get('_outputs.B')).toBe('B')
-		expect(stepper.state.getContext().get('_outputs.C')).toBeUndefined()
+		expect(await stepper.state.getContext().get('_outputs.B')).toBe('B')
+		expect(await stepper.state.getContext().get('_outputs.C')).toBeUndefined()
 		expect(stepper.isDone()).toBe(false)
 
 		// Third step
 		const result3 = await stepper.next({ concurrency: 1 })
 		expect(result3).toBeDefined()
 		expect(result3?.status).toBe('stalled')
-		expect(stepper.state.getContext().get('_outputs.C')).toBe('C')
-		expect(stepper.state.getContext().get('_outputs.D')).toBeUndefined()
+		expect(await stepper.state.getContext().get('_outputs.C')).toBe('C')
+		expect(await stepper.state.getContext().get('_outputs.D')).toBeUndefined()
 		expect(stepper.isDone()).toBe(false)
 
 		// Fourth step
 		const result4 = await stepper.next({ concurrency: 1 })
 		expect(result4).toBeDefined()
 		expect(result4?.status).toBe('completed')
-		expect(stepper.state.getContext().get('_outputs.D')).toBe('D: C')
+		expect(await stepper.state.getContext().get('_outputs.D')).toBe('D: C')
 		expect(stepper.isDone()).toBe(true)
 	})
 
@@ -124,6 +124,6 @@ describe('createStepper', () => {
 		const result = await stepper.next()
 		expect(result).toBeDefined()
 		expect(result?.status).toBe('completed')
-		expect(stepper.state.getContext().get('_outputs.A')).toBe('initial')
+		expect(await stepper.state.getContext().get('_outputs.A')).toBe('initial')
 	})
 })

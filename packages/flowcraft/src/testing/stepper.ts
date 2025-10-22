@@ -1,13 +1,8 @@
-import { FlowcraftError } from '../errors'
-import { PropertyEvaluator } from '../evaluator'
-import { NullLogger } from '../logger'
-import { NodeExecutor } from '../runtime/executors'
+import { ExecutionContext } from '../runtime/execution-context'
 import { StepByStepOrchestrator } from '../runtime/orchestrators/step-by-step'
 import type { FlowRuntime } from '../runtime/runtime'
 import { WorkflowState } from '../runtime/state'
 import { GraphTraverser } from '../runtime/traverser'
-import type { ExecutionServices, NodeExecutorFactory } from '../runtime/types'
-import { JsonSerializer } from '../serializer'
 import type { WorkflowBlueprint, WorkflowResult } from '../types'
 
 /**
@@ -80,56 +75,33 @@ export async function createStepper<TContext extends Record<string, any>, TDepen
 	functionRegistry: Map<string, any>,
 	initialState: Partial<TContext> | string = {},
 ): Promise<IWorkflowStepper<TContext>> {
-	const {
-		logger = new NullLogger(),
-		eventBus = { emit: async () => {} },
-		middleware = [],
-		evaluator = new PropertyEvaluator(),
-		serializer = new JsonSerializer(),
-		dependencies = {},
-	} = runtime.options
-
 	const contextData =
-		typeof initialState === 'string' ? (serializer.deserialize(initialState) as Partial<TContext>) : initialState
+		typeof initialState === 'string'
+			? (runtime.serializer.deserialize(initialState) as Partial<TContext>)
+			: initialState
 
 	const state = new WorkflowState<TContext>(contextData)
 	const traverser = new GraphTraverser(blueprint)
 	const orchestrator = new StepByStepOrchestrator()
 	const executionId = globalThis.crypto?.randomUUID()
 
-	// Replicate the dependency setup from the main runtime `run` method
-	const nodeExecutorFactory: NodeExecutorFactory = (dynamicBlueprint: WorkflowBlueprint) => (nodeId: string) => {
-		const nodeDef = dynamicBlueprint.nodes.find((n) => n.id === nodeId)
-		if (!nodeDef) {
-			throw new FlowcraftError(`Node '${nodeId}' not found in blueprint.`, {
-				nodeId,
-				blueprintId: dynamicBlueprint.id,
-				executionId,
-				isFatal: true,
-			})
-		}
-		return new NodeExecutor<TContext, TDependencies>({
-			blueprint: dynamicBlueprint,
-			nodeDef,
-			state,
-			dependencies: dependencies as TDependencies,
-			logger,
-			eventBus,
-			middleware,
-			strategy: runtime.getExecutor(nodeDef, functionRegistry),
-			executionId,
-		})
-	}
-
-	const executionServices: ExecutionServices = {
-		determineNextNodes: runtime.determineNextNodes.bind(runtime),
-		applyEdgeTransform: runtime.applyEdgeTransform.bind(runtime),
-		resolveNodeInput: (nodeId: string, blueprint: WorkflowBlueprint, context: any) => {
-			const nodeDef = blueprint.nodes.find((n) => n.id === nodeId)
-			if (!nodeDef) return Promise.resolve(undefined)
-			return runtime.resolveNodeInput(nodeDef, context)
+	const nodeRegistry = new Map([...runtime.registry, ...functionRegistry])
+	const _executionContext = new ExecutionContext(
+		blueprint,
+		state,
+		nodeRegistry,
+		executionId,
+		runtime,
+		{
+			logger: runtime.logger,
+			eventBus: runtime.eventBus,
+			serializer: runtime.serializer,
+			evaluator: runtime.evaluator,
+			middleware: runtime.middleware,
+			dependencies: runtime.dependencies,
 		},
-	}
+		undefined,
+	)
 
 	return {
 		state,
@@ -141,18 +113,24 @@ export async function createStepper<TContext extends Record<string, any>, TDepen
 			if (!traverser.hasMoreWork()) {
 				return null
 			}
-			return orchestrator.run(
-				traverser,
-				nodeExecutorFactory,
-				state,
-				executionServices,
+			const stepExecutionContext = new ExecutionContext(
 				blueprint,
-				undefined, // functionRegistry from createFlow is handled by getExecutor
+				state,
+				nodeRegistry,
 				executionId,
-				evaluator,
+				runtime,
+				{
+					logger: runtime.logger,
+					eventBus: runtime.eventBus,
+					serializer: runtime.serializer,
+					evaluator: runtime.evaluator,
+					middleware: runtime.middleware,
+					dependencies: runtime.dependencies,
+				},
 				options.signal,
 				options.concurrency,
 			)
+			return orchestrator.run(stepExecutionContext, traverser)
 		},
 	}
 }

@@ -2,17 +2,17 @@ import { describe, expect, it } from 'vitest'
 import { WorkflowState } from '../../src/runtime/state'
 
 describe('WorkflowState', () => {
-	it('should initialize with initial data', () => {
+	it('should initialize with initial data', async () => {
 		const initialData = { key: 'value' }
 		const state = new WorkflowState(initialData)
-		expect(state.getContext().toJSON()).toEqual(initialData)
+		expect(await state.getContext().toJSON()).toEqual(initialData)
 	})
 
-	it('should add completed nodes correctly', () => {
+	it('should add completed nodes correctly', async () => {
 		const state = new WorkflowState({})
-		state.addCompletedNode('node1', 'output1')
+		await state.addCompletedNode('node1', 'output1')
 		expect(state.getCompletedNodes().has('node1')).toBe(true)
-		expect(state.getContext().get('_outputs.node1')).toBe('output1')
+		expect(await state.getContext().get('_outputs.node1')).toBe('output1')
 	})
 
 	it('should add errors correctly', () => {
@@ -65,13 +65,13 @@ describe('WorkflowState', () => {
 		expect(state.getStatus(allNodeIds, fallbackNodeIds)).toBe('stalled')
 	})
 
-	it('should generate correct result object', () => {
+	it('should generate correct result object', async () => {
 		const state = new WorkflowState({ initial: 'data' })
 		const mockSerializer = {
 			serialize: (data: any) => JSON.stringify(data),
 			deserialize: (data: string) => JSON.parse(data),
 		}
-		const result = state.toResult(mockSerializer)
+		const result = await state.toResult(mockSerializer)
 		expect(result.context).toEqual({ initial: 'data' })
 		expect(result.serializedContext).toBe('{"initial":"data"}')
 		expect(result.status).toBe('completed')

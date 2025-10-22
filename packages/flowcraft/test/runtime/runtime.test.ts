@@ -56,25 +56,6 @@ describe('FlowRuntime', () => {
 		expect(context.set).toHaveBeenCalledWith('_inputs.B', 10)
 	})
 
-	it('should handle built-in nodes', async () => {
-		const runtime = new FlowRuntime({})
-		const nodeDef = {
-			id: 'batch',
-			uses: 'batch-scatter',
-			params: { workerUsesKey: 'worker', gatherNodeId: 'gather' },
-			inputs: 'data',
-		}
-		const context = {
-			type: 'sync',
-			get: vi.fn().mockResolvedValue(['item1']),
-			set: vi.fn(),
-			has: vi.fn().mockReturnValue(false),
-		} as any
-		const result = await (runtime as any)._executeBuiltInNode(nodeDef, context)
-		expect(result.dynamicNodes).toBeDefined()
-		expect(result.output.gatherNodeId).toBeDefined()
-	})
-
 	it('should respect abort signals', async () => {
 		const controller = new AbortController()
 		controller.abort()

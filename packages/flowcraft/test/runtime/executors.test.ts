@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { FlowcraftError } from '../../src/errors'
-import { BuiltInNodeExecutor, ClassNodeExecutor, FunctionNodeExecutor } from '../../src/runtime/executors'
+import { ClassNodeExecutor, FunctionNodeExecutor } from '../../src/runtime/executors'
 
 describe('FunctionNodeExecutor', () => {
 	it('should execute function nodes successfully', async () => {
@@ -232,30 +232,5 @@ describe('ClassNodeExecutor', () => {
 			signal: controller.signal,
 		} as any
 		await expect(executor.execute(nodeDef, context, undefined, controller.signal)).rejects.toThrow('Workflow cancelled')
-	})
-})
-
-describe('BuiltInNodeExecutor', () => {
-	it('should execute built-in nodes correctly', async () => {
-		const mockExecute = vi.fn().mockResolvedValue({ output: 'built-in' })
-		const executor = new BuiltInNodeExecutor(mockExecute)
-		const nodeDef = { id: 'test', uses: 'test', params: {} }
-		const context = {
-			context: {
-				get: vi.fn(),
-				set: vi.fn(),
-				type: 'sync',
-				has: vi.fn(),
-				delete: vi.fn(),
-				toJSON: vi.fn(),
-			},
-			input: 'input',
-			params: {},
-			dependencies: { logger: { info: vi.fn() } },
-			signal: undefined,
-		} as any
-		const result = await executor.execute(nodeDef, context)
-		expect(result.output).toBe('built-in')
-		expect(mockExecute).toHaveBeenCalledWith(nodeDef, context.context, undefined)
 	})
 })

@@ -1,17 +1,17 @@
-import { Context } from '../context'
+import { AsyncContextView, Context as SyncContext } from '../context'
 import { FlowcraftError } from '../errors'
-import type { ContextImplementation, ISerializer, WorkflowError, WorkflowResult } from '../types'
+import type { IAsyncContext, ISerializer, WorkflowError, WorkflowResult } from '../types'
 
 export class WorkflowState<TContext extends Record<string, any>> {
 	private _completedNodes = new Set<string>()
 	private errors: WorkflowError[] = []
 	private anyFallbackExecuted = false
-	private context: ContextImplementation<TContext>
+	private context: IAsyncContext<TContext>
 	private _isAwaiting = false
 	private _awaitingNodeId: string | null = null
 
 	constructor(initialData: Partial<TContext>) {
-		this.context = new Context<TContext>(initialData)
+		this.context = new AsyncContextView(new SyncContext<TContext>(initialData))
 		if ((initialData as any)._awaitingNodeId) {
 			this._isAwaiting = true
 			this._awaitingNodeId = (initialData as any)._awaitingNodeId
@@ -24,9 +24,9 @@ export class WorkflowState<TContext extends Record<string, any>> {
 		}
 	}
 
-	addCompletedNode(nodeId: string, output: any) {
+	async addCompletedNode(nodeId: string, output: any) {
 		this._completedNodes.add(nodeId)
-		this.context.set(`_outputs.${nodeId}` as any, output)
+		await this.context.set(`_outputs.${nodeId}` as any, output)
 	}
 
 	addError(nodeId: string, error: Error) {
@@ -50,7 +50,7 @@ export class WorkflowState<TContext extends Record<string, any>> {
 		this.anyFallbackExecuted = true
 	}
 
-	getContext(): ContextImplementation<TContext> {
+	getContext(): IAsyncContext<TContext> {
 		return this.context
 	}
 
@@ -94,8 +94,8 @@ export class WorkflowState<TContext extends Record<string, any>> {
 		return this._completedNodes.size < allNodeIds.size ? 'stalled' : 'completed'
 	}
 
-	toResult(serializer: ISerializer): WorkflowResult<TContext> {
-		const contextJSON = this.context.toJSON() as TContext
+	async toResult(serializer: ISerializer): Promise<WorkflowResult<TContext>> {
+		const contextJSON = (await this.context.toJSON()) as TContext
 		if (!this._isAwaiting && (contextJSON as any)._awaitingNodeId) {
 			delete (contextJSON as any)._awaitingNodeId
 		}

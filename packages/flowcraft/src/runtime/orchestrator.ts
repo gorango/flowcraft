@@ -1,30 +1,17 @@
 import { FlowcraftError } from '../errors'
-import type { IEvaluator, WorkflowBlueprint, WorkflowResult } from '../types'
+import type { WorkflowResult } from '../types'
+import type { ExecutionContext } from './execution-context'
 import { executeBatch, processResults } from './orchestrators/utils'
-import type { WorkflowState } from './state'
 import type { GraphTraverser } from './traverser'
-import type { ExecutionServices, IOrchestrator, NodeExecutorFactory } from './types'
+import type { IOrchestrator } from './types'
 
 export class DefaultOrchestrator implements IOrchestrator {
-	async run(
-		traverser: GraphTraverser,
-		executorFactory: NodeExecutorFactory,
-		initialState: WorkflowState<any>,
-		services: ExecutionServices,
-		blueprint: WorkflowBlueprint,
-		_functionRegistry: Map<string, any> | undefined,
-		_executionId: string,
-		_evaluator: IEvaluator,
-		_signal?: AbortSignal,
-		_concurrency?: number,
-	): Promise<WorkflowResult<any>> {
-		if (_concurrency === undefined) {
-			const hardwareConcurrency = globalThis.navigator?.hardwareConcurrency || 4
-			_concurrency = Math.min(hardwareConcurrency, 10)
-		}
+	async run(context: ExecutionContext<any, any>, traverser: GraphTraverser): Promise<WorkflowResult<any>> {
+		const hardwareConcurrency = globalThis.navigator?.hardwareConcurrency || 4
+		const maxConcurrency = context.concurrency ?? Math.min(hardwareConcurrency, 10)
 
 		try {
-			_signal?.throwIfAborted()
+			context.signal?.throwIfAborted()
 		} catch (error) {
 			if (error instanceof DOMException && error.name === 'AbortError') {
 				throw new FlowcraftError('Workflow cancelled', { isFatal: false })
@@ -41,7 +28,7 @@ export class DefaultOrchestrator implements IOrchestrator {
 			}
 
 			try {
-				_signal?.throwIfAborted()
+				context.signal?.throwIfAborted()
 			} catch (error) {
 				if (error instanceof DOMException && error.name === 'AbortError') {
 					throw new FlowcraftError('Workflow cancelled', { isFatal: false })
@@ -50,24 +37,32 @@ export class DefaultOrchestrator implements IOrchestrator {
 			}
 
 			const readyNodes = traverser.getReadyNodes()
+			const dynamicBlueprint = traverser.getDynamicBlueprint()
 			const settledResults = await executeBatch(
 				readyNodes,
-				traverser.getDynamicBlueprint(),
-				initialState,
-				executorFactory,
-				services,
-				_concurrency,
+				dynamicBlueprint,
+				context.state,
+				(nodeId: string) => context.runtime.getExecutorForNode(nodeId, { ...context, blueprint: dynamicBlueprint }),
+				context.runtime,
+				maxConcurrency,
 			)
 
-			await processResults(settledResults, traverser, initialState, services, blueprint, executorFactory, _executionId)
+			await processResults(
+				settledResults,
+				traverser,
+				context.state,
+				context.runtime,
+				context.blueprint,
+				context.executionId,
+			)
 
-			if (initialState.isAwaiting()) {
+			if (context.state.isAwaiting()) {
 				break
 			}
 		}
 
-		const status = initialState.getStatus(traverser.getAllNodeIds(), traverser.getFallbackNodeIds())
-		const result = initialState.toResult({ serialize: (obj: any) => JSON.stringify(obj) } as any)
+		const status = context.state.getStatus(traverser.getAllNodeIds(), traverser.getFallbackNodeIds())
+		const result = await context.state.toResult(context.services.serializer)
 		result.status = status
 		return result
 	}

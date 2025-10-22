@@ -1,9 +1,9 @@
 import { FlowcraftError } from '../../errors'
-import { JsonSerializer } from '../../serializer'
-import type { IEvaluator, WorkflowBlueprint, WorkflowResult } from '../../types'
-import type { WorkflowState } from '../state'
+
+import type { WorkflowResult } from '../../types'
+import type { ExecutionContext } from '../execution-context'
 import type { GraphTraverser } from '../traverser'
-import type { ExecutionServices, IOrchestrator, NodeExecutorFactory } from '../types'
+import type { IOrchestrator } from '../types'
 import { executeBatch, processResults } from './utils'
 
 /**
@@ -14,20 +14,9 @@ import { executeBatch, processResults } from './utils'
  * Useful for debugging, testing, or building interactive tools.
  */
 export class StepByStepOrchestrator implements IOrchestrator {
-	public async run(
-		traverser: GraphTraverser,
-		executorFactory: NodeExecutorFactory,
-		state: WorkflowState<any>,
-		services: ExecutionServices,
-		blueprint: WorkflowBlueprint,
-		_functionRegistry: Map<string, any> | undefined,
-		executionId: string,
-		_evaluator: IEvaluator,
-		signal?: AbortSignal,
-		concurrency?: number,
-	): Promise<WorkflowResult<any>> {
+	public async run(context: ExecutionContext<any, any>, traverser: GraphTraverser): Promise<WorkflowResult<any>> {
 		try {
-			signal?.throwIfAborted()
+			context.signal?.throwIfAborted()
 		} catch (error) {
 			if (error instanceof DOMException && error.name === 'AbortError') {
 				throw new FlowcraftError('Workflow cancelled', { isFatal: false })
@@ -36,33 +25,40 @@ export class StepByStepOrchestrator implements IOrchestrator {
 		}
 
 		if (!traverser.hasMoreWork()) {
-			const status = state.getStatus(traverser.getAllNodeIds(), traverser.getFallbackNodeIds())
-			const result = state.toResult(new JsonSerializer())
+			const status = context.state.getStatus(traverser.getAllNodeIds(), traverser.getFallbackNodeIds())
+			const result = await context.state.toResult(context.services.serializer)
 			result.status = status
 			return result
 		}
 
 		const allReadyNodes = traverser.getReadyNodes()
-		const nodesToExecute = concurrency ? allReadyNodes.slice(0, concurrency) : allReadyNodes
-		const nodesToSkip = concurrency ? allReadyNodes.slice(concurrency) : []
+		const nodesToExecute = context.concurrency ? allReadyNodes.slice(0, context.concurrency) : allReadyNodes
+		const nodesToSkip = context.concurrency ? allReadyNodes.slice(context.concurrency) : []
 
 		const settledResults = await executeBatch(
 			nodesToExecute,
 			traverser.getDynamicBlueprint(),
-			state,
-			executorFactory,
-			services,
-			concurrency,
+			context.state,
+			(nodeId: string) => context.runtime.getExecutorForNode(nodeId, context),
+			context.runtime,
+			context.concurrency,
 		)
 
-		await processResults(settledResults, traverser, state, services, blueprint, executorFactory, executionId)
+		await processResults(
+			settledResults,
+			traverser,
+			context.state,
+			context.runtime,
+			context.blueprint,
+			context.executionId,
+		)
 
 		for (const { nodeId } of nodesToSkip) {
 			traverser.addToFrontier(nodeId)
 		}
 
-		const status = state.getStatus(traverser.getAllNodeIds(), traverser.getFallbackNodeIds())
-		const result = state.toResult(new JsonSerializer())
+		const status = context.state.getStatus(traverser.getAllNodeIds(), traverser.getFallbackNodeIds())
+		const result = await context.state.toResult(context.services.serializer)
 		result.status = status
 		return result
 	}

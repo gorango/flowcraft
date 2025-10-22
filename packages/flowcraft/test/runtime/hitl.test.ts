@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { createFlow } from '../../src/flow'
+import { SubflowNode } from '../../src/nodes/subflow.node'
 import { FlowRuntime } from '../../src/runtime/runtime'
 import { InMemoryEventLogger, runWithTrace } from '../../src/testing'
 
@@ -122,8 +123,7 @@ describe('Human-in-the-Loop (HITL)', () => {
 				{ inputs: 'input' },
 			)
 			.edge('main-start', 'subflow')
-			.node('subflow', {
-				uses: 'subflow',
+			.node('subflow', SubflowNode, {
 				params: {
 					blueprintId: subflow.toBlueprint().id,
 					inputs: { input: 'main-start' },

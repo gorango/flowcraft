@@ -19,8 +19,12 @@ export abstract class BaseNode<
 > {
 	/**
 	 * @param params Static parameters for this node instance, passed from the blueprint.
+	 * @param nodeId The ID of the node in the blueprint.
 	 */
-	constructor(protected params?: Record<string, any>) {}
+	constructor(
+		protected params?: Record<string, any>,
+		protected nodeId?: string,
+	) {}
 
 	/**
 	 * Phase 1: Gathers and prepares data for execution. This phase is NOT retried on failure.
