@@ -18,9 +18,13 @@ describe('FlowRuntime', () => {
 		const state = new WorkflowState({})
 		const runtime = new FlowRuntime({})
 		const mockExecutor = {
-			execute: vi.fn().mockResolvedValue({ output: 'result' }),
+			execute: vi.fn().mockResolvedValue({
+				status: 'success',
+				result: { output: 'result' },
+			}),
 		}
-		vi.spyOn(runtime as any, 'getExecutor').mockReturnValue(mockExecutor)
+
+		vi.spyOn((runtime as any).executorFactory, 'createExecutorForNode').mockReturnValue(mockExecutor)
 		const result = await runtime.executeNode(blueprint, 'A', state)
 		expect(result.output).toBe('result')
 	})

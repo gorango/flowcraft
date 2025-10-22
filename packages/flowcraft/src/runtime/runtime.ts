@@ -1,11 +1,9 @@
 import type { BlueprintAnalysis } from '../analysis'
 import { analyzeBlueprint } from '../analysis'
 import { DIContainer, ServiceTokens } from '../container'
-import { AsyncContextView } from '../context'
 import { FlowcraftError } from '../errors'
 import { PropertyEvaluator } from '../evaluator'
 import { NullLogger } from '../logger'
-import { isNodeClass } from '../node'
 import { BatchGatherNode } from '../nodes/batch-gather.node'
 import { BatchScatterNode } from '../nodes/batch-scatter.node'
 import { SubflowNode } from '../nodes/subflow.node'
@@ -30,12 +28,12 @@ import type {
 	WorkflowResult,
 } from '../types'
 import { ExecutionContext } from './execution-context'
-import type { ExecutionStrategy } from './executors'
-import { ClassNodeExecutor, FunctionNodeExecutor, NodeExecutor } from './executors'
+import { NodeExecutorFactory } from './node-executor-factory'
 import { DefaultOrchestrator } from './orchestrator'
 import { WorkflowState } from './state'
 import { GraphTraverser } from './traverser'
 import type { IOrchestrator, IRuntime } from './types'
+import { WorkflowLogicHandler } from './workflow-logic-handler'
 
 export class FlowRuntime<TContext extends Record<string, any>, TDependencies extends Record<string, any>>
 	implements IRuntime<TContext, TDependencies>
@@ -52,6 +50,8 @@ export class FlowRuntime<TContext extends Record<string, any>, TDependencies ext
 	private analysisCache: WeakMap<WorkflowBlueprint, BlueprintAnalysis>
 	public orchestrator: IOrchestrator
 	public options: RuntimeOptions<TDependencies>
+	private readonly logicHandler: WorkflowLogicHandler
+	private readonly executorFactory: NodeExecutorFactory
 
 	constructor(container: DIContainer, options?: RuntimeOptions<TDependencies>)
 	constructor(options: RuntimeOptions<TDependencies>)
@@ -105,6 +105,43 @@ export class FlowRuntime<TContext extends Record<string, any>, TDependencies ext
 			? this.container.resolve<IOrchestrator>(ServiceTokens.Orchestrator)
 			: new DefaultOrchestrator()
 		this.analysisCache = new WeakMap()
+		this.logicHandler = new WorkflowLogicHandler(this.evaluator, this.eventBus)
+		this.executorFactory = new NodeExecutorFactory(this.eventBus)
+	}
+
+	private _setupExecutionContext(
+		blueprint: WorkflowBlueprint,
+		initialState: Partial<TContext> | string,
+		options?: {
+			functionRegistry?: Map<string, any>
+			strict?: boolean
+			signal?: AbortSignal
+			concurrency?: number
+		},
+	): ExecutionContext<TContext, TDependencies> {
+		const executionId = globalThis.crypto?.randomUUID()
+		const contextData =
+			typeof initialState === 'string' ? (this.serializer.deserialize(initialState) as Partial<TContext>) : initialState
+		blueprint = sanitizeBlueprint(blueprint)
+		const state = new WorkflowState<TContext>(contextData)
+		const nodeRegistry = this._createExecutionRegistry(options?.functionRegistry)
+		return new ExecutionContext(
+			blueprint,
+			state,
+			nodeRegistry,
+			executionId,
+			this,
+			{
+				logger: this.logger,
+				eventBus: this.eventBus,
+				serializer: this.serializer,
+				evaluator: this.evaluator,
+				middleware: this.middleware,
+				dependencies: this.dependencies,
+			},
+			options?.signal,
+			options?.concurrency,
+		)
 	}
 
 	async run(
@@ -117,58 +154,40 @@ export class FlowRuntime<TContext extends Record<string, any>, TDependencies ext
 			concurrency?: number
 		},
 	): Promise<WorkflowResult<TContext>> {
-		const executionId = globalThis.crypto?.randomUUID()
 		const startTime = Date.now()
-		const contextData =
-			typeof initialState === 'string' ? (this.serializer.deserialize(initialState) as Partial<TContext>) : initialState
-		blueprint = sanitizeBlueprint(blueprint)
-		const state = new WorkflowState<TContext>(contextData)
+		const executionContext = this._setupExecutionContext(blueprint, initialState, options)
 
 		this.logger.info(`Starting workflow execution`, {
-			blueprintId: blueprint.id,
-			executionId,
+			blueprintId: executionContext.blueprint.id,
+			executionId: executionContext.executionId,
 		})
 
 		try {
-			await this.eventBus.emit({ type: 'workflow:start', payload: { blueprintId: blueprint.id, executionId } })
-			await this.eventBus.emit({ type: 'workflow:resume', payload: { blueprintId: blueprint.id, executionId } })
-			// use cached analysis if available, otherwise compute and cache it
+			await this.eventBus.emit({
+				type: 'workflow:start',
+				payload: { blueprintId: executionContext.blueprint.id, executionId: executionContext.executionId },
+			})
+			await this.eventBus.emit({
+				type: 'workflow:resume',
+				payload: { blueprintId: executionContext.blueprint.id, executionId: executionContext.executionId },
+			})
 			const analysis =
-				this.analysisCache.get(blueprint) ??
+				this.analysisCache.get(executionContext.blueprint) ??
 				(() => {
-					const computed = analyzeBlueprint(blueprint)
-					this.analysisCache.set(blueprint, computed)
+					const computed = analyzeBlueprint(executionContext.blueprint)
+					this.analysisCache.set(executionContext.blueprint, computed)
 					return computed
 				})()
 			if (options?.strict && !analysis.isDag) {
-				throw new Error(`Workflow '${blueprint.id}' failed strictness check: Cycles are not allowed.`)
+				throw new Error(`Workflow '${executionContext.blueprint.id}' failed strictness check: Cycles are not allowed.`)
 			}
 			if (!analysis.isDag) {
 				this.logger.warn(`Workflow contains cycles`, {
-					blueprintId: blueprint.id,
+					blueprintId: executionContext.blueprint.id,
 				})
 			}
 
-			const nodeRegistry = this._createExecutionRegistry(options?.functionRegistry)
-			const executionContext = new ExecutionContext(
-				blueprint,
-				state,
-				nodeRegistry,
-				executionId,
-				this,
-				{
-					logger: this.logger,
-					eventBus: this.eventBus,
-					serializer: this.serializer,
-					evaluator: this.evaluator,
-					middleware: this.middleware,
-					dependencies: this.dependencies,
-				},
-				options?.signal,
-				options?.concurrency,
-			)
-
-			const traverser = new GraphTraverser(blueprint, options?.strict === true)
+			const traverser = new GraphTraverser(executionContext.blueprint, options?.strict === true)
 			const result = await this.orchestrator.run(executionContext, traverser)
 
 			const duration = Date.now() - startTime
@@ -176,16 +195,19 @@ export class FlowRuntime<TContext extends Record<string, any>, TDependencies ext
 				await this.eventBus.emit({
 					type: 'workflow:stall',
 					payload: {
-						blueprintId: blueprint.id,
-						executionId,
-						remainingNodes: traverser.getAllNodeIds().size - state.getCompletedNodes().size,
+						blueprintId: executionContext.blueprint.id,
+						executionId: executionContext.executionId,
+						remainingNodes: traverser.getAllNodeIds().size - executionContext.state.getCompletedNodes().size,
 					},
 				})
-				await this.eventBus.emit({ type: 'workflow:pause', payload: { blueprintId: blueprint.id, executionId } })
+				await this.eventBus.emit({
+					type: 'workflow:pause',
+					payload: { blueprintId: executionContext.blueprint.id, executionId: executionContext.executionId },
+				})
 			}
 			this.logger.info(`Workflow execution completed`, {
-				blueprintId: blueprint.id,
-				executionId,
+				blueprintId: executionContext.blueprint.id,
+				executionId: executionContext.executionId,
 				status: result.status,
 				duration,
 				errors: result.errors?.length || 0,
@@ -193,8 +215,8 @@ export class FlowRuntime<TContext extends Record<string, any>, TDependencies ext
 			await this.eventBus.emit({
 				type: 'workflow:finish',
 				payload: {
-					blueprintId: blueprint.id,
-					executionId,
+					blueprintId: executionContext.blueprint.id,
+					executionId: executionContext.executionId,
 					status: result.status,
 					errors: result.errors,
 				},
@@ -211,8 +233,8 @@ export class FlowRuntime<TContext extends Record<string, any>, TDependencies ext
 			await this.eventBus.emit({
 				type: 'workflow:finish',
 				payload: {
-					blueprintId: blueprint.id,
-					executionId,
+					blueprintId: executionContext.blueprint.id,
+					executionId: executionContext.executionId,
 					status: 'cancelled',
 					errors: [workflowError],
 				},
@@ -223,16 +245,19 @@ export class FlowRuntime<TContext extends Record<string, any>, TDependencies ext
 					: error instanceof FlowcraftError && error.message.includes('cancelled')
 			) {
 				this.logger.info(`Workflow execution cancelled`, {
-					blueprintId: blueprint.id,
-					executionId,
+					blueprintId: executionContext.blueprint.id,
+					executionId: executionContext.executionId,
 					duration,
 				})
-				await this.eventBus.emit({ type: 'workflow:pause', payload: { blueprintId: blueprint.id, executionId } })
+				await this.eventBus.emit({
+					type: 'workflow:pause',
+					payload: { blueprintId: executionContext.blueprint.id, executionId: executionContext.executionId },
+				})
 				await this.eventBus.emit({
 					type: 'workflow:finish',
 					payload: {
-						blueprintId: blueprint.id,
-						executionId,
+						blueprintId: executionContext.blueprint.id,
+						executionId: executionContext.executionId,
 						status: 'cancelled',
 						errors: [workflowError],
 					},
@@ -244,13 +269,43 @@ export class FlowRuntime<TContext extends Record<string, any>, TDependencies ext
 				}
 			}
 			this.logger.error(`Workflow execution failed`, {
-				blueprintId: blueprint.id,
-				executionId,
+				blueprintId: executionContext.blueprint.id,
+				executionId: executionContext.executionId,
 				duration,
 				error: error instanceof Error ? error.message : String(error),
 			})
 			throw error
 		}
+	}
+
+	private _setupResumedExecutionContext(
+		blueprint: WorkflowBlueprint,
+		workflowState: WorkflowState<TContext>,
+		options?: {
+			functionRegistry?: Map<string, any>
+			strict?: boolean
+			signal?: AbortSignal
+			concurrency?: number
+		},
+	): ExecutionContext<TContext, TDependencies> {
+		const executionId = globalThis.crypto?.randomUUID()
+		const nodeRegistry = this._createExecutionRegistry(options?.functionRegistry)
+		return new ExecutionContext(
+			blueprint,
+			workflowState,
+			nodeRegistry,
+			executionId,
+			this,
+			{
+				logger: this.logger,
+				eventBus: this.eventBus,
+				serializer: this.serializer,
+				evaluator: this.evaluator,
+				middleware: this.middleware,
+				dependencies: this.dependencies,
+			},
+			options?.signal,
+		)
 	}
 
 	async resume(
@@ -359,23 +414,7 @@ export class FlowRuntime<TContext extends Record<string, any>, TDependencies ext
 
 		workflowState.clearAwaiting()
 
-		const nodeRegistry = this._createExecutionRegistry(options?.functionRegistry)
-		const executionContext = new ExecutionContext(
-			blueprint,
-			workflowState,
-			nodeRegistry,
-			executionId,
-			this,
-			{
-				logger: this.logger,
-				eventBus: this.eventBus,
-				serializer: this.serializer,
-				evaluator: this.evaluator,
-				middleware: this.middleware,
-				dependencies: this.dependencies,
-			},
-			options?.signal,
-		)
+		const executionContext = this._setupResumedExecutionContext(blueprint, workflowState, options)
 
 		return await this.orchestrator.run(executionContext, traverser)
 	}
@@ -414,7 +453,6 @@ export class FlowRuntime<TContext extends Record<string, any>, TDependencies ext
 
 		const input = await this.resolveNodeInput(nodeDef.id, blueprint, asyncContext)
 		const nodeRegistry = new Map([...this.registry, ...(functionRegistry || new Map())])
-		const strategy = this.getExecutor(nodeDef, nodeRegistry as Map<string, any>)
 
 		const services = {
 			logger: this.logger,
@@ -424,13 +462,9 @@ export class FlowRuntime<TContext extends Record<string, any>, TDependencies ext
 			middleware: this.middleware,
 			dependencies: this.dependencies,
 		}
-		const context = new ExecutionContext(blueprint, state, this.registry, executionId || '', this, services, signal)
+		const context = new ExecutionContext(blueprint, state, nodeRegistry, executionId || '', this, services, signal)
 
-		const executor = new NodeExecutor<TContext, TDependencies>({
-			context,
-			nodeDef,
-			strategy,
-		})
+		const executor = this.executorFactory.createExecutorForNode(nodeId, context)
 
 		const executionResult = await executor.execute(input)
 
@@ -450,12 +484,7 @@ export class FlowRuntime<TContext extends Record<string, any>, TDependencies ext
 			}
 
 			const fallbackInput = await this.resolveNodeInput(fallbackNode.id, blueprint, asyncContext)
-			const fallbackStrategy = this.getExecutor(fallbackNode, nodeRegistry as Map<string, any>)
-			const fallbackExecutor = new NodeExecutor<TContext, TDependencies>({
-				context,
-				nodeDef: fallbackNode,
-				strategy: fallbackStrategy,
-			})
+			const fallbackExecutor = this.executorFactory.createExecutorForNode(fallbackNode.id, context)
 
 			const fallbackResult = await fallbackExecutor.execute(fallbackInput)
 			if (fallbackResult.status === 'success') {
@@ -476,20 +505,7 @@ export class FlowRuntime<TContext extends Record<string, any>, TDependencies ext
 	}
 
 	public getExecutorForNode(nodeId: string, context: ExecutionContext<TContext, TDependencies>): any {
-		const nodeDef = context.blueprint.nodes.find((n) => n.id === nodeId)
-		if (!nodeDef) {
-			throw new FlowcraftError(`Node '${nodeId}' not found in blueprint.`, {
-				nodeId,
-				blueprintId: context.blueprint.id,
-				executionId: context.executionId,
-				isFatal: false,
-			})
-		}
-		return new NodeExecutor<TContext, TDependencies>({
-			context,
-			nodeDef,
-			strategy: this.getExecutor(nodeDef, context.nodeRegistry),
-		})
+		return this.executorFactory.createExecutorForNode(nodeId, context)
 	}
 
 	public createForSubflow(
@@ -502,7 +518,7 @@ export class FlowRuntime<TContext extends Record<string, any>, TDependencies ext
 		return new ExecutionContext(
 			subBlueprint,
 			subState,
-			this.registry, // Use the same registry
+			this.registry,
 			executionId,
 			this,
 			{
@@ -517,21 +533,6 @@ export class FlowRuntime<TContext extends Record<string, any>, TDependencies ext
 		)
 	}
 
-	public getExecutor(nodeDef: NodeDefinition, nodeRegistry: Map<string, NodeFunction | NodeClass>): ExecutionStrategy {
-		const implementation = nodeRegistry.get(nodeDef.uses)
-		if (!implementation) {
-			throw new FlowcraftError(`Implementation for '${nodeDef.uses}' not found for node '${nodeDef.id}'.`, {
-				nodeId: nodeDef.id,
-				blueprintId: '',
-				isFatal: true,
-			})
-		}
-		const maxRetries = nodeDef.config?.maxRetries ?? 1
-		return isNodeClass(implementation)
-			? new ClassNodeExecutor(implementation, maxRetries, this.eventBus)
-			: new FunctionNodeExecutor(implementation, maxRetries, this.eventBus)
-	}
-
 	async determineNextNodes(
 		blueprint: WorkflowBlueprint,
 		nodeId: string,
@@ -539,54 +540,7 @@ export class FlowRuntime<TContext extends Record<string, any>, TDependencies ext
 		context: ContextImplementation<TContext>,
 		executionId?: string,
 	): Promise<{ node: NodeDefinition; edge: EdgeDefinition }[]> {
-		const outgoingEdges = blueprint.edges.filter((edge) => edge.source === nodeId)
-		const matched: { node: NodeDefinition; edge: EdgeDefinition }[] = []
-		const evaluateEdge = async (edge: EdgeDefinition): Promise<boolean> => {
-			if (!edge.condition) return true
-			const contextData = context.type === 'sync' ? context.toJSON() : await context.toJSON()
-			const evaluationResult = !!this.evaluator.evaluate(edge.condition, {
-				...contextData,
-				result,
-			})
-			await this.eventBus.emit({
-				type: 'edge:evaluate',
-				payload: { source: nodeId, target: edge.target, condition: edge.condition, result: evaluationResult },
-			})
-			return evaluationResult
-		}
-		if (result.action) {
-			const actionEdges = outgoingEdges.filter((edge) => edge.action === result.action)
-			for (const edge of actionEdges) {
-				if (await evaluateEdge(edge)) {
-					const targetNode = blueprint.nodes.find((n) => n.id === edge.target)
-					if (targetNode) matched.push({ node: targetNode, edge })
-				} else {
-					await this.eventBus.emit({
-						type: 'node:skipped',
-						payload: { nodeId, edge, executionId: executionId || '', blueprintId: blueprint.id },
-					})
-				}
-			}
-		}
-		if (matched.length === 0) {
-			const defaultEdges = outgoingEdges.filter((edge) => !edge.action)
-			for (const edge of defaultEdges) {
-				if (await evaluateEdge(edge)) {
-					const targetNode = blueprint.nodes.find((n) => n.id === edge.target)
-					if (targetNode) matched.push({ node: targetNode, edge })
-				} else {
-					await this.eventBus.emit({
-						type: 'node:skipped',
-						payload: { nodeId, edge, executionId: executionId || '', blueprintId: blueprint.id },
-					})
-				}
-			}
-		}
-		this.logger.debug(`Determined next nodes for ${nodeId}`, {
-			matchedNodes: matched.map((m) => m.node.id),
-			action: result.action,
-		})
-		return matched
+		return this.logicHandler.determineNextNodes(blueprint, nodeId, result, context, executionId)
 	}
 
 	public async applyEdgeTransform(
@@ -596,29 +550,7 @@ export class FlowRuntime<TContext extends Record<string, any>, TDependencies ext
 		context: ContextImplementation<TContext>,
 		allPredecessors?: Map<string, Set<string>>,
 	): Promise<void> {
-		const asyncContext = context.type === 'sync' ? new AsyncContextView(context) : context
-		const predecessors = allPredecessors?.get(targetNode.id)
-		const hasSinglePredecessor = predecessors && predecessors.size === 1
-		const hasExplicitInputs = targetNode.inputs !== undefined
-		const hasEdgeTransform = edge.transform !== undefined
-		if (!hasExplicitInputs && !hasSinglePredecessor && !hasEdgeTransform) {
-			return
-		}
-		const finalInput = edge.transform
-			? this.evaluator.evaluate(edge.transform, {
-					input: sourceResult.output,
-					context: await asyncContext.toJSON(),
-				})
-			: sourceResult.output
-		const inputKey = `_inputs.${targetNode.id}`
-		await asyncContext.set(inputKey as any, finalInput)
-		await this.eventBus.emit({
-			type: 'context:change',
-			payload: { sourceNode: edge.source, key: inputKey, value: finalInput },
-		})
-		if (!hasExplicitInputs) {
-			targetNode.inputs = inputKey
-		}
+		return this.logicHandler.applyEdgeTransform(edge, sourceResult, targetNode, context, allPredecessors)
 	}
 
 	public async resolveNodeInput(
@@ -626,45 +558,6 @@ export class FlowRuntime<TContext extends Record<string, any>, TDependencies ext
 		blueprint: WorkflowBlueprint,
 		context: ContextImplementation<TContext>,
 	): Promise<any> {
-		const nodeDef = blueprint.nodes.find((n) => n.id === nodeId)
-		if (!nodeDef) {
-			throw new FlowcraftError(`Node '${nodeId}' not found in blueprint.`, {
-				nodeId,
-				blueprintId: blueprint.id,
-				isFatal: false,
-			})
-		}
-		const asyncContext = context.type === 'sync' ? new AsyncContextView(context) : context
-		if (nodeDef.inputs) {
-			if (typeof nodeDef.inputs === 'string') {
-				const key = nodeDef.inputs
-				if (key.startsWith('_')) return await asyncContext.get(key as any)
-				const outputKey = `_outputs.${key}`
-				if (await asyncContext.has(outputKey as any)) {
-					return await asyncContext.get(outputKey as any)
-				}
-				return await asyncContext.get(key as any)
-			}
-			if (typeof nodeDef.inputs === 'object') {
-				const input: Record<string, any> = {}
-				for (const key in nodeDef.inputs) {
-					const contextKey = nodeDef.inputs[key]
-					if (contextKey.startsWith('_')) {
-						input[key] = await asyncContext.get(contextKey as any)
-					} else {
-						const outputKey = `_outputs.${contextKey}`
-						if (await asyncContext.has(outputKey as any)) {
-							input[key] = await asyncContext.get(outputKey as any)
-						} else {
-							input[key] = await asyncContext.get(contextKey as any)
-						}
-					}
-				}
-				return input
-			}
-		}
-		// Default to standardized input key
-		const inputKey = `_inputs.${nodeDef.id}`
-		return await asyncContext.get(inputKey as any)
+		return this.logicHandler.resolveNodeInput(nodeId, blueprint, context)
 	}
 }
