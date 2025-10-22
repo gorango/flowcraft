@@ -1,6 +1,6 @@
 import { FlowcraftError } from '../errors'
 import type { WorkflowResult } from '../types'
-import type { ExecutionContext } from './execution-context'
+import { ExecutionContext } from './execution-context'
 import { executeBatch, processResults } from './orchestrators/utils'
 import type { GraphTraverser } from './traverser'
 import type { IOrchestrator } from './types'
@@ -38,11 +38,21 @@ export class DefaultOrchestrator implements IOrchestrator {
 
 			const readyNodes = traverser.getReadyNodes()
 			const dynamicBlueprint = traverser.getDynamicBlueprint()
+			const updatedContext = new ExecutionContext(
+				dynamicBlueprint,
+				context.state,
+				context.nodeRegistry,
+				context.executionId,
+				context.runtime,
+				context.services,
+				context.signal,
+				context.concurrency,
+			)
 			const settledResults = await executeBatch(
 				readyNodes,
 				dynamicBlueprint,
 				context.state,
-				(nodeId: string) => context.runtime.getExecutorForNode(nodeId, { ...context, blueprint: dynamicBlueprint }),
+				(nodeId: string) => context.runtime.getExecutorForNode(nodeId, updatedContext),
 				context.runtime,
 				maxConcurrency,
 			)

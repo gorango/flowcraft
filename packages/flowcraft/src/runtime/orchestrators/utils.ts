@@ -139,7 +139,7 @@ export async function processResults(
 				traverser.markNodeCompleted(
 					nodeId,
 					{ action: 'fallback', output: null },
-					matched.map((m) => m.node),
+					matched.map((m: { node: any; edge: any }) => m.node),
 				)
 			} else {
 				state.addError(nodeId, executionResult.error)

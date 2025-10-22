@@ -93,7 +93,7 @@ describe('Human-in-the-Loop (HITL)', () => {
 		expect(result3.context['_outputs.end'].final).toBe(52)
 	})
 
-	it.skip('should handle nested subflow with wait node', async () => {
+	it('should handle nested subflow with wait node', async () => {
 		const eventLogger = new InMemoryEventLogger()
 		const subflow = createFlow<{ input: number }>('sub-approval-workflow')
 			.node(
@@ -109,7 +109,7 @@ describe('Human-in-the-Loop (HITL)', () => {
 			.node(
 				'sub-end',
 				async ({ input }) => {
-					return { output: { subFinal: input.value + 5 } }
+					return { output: { subFinal: input.value.value + 5 } }
 				},
 				{ inputs: '_outputs.sub-start' },
 			)

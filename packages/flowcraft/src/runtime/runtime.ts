@@ -340,9 +340,10 @@ export class FlowRuntime<TContext extends Record<string, any>, TDependencies ext
 			})
 		}
 
-		if (awaitingNodeDef.uses === 'subflow') {
+		const contextImpl = workflowState.getContext()
+
+		if (awaitingNodeDef.uses === 'SubflowNode') {
 			const subflowStateKey = `_subflowState.${awaitingNodeId}`
-			const contextImpl = workflowState.getContext()
 			const asyncContext = contextImpl
 			const subflowContext = (await asyncContext.get(subflowStateKey as any)) as string
 
@@ -385,10 +386,28 @@ export class FlowRuntime<TContext extends Record<string, any>, TDependencies ext
 				)
 			}
 
-			resumeData = { output: subflowResumeResult.context }
-		}
+			// mirror the output extraction logic from SubflowNode.exec
+			const subflowFinalContext = subflowResumeResult.context as Record<string, any>
+			let finalSubflowOutput: any
+			const subAnalysis = analyzeBlueprint(subBlueprint)
 
-		const contextImpl = workflowState.getContext()
+			if (awaitingNodeDef.params?.outputs) {
+				finalSubflowOutput = subflowFinalContext
+			} else if (subAnalysis.terminalNodeIds.length === 1) {
+				const terminalId = subAnalysis.terminalNodeIds[0]
+				finalSubflowOutput = subflowFinalContext[`_outputs.${terminalId}`]
+			} else {
+				const terminalOutputs: Record<string, any> = {}
+				for (const terminalId of subAnalysis.terminalNodeIds) {
+					terminalOutputs[terminalId] = subflowFinalContext[`_outputs.${terminalId}`]
+				}
+				finalSubflowOutput = terminalOutputs
+			}
+
+			resumeData = { output: finalSubflowOutput }
+
+			await contextImpl.delete(subflowStateKey as any)
+		}
 
 		workflowState.addCompletedNode(awaitingNodeId, resumeData.output)
 
@@ -401,8 +420,11 @@ export class FlowRuntime<TContext extends Record<string, any>, TDependencies ext
 			return result
 		}
 
+		const traverserForResume = new GraphTraverser(blueprint)
+		const allPredecessors = traverserForResume.getAllPredecessors()
+
 		for (const { node, edge } of nextSteps) {
-			await this.applyEdgeTransform(edge, resumeData, node, contextImpl)
+			await this.applyEdgeTransform(edge, resumeData, node, contextImpl, allPredecessors)
 		}
 
 		const traverser = GraphTraverser.fromState(blueprint, workflowState)

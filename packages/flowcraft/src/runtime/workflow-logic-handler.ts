@@ -81,9 +81,11 @@ export class WorkflowLogicHandler {
 		const hasSinglePredecessor = predecessors && predecessors.size === 1
 		const hasExplicitInputs = targetNode.inputs !== undefined
 		const hasEdgeTransform = edge.transform !== undefined
+
 		if (!hasExplicitInputs && !hasSinglePredecessor && !hasEdgeTransform) {
 			return
 		}
+
 		const finalInput = edge.transform
 			? this.evaluator.evaluate(edge.transform, {
 					input: sourceResult.output,

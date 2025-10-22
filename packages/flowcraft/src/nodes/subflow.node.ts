@@ -92,7 +92,7 @@ export class SubflowNode extends BaseNode {
 		const subAnalysis = analyzeBlueprint(subBlueprint)
 		if (subAnalysis.terminalNodeIds.length === 1) {
 			const terminalId = subAnalysis.terminalNodeIds[0]
-			return subflowFinalContext[`_outputs.${terminalId}`]
+			return { output: subflowFinalContext[`_outputs.${terminalId}`] }
 		}
 
 		const terminalOutputs: Record<string, any> = {}
