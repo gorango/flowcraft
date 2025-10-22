@@ -171,6 +171,8 @@ export class FlowRuntime<TContext extends Record<string, any>, TDependencies ext
 
 		const contextImpl = workflowState.getContext()
 
+		workflowState.addCompletedNode(awaitingNodeId, resumeData.output)
+
 		const nextSteps = await this.determineNextNodes(blueprint, awaitingNodeId, resumeData, contextImpl, executionId)
 
 		if (nextSteps.length === 0) {
@@ -180,17 +182,11 @@ export class FlowRuntime<TContext extends Record<string, any>, TDependencies ext
 			return result
 		}
 
-		workflowState.addCompletedNode(awaitingNodeId, resumeData.output)
-
 		for (const { node, edge } of nextSteps) {
 			await this.applyEdgeTransform(edge, resumeData, node, contextImpl)
 		}
 
-		const traverser = new GraphTraverser(blueprint, options?.strict === true)
-
-		for (const id of workflowState.getCompletedNodes()) {
-			traverser.markNodeCompleted(id, {}, [])
-		}
+		const traverser = GraphTraverser.fromState(blueprint, workflowState)
 
 		const nextNodeDefs = nextSteps.map((s) => s.node)
 		for (const nodeDef of nextNodeDefs) {

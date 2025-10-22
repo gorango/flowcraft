@@ -1,5 +1,6 @@
 import { analyzeBlueprint } from '../analysis'
 import type { NodeDefinition, NodeResult, WorkflowBlueprint } from '../types'
+import type { WorkflowState } from './state'
 
 export interface ReadyNode {
 	nodeId: string
@@ -34,6 +35,33 @@ export class GraphTraverser {
 			}
 			this.frontier = new Set(uniqueStartNodes)
 		}
+	}
+
+	/**
+	 * Clears all nodes from the execution frontier.
+	 */
+	public clearFrontier(): void {
+		this.frontier.clear()
+	}
+
+	/**
+	 * Creates and initializes a GraphTraverser from a saved workflow state.
+	 * This is the correct way to prepare a traverser for a `resume` operation.
+	 * @param blueprint The workflow blueprint.
+	 * @param state The workflow state being resumed.
+	 * @returns A configured GraphTraverser instance.
+	 */
+	public static fromState(blueprint: WorkflowBlueprint, state: WorkflowState<any>): GraphTraverser {
+		const traverser = new GraphTraverser(blueprint)
+
+		// clear auto-populated frontier from constructor
+		traverser.clearFrontier()
+
+		// re-hydrate the set of completed nodes
+		const completedNodes = state.getCompletedNodes()
+		traverser.completedNodes = new Set(completedNodes)
+
+		return traverser
 	}
 
 	private isFallbackNode(nodeId: string): boolean {
