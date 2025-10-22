@@ -3,20 +3,20 @@
 echo "Pre-loading Testcontainers Docker images..."
 
 # Pull RabbitMQ image
-docker pull rabbitmq:management-alpine
+docker pull rabbitmq:3.13.0-management-alpine
 if [ $? -eq 0 ]; then
-	echo "Successfully pulled rabbitmq:management-alpine"
+	echo "Successfully pulled rabbitmq:3.13.0-management-alpine"
 else
-	echo "Failed to pull rabbitmq:management-alpine"
+	echo "Failed to pull rabbitmq:3.13.0-management-alpine"
 	exit 1
 fi
 
 # Pull PostgreSQL image
-docker pull postgres:18.0
+docker pull postgres:16.4
 if [ $? -eq 0 ]; then
-	echo "Successfully pulled postgres:18.0"
+	echo "Successfully pulled postgres:16.4"
 else
-	echo "Failed to pull postgres:18.0"
+	echo "Failed to pull postgres:16.4"
 	exit 1
 fi
 
