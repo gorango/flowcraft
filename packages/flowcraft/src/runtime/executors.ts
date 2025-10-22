@@ -191,14 +191,16 @@ export class BuiltInNodeExecutor implements ExecutionStrategy {
 		private executeBuiltIn: (
 			nodeDef: NodeDefinition,
 			context: ContextImplementation<any>,
+			state?: WorkflowState<any>,
 		) => Promise<NodeResult<any, any>>,
+		private state?: WorkflowState<any>,
 	) {}
 
 	async execute(
 		nodeDef: NodeDefinition,
 		context: NodeContext<Record<string, unknown>, Record<string, unknown>, any>,
 	): Promise<NodeResult<any, any>> {
-		return this.executeBuiltIn(nodeDef, context.context as ContextImplementation<any>)
+		return this.executeBuiltIn(nodeDef, context.context as ContextImplementation<any>, this.state)
 	}
 }
 

@@ -8,13 +8,23 @@ This is the serializable representation of a node within a [`WorkflowBlueprint`]
 
 ```typescript
 interface NodeDefinition {
-  id: string;
-  uses: string; // Key that resolves to an implementation in a registry.
-  params?: Record<string, any>;
-  inputs?: string | Record<string, string>;
-  config?: NodeConfig;
+   id: string;
+   uses: string; // Key that resolves to an implementation in a registry.
+   params?: Record<string, any>;
+   inputs?: string | Record<string, string>;
+   config?: NodeConfig;
 }
 ```
+
+### Built-in Node Types
+
+Flowcraft provides several built-in node types for common patterns:
+
+- **`wait`**: Pauses workflow execution for external input (human-in-the-loop).
+- **`subflow`**: Executes a nested workflow.
+- **`batch-scatter`**: Splits an array for parallel processing.
+- **`batch-gather`**: Collects results from parallel workers.
+- **`loop-controller`**: Manages iterative loops.
 
 ## `EdgeDefinition` Interface
 

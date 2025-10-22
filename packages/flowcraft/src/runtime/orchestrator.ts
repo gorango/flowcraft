@@ -3,9 +3,9 @@ import type { IEvaluator, WorkflowBlueprint, WorkflowResult } from '../types'
 import { executeBatch, processResults } from './orchestrators/utils'
 import type { WorkflowState } from './state'
 import type { GraphTraverser } from './traverser'
-import type { ExecutionServices, NodeExecutorFactory } from './types'
+import type { ExecutionServices, IOrchestrator, NodeExecutorFactory } from './types'
 
-export class RunToCompletionOrchestrator {
+export class DefaultOrchestrator implements IOrchestrator {
 	async run(
 		traverser: GraphTraverser,
 		executorFactory: NodeExecutorFactory,
@@ -60,6 +60,10 @@ export class RunToCompletionOrchestrator {
 			)
 
 			await processResults(settledResults, traverser, initialState, services, blueprint, executorFactory, _executionId)
+
+			if (initialState.isAwaiting()) {
+				break
+			}
 		}
 
 		const status = initialState.getStatus(traverser.getAllNodeIds(), traverser.getFallbackNodeIds())
@@ -68,3 +72,5 @@ export class RunToCompletionOrchestrator {
 		return result
 	}
 }
+
+export class RunToCompletionOrchestrator extends DefaultOrchestrator {}

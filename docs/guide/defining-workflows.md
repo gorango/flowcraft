@@ -101,6 +101,45 @@ The strongly-typed workflow system provides:
 - **IntelliSense support**: Full autocomplete for context keys and their types
 - **Compile-time error prevention**: Type mismatches caught during development
 
+## Adding Wait Nodes for Human-in-the-Loop
+
+For workflows that require external input (e.g., approvals), use the `.wait()` method to create pause points.
+
+```typescript
+const flowBuilder = createFlow<UserProcessingContext>('approval-workflow')
+  .node('fetch-user', async ({ context }) => {
+    const user = { id: 1, name: 'Alice' }
+    await context.set('user_data', user)
+    return { output: user }
+  })
+  .edge('fetch-user', 'wait-for-approval')
+  .wait('wait-for-approval')  // Pauses execution here
+  .edge('wait-for-approval', 'process')
+  .node('process', async ({ input, context }) => {
+    const approved = input?.approved
+    if (approved) {
+      await context.set('processing_status', 'completed')
+      return { output: 'User approved and processed' }
+    }
+    return { output: 'User rejected' }
+  })
+
+// Execute the workflow
+const blueprint = flowBuilder.toBlueprint()
+const functionRegistry = flowBuilder.getFunctionRegistry()
+const runtime = new FlowRuntime({ registry: functionRegistry })
+
+// Run until it pauses
+const initialResult = await runtime.run(blueprint, { user_data: { id: 1, name: 'Alice' } })
+if (initialResult.status === 'awaiting') {
+  // Provide external input and resume
+  const resumeResult = await runtime.resume(blueprint, initialResult.serializedContext, {
+    output: { approved: true }
+  })
+  console.log('Final result:', resumeResult.context)
+}
+```
+
 ## Finalizing the Blueprint
 
 Once your workflow is defined, call [`.toBlueprint()`](/api/flow#toblueprint) to get the serializable [`WorkflowBlueprint`](/api/flow#workflowblueprint-interface) object. You will also need the function registry, which contains the node implementations.

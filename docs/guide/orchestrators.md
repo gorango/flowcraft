@@ -1,12 +1,12 @@
 # Orchestrators
 
-Orchestrators define how a workflow is executed. By default, Flowcraft uses the [`RunToCompletionOrchestrator`](/api/orchestrators#runtocompletionorchestrator-class), but you can implement custom orchestrators for different execution strategies.
+Orchestrators define how a workflow is executed. By default, Flowcraft uses the [`DefaultOrchestrator`](/api/orchestrators#defaultorchestrator-class), which can handle both standard and awaitable workflows. You can implement custom orchestrators for different execution strategies.
 
 ## Orchestrator Examples
 
-### 1. `RunToCompletionOrchestrator` (Default)
+### 1. `DefaultOrchestrator` (Default)
 
-This is the standard orchestrator that runs a workflow from start to finish in a single, blocking operation.
+This is the standard orchestrator that runs a workflow from start to finish, but can gracefully pause when encountering wait nodes or awaiting subflows. It is designed for human-in-the-loop workflows.
 
 #### Implementation
 
@@ -16,10 +16,10 @@ import { executeBatch, processResults } from 'flowcraft'
 
 /**
  * The default orchestration strategy. It executes a workflow from its starting
- * nodes until no more nodes can be run (i.e., until completion, failure, or a stall).
- * This orchestrator contains the main execution loop.
+ * nodes until no more nodes can be run, or until it encounters a wait node.
+ * This orchestrator supports both standard and awaitable workflows.
  */
-export class RunToCompletionOrchestrator implements IOrchestrator {
+export class DefaultOrchestrator implements IOrchestrator {
     public async run(
         traverser: GraphTraverser,
         executorFactory: NodeExecutorFactory,
@@ -49,6 +49,11 @@ export class RunToCompletionOrchestrator implements IOrchestrator {
 
             // 3. Process the results to update state and determine the next frontier.
             await processResults(settledResults, traverser, state, services)
+
+            // 4. Check if the workflow is awaiting external input.
+            if (state.isAwaiting()) {
+                break
+            }
         }
 
         // Once the loop finishes, determine the final status and return the result.
@@ -267,19 +272,19 @@ This orchestrator is a great example of composition. It doesn't re-implement the
 
 ```typescript
 import type { ExecutionServices, GraphTraverser, IOrchestrator, NodeExecutorFactory, WorkflowBlueprint, WorkflowResult } from 'flowcraft'
-import { RunToCompletionOrchestrator, WorkflowState } from 'flowcraft'
+import { DefaultOrchestrator, WorkflowState } from 'flowcraft'
 
 /**
  * An orchestrator designed to resume a previously stalled workflow. It first
  * reconciles the saved state to determine the correct starting frontier and then
- * delegates the rest of the execution to another orchestrator (e.g., RunToCompletion).
+ * delegates the rest of the execution to another orchestrator (e.g., DefaultOrchestrator).
  */
 export class ResumptionOrchestrator implements IOrchestrator {
     private readonly subsequentOrchestrator: IOrchestrator
 
     constructor(subsequentOrchestrator?: IOrchestrator) {
-        // By default, it will continue with the standard run-to-completion logic.
-        this.subsequentOrchestrator = subsequentOrchestrator || new RunToCompletionOrchestrator()
+        // By default, it will continue with the standard orchestration logic.
+        this.subsequentOrchestrator = subsequentOrchestrator || new DefaultOrchestrator()
     }
 
     public async run(

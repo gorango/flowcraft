@@ -72,3 +72,25 @@ The [`DIContainer`](/api/container#dicontainer-class) implements the Inversion o
 -   **Resolution**: Retrieve services by token, with automatic dependency injection.
 
 For usage examples, see [Getting Started](/guide/getting-started) and the [Container API docs](/api/container).
+
+## 6. Human-in-the-Loop (HITL) Orchestration
+
+Flowcraft supports human-in-the-loop workflows, allowing workflows to pause at defined points and await external input before resuming. This is essential for interactive processes like approvals or manual interventions.
+
+### Key Features
+
+- **Wait Nodes**: Use the `.wait()` method in the `Flow` builder to create pause points.
+- **Awaiting Status**: Workflows in a paused state have a status of `'awaiting'`.
+- **Resume Functionality**: Use the `runtime.resume()` method to provide input and continue execution.
+- **State Persistence**: Awaiting state is preserved in the serialized context for durability.
+
+### Workflow Statuses
+
+Workflows can have the following statuses:
+- **`completed`**: Execution finished successfully.
+- **`failed`**: Execution failed with errors.
+- **`stalled`**: Execution cannot proceed due to unresolved dependencies.
+- **`cancelled`**: Execution was cancelled.
+- **`awaiting`**: Execution is paused at a wait node, waiting for external input.
+
+For more details, see [Defining Workflows](/guide/defining-workflows) and the [Runtime API](/api/runtime).

@@ -31,7 +31,7 @@ import type {
 import type { DynamicKeys } from './builtin-keys'
 import type { ExecutionStrategy } from './executors'
 import { BuiltInNodeExecutor, ClassNodeExecutor, FunctionNodeExecutor, NodeExecutor } from './executors'
-import { RunToCompletionOrchestrator } from './orchestrator'
+import { DefaultOrchestrator } from './orchestrator'
 import { WorkflowState } from './state'
 import { GraphTraverser } from './traverser'
 import type { ExecutionServices, IOrchestrator, IRuntime } from './types'
@@ -86,6 +86,169 @@ export class FlowRuntime<TContext extends Record<string, any>, TDependencies ext
 			this.container = null as any
 		}
 		this.analysisCache = new WeakMap()
+	}
+
+	async resume(
+		blueprint: WorkflowBlueprint,
+		serializedContext: string,
+		resumeData: { output?: any; action?: string },
+		options?: {
+			functionRegistry?: Map<string, any>
+			strict?: boolean
+			signal?: AbortSignal
+			concurrency?: number
+		},
+	): Promise<WorkflowResult<TContext>> {
+		const executionId = globalThis.crypto?.randomUUID()
+		const workflowState = new WorkflowState<TContext>(
+			this.serializer.deserialize(serializedContext) as Partial<TContext>,
+		)
+
+		const awaitingNodeId = workflowState.getAwaitingNodeId()
+		if (!awaitingNodeId) {
+			throw new FlowcraftError('Cannot resume: The provided context is not in an awaiting state.', {
+				isFatal: true,
+			})
+		}
+
+		const awaitingNodeDef = blueprint.nodes.find((n) => n.id === awaitingNodeId)
+		if (!awaitingNodeDef) {
+			throw new FlowcraftError(`Awaiting node '${awaitingNodeId}' not found in blueprint.`, {
+				nodeId: awaitingNodeId,
+				blueprintId: blueprint.id,
+				isFatal: true,
+			})
+		}
+
+		if (awaitingNodeDef.uses === 'subflow') {
+			const subflowStateKey = `_subflowState.${awaitingNodeId}`
+			const contextImpl = workflowState.getContext()
+			const asyncContext =
+				contextImpl.type === 'sync' ? new AsyncContextView(contextImpl as ISyncContext<TContext>) : contextImpl
+			const subflowContext = (await asyncContext.get(subflowStateKey as any)) as string
+
+			if (!subflowContext) {
+				throw new FlowcraftError(`Cannot resume: Subflow state for node '${awaitingNodeId}' not found.`, {
+					nodeId: awaitingNodeId,
+					blueprintId: blueprint.id,
+					isFatal: true,
+				})
+			}
+
+			const blueprintId = awaitingNodeDef.params?.blueprintId
+			if (!blueprintId) {
+				throw new FlowcraftError(`Subflow node '${awaitingNodeId}' is missing the 'blueprintId' parameter.`, {
+					nodeId: awaitingNodeId,
+					blueprintId: blueprint.id,
+					isFatal: true,
+				})
+			}
+
+			const subBlueprint = this.blueprints[blueprintId]
+			if (!subBlueprint) {
+				throw new FlowcraftError(`Sub-blueprint with ID '${blueprintId}' not found in runtime registry.`, {
+					nodeId: awaitingNodeId,
+					blueprintId: blueprint.id,
+					isFatal: true,
+				})
+			}
+
+			const subflowResumeResult = await this.resume(subBlueprint, subflowContext, resumeData, options)
+
+			if (subflowResumeResult.status !== 'completed') {
+				throw new FlowcraftError(
+					`Resumed subflow '${subBlueprint.id}' did not complete. Status: ${subflowResumeResult.status}`,
+					{
+						nodeId: awaitingNodeId,
+						blueprintId: blueprint.id,
+						isFatal: false,
+					},
+				)
+			}
+
+			resumeData = { output: subflowResumeResult.context }
+		}
+
+		const contextImpl = workflowState.getContext()
+
+		const nextSteps = await this.determineNextNodes(blueprint, awaitingNodeId, resumeData, contextImpl, executionId)
+
+		if (nextSteps.length === 0) {
+			workflowState.clearAwaiting()
+			const result = workflowState.toResult(this.serializer)
+			result.status = 'completed'
+			return result
+		}
+
+		workflowState.addCompletedNode(awaitingNodeId, resumeData.output)
+
+		for (const { node, edge } of nextSteps) {
+			await this.applyEdgeTransform(edge, resumeData, node, contextImpl)
+		}
+
+		const traverser = new GraphTraverser(blueprint, options?.strict === true)
+
+		for (const id of workflowState.getCompletedNodes()) {
+			traverser.markNodeCompleted(id, {}, [])
+		}
+
+		const nextNodeDefs = nextSteps.map((s) => s.node)
+		for (const nodeDef of nextNodeDefs) {
+			traverser.addToFrontier(nodeDef.id)
+		}
+
+		workflowState.clearAwaiting()
+
+		const nodeExecutorFactory = (dynamicBlueprint: WorkflowBlueprint) => (nodeId: string) => {
+			const nodeDef = dynamicBlueprint.nodes.find((n) => n.id === nodeId)
+			if (!nodeDef) {
+				throw new FlowcraftError(`Node '${nodeId}' not found in blueprint.`, {
+					nodeId,
+					blueprintId: dynamicBlueprint.id,
+					executionId,
+					isFatal: false,
+				})
+			}
+			return new NodeExecutor<TContext, TDependencies>({
+				blueprint: dynamicBlueprint,
+				nodeDef,
+				state: workflowState,
+				dependencies: this.dependencies,
+				logger: this.logger,
+				eventBus: this.eventBus,
+				middleware: this.middleware,
+				strategy: this.getExecutor(nodeDef, options?.functionRegistry, workflowState),
+				executionId,
+				signal: options?.signal,
+			})
+		}
+
+		const executionServices: ExecutionServices = {
+			determineNextNodes: this.determineNextNodes.bind(this),
+			applyEdgeTransform: this.applyEdgeTransform.bind(this),
+			resolveNodeInput: (nodeId: string, blueprint: WorkflowBlueprint, context: any) => {
+				const nodeDef = blueprint.nodes.find((n) => n.id === nodeId)
+				if (!nodeDef) return Promise.resolve(undefined)
+				return this.resolveNodeInput(nodeDef, context)
+			},
+		}
+
+		const orchestrator = this.container?.has(ServiceTokens.Orchestrator)
+			? this.container.resolve<IOrchestrator>(ServiceTokens.Orchestrator)
+			: new DefaultOrchestrator()
+
+		return await orchestrator.run(
+			traverser,
+			nodeExecutorFactory,
+			workflowState,
+			executionServices,
+			blueprint,
+			options?.functionRegistry,
+			executionId,
+			this.evaluator,
+			options?.signal,
+			options?.concurrency,
+		)
 	}
 
 	async run(
@@ -148,7 +311,7 @@ export class FlowRuntime<TContext extends Record<string, any>, TDependencies ext
 					logger: this.logger,
 					eventBus: this.eventBus,
 					middleware: this.middleware,
-					strategy: this.getExecutor(nodeDef, options?.functionRegistry),
+					strategy: this.getExecutor(nodeDef, options?.functionRegistry, state),
 					executionId,
 					signal: options?.signal,
 				})
@@ -164,7 +327,7 @@ export class FlowRuntime<TContext extends Record<string, any>, TDependencies ext
 			}
 			const orchestrator: IOrchestrator = this.container?.has(ServiceTokens.Orchestrator)
 				? this.container.resolve<IOrchestrator>(ServiceTokens.Orchestrator)
-				: new RunToCompletionOrchestrator()
+				: new DefaultOrchestrator()
 			const result = await orchestrator.run(
 				traverser,
 				nodeExecutorFactory,
@@ -286,7 +449,7 @@ export class FlowRuntime<TContext extends Record<string, any>, TDependencies ext
 				: (contextImpl as IAsyncContext<TContext>)
 
 		const input = await this.resolveNodeInput(nodeDef, asyncContext)
-		const strategy = this.getExecutor(nodeDef, functionRegistry)
+		const strategy = this.getExecutor(nodeDef, functionRegistry, state)
 
 		const executor = new NodeExecutor<TContext, TDependencies>({
 			blueprint,
@@ -319,7 +482,7 @@ export class FlowRuntime<TContext extends Record<string, any>, TDependencies ext
 			}
 
 			const fallbackInput = await this.resolveNodeInput(fallbackNode, asyncContext)
-			const fallbackStrategy = this.getExecutor(fallbackNode, functionRegistry)
+			const fallbackStrategy = this.getExecutor(fallbackNode, functionRegistry, state)
 			const fallbackExecutor = new NodeExecutor<TContext, TDependencies>({
 				blueprint,
 				nodeDef: fallbackNode,
@@ -351,14 +514,26 @@ export class FlowRuntime<TContext extends Record<string, any>, TDependencies ext
 		throw executionResult.error
 	}
 
-	public getExecutor(nodeDef: NodeDefinition, functionRegistry?: Map<string, any>): ExecutionStrategy {
-		if (nodeDef.uses.startsWith('batch-') || nodeDef.uses.startsWith('loop-') || nodeDef.uses === 'subflow') {
-			return new BuiltInNodeExecutor((nodeDef, context) =>
-				this._executeBuiltInNode(
-					nodeDef,
-					context as ContextImplementation<InternalFlowContext<TContext>>,
-					functionRegistry,
-				),
+	public getExecutor(
+		nodeDef: NodeDefinition,
+		functionRegistry?: Map<string, any>,
+		state?: WorkflowState<TContext>,
+	): ExecutionStrategy {
+		if (
+			nodeDef.uses.startsWith('batch-') ||
+			nodeDef.uses.startsWith('loop-') ||
+			nodeDef.uses === 'subflow' ||
+			nodeDef.uses === 'wait'
+		) {
+			return new BuiltInNodeExecutor(
+				(nodeDef, context, state) =>
+					this._executeBuiltInNode(
+						nodeDef,
+						context as ContextImplementation<InternalFlowContext<TContext>>,
+						functionRegistry,
+						state,
+					),
+				state,
 			)
 		}
 		const implementation = functionRegistry?.get(nodeDef.uses) || this.registry[nodeDef.uses]
@@ -502,6 +677,7 @@ export class FlowRuntime<TContext extends Record<string, any>, TDependencies ext
 		nodeDef: NodeDefinition,
 		contextImpl: ContextImplementation<InternalFlowContext<TContext>>,
 		functionRegistry?: Map<string, any>,
+		state?: WorkflowState<TContext>,
 	): Promise<NodeResult<any, any>> {
 		const context = contextImpl.type === 'sync' ? new AsyncContextView(contextImpl) : contextImpl
 		const { params = {}, id, inputs } = nodeDef
@@ -628,6 +804,15 @@ export class FlowRuntime<TContext extends Record<string, any>, TDependencies ext
 					functionRegistry,
 				})
 
+				if (subflowResult.status === 'awaiting') {
+					if (state) {
+						state.markAsAwaiting(nodeDef.id)
+						const subflowStateKey = `_subflowState.${nodeDef.id}`
+						await context.set(subflowStateKey as any, subflowResult.serializedContext)
+					}
+					return { output: undefined }
+				}
+
 				if (subflowResult.status !== 'completed') {
 					const errorMessage = `Sub-workflow '${blueprintId}' did not complete successfully. Status: ${subflowResult.status}`
 					let originalError: Error | undefined
@@ -665,6 +850,12 @@ export class FlowRuntime<TContext extends Record<string, any>, TDependencies ext
 				}
 
 				return { output: subflowResult.context }
+			}
+			case 'wait': {
+				if (state) {
+					state.markAsAwaiting(nodeDef.id)
+				}
+				return { output: undefined }
 			}
 			default:
 				throw new FlowcraftError(`Unknown built-in node type: '${nodeDef.uses}'`, {

@@ -256,6 +256,6 @@ describe('BuiltInNodeExecutor', () => {
 		} as any
 		const result = await executor.execute(nodeDef, context)
 		expect(result.output).toBe('built-in')
-		expect(mockExecute).toHaveBeenCalledWith(nodeDef, context.context)
+		expect(mockExecute).toHaveBeenCalledWith(nodeDef, context.context, undefined)
 	})
 })

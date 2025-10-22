@@ -7,9 +7,21 @@ export class WorkflowState<TContext extends Record<string, any>> {
 	private errors: WorkflowError[] = []
 	private anyFallbackExecuted = false
 	private context: ContextImplementation<TContext>
+	private _isAwaiting = false
+	private _awaitingNodeId: string | null = null
 
 	constructor(initialData: Partial<TContext>) {
 		this.context = new Context<TContext>(initialData)
+		if ((initialData as any)._awaitingNodeId) {
+			this._isAwaiting = true
+			this._awaitingNodeId = (initialData as any)._awaitingNodeId
+		}
+		for (const key of Object.keys(initialData)) {
+			if (key.startsWith('_outputs.')) {
+				const nodeId = key.substring('_outputs.'.length)
+				this._completedNodes.add(nodeId)
+			}
+		}
 	}
 
 	addCompletedNode(nodeId: string, output: any) {
@@ -54,7 +66,28 @@ export class WorkflowState<TContext extends Record<string, any>> {
 		return this.anyFallbackExecuted
 	}
 
+	markAsAwaiting(nodeId: string): void {
+		this._isAwaiting = true
+		this._awaitingNodeId = nodeId
+		this.context.set('_awaitingNodeId' as any, nodeId)
+	}
+
+	isAwaiting(): boolean {
+		return this._isAwaiting
+	}
+
+	getAwaitingNodeId(): string | null {
+		return this._awaitingNodeId
+	}
+
+	clearAwaiting(): void {
+		this._isAwaiting = false
+		this._awaitingNodeId = null
+		this.context.delete('_awaitingNodeId' as any)
+	}
+
 	getStatus(allNodeIds: Set<string>, _fallbackNodeIds: Set<string>): WorkflowResult['status'] {
+		if (this._isAwaiting) return 'awaiting'
 		if (this.anyFallbackExecuted) return 'completed'
 		if (this.errors.length > 0) return 'failed'
 		// const _remainingNodes = [...allNodeIds].filter((id) => !this._completedNodes.has(id) && !fallbackNodeIds.has(id))
@@ -63,6 +96,9 @@ export class WorkflowState<TContext extends Record<string, any>> {
 
 	toResult(serializer: ISerializer): WorkflowResult<TContext> {
 		const contextJSON = this.context.toJSON() as TContext
+		if (!this._isAwaiting && (contextJSON as any)._awaitingNodeId) {
+			delete (contextJSON as any)._awaitingNodeId
+		}
 		return {
 			context: contextJSON,
 			serializedContext: serializer.serialize(contextJSON),

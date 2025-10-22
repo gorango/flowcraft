@@ -79,15 +79,25 @@ export interface IEventBus {
 
 ### `.run(blueprint, initialState?, options?)`
 
-Executes a workflow.
+Executes a workflow using the `DefaultOrchestrator`, which can handle both standard and awaitable workflows.
 
 -   **`blueprint`** [`WorkflowBlueprint`](/api/flow#workflowblueprint-interface): The workflow to execute.
 -   **`initialState?`** `Partial<TContext> | string`: The initial state for the workflow's context. Can be an object or a serialized string.
- -   **`options?`**:
-     -   **`functionRegistry?`**: A `Map` of node implementations, typically from `flow.getFunctionRegistry()`.
-     -   **`strict?`**: Overrides the runtime's strict mode setting for this run.
-     -   **`signal?`**: An `AbortSignal` to gracefully cancel the workflow execution.
-     -   **`concurrency?`**: Limits the number of nodes that can execute simultaneously.
+  -   **`options?`**:
+      -   **`functionRegistry?`**: A `Map` of node implementations, typically from `flow.getFunctionRegistry()`.
+      -   **`strict?`**: Overrides the runtime's strict mode setting for this run.
+      -   **`signal?`**: An `AbortSignal` to gracefully cancel the workflow execution.
+      -   **`concurrency?`**: Limits the number of nodes that can execute simultaneously.
+-   **Returns**: `Promise<WorkflowResult<TContext>>`
+
+### `.resume(blueprint, serializedContext, resumeData, options?)`
+
+Resumes an awaiting workflow from its pause point.
+
+-   **`blueprint`** [`WorkflowBlueprint`](/api/flow#workflowblueprint-interface): The workflow blueprint.
+-   **`serializedContext`** `string`: The serialized context from an awaiting workflow result.
+-   **`resumeData`** `{ output?: any; action?: string }`: Data to provide to the awaiting node.
+-   **`options?`**: Same as for `.run()`.
 -   **Returns**: `Promise<WorkflowResult<TContext>>`
 
 ### `.executeNode(...)`
