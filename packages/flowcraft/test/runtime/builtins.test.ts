@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { UnsafeEvaluator } from '../../src/evaluator'
 import { createFlow } from '../../src/flow'
-import { SubflowNode } from '../../src/nodes/subflow.node'
+import { SubflowNode } from '../../src/nodes/subflow'
 import { FlowRuntime } from '../../src/runtime'
 
 describe('Built-In Nodes', () => {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { createFlow } from '../../src/flow'
-import { SubflowNode } from '../../src/nodes/subflow.node'
+import { SubflowNode } from '../../src/nodes/subflow'
 import { FlowRuntime } from '../../src/runtime/runtime'
 import { InMemoryEventLogger, runWithTrace } from '../../src/testing'
 
