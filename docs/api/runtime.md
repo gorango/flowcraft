@@ -4,20 +4,29 @@ The [`FlowRuntime`](/api/runtime#flowruntime-class) is the engine that executes 
 
 ## `FlowRuntime` Class
 
-### `constructor(options)`
+### `constructor(container, options?)` or `constructor(options)`
 
-Creates a new runtime instance.
+Creates a new runtime instance using a Dependency Injection (DI) container or legacy options for backward compatibility.
+
+#### DI Constructor (Recommended)
+
+-   **`container`** [`DIContainer`](/api/container#dicontainer-class): A pre-configured dependency injection container that provides all runtime services.
+-   **`options?`** `RuntimeOptions<TDependencies>`: Optional legacy configuration (for backward compatibility).
+
+#### Legacy Constructor (Backward Compatible)
 
 -   **`options`** `RuntimeOptions<TDependencies>`: Configuration for the runtime.
-    -   **`registry?`**: A record of globally available node implementations.
-    -   **`blueprints?`**: A record of all available blueprints, required for subflow execution.
-    -   **`dependencies?`**: Shared dependencies to be injected into every node's context.
-    -   **`logger?`**: A pluggable logger instance (defaults to `NullLogger`).
+     -   **`registry?`**: A record of globally available node implementations.
+     -   **`blueprints?`**: A record of all available blueprints, required for subflow execution.
+     -   **`dependencies?`**: Shared dependencies to be injected into every node's context.
+     -   **`logger?`**: A pluggable logger instance (defaults to `NullLogger`).
      -   **`eventBus?`**: A pluggable event bus for observability. See [Event Bus](#event-bus) for details on available events.
-    -   **`evaluator?`**: A pluggable expression evaluator (defaults to `SimpleEvaluator`).
-    -   **`middleware?`**: An array of middleware to wrap node execution.
-    -   **`serializer?`**: A pluggable serializer (defaults to `JsonSerializer`).
-    -   **`strict?`**: If `true`, the runtime will throw an error if a workflow contains cycles.
+     -   **`evaluator?`**: A pluggable expression evaluator (defaults to `PropertyEvaluator`).
+     -   **`middleware?`**: An array of middleware to wrap node execution.
+     -   **`serializer?`**: A pluggable serializer (defaults to `JsonSerializer`).
+     -   **`strict?`**: If `true`, the runtime will throw an error if a workflow contains cycles.
+
+**Note:** The legacy constructor is maintained for backward compatibility. For new code, use the DI container approach for better modularity and testability.
 
 ## Event Bus
 

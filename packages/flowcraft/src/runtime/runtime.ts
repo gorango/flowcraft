@@ -1,5 +1,6 @@
 import type { BlueprintAnalysis } from '../analysis'
 import { analyzeBlueprint } from '../analysis'
+import { DIContainer, ServiceTokens } from '../container'
 import { AsyncContextView } from '../context'
 import { FlowcraftError } from '../errors'
 import { PropertyEvaluator } from '../evaluator'
@@ -40,6 +41,7 @@ type InternalFlowContext<TContext extends Record<string, any>> = TContext & Part
 export class FlowRuntime<TContext extends Record<string, any>, TDependencies extends Record<string, any>>
 	implements IRuntime<TContext, TDependencies>
 {
+	private container: DIContainer
 	public registry: Record<string, NodeFunction | NodeClass | typeof BaseNode>
 	private blueprints: Record<string, WorkflowBlueprint>
 	private dependencies: TDependencies
@@ -48,24 +50,42 @@ export class FlowRuntime<TContext extends Record<string, any>, TDependencies ext
 	private serializer: ISerializer
 	private middleware: Middleware[]
 	private evaluator: IEvaluator
-	/**
-	 * Cache for blueprint analysis results to avoid recomputing for the same blueprint object.
-	 * Uses WeakMap to allow garbage collection of unused blueprints.
-	 */
 	private analysisCache: WeakMap<WorkflowBlueprint, BlueprintAnalysis>
 	public options: RuntimeOptions<TDependencies>
 
-	constructor(options: RuntimeOptions<TDependencies>) {
-		this.registry = options.registry || {}
-		this.blueprints = options.blueprints || {}
-		this.dependencies = options.dependencies || ({} as TDependencies)
-		this.logger = options.logger || new NullLogger()
-		this.eventBus = options.eventBus || { emit: async () => {} }
-		this.serializer = options.serializer || new JsonSerializer()
-		this.middleware = options.middleware || []
-		this.evaluator = options.evaluator || new PropertyEvaluator()
+	constructor(container: DIContainer, options?: RuntimeOptions<TDependencies>)
+	constructor(options: RuntimeOptions<TDependencies>)
+	constructor(
+		containerOrOptions: DIContainer | RuntimeOptions<TDependencies>,
+		legacyOptions?: RuntimeOptions<TDependencies>,
+	) {
+		if (containerOrOptions instanceof DIContainer) {
+			this.container = containerOrOptions
+			this.logger = this.container.resolve<ILogger>(ServiceTokens.Logger)
+			this.serializer = this.container.resolve<ISerializer>(ServiceTokens.Serializer)
+			this.evaluator = this.container.resolve<IEvaluator>(ServiceTokens.Evaluator)
+			this.eventBus = this.container.resolve<IEventBus>(ServiceTokens.EventBus)
+			this.middleware = this.container.resolve<Middleware[]>(ServiceTokens.Middleware)
+			this.registry = this.container.resolve<Record<string, NodeFunction | NodeClass | typeof BaseNode>>(
+				ServiceTokens.NodeRegistry,
+			)
+			this.blueprints = this.container.resolve<Record<string, WorkflowBlueprint>>(ServiceTokens.BlueprintRegistry)
+			this.dependencies = this.container.resolve<TDependencies>(ServiceTokens.Dependencies)
+			this.options = legacyOptions || ({} as RuntimeOptions<TDependencies>)
+		} else {
+			const options = containerOrOptions
+			this.logger = options.logger || new NullLogger()
+			this.serializer = options.serializer || new JsonSerializer()
+			this.evaluator = options.evaluator || new PropertyEvaluator()
+			this.eventBus = options.eventBus || { emit: async () => {} }
+			this.middleware = options.middleware || []
+			this.registry = options.registry || {}
+			this.blueprints = options.blueprints || {}
+			this.dependencies = options.dependencies || ({} as TDependencies)
+			this.options = options
+			this.container = null as any
+		}
 		this.analysisCache = new WeakMap()
-		this.options = options
 	}
 
 	async run(
@@ -142,7 +162,9 @@ export class FlowRuntime<TContext extends Record<string, any>, TDependencies ext
 					return this._resolveNodeInput(nodeDef, context)
 				},
 			}
-			const orchestrator: IOrchestrator = new RunToCompletionOrchestrator()
+			const orchestrator: IOrchestrator = this.container?.has(ServiceTokens.Orchestrator)
+				? this.container.resolve<IOrchestrator>(ServiceTokens.Orchestrator)
+				: new RunToCompletionOrchestrator()
 			const result = await orchestrator.run(
 				traverser,
 				nodeExecutorFactory,

@@ -135,6 +135,7 @@ export default defineConfig({
 						{ text: 'Overview', link: '/api/' },
 						{ text: 'Flow', link: '/api/flow' },
 						{ text: 'Runtime', link: '/api/runtime' },
+						{ text: 'DI Container', link: '/api/container' },
 						{ text: 'Orchestrators', link: '/api/orchestrators' },
 						{ text: 'Nodes and Edges', link: '/api/nodes-and-edges' },
 						{ text: 'Context', link: '/api/context' },

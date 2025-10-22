@@ -116,6 +116,45 @@ DEBUG=true npm test
 - **Performance Insights**: Shows execution times for each node.
 - **Error Highlighting**: Marks failed nodes and exceptions in the trace.
 
+## Testing with Dependency Injection
+
+The Dependency Injection (DI) container makes testing even easier by allowing you to inject mocks or stubs directly into the runtime. This promotes isolated testing and simplifies verification of interactions.
+
+### Benefits for Testing
+- **Easy Mocking**: Register mock implementations for services like loggers or evaluators without modifying code.
+- **Isolated Tests**: Test workflows in isolation by controlling all dependencies.
+- **Type Safety**: Maintain type safety while using mocks.
+- **Backward Compatibility**: Existing tests continue to work with the legacy API.
+
+### Usage Example
+
+```typescript
+import { createDefaultContainer, FlowRuntime, ServiceTokens } from 'flowcraft'
+import { vi } from 'vitest'
+
+it('should use mock logger in tests', async () => {
+  const mockLogger = {
+    debug: vi.fn(),
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+  }
+
+  const container = createDefaultContainer({
+    registry: { fetchData, processData },
+    logger: mockLogger,
+  })
+
+  const runtime = new FlowRuntime(container)
+  await runtime.run(blueprint)
+
+  // Verify logging calls
+  expect(mockLogger.info).toHaveBeenCalledWith('Starting workflow execution', expect.any(Object))
+})
+```
+
+For more on the DI container, see the [Container API docs](/api/container).
+
 ## Best Practices for Testing
 
 - **Unit Test Nodes**: Test individual nodes in isolation using `InMemoryEventLogger` to verify inputs and outputs.

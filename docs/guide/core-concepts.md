@@ -55,3 +55,20 @@ The runtime is responsible for:
 -   Evaluating edge conditions to determine the next nodes to run.
 -   Injecting dependencies and middleware.
 -   Orchestrating both in-memory and distributed execution.
+
+## 5. Dependency Injection Container
+
+The [`DIContainer`](/api/container#dicontainer-class) implements the Inversion of Control (IoC) principle, allowing components to receive dependencies from a central container rather than creating them directly. This promotes loose coupling, making the framework highly configurable, testable, and extensible.
+
+### Benefits
+-   **Loose Coupling**: Components depend only on interfaces, not concrete implementations.
+-   **Centralized Configuration**: All "wiring" is defined in one place via the container.
+-   **Easy Testing**: Inject mocks or stubs directly into the container for isolated testing.
+-   **Pluggable Architecture**: Swap implementations (e.g., loggers, serializers) without changing code.
+
+### Key Components
+-   **Service Tokens**: Symbolic identifiers (e.g., `ServiceTokens.Logger`) for type-safe service resolution.
+-   **Registration**: Services can be registered directly or via factories for lazy instantiation.
+-   **Resolution**: Retrieve services by token, with automatic dependency injection.
+
+For usage examples, see [Getting Started](/guide/getting-started) and the [Container API docs](/api/container).
