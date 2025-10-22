@@ -159,7 +159,7 @@ export class FlowRuntime<TContext extends Record<string, any>, TDependencies ext
 				resolveNodeInput: (nodeId: string, blueprint: WorkflowBlueprint, context: any) => {
 					const nodeDef = blueprint.nodes.find((n) => n.id === nodeId)
 					if (!nodeDef) return Promise.resolve(undefined)
-					return this._resolveNodeInput(nodeDef, context)
+					return this.resolveNodeInput(nodeDef, context)
 				},
 			}
 			const orchestrator: IOrchestrator = this.container?.has(ServiceTokens.Orchestrator)
@@ -285,7 +285,7 @@ export class FlowRuntime<TContext extends Record<string, any>, TDependencies ext
 				? new AsyncContextView(contextImpl as ISyncContext<TContext>)
 				: (contextImpl as IAsyncContext<TContext>)
 
-		const input = await this._resolveNodeInput(nodeDef, asyncContext)
+		const input = await this.resolveNodeInput(nodeDef, asyncContext)
 		const strategy = this.getExecutor(nodeDef, functionRegistry)
 
 		const executor = new NodeExecutor<TContext, TDependencies>({
@@ -318,7 +318,7 @@ export class FlowRuntime<TContext extends Record<string, any>, TDependencies ext
 				})
 			}
 
-			const fallbackInput = await this._resolveNodeInput(fallbackNode, asyncContext)
+			const fallbackInput = await this.resolveNodeInput(fallbackNode, asyncContext)
 			const fallbackStrategy = this.getExecutor(fallbackNode, functionRegistry)
 			const fallbackExecutor = new NodeExecutor<TContext, TDependencies>({
 				blueprint,
@@ -351,7 +351,7 @@ export class FlowRuntime<TContext extends Record<string, any>, TDependencies ext
 		throw executionResult.error
 	}
 
-	private getExecutor(nodeDef: NodeDefinition, functionRegistry?: Map<string, any>): ExecutionStrategy {
+	public getExecutor(nodeDef: NodeDefinition, functionRegistry?: Map<string, any>): ExecutionStrategy {
 		if (nodeDef.uses.startsWith('batch-') || nodeDef.uses.startsWith('loop-') || nodeDef.uses === 'subflow') {
 			return new BuiltInNodeExecutor((nodeDef, context) =>
 				this._executeBuiltInNode(
@@ -464,7 +464,7 @@ export class FlowRuntime<TContext extends Record<string, any>, TDependencies ext
 		}
 	}
 
-	private async _resolveNodeInput(nodeDef: NodeDefinition, context: IAsyncContext<TContext>): Promise<any> {
+	public async resolveNodeInput(nodeDef: NodeDefinition, context: IAsyncContext<TContext>): Promise<any> {
 		if (nodeDef.inputs) {
 			if (typeof nodeDef.inputs === 'string') {
 				const key = nodeDef.inputs
@@ -505,7 +505,7 @@ export class FlowRuntime<TContext extends Record<string, any>, TDependencies ext
 	): Promise<NodeResult<any, any>> {
 		const context = contextImpl.type === 'sync' ? new AsyncContextView(contextImpl) : contextImpl
 		const { params = {}, id, inputs } = nodeDef
-		const resolvedInput = await this._resolveNodeInput(nodeDef, context)
+		const resolvedInput = await this.resolveNodeInput(nodeDef, context)
 		switch (nodeDef.uses) {
 			case 'batch-scatter': {
 				const inputArray = resolvedInput || []

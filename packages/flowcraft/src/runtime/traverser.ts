@@ -157,4 +157,13 @@ export class GraphTraverser {
 		}
 		this.frontier.add(dynamicNode.id)
 	}
+
+	/**
+	 * Manually adds a node ID back to the execution frontier.
+	 * Used by orchestrators that need fine-grained control over steps.
+	 * @param nodeId The ID of the node to add to the frontier.
+	 */
+	public addToFrontier(nodeId: string): void {
+		this.frontier.add(nodeId)
+	}
 }
