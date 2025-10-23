@@ -254,11 +254,14 @@ export interface WorkflowError extends FlowcraftError {
 	originalError?: any // Legacy compatibility
 }
 
+/** The status of a workflow execution. */
+export type WorkflowStatus = 'completed' | 'failed' | 'stalled' | 'cancelled' | 'awaiting'
+
 /** The final result of a workflow execution. */
 export interface WorkflowResult<TContext = Record<string, any>> {
 	context: TContext
 	serializedContext: string
-	status: 'completed' | 'failed' | 'stalled' | 'cancelled' | 'awaiting'
+	status: WorkflowStatus
 	errors?: WorkflowError[]
 }
 
