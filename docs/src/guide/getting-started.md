@@ -100,9 +100,9 @@ This example demonstrates Flowcraft's strongly-typed context system:
 - **IntelliSense Support**: Full autocomplete for context keys and their types
 - **Runtime Safety**: Type mismatches are caught during development, not execution
 
-## Using the Dependency Injection Container (Recommended)
+## Using the DI Container
 
-For better modularity and testability, use the DI container approach. Update your code to use `createDefaultContainer`:
+For better modularity and testability, you can use the Dependency Injection container with [`createDefaultContainer`](/api/container#createdefaultcontainer-options):
 
 ```typescript
 import { ConsoleLogger, createDefaultContainer, createFlow, FlowRuntime } from 'flowcraft'
