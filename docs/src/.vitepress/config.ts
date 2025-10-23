@@ -16,7 +16,7 @@ export default defineConfig({
 		plugins: [
 			MermaidPlugin() as any,
 			Components({
-				dirs: [resolve(__dirname, './../../components')],
+				dirs: [resolve(__dirname, './theme/components')],
 				deep: true,
 				extensions: ['vue', 'md'],
 				include: [/\.vue$/, /\.vue\?vue/, /\.md$/],
