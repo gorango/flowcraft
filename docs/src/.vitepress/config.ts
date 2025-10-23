@@ -1,8 +1,9 @@
+import tailwindcss from '@tailwindcss/vite'
 import { resolve } from 'node:path'
 import Components from 'unplugin-vue-components/vite'
 import { defineConfig } from 'vitepress'
-import llmstxt from 'vitepress-plugin-llms'
-import { copyOrDownloadAsMarkdownButtons } from 'vitepress-plugin-llms'
+// import llmstxt from 'vitepress-plugin-llms'
+// import { copyOrDownloadAsMarkdownButtons } from 'vitepress-plugin-llms'
 import { MermaidMarkdown, MermaidPlugin } from 'vitepress-plugin-mermaid'
 
 export default defineConfig({
@@ -14,6 +15,7 @@ export default defineConfig({
 			include: ['mermaid'],
 		},
 		plugins: [
+			tailwindcss(),
 			MermaidPlugin() as any,
 			Components({
 				dirs: [resolve(__dirname, './theme/components')],
@@ -22,13 +24,13 @@ export default defineConfig({
 				include: [/\.vue$/, /\.vue\?vue/, /\.md$/],
 				// dts: resolve(__dirname, '../components.d.ts'),
 			}),
-			llmstxt(),
+			// llmstxt(),
 		],
 	},
 	markdown: {
 		config: (md) => {
 			MermaidMarkdown(md, {})
-			md.use(copyOrDownloadAsMarkdownButtons)
+			// md.use(copyOrDownloadAsMarkdownButtons)
 		},
 	},
 	head: [
@@ -76,8 +78,8 @@ export default defineConfig({
 					text: 'Building Workflows',
 					collapsed: false,
 					items: [
-						{ text: 'Defining Workflows', link: '/guide/defining-workflows' },
 						{ text: 'Nodes and Edges', link: '/guide/nodes-and-edges' },
+						{ text: 'Defining Workflows', link: '/guide/defining-workflows' },
 						{ text: 'Context Management', link: '/guide/context-management' },
 					],
 				},

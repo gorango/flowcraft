@@ -4,7 +4,7 @@ import { createFlow, type WorkflowBlueprint } from 'flowcraft'
 
 async function mockApiCall(name: string, delay: number, shouldFail = false) {
 	console.log(`[${name}] Starting...`)
-	await new Promise(resolve => setTimeout(resolve, delay))
+	await new Promise((resolve) => setTimeout(resolve, delay))
 	if (shouldFail) {
 		console.error(`[${name}] Failing as requested.`)
 		throw new Error(`API call "${name}" failed.`)
@@ -39,10 +39,14 @@ const branchingFlow = createFlow('branching-workflow')
 	})
 	.node('left-branch', () => mockApiCall('Left Branch', 1000))
 	.node('right-branch', () => mockApiCall('Right Branch', 1000))
-	.node('end', async ({ input }) => {
-		console.log('[End] Received input from branch:', input)
-		return { output: 'Completed' }
-	}, { config: { joinStrategy: 'any' } })
+	.node(
+		'end',
+		async ({ input }) => {
+			console.log('[End] Received input from branch:', input)
+			return { output: 'Completed' }
+		},
+		{ config: { joinStrategy: 'any' } },
+	)
 	.edge('start', 'left-branch', { action: 'go-left' })
 	.edge('start', 'right-branch', { action: 'go-right' })
 	.edge('left-branch', 'end')
@@ -81,21 +85,32 @@ async function flakyApi() {
 
 const errorFlow = createFlow('error-workflow')
 	.node('start-error', async () => ({ output: 'start' }))
-	.node('flaky-node', flakyApi, { config: { maxRetries: 3 } })
-	.node('fallback-node', () => mockApiCall('Fallback', 500))
-	.node('final-step', async ({ input }) => {
-		console.log('[Final Step] Received:', input)
-		return { output: 'Workflow finished' }
-	})
-	.edge('start-error', 'flaky-node')
-	.edge('flaky-node', 'final-step')
+	.node('flaky', flakyApi, { config: { maxRetries: 2, fallback: 'fallback' } })
+	.node('fallback', () => mockApiCall('Fallback', 500))
+	.node(
+		'final-step',
+		async ({ input }) => {
+			console.log('[Final Step] Received:', input)
+			return { output: `Workflow finished with ${input.flaky?.data || input.fallback?.data}` }
+		},
+		{
+			inputs: { fallback: 'fallback', flaky: 'flaky' },
+			outputs: { final: 'final-step' },
+		},
+	)
+	.edge('start-error', 'flaky')
+	.edge('fallback', 'final-step')
+	.edge('flaky', 'final-step')
 
 // --- Export Collection ---
 
-export const simpleExamples: Record<string, {
-	blueprint: WorkflowBlueprint
-	functionRegistry: Map<string, any>
-}> = {
+export const simpleExamples: Record<
+	string,
+	{
+		blueprint: WorkflowBlueprint
+		functionRegistry: Map<string, any>
+	}
+> = {
 	'1.basic': {
 		blueprint: basicFlow.toBlueprint(),
 		functionRegistry: basicFlow.getFunctionRegistry(),
@@ -114,10 +129,13 @@ export const simpleExamples: Record<string, {
 	},
 }
 
-export const simpleExamplesConfig: Record<string, {
-	entryWorkflowId: string
-	initialContext: Record<string, any>
-}> = {
+export const simpleExamplesConfig: Record<
+	string,
+	{
+		entryWorkflowId: string
+		initialContext: Record<string, any>
+	}
+> = {
 	'1.basic': {
 		entryWorkflowId: 'basic-workflow',
 		initialContext: {},

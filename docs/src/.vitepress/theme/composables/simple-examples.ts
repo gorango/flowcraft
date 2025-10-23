@@ -1,7 +1,5 @@
 import { createFlow, type WorkflowBlueprint } from 'flowcraft'
 
-// --- Mock Functions ---
-
 async function mockApiCall(name: string, delay: number, shouldFail = false) {
 	console.log(`[${name}] Starting...`)
 	await new Promise(resolve => setTimeout(resolve, delay))

@@ -1,12 +1,10 @@
+<script setup>
+import GettingStarted from '../.vitepress/theme/examples/GettingStarted.vue'
+</script>
+
 # Getting Started
 
 This guide will walk you through installing Flowcraft and running your first strongly-typed workflow.
-
-## Prerequisites
-
--   Node.js (version 18 or higher)
--   A package manager like npm, pnpm, or yarn
--   Basic knowledge of TypeScript
 
 ## Installation
 
@@ -86,10 +84,7 @@ run()
 
 This workflow can be visualized as:
 
-```mermaid
-flowchart TD
-    start["start"] --> double["double"]
-```
+<GettingStarted />
 
 ## Type Safety Benefits
 

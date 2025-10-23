@@ -1,3 +1,5 @@
+@import "tailwindcss";
+
 @font-face {
 	font-family: "DepartureMono";
 	src: url("/DepartureMono-Regular.woff2") format("woff2");
@@ -112,6 +114,7 @@ body {
 header,
 aside,
 .aside,
+.title,
 h1,
 h2,
 h3,
@@ -131,3 +134,30 @@ h6 {
 	--vp-code-link-hover-color: var(--vp-c-brand-2);
 	--vp-code-bg: var(--vp-c-gray-soft);
 }
+
+/**
+ * Scrollbar
+ * -------------------------------------------------------------------------- */
+
+::-webkit-scrollbar {
+	width: 0.5rem;
+	height: 0.5rem;
+}
+
+::-webkit-scrollbar-track {
+	background: --alpha(var(--vp-c-bg) / 20%);
+}
+
+::-webkit-scrollbar-thumb {
+	background-color: --alpha(var(--vp-c-text-3) / 50%);
+	cursor: auto !important;
+}
+
+::-webkit-scrollbar-button {
+	display: none;
+}
+
+::-webkit-scrollbar-corner {
+	display: none;
+}
+

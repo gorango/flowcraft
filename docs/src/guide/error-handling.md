@@ -34,7 +34,7 @@ When this workflow runs, the `risky-operation` node will fail twice and then suc
 
 If a node fails all of its retry attempts, you can define a **fallback** node to execute as a recovery mechanism. This allows you to handle the failure gracefully instead of letting the entire workflow fail.
 
-To configure a fallback, specify the ID of another node in the `fallback` property of the `config` object.
+To configure a fallback, specify the ID of another node in the `fallback` property of the `config` object. The runtime will automatically route to the fallback node if the primary node fails after retries.
 
 ```typescript
 const flow = createFlow('fallback-workflow')

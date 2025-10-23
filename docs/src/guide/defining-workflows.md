@@ -1,10 +1,14 @@
+<script setup>
+import UserProcessingSimple from '../.vitepress/theme/examples/UserProcessingSimple.vue'
+</script>
+
 # Defining Workflows
 
-Workflows are defined programmatically using the fluent [`Flow`](/api/flow#flow-class) builder API. This provides a strongly-typed and intuitive way to construct your [`WorkflowBlueprint`](/api/flow#workflowblueprint-interface) with compile-time type safety.
+Workflows can be defined programmatically using the fluent [`Flow`](/api/flow#flow-class) builder API or declaratively using JSON, YAML, or in a database, before converting them ... TODO
 
 ## Defining Context Types
 
-Before creating workflows, define the shape of your context data using a TypeScript interface:
+Defining a context provides a strongly-typed and intuitive way to construct your [`WorkflowBlueprint`](/api/flow#workflowblueprint-interface) with compile-time type safety. Before creating workflows, define the shape of your context data using a TypeScript interface:
 
 ```typescript
 interface UserProcessingContext {
@@ -27,7 +31,7 @@ const flowBuilder = createFlow<UserProcessingContext>('my-first-workflow')
 
 ## Adding Nodes with `.node()`
 
-You add tasks to your workflow using the `.node()` method. Node functions receive a strongly-typed [`NodeContext`](/api/nodes-and-edges#nodecontext-interface) that provides access to the typed context.
+You can add tasks to your workflow using the `.node()` method. Node functions receive a strongly-typed [`NodeContext`](/api/nodes-and-edges#nodecontext-interface) that provides access to the typed context.
 
 ```typescript
 const flowBuilder = createFlow<UserProcessingContext>('user-processing')
@@ -56,7 +60,7 @@ const flowBuilder = createFlow<UserProcessingContext>('user-processing')
 
 ## Adding Edges with `.edge()`
 
-Edges define the dependencies and control flow between nodes. You create them with the `.edge()` method, specifying the `source` and `target` node IDs.
+Edges define the dependencies and control flow between nodes. You can create them with the `.edge()` method, specifying the `source` and `target` node IDs.
 
 ```typescript
 const flowBuilder = createFlow<UserProcessingContext>('user-processing')
@@ -85,33 +89,7 @@ const flowBuilder = createFlow<UserProcessingContext>('user-processing')
 
 This workflow can be visualized as:
 
-<script setup>
-import { ref } from 'vue'
-
-const nodes = ref([
-	{ id: 'fetch-user', type: 'input', label: 'fetch-user', position: { x: 250, y: 20 } },
-	{ id: 'validate-user', label: 'validate-user', position: { x: 250, y: 100 } },
-	{ id: 'process-valid', type: 'output', label: 'process-valid', position: { x: 100, y: 200 } },
-	{ id: 'handle-invalid', type: 'output', label: 'handle-invalid', position: { x: 400, y: 200 } },
-])
-
-const edges = ref([
-	{ id: 'e1', source: 'fetch-user', target: 'validate-user', animated: true },
-	{ id: 'e2', source: 'validate-user', target: 'process-valid', label: 'valid', animated: true },
-	{ id: 'e3', source: 'validate-user', target: 'handle-invalid', label: 'invalid', animated: true },
-])
-</script>
-
-<Flow :nodes="nodes" :edges="edges" />
-
-## Type Safety Benefits
-
-The strongly-typed workflow system provides:
-
-- **Context key validation**: Only valid keys from your interface can be accessed
-- **Precise type inference**: Context values have exact types, not `any`
-- **IntelliSense support**: Full autocomplete for context keys and their types
-- **Compile-time error prevention**: Type mismatches caught during development
+<UserProcessingSimple />
 
 ## Adding Wait Nodes for Human-in-the-Loop
 
@@ -154,7 +132,7 @@ if (initialResult.status === 'awaiting') {
 
 ## Finalizing the Blueprint
 
-Once your workflow is defined, call [`.toBlueprint()`](/api/flow#toblueprint) to get the serializable [`WorkflowBlueprint`](/api/flow#workflowblueprint-interface) object. You will also need the function registry, which contains the node implementations.
+Once your workflow is defined, call [`.toBlueprint()`](/api/flow#toblueprint) to get the serializable [`WorkflowBlueprint`](/api/flow#workflowblueprint-interface) object. You might also need the function registry, which contains the node implementations.
 
 ```typescript
 // Continuing from above...

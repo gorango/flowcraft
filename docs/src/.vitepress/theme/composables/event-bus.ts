@@ -1,7 +1,7 @@
 import type { FlowcraftEvent, IEventBus } from 'flowcraft'
 
 // In-memory event bus for collecting node data
-class InMemoryEventBus implements IEventBus {
+export class InMemoryEventBus implements IEventBus {
 	private listeners: Map<string, ((event: FlowcraftEvent) => void)[]> = new Map()
 	public nodeData: Map<string, { inputs?: any, outputs?: any, contextChanges?: Record<string, any> }> = new Map()
 
