@@ -177,7 +177,6 @@ describe('Flowcraft Runtime - Integration Tests', () => {
 					{ config: { fallback: 'B' } },
 				)
 				.node('B', async () => ({ output: 'fallback success' }))
-				.edge('A', 'B', { action: 'fallback' })
 
 			const blueprint = flow.toBlueprint()
 			const runtime = new FlowRuntime({})
@@ -186,6 +185,33 @@ describe('Flowcraft Runtime - Integration Tests', () => {
 			expect(result.status).toBe('completed')
 			expect(result.context['_outputs.B']).toBe('fallback success')
 			expect(result.errors).toBeUndefined()
+		})
+
+		it('should retry a node and execute fallback after max retries exceeded', async () => {
+			const flakyApi = vi.fn().mockRejectedValue(new Error('Flaky failed'))
+			const mockApiCall = vi.fn().mockResolvedValue({ output: 'Fallback result' })
+
+			const flow = createFlow('error-workflow')
+			flow
+				.node('start-error', async () => ({ output: 'start' }))
+				.node('flaky', flakyApi, { config: { maxRetries: 2, fallback: 'fallback' } })
+				.node('fallback', () => mockApiCall('Fallback', 500))
+				.node('final-step', async ({ input }) => {
+					console.log('[Final Step] Received:', input)
+					return { output: 'Workflow finished' }
+				})
+				.edge('start-error', 'flaky')
+				.edge('fallback', 'final-step')
+
+			const blueprint = flow.toBlueprint()
+			const runtime = new FlowRuntime({})
+			const result = await runtime.run(blueprint, {}, { functionRegistry: flow.getFunctionRegistry() })
+
+			expect(result.status).toBe('completed')
+			expect(flakyApi).toHaveBeenCalledTimes(2) // 1 initial + 1 retry (maxRetries: 2 means 2 total attempts)
+			expect(mockApiCall).toHaveBeenCalledWith('Fallback', 500)
+			expect(result.context['_outputs.final-step']).toBe('Workflow finished')
+			expect(result.context['_outputs.fallback']).toBe('Fallback result')
 		})
 
 		it('should throw an error on a graph with a cycle when strict mode is on', async () => {
