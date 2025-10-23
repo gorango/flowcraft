@@ -100,6 +100,34 @@ This example demonstrates Flowcraft's strongly-typed context system:
 - **IntelliSense Support**: Full autocomplete for context keys and their types
 - **Runtime Safety**: Type mismatches are caught during development, not execution
 
+## Using the Dependency Injection Container (Recommended)
+
+For better modularity and testability, use the DI container approach. Update your code to use `createDefaultContainer`:
+
+```typescript
+import { ConsoleLogger, createDefaultContainer, createFlow, FlowRuntime } from 'flowcraft'
+
+// ... (same flow definition as above)
+
+// Set up the runtime with DI container
+const container = createDefaultContainer({
+  logger: new ConsoleLogger(),
+  registry: flow.getFunctionRegistry(),
+})
+
+const runtime = new FlowRuntime(container)
+
+// Run the workflow (same as before)
+async function run() {
+  const result = await runtime.run(flow, {})
+  console.log('Workflow Result:', result)
+}
+
+run()
+```
+
+This approach centralizes configuration and makes it easy to swap implementations (e.g., for testing).
+
 ## Running the Example
 
 Execute the file:

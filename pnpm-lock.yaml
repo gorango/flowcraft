@@ -112,7 +112,7 @@ importers:
         specifier: ^5.9.3
         version: 5.9.3
 
-  examples/4.declarative-shared-logic:
+  examples/4.declarative:
     dependencies:
       dotenv:
         specifier: ^17.2.3
@@ -128,11 +128,11 @@ importers:
         specifier: ^5.9.3
         version: 5.9.3
 
-  examples/4a.declarative-in-memory:
+  examples/4a.in-memory:
     dependencies:
       '@flowcraft/example-declarative-shared-logic':
         specifier: workspace:*
-        version: link:../4.declarative-shared-logic
+        version: link:../4.declarative
       flowcraft:
         specifier: workspace:*
         version: link:../../packages/flowcraft
@@ -147,14 +147,14 @@ importers:
         specifier: ^5.9.3
         version: 5.9.3
 
-  examples/4b.declarative-distributed:
+  examples/4b.distributed:
     dependencies:
       '@flowcraft/bullmq-adapter':
         specifier: workspace:*
         version: link:../../packages/adapter-bullmq
       '@flowcraft/example-declarative-shared-logic':
         specifier: workspace:*
-        version: link:../4.declarative-shared-logic
+        version: link:../4.declarative
       bullmq:
         specifier: ^5.61.0
         version: 5.61.0

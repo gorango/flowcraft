@@ -8,6 +8,60 @@ Flowcraft provides built-in utilities for testing and debugging workflows, espec
 
 ## Testing Utilities
 
+### `createStepper`
+
+The `createStepper` utility enables step-by-step execution of workflows, allowing you to inspect the state after each logical step. This is invaluable for debugging complex workflows and writing fine-grained tests where you need to assert the state after each node execution.
+
+#### Usage
+
+```typescript
+import { createFlow, FlowRuntime } from 'flowcraft'
+import { createStepper } from 'flowcraft/testing'
+
+it('should correctly execute step-by-step', async () => {
+  const runtime = new FlowRuntime({})
+  const flow = createFlow('test')
+    .node('a', async () => ({ output: 10 }))
+    .node('b', async ({ context }) => ({ 
+      output: (await context.get('a')) * 2 
+    }))
+    .edge('a', 'b')
+
+  const stepper = await createStepper(runtime, flow.toBlueprint(), flow.getFunctionRegistry())
+
+  // First step (executes node 'a')
+  const result1 = await stepper.next()
+  expect(stepper.isDone()).toBe(false)
+  expect(result1.status).toBe('stalled')
+  expect(await stepper.state.getContext().get('_outputs.a')).toBe(10)
+
+  // Second step (executes node 'b')
+  const result2 = await stepper.next()
+  expect(stepper.isDone()).toBe(true)
+  expect(result2.status).toBe('completed')
+  expect(await stepper.state.getContext().get('_outputs.b')).toBe(20)
+
+  // Final step (no more work)
+  const result3 = await stepper.next()
+  expect(result3).toBeNull()
+})
+```
+
+#### Features
+
+- **Step-by-step Control**: Execute workflows one batch of nodes at a time
+- **State Inspection**: Access the workflow state and traverser after each step
+- **Concurrency Control**: Set concurrency limits per step
+- **Cancellation Support**: Cancel execution mid-step with AbortSignal
+- **Initial State**: Start workflows with pre-populated context
+
+#### Benefits
+
+- **Debugging**: Inspect intermediate states during complex workflows
+- **Fine-grained Testing**: Assert on state after each logical step
+- **Interactive Tools**: Build debugging or visualization tools
+- **Performance Analysis**: Measure execution time per step
+
 ### `InMemoryEventLogger`
 
 The `InMemoryEventLogger` acts as a "flight recorder" for debugging complex workflow executions. It captures all events emitted during a workflow run, allowing you to inspect the sequence of operations, data flow, and errors in detail.
@@ -116,10 +170,51 @@ DEBUG=true npm test
 - **Performance Insights**: Shows execution times for each node.
 - **Error Highlighting**: Marks failed nodes and exceptions in the trace.
 
+## Testing with Dependency Injection
+
+The Dependency Injection (DI) container makes testing even easier by allowing you to inject mocks or stubs directly into the runtime. This promotes isolated testing and simplifies verification of interactions.
+
+### Benefits for Testing
+- **Easy Mocking**: Register mock implementations for services like loggers or evaluators without modifying code.
+- **Isolated Tests**: Test workflows in isolation by controlling all dependencies.
+- **Type Safety**: Maintain type safety while using mocks.
+- **Backward Compatibility**: Existing tests continue to work with the legacy API.
+
+### Usage Example
+
+```typescript
+import { createDefaultContainer, FlowRuntime, ServiceTokens } from 'flowcraft'
+import { vi } from 'vitest'
+
+it('should use mock logger in tests', async () => {
+  const mockLogger = {
+    debug: vi.fn(),
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+  }
+
+  const container = createDefaultContainer({
+    registry: { fetchData, processData },
+    logger: mockLogger,
+  })
+
+  const runtime = new FlowRuntime(container)
+  await runtime.run(blueprint)
+
+  // Verify logging calls
+  expect(mockLogger.info).toHaveBeenCalledWith('Starting workflow execution', expect.any(Object))
+})
+```
+
+For more on the DI container, see the [Container API docs](/api/container).
+
 ## Best Practices for Testing
 
 - **Unit Test Nodes**: Test individual nodes in isolation using `InMemoryEventLogger` to verify inputs and outputs.
 - **Integration Testing**: Use `runWithTrace` for end-to-end workflow tests to ensure correct sequencing.
+- **Step-by-Step Testing**: Use `createStepper` for debugging complex workflows or when you need to assert state after each logical step.
+- **Context Access**: In node functions, use `ctx.context.get()` (async) to access workflow state. In middleware, use `ctx.get()` (sync or async depending on implementation).
 - **Mock External Dependencies**: In tests, mock adapters or external services to focus on workflow logic.
 - **Error Scenarios**: Simulate failures (e.g., network errors) to test error handling and retries.
 

@@ -123,3 +123,66 @@ try {
 ```
 
 If a subflow fails, it will prevent the parent workflow from continuing unless handled appropriately (e.g., via retries or fallbacks).
+
+## Awaiting Subflows
+
+Subflows can contain wait nodes, causing the entire parent workflow to pause. When a subflow encounters a wait node, the parent workflow's status becomes `'awaiting'`, and the subflow's state is persisted in the parent context.
+
+### Example: Awaiting Subflow
+
+```typescript
+// subflow-with-wait.ts
+import { createFlow } from 'flowcraft'
+
+export const approvalSubflow = createFlow('approval-subflow')
+  .node('start', async ({ context }) => {
+    await context.set('data', 'Request for approval')
+    return { output: 'Started' }
+  })
+  .edge('start', 'wait-for-approval')
+  .wait('wait-for-approval')  // Pauses here
+  .edge('wait-for-approval', 'process')
+  .node('process', async ({ input }) => {
+    const approved = input?.approved
+    return { output: approved ? 'Approved' : 'Rejected' }
+  })
+  .toBlueprint()
+
+// parent-flow.ts
+import { createFlow } from 'flowcraft'
+
+export const parentFlow = createFlow('parent-workflow')
+  .node('prepare', async ({ context }) => {
+    await context.set('request', 'User request')
+    return { output: 'Prepared' }
+  })
+  .edge('prepare', 'subflow-node')
+  .node('subflow-node', {
+    uses: 'subflow',
+    params: {
+      blueprintId: 'approval-subflow',
+      inputs: { data: 'request' }
+    }
+  })
+  .edge('subflow-node', 'finish')
+  .node('finish', async ({ context }) => {
+    const subflowResult = await context.get('_outputs.subflow-node')
+    return { output: `Final result: ${subflowResult}` }
+  })
+
+// Execution
+const runtime = new FlowRuntime({
+  blueprints: { 'approval-subflow': approvalSubflow },
+  registry: parentFlow.getFunctionRegistry()
+})
+
+const initialResult = await runtime.run(parentFlow.toBlueprint(), {})
+// initialResult.status === 'awaiting'
+
+const resumeResult = await runtime.resume(parentFlow.toBlueprint(), initialResult.serializedContext, {
+  output: { approved: true }
+})
+// resumeResult.status === 'completed'
+```
+
+When resuming, the subflow's state is restored, and execution continues from the wait node.

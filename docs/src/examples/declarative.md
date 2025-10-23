@@ -1,123 +1,5 @@
 # Dynamic AI Agent from JSON Files
 
-<script setup>
-import { ref } from 'vue'
-
-// Data for the Goal Diagram
-const goalNodes = ref([
-  { id: 'main', label: 'Entry', position: { x: 50, y: 0 }, type: 'input' },
-  { id: 'group-def', data: { label: 'Workflow Definition' }, position: { x: -200, y: 200 }, style: { width: '250px', height: '140px', backgroundColor: 'rgba(52, 81, 178, 0.2)', 'z-index': -1 } },
-  { id: 'blueprint', label: 'JSON Blueprint', data: { label: 'JSON Blueprint' }, position: { x: 50, y: 50 }, parentNode: 'group-def' },
-  { id: 'group-exec', data: { label: 'Execution Logic' }, position: { x: 200, y: 200 }, style: { width: '250px', height: '400px', backgroundColor: 'rgba(52, 81, 178, 0.2)', 'z-index': -1 } },
-  { id: 'runtime', label: 'FlowRuntime', position: { x: 50, y: 50 }, parentNode: 'group-exec' },
-  { id: 'registry', label: 'Node Registry', position: { x: 50, y: 150 }, parentNode: 'group-exec' },
-  { id: 'functions', label: 'Node Functions', position: { x: 50, y: 300 }, parentNode: 'group-exec' },
-])
-const goalEdges = ref([
-  { id: 'e-main-blueprint', source: 'main', target: 'blueprint', label: '1. Loads' },
-  { id: 'e-main-runtime', source: 'main', target: 'runtime', label: '2. Creates & Configures' },
-  { id: 'e-runtime-blueprint', source: 'runtime', target: 'blueprint', label: 'Reads graph from' },
-  { id: 'e-runtime-registry', source: 'runtime', target: 'registry', label: 'Uses' },
-  { id: 'e-registry-functions', source: 'registry', target: 'functions', label: 'Maps string types to' },
-])
-
-// Data for the Blog Post Blueprint
-const blogNodes = ref([
-  { id: 'group', data: { label: 'Blog Post Generation (ID: 100)' }, position: { x: 0, y: 0 }, style: { width: '200px', height: '350px', backgroundColor: 'rgba(52, 81, 178, 0.2)' } },
-  { id: 'a', label: 'generate_outline', position: { x: 25, y: 40 }, parentNode: 'group', type: 'input' },
-  { id: 'b', label: 'draft_post', position: { x: 25, y: 120 }, parentNode: 'group' },
-  { id: 'c', label: 'suggest_titles', position: { x: 25, y: 200 }, parentNode: 'group' },
-  { id: 'd', label: 'final_output', position: { x: 25, y: 280 }, parentNode: 'group', type: 'output' },
-])
-const blogEdges = ref([
-  { id: 'e-ab', source: 'a', target: 'b', animated: true },
-  { id: 'e-bc', source: 'b', target: 'c', animated: true },
-  { id: 'e-cd', source: 'c', target: 'd', animated: true },
-])
-
-// Data for the Job Application Blueprint
-const jobAppNodes = ref([
-  { id: 'group', data: { label: 'Job Application Screener (ID: 200)' }, position: { x: 0, y: 0 }, style: { width: '500px', height: '400px', backgroundColor: 'rgba(52, 81, 178, 0.2)' } },
-  { id: 'a', label: 'Resume', position: { x: 25, y: 50 }, parentNode: 'group', type: 'input' },
-  { id: 'b', label: 'extract_skills', position: { x: 25, y: 150 }, parentNode: 'group' },
-  { id: 'c', label: 'Cover Letter', position: { x: 200, y: 50 }, parentNode: 'group', type: 'input' },
-  { id: 'd', label: 'analyze_tone', position: { x: 200, y: 150 }, parentNode: 'group' },
-  { id: 'e', label: 'check_qualifications', position: { x: 112, y: 225 }, parentNode: 'group' },
-  { id: 'f', label: 'Sub-Workflow: Send Interview (201)', position: { x: 25, y: 300 }, parentNode: 'group', style: { borderColor: 'var(--vp-c-green-1)' } },
-  { id: 'g', label: 'Sub-Workflow: Send Rejection (202)', position: { x: 250, y: 300 }, parentNode: 'group', style: { borderColor: 'var(--vp-c-red-1)' } },
-  { id: 'h', label: 'final_output', position: { x: 175, y: 360 }, parentNode: 'group', type: 'output' },
-])
-const jobAppEdges = ref([
-  { id: 'e-ab', source: 'a', target: 'b' },
-  { id: 'e-cd', source: 'c', target: 'd' },
-  { id: 'e-be', source: 'b', target: 'e', animated: true },
-  { id: 'e-de', source: 'd', target: 'e', animated: true },
-  { id: 'e-ef', source: 'e', target: 'f', label: 'true' },
-  { id: 'e-eg', source: 'e', target: 'g', label: 'false' },
-  { id: 'e-fh', source: 'f', target: 'h' },
-  { id: 'e-gh', source: 'g', target: 'h' },
-])
-
-// Data for the Customer Review Blueprint
-const reviewNodes = ref([
-  { id: 'group', data: { label: 'Customer Review Analysis (ID: 300)' }, position: { x: 0, y: 0 }, style: { width: '550px', height: '550px', backgroundColor: 'rgba(52, 81, 178, 0.2)' } },
-  { id: 'a', label: 'Initial Review', position: { x: 200, y: 40 }, parentNode: 'group', type: 'input' },
-  { id: 'b', label: 'summarize', position: { x: 50, y: 120 }, parentNode: 'group' },
-  { id: 'c', label: 'categorize', position: { x: 350, y: 120 }, parentNode: 'group' },
-  { id: 'd', label: 'check_sentiment', position: { x: 200, y: 200 }, parentNode: 'group' },
-  { id: 'e', label: 'Sub-Workflow: Positive Reply (301)', position: { x: 50, y: 280 }, parentNode: 'group', style: { borderColor: 'var(--vp-c-green-1)' } },
-  { id: 'f', label: 'Sub-Workflow: Create Ticket & Reply (302)', position: { x: 350, y: 280 }, parentNode: 'group', style: { borderColor: 'var(--vp-c-red-1)' } },
-  { id: 'group-neg', data: { label: 'Negative Path (Parallel Fan-Out)' }, position: { x: 275, y: 350 }, parentNode: 'group', style: { width: '250px', height: '120px', backgroundColor: 'rgba(255, 0, 0, 0.1)' } },
-  { id: 'g', label: 'send_to_ticketing_system', position: { x: 25, y: 30 }, parentNode: 'group-neg' },
-  { id: 'h', label: 'send_email_to_customer', position: { x: 25, y: 80 }, parentNode: 'group-neg' },
-  { id: 'z', label: 'final_step', position: { x: 200, y: 490 }, parentNode: 'group', type: 'output' },
-])
-const reviewEdges = ref([
-  { id: 'e-ab', source: 'a', target: 'b' },
-  { id: 'e-ac', source: 'a', target: 'c' },
-  { id: 'e-bd', source: 'b', target: 'd', animated: true },
-  { id: 'e-cd', source: 'c', target: 'd', animated: true },
-  { id: 'e-de', source: 'd', target: 'e', label: 'positive' },
-  { id: 'e-df', source: 'd', target: 'f', label: 'negative' },
-  { id: 'e-fg', source: 'f', target: 'g' },
-  { id: 'e-fh', source: 'f', target: 'h' },
-  { id: 'e-ez', source: 'e', target: 'z' },
-  { id: 'e-gz', source: 'g', target: 'z' },
-  { id: 'e-hz', source: 'h', target: 'z' },
-])
-
-// Data for the Content Moderation Blueprint
-const moderationNodes = ref([
-  { id: 'group', data: { label: 'Content Moderation (ID: 400)' }, position: { x: 0, y: 0 }, style: { width: '700px', height: '450px', backgroundColor: 'rgba(52, 81, 178, 0.2)' } },
-  { id: 'a', label: 'User Post', position: { x: 300, y: 40 }, parentNode: 'group', type: 'input' },
-  { id: 'b', label: 'check_for_pii', position: { x: 50, y: 120 }, parentNode: 'group' },
-  { id: 'c', label: 'check_for_hate_speech', position: { x: 275, y: 120 }, parentNode: 'group' },
-  { id: 'd', label: 'check_for_spam', position: { x: 500, y: 120 }, parentNode: 'group' },
-  { id: 'e', label: 'triage_post', position: { x: 300, y: 200 }, parentNode: 'group' },
-  { id: 'f', label: 'Sub-Workflow: Ban User (401)', position: { x: 25, y: 280 }, parentNode: 'group', style: { borderColor: 'var(--vp-c-red-1)' } },
-  { id: 'g', label: 'Sub-Workflow: Redact Post (402)', position: { x: 190, y: 280 }, parentNode: 'group', style: { borderColor: 'var(--vp-c-yellow-1)' } },
-  { id: 'h', label: 'Sub-Workflow: Delete Spam (403)', position: { x: 355, y: 280 }, parentNode: 'group', style: { borderColor: 'var(--vp-c-yellow-1)' } },
-  { id: 'i', label: 'approve_post_branch', position: { x: 520, y: 280 }, parentNode: 'group', style: { borderColor: 'var(--vp-c-green-1)' } },
-  { id: 'z', label: 'final_log', position: { x: 300, y: 380 }, parentNode: 'group', type: 'output' },
-])
-const moderationEdges = ref([
-  { id: 'e-ab', source: 'a', target: 'b' },
-  { id: 'e-ac', source: 'a', target: 'c' },
-  { id: 'e-ad', source: 'a', target: 'd' },
-  { id: 'e-be', source: 'b', target: 'e', animated: true },
-  { id: 'e-ce', source: 'c', target: 'e', animated: true },
-  { id: 'e-de', source: 'd', target: 'e', animated: true },
-  { id: 'e-ef', source: 'e', target: 'f', label: 'action_ban' },
-  { id: 'e-eg', source: 'e', target: 'g', label: 'action_redact' },
-  { id: 'e-eh', source: 'e', target: 'h', label: 'action_delete_spam' },
-  { id: 'e-ei', source: 'e', target: 'i', label: 'action_approve' },
-  { id: 'e-fz', source: 'f', target: 'z' },
-  { id: 'e-gz', source: 'g', target: 'z' },
-  { id: 'e-hz', source: 'h', target: 'z' },
-  { id: 'e-iz', source: 'i', target: 'z' },
-])
-</script>
-
 [[view source code]](https://github.com/gorango/flowcraft/tree/master/examples/4a.declarative-in-memory)
 
 This example demonstrates a runtime engine that can execute complex, graph-based AI workflows defined as simple JSON files. It showcases how to build a powerful AI agent that can reason, branch, and call other workflows recursively using the workflow framework.
@@ -126,26 +8,101 @@ This example demonstrates a runtime engine that can execute complex, graph-based
 
 Demonstrate a runtime engine that executes complex, graph-based AI workflows defined as JSON files, with support for parallelism, branching, and nested workflows.
 
-<Flow :nodes="goalNodes" :edges="goalEdges" style="height: 600px" />
+```mermaid
+graph TD
+    subgraph "Workflow Definition"
+        Blueprint["JSON Blueprint <br><small>(e.g., 200.json)</small>"]
+    end
+
+    subgraph "Execution Logic"
+        Runtime("FlowRuntime")
+        Registry["Node Registry"]
+        Functions["Node Functions"]
+    end
+
+    Main("Entry")
+
+    Main -- "1. Loads" --> Blueprint
+    Main -- "2. Creates & Configures" --> Runtime
+
+    Runtime -- "Reads graph from" --> Blueprint
+    Runtime -- "Uses" --> Registry
+
+    Registry -- "Maps string types to" --> Functions
+```
 
 ## The Blueprints
 
 #### [`blog-post`](https://github.com/gorango/flowcraft/tree/master/examples/5.declarative-shared-logic/data/1.blog-post)
-
-<Flow :nodes="blogNodes" :edges="blogEdges" />
+```mermaid
+graph TD
+    subgraph "Blog Post Generation (ID: 100)"
+        A[generate_outline] --> B[draft_post]
+        B --> C[suggest_titles]
+        C --> D[final_output]
+    end
+```
 
 #### [`job-application`](https://github.com/gorango/flowcraft/tree/master/examples/5.declarative-shared-logic/data/2.job-application)
-
-<Flow :nodes="jobAppNodes" :edges="jobAppEdges" />
+```mermaid
+graph TD
+    subgraph "Job Application Screener (ID: 200)"
+        A(Resume) --> B[extract_skills]
+        C(Cover Letter) --> D[analyze_tone]
+        B --> E{check_qualifications}
+        D --> E
+        E -- true --> F["Sub-Workflow: Send Interview (201)"]
+        E -- false --> G["Sub-Workflow: Send Rejection (202)"]
+        F --> H[final_output]
+        G --> H
+    end
+```
 
 #### [`customer-review`](https://github.com/gorango/flowcraft/tree/master/examples/5.declarative-shared-logic/data/3.customer-review)
+```mermaid
+graph TD
+    subgraph "Customer Review Analysis (ID: 300)"
+        A(Initial Review) --> B[summarize]
+        A --> C[categorize]
+        B --> D{check_sentiment}
+        C --> D
+        D -- true --> E["Sub-Workflow: Positive Reply (301)"]
+        D -- false --> F["Sub-Workflow: Create Ticket & Reply (302)"]
 
-<Flow :nodes="reviewNodes" :edges="reviewEdges" />
+        subgraph "Negative Path (Parallel Fan-Out)"
+            F --> G[send_to_ticketing_system]
+            F --> H[send_email_to_customer]
+        end
+
+        E --> Z[final_step]
+        G --> Z
+        H --> Z
+    end
+```
 
 #### [`content-moderation`](https://github.com/gorango/flowcraft/tree/master/examples/5.declarative-shared-logic/data/4.content-moderation)
+```mermaid
+graph TD
+    subgraph "Content Moderation (ID: 400)"
+        A(User Post) --> B[check_for_pii]
+        A --> C[check_for_hate_speech]
+        A --> D[check_for_spam]
 
-<Flow :nodes="moderationNodes" :edges="moderationEdges" />
+        B --> E{triage_post}
+        C --> E
+        D --> E
 
+        E -- action_ban --> F["Sub-Workflow: Ban User (401)"]
+        E -- action_redact --> G["Sub-Workflow: Redact Post (402)"]
+        E -- action_delete_spam --> H["Sub-Workflow: Delete Spam (403)"]
+        E -- action_approve --> I[approve_post_branch]
+
+        F --> Z[final_log]
+        G --> Z
+        H --> Z
+        I --> Z
+    end
+```
 
 ## The Code
 
@@ -156,7 +113,76 @@ Defines node functions for processing LLM tasks, including resolving inputs, han
 import type { IAsyncContext, NodeContext, NodeResult, RuntimeDependencies } from 'flowcraft'
 import { callLLM, resolveTemplate } from './utils.js'
 
-// ... (rest of the code remains the same)
+/**
+ * A generic context for our LLM nodes.
+ */
+interface LlmNodeContext extends NodeContext<Record<string, any>, RuntimeDependencies> {
+	params: {
+		promptTemplate: string
+		inputs: Record<string, string | string[]>
+		outputKey?: string
+	}
+	context: IAsyncContext
+}
+
+/**
+ * Resolves input values from the context based on the node's `inputs` mapping.
+ */
+async function resolveInputs(
+	context: IAsyncContext<any>,
+	inputs: Record<string, string | string[]>,
+): Promise<Record<string, any>> {
+	const resolved: Record<string, any> = {}
+	for (const [templateKey, sourceKeyOrKeys] of Object.entries(inputs)) {
+		const sourceKeys = Array.isArray(sourceKeyOrKeys) ? sourceKeyOrKeys : [sourceKeyOrKeys]
+		let valueFound = false
+		for (const sourceKey of sourceKeys) {
+			if (await context.has(sourceKey)) {
+				const value = await context.get(sourceKey)
+				// Ensure we don't pass 'undefined' if the key exists but has no value
+				if (value !== undefined) {
+					resolved[templateKey] = value
+					valueFound = true
+					break // Found a value, no need to check other keys for this template variable
+				}
+			}
+		}
+		if (!valueFound) {
+			// If an input isn't found (e.g., from an untaken branch), use an empty string.
+			resolved[templateKey] = ''
+		}
+	}
+	return resolved
+}
+
+export async function llmProcess(ctx: NodeContext<Record<string, any>, RuntimeDependencies>): Promise<NodeResult> {
+	const llmCtx = ctx as any as LlmNodeContext
+	const templateData = await resolveInputs(ctx.context, llmCtx.params.inputs)
+	const prompt = resolveTemplate(llmCtx.params.promptTemplate, templateData)
+	const result = await callLLM(prompt)
+	return { output: result }
+}
+
+export async function llmCondition(ctx: NodeContext<Record<string, any>, RuntimeDependencies>): Promise<NodeResult> {
+	const result = await llmProcess(ctx)
+	const action = result.output?.toLowerCase().includes('true') ? 'true' : 'false'
+	return { action, output: result.output }
+}
+
+export async function llmRouter(ctx: NodeContext<Record<string, any>, RuntimeDependencies>): Promise<NodeResult> {
+	const result = await llmProcess(ctx)
+	const action = result.output?.trim() ?? 'default'
+	return { action, output: result.output }
+}
+
+export async function outputNode(ctx: NodeContext<Record<string, any>, RuntimeDependencies>): Promise<NodeResult> {
+	const llmCtx = ctx as any as LlmNodeContext
+	const { outputKey = 'final_output' } = llmCtx.params
+	const templateData = await resolveInputs(ctx.context, llmCtx.params.inputs)
+	const finalOutput = resolveTemplate(llmCtx.params.promptTemplate, templateData)
+	await ctx.context.set(outputKey as any, finalOutput)
+	return { output: finalOutput }
+}
 ```
 
 #### `utils.ts`
@@ -166,7 +192,44 @@ Provides utility functions for interacting with the OpenAI API to call LLMs and 
 import OpenAI from 'openai'
 import 'dotenv/config'
 
-// ... (rest of the code remains the same)
+const openaiClient = new OpenAI()
+
+/**
+ * Calls the OpenAI Chat Completions API.
+ * @param prompt The user prompt to send to the LLM.
+ * @returns The content of the LLM's response as a string.
+ */
+export async function callLLM(prompt: string): Promise<string> {
+	try {
+		console.log(`\n--- Sending to LLM ---\n${prompt.substring(0, 300)}...\n---------------------\n`)
+		const response = await openaiClient.chat.completions.create({
+			model: 'gpt-4o-mini',
+			messages: [{ role: 'user', content: prompt }],
+			temperature: 0.2,
+		})
+		const result = response.choices[0].message.content || ''
+		console.log(`--- Received from LLM ---\n${result}\n-----------------------\n`)
+		return result
+	} catch (error: any) {
+		console.error('Error calling OpenAI API:', error)
+		throw new Error(`OpenAI API call failed: ${error.message}`)
+	}
+}
+
+/**
+ * Resolves a template string by replacing {{key}} with values from a data object.
+ * This is crucial for dynamically constructing prompts.
+ */
+export function resolveTemplate(template: string, data: Record<string, any>): string {
+	return template.replace(/\{\{(.*?)\}\}/g, (_, key) => {
+		const value = data[key.trim()]
+		if (value === undefined || value === null) {
+			console.warn(`Template variable '{{${key.trim()}}}' not found in data.`)
+			return `{{${key.trim()}}}`
+		}
+		return String(value)
+	})
+}
 ```
 
 #### `registry.ts`
@@ -176,7 +239,18 @@ Creates a node registry that maps string identifiers to their corresponding func
 import type { NodeRegistry } from 'flowcraft'
 import { llmCondition, llmProcess, llmRouter, outputNode } from './nodes.js'
 
-// ... (rest of the code remains the same)
+/**
+ * A central registry mapping the string 'uses' from a blueprint
+ * to the actual node function implementation.
+ * This is created once and passed to the FlowRuntime.
+ */
+export const agentNodeRegistry: NodeRegistry = {
+	'llm-process': llmProcess,
+	'llm-condition': llmCondition,
+	'llm-router': llmRouter,
+	output: outputNode,
+	// The 'subflow' node is built-in to runtime, so it doesn't need to be registered here.
+}
 ```
 
 #### `blueprints.ts`
@@ -188,7 +262,69 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import type { NodeDefinition, WorkflowBlueprint } from 'flowcraft'
 
-// ... (rest of the code remains the same)
+/**
+ * Loads a JSON graph and transforms it into a WorkflowBlueprint.
+ * It also intelligently configures nodes that are convergence points for routers.
+ */
+function loadAndProcessBlueprint(filePath: string): WorkflowBlueprint {
+	const fileContent = fs.readFileSync(filePath, 'utf-8')
+	const graph = JSON.parse(fileContent)
+	const blueprintId = path.basename(filePath, '.json')
+
+	const nodes: NodeDefinition[] = graph.nodes.map((n: any) => ({
+		id: n.id,
+		uses: n.uses,
+		config: n.config,
+		params: n.uses === 'subflow'
+			? {
+				// Ensure blueprintId is a string
+				blueprintId: n.params.blueprintId.toString(),
+				...n.params,
+			}
+			: n.params,
+	}))
+
+	const edges = graph.edges
+	const nodePredecessorMap = new Map<string, string[]>()
+
+	// Wire up the edges to the nodes
+	edges.forEach((edge: any) => {
+		if (!nodePredecessorMap.has(edge.target)) nodePredecessorMap.set(edge.target, [])
+		nodePredecessorMap.get(edge.target)?.push(edge.source)
+	})
+
+	// Check if all predecessors are the same (i.e., it's a fan-out from a single router)
+	for (const node of nodes) {
+		const predecessors = nodePredecessorMap.get(node.id)
+		if (predecessors && predecessors.length > 1) {
+			const firstPredecessor = predecessors[0]
+			if (predecessors.every((p) => p === firstPredecessor)) {
+				console.log(`[Blueprint Loader] Automatically setting joinStrategy='any' for convergence node '${node.id}'`)
+				node.config = { ...node.config, joinStrategy: 'any' }
+			}
+		}
+	}
+
+	return { id: blueprintId, nodes, edges }
+}
+
+// Load all blueprints from the data directory
+const __dirname = path.dirname(fileURLToPath(import.meta.url))
+const dataDir = path.join(__dirname, '..', 'data')
+const useCaseDirs = ['1.blog-post', '2.job-application', '3.customer-review', '4.content-moderation']
+
+export const blueprints: Record<string, WorkflowBlueprint> = {}
+
+for (const dirName of useCaseDirs) {
+	const dirPath = path.join(dataDir, dirName)
+	const files = fs.readdirSync(dirPath)
+	for (const file of files) {
+		if (file.endsWith('.json')) {
+			const blueprint = loadAndProcessBlueprint(path.join(dirPath, file))
+			blueprints[blueprint.id] = blueprint
+		}
+	}
+}
 ```
 
 #### `config.ts`
@@ -203,7 +339,30 @@ export const config = {
 			topic: 'The rise of AI-powered workflow automation in modern software development.',
 		},
 	},
-// ... (rest of the code remains the same)
+	'2.job-application': {
+		entryWorkflowId: '200',
+		initialContext: {
+			applicantName: 'Jane Doe',
+			resume:
+				'Experienced developer with a background in TypeScript, Node.js, and building complex DAG workflow systems. Also proficient in React and SQL.',
+			coverLetter: 'To Whom It May Concern, I am writing to express my interest in the Senior Developer position.',
+		},
+	},
+	'3.customer-review': {
+		entryWorkflowId: '300',
+		initialContext: {
+			initial_review:
+				'The new dashboard is a huge improvement, but I noticed that the export-to-PDF feature is really slow and sometimes crashes the app on large datasets. It would be great if you could look into this.',
+		},
+	},
+	'4.content-moderation': {
+		entryWorkflowId: '400',
+		initialContext: {
+			userId: 'user-456',
+			userPost: 'Hi, I need help with my account. My email is test@example.com and my phone is 555-123-4567.',
+		},
+	},
+} as const
 ```
 
 #### `main.ts`
@@ -215,7 +374,36 @@ import { blueprints } from './blueprints.js'
 import { config } from './config.js'
 import { agentNodeRegistry } from './registry.js'
 
-// ... (rest of the code remains the same)```
+type UseCase = keyof typeof config
+
+const ACTIVE_USE_CASE: UseCase = '4.content-moderation' // Change this to test other scenarios
+
+async function main() {
+	console.log(`--- Running Use-Case (Data-First): ${ACTIVE_USE_CASE} ---\n`)
+
+	const runtime = new FlowRuntime({
+		registry: agentNodeRegistry,
+		blueprints,
+	})
+
+	const entryWorkflowId = config[ACTIVE_USE_CASE].entryWorkflowId
+	const mainBlueprint = blueprints[entryWorkflowId]
+
+	if (!mainBlueprint) throw new Error(`Main workflow blueprint with ID '${entryWorkflowId}' was not found.`)
+
+	const { initialContext } = config[ACTIVE_USE_CASE]
+
+	const result = await runtime.run(mainBlueprint, initialContext)
+
+	console.log('\n--- Workflow Complete ---\n')
+	console.log('Final Output:\n')
+	console.log(result.context.final_output)
+	console.log('\n--- Final Context State ---')
+	console.dir(result.context, { depth: null })
+}
+
+main().catch(console.error)
+```
 
 ---
 

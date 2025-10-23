@@ -55,3 +55,43 @@ The runtime is responsible for:
 -   Evaluating edge conditions to determine the next nodes to run.
 -   Injecting dependencies and middleware.
 -   Orchestrating both in-memory and distributed execution.
+
+## 5. Dependency Injection Container
+
+The [`DIContainer`](/api/container#dicontainer-class) implements the Inversion of Control (IoC) principle, allowing components to receive dependencies from a central container rather than creating them directly. This promotes loose coupling, making the framework highly configurable, testable, and extensible.
+
+### Benefits
+-   **Loose Coupling**: Components depend only on interfaces, not concrete implementations.
+-   **Centralized Configuration**: All "wiring" is defined in one place via the container.
+-   **Easy Testing**: Inject mocks or stubs directly into the container for isolated testing.
+-   **Pluggable Architecture**: Swap implementations (e.g., loggers, serializers) without changing code.
+
+### Key Components
+-   **Service Tokens**: Symbolic identifiers (e.g., `ServiceTokens.Logger`) for type-safe service resolution.
+-   **Registration**: Services can be registered directly or via factories for lazy instantiation.
+-   **Resolution**: Retrieve services by token, with automatic dependency injection.
+
+For usage examples, see [Getting Started](/guide/getting-started) and the [Container API docs](/api/container).
+
+## 6. Human-in-the-Loop (HITL) Orchestration
+
+Flowcraft supports human-in-the-loop workflows, allowing workflows to pause at defined points and await external input before resuming. This is essential for interactive processes like approvals or manual interventions.
+
+### Key Features
+
+- **Wait Nodes**: Use the `.wait()` method in the `Flow` builder to create pause points.
+- **Multiple Concurrent Waits**: Support for multiple wait nodes running in parallel, each tracked separately in the workflow state.
+- **Awaiting Status**: Workflows in a paused state have a status of `'awaiting'`.
+- **Resume Functionality**: Use the `runtime.resume()` method with an optional `nodeId` parameter to specify which waiting node to resume.
+- **State Persistence**: Awaiting state is preserved in the serialized context for durability.
+
+### Workflow Statuses
+
+Workflows can have the following statuses:
+- **`completed`**: Execution finished successfully.
+- **`failed`**: Execution failed with errors.
+- **`stalled`**: Execution cannot proceed due to unresolved dependencies.
+- **`cancelled`**: Execution was cancelled.
+- **`awaiting`**: Execution is paused at a wait node, waiting for external input.
+
+For more details, see [Defining Workflows](/guide/defining-workflows) and the [Runtime API](/api/runtime).

@@ -134,6 +134,17 @@ export class Flow<
 	}
 
 	/**
+	 * Creates a wait node that pauses workflow execution for external input.
+	 * @param id A unique identifier for the wait node.
+	 * @param options Optional configuration for the wait node.
+	 */
+	wait(id: string, options?: Omit<NodeDefinition, 'id' | 'uses'>): this {
+		const nodeDef: NodeDefinition = { id, uses: 'wait', ...options }
+		this.blueprint.nodes?.push(nodeDef)
+		return this
+	}
+
+	/**
 	 * Creates a loop pattern in the workflow graph.
 	 * @param id A unique identifier for the loop construct.
 	 * @param options Defines the start, end, and continuation condition of the loop.

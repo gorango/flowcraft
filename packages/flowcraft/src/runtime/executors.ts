@@ -1,20 +1,6 @@
-import { AsyncContextView } from '../context'
 import { FlowcraftError } from '../errors'
-import type {
-	ContextImplementation,
-	IAsyncContext,
-	IEventBus,
-	ILogger,
-	ISyncContext,
-	Middleware,
-	NodeClass,
-	NodeContext,
-	NodeDefinition,
-	NodeFunction,
-	NodeResult,
-	WorkflowBlueprint,
-} from '../types'
-import type { WorkflowState } from './state'
+import type { IEventBus, Middleware, NodeClass, NodeContext, NodeDefinition, NodeFunction, NodeResult } from '../types'
+import type { ExecutionContext } from './execution-context'
 
 async function withRetries<T>(
 	executor: () => Promise<T>,
@@ -125,7 +111,7 @@ export class ClassNodeExecutor implements ExecutionStrategy {
 		executionId?: string,
 		signal?: AbortSignal,
 	): Promise<NodeResult<any, any>> {
-		const instance = new this.implementation(nodeDef.params || {})
+		const instance = new this.implementation(nodeDef.params || {}, nodeDef.id)
 		let lastError: Error | undefined
 		try {
 			signal?.throwIfAborted()
@@ -186,87 +172,51 @@ export class ClassNodeExecutor implements ExecutionStrategy {
 	}
 }
 
-export class BuiltInNodeExecutor implements ExecutionStrategy {
-	constructor(
-		private executeBuiltIn: (
-			nodeDef: NodeDefinition,
-			context: ContextImplementation<any>,
-		) => Promise<NodeResult<any, any>>,
-	) {}
-
-	async execute(
-		nodeDef: NodeDefinition,
-		context: NodeContext<Record<string, unknown>, Record<string, unknown>, any>,
-	): Promise<NodeResult<any, any>> {
-		return this.executeBuiltIn(nodeDef, context.context as ContextImplementation<any>)
-	}
-}
-
 export type NodeExecutionResult =
 	| { status: 'success'; result: NodeResult<any, any> }
 	| { status: 'failed_with_fallback'; fallbackNodeId: string; error: FlowcraftError }
 	| { status: 'failed'; error: FlowcraftError }
 
 export interface NodeExecutorConfig<TContext extends Record<string, any>, TDependencies extends Record<string, any>> {
-	blueprint: WorkflowBlueprint
+	context: ExecutionContext<TContext, TDependencies>
 	nodeDef: NodeDefinition
-	state: WorkflowState<TContext>
-	dependencies: TDependencies
-	logger: ILogger
-	eventBus: IEventBus
-	middleware: Middleware[]
 	strategy: ExecutionStrategy
-	executionId?: string
-	signal?: AbortSignal
 }
 
 export class NodeExecutor<TContext extends Record<string, any>, TDependencies extends Record<string, any>> {
-	private blueprint: WorkflowBlueprint
+	private context: ExecutionContext<TContext, TDependencies>
 	private nodeDef: NodeDefinition
-	private state: WorkflowState<TContext>
-	private dependencies: TDependencies
-	private logger: ILogger
-	private eventBus: IEventBus
-	private middleware: Middleware[]
 	private strategy: ExecutionStrategy
-	private executionId?: string
-	private signal?: AbortSignal
 
 	constructor(config: NodeExecutorConfig<TContext, TDependencies>) {
-		this.blueprint = config.blueprint
+		this.context = config.context
 		this.nodeDef = config.nodeDef
-		this.state = config.state
-		this.dependencies = config.dependencies
-		this.logger = config.logger
-		this.eventBus = config.eventBus
-		this.middleware = config.middleware
 		this.strategy = config.strategy
-		this.executionId = config.executionId
-		this.signal = config.signal
 	}
 
 	async execute(input: any): Promise<NodeExecutionResult> {
-		const contextImpl = this.state.getContext()
-		const asyncContext: IAsyncContext<TContext> =
-			contextImpl.type === 'sync'
-				? new AsyncContextView(contextImpl as ISyncContext<TContext>)
-				: (contextImpl as IAsyncContext<TContext>)
+		const asyncContext = this.context.state.getContext()
 
 		const nodeContext: NodeContext<TContext, TDependencies, any> = {
 			context: asyncContext,
 			input,
 			params: this.nodeDef.params || {},
-			dependencies: { ...this.dependencies, logger: this.logger },
-			signal: this.signal,
+			dependencies: {
+				...this.context.services.dependencies,
+				logger: this.context.services.logger,
+				runtime: this.context,
+				workflowState: this.context.state,
+			},
+			signal: this.context.signal,
 		}
 
-		const beforeHooks = this.middleware
+		const beforeHooks = this.context.services.middleware
 			.map((m) => m.beforeNode)
 			.filter((hook): hook is NonNullable<Middleware['beforeNode']> => !!hook)
-		const afterHooks = this.middleware
+		const afterHooks = this.context.services.middleware
 			.map((m) => m.afterNode)
 			.filter((hook): hook is NonNullable<Middleware['afterNode']> => !!hook)
-		const aroundHooks = this.middleware
+		const aroundHooks = this.context.services.middleware
 			.map((m) => m.aroundNode)
 			.filter((hook): hook is NonNullable<Middleware['aroundNode']> => !!hook)
 
@@ -275,7 +225,7 @@ export class NodeExecutor<TContext extends Record<string, any>, TDependencies ex
 			let error: Error | undefined
 			try {
 				for (const hook of beforeHooks) await hook(nodeContext.context, this.nodeDef.id)
-				result = await this.strategy.execute(this.nodeDef, nodeContext, this.executionId, this.signal)
+				result = await this.strategy.execute(this.nodeDef, nodeContext, this.context.executionId, this.context.signal)
 				return { status: 'success', result }
 			} catch (e: any) {
 				error = e instanceof Error ? e : new Error(String(e))
@@ -285,8 +235,8 @@ export class NodeExecutor<TContext extends Record<string, any>, TDependencies ex
 						: new FlowcraftError(`Node '${this.nodeDef.id}' execution failed`, {
 								cause: error,
 								nodeId: this.nodeDef.id,
-								blueprintId: this.blueprint.id,
-								executionId: this.executionId,
+								blueprintId: this.context.blueprint.id,
+								executionId: this.context.executionId,
 								isFatal: false,
 							})
 				const isFatal =
@@ -296,19 +246,19 @@ export class NodeExecutor<TContext extends Record<string, any>, TDependencies ex
 				}
 				const fallbackNodeId = this.nodeDef.config?.fallback
 				if (fallbackNodeId) {
-					this.logger.warn(`Node failed, fallback required`, {
+					this.context.services.logger.warn(`Node failed, fallback required`, {
 						nodeId: this.nodeDef.id,
 						fallbackNodeId,
 						error: error.message,
-						executionId: this.executionId,
+						executionId: this.context.executionId,
 					})
-					await this.eventBus.emit({
+					await this.context.services.eventBus.emit({
 						type: 'node:fallback',
 						payload: {
 							nodeId: this.nodeDef.id,
-							executionId: this.executionId || '',
+							executionId: this.context.executionId || '',
 							fallback: fallbackNodeId,
-							blueprintId: this.blueprint.id,
+							blueprintId: this.context.blueprint.id,
 						},
 					})
 					return { status: 'failed_with_fallback', fallbackNodeId, error: flowcraftError }
@@ -343,34 +293,34 @@ export class NodeExecutor<TContext extends Record<string, any>, TDependencies ex
 		}
 
 		try {
-			await this.eventBus.emit({
+			await this.context.services.eventBus.emit({
 				type: 'node:start',
 				payload: {
 					nodeId: this.nodeDef.id,
-					executionId: this.executionId || '',
+					executionId: this.context.executionId || '',
 					input: nodeContext.input,
-					blueprintId: this.blueprint.id,
+					blueprintId: this.context.blueprint.id,
 				},
 			})
 			const executionResult = await executionChain()
 			if (executionResult.status === 'success') {
-				await this.eventBus.emit({
+				await this.context.services.eventBus.emit({
 					type: 'node:finish',
 					payload: {
 						nodeId: this.nodeDef.id,
 						result: executionResult.result,
-						executionId: this.executionId || '',
-						blueprintId: this.blueprint.id,
+						executionId: this.context.executionId || '',
+						blueprintId: this.context.blueprint.id,
 					},
 				})
 			} else {
-				await this.eventBus.emit({
+				await this.context.services.eventBus.emit({
 					type: 'node:error',
 					payload: {
 						nodeId: this.nodeDef.id,
 						error: executionResult.error,
-						executionId: this.executionId || '',
-						blueprintId: this.blueprint.id,
+						executionId: this.context.executionId || '',
+						blueprintId: this.context.blueprint.id,
 					},
 				})
 			}
@@ -383,22 +333,22 @@ export class NodeExecutor<TContext extends Record<string, any>, TDependencies ex
 					: new FlowcraftError(`Node '${this.nodeDef.id}' failed execution.`, {
 							cause: err,
 							nodeId: this.nodeDef.id,
-							blueprintId: this.blueprint.id,
-							executionId: this.executionId,
+							blueprintId: this.context.blueprint.id,
+							executionId: this.context.executionId,
 							isFatal: false,
 						})
-			await this.eventBus.emit({
+			await this.context.services.eventBus.emit({
 				type: 'node:error',
 				payload: {
 					nodeId: this.nodeDef.id,
 					error: flowcraftError,
-					executionId: this.executionId || '',
-					blueprintId: this.blueprint.id,
+					executionId: this.context.executionId || '',
+					blueprintId: this.context.blueprint.id,
 				},
 			})
 			if (error instanceof DOMException && error.name === 'AbortError') {
 				throw new FlowcraftError('Workflow cancelled', {
-					executionId: this.executionId,
+					executionId: this.context.executionId,
 					isFatal: false,
 				})
 			}
@@ -407,8 +357,8 @@ export class NodeExecutor<TContext extends Record<string, any>, TDependencies ex
 				: new FlowcraftError(`Node '${this.nodeDef.id}' failed execution.`, {
 						cause: error,
 						nodeId: this.nodeDef.id,
-						blueprintId: this.blueprint.id,
-						executionId: this.executionId,
+						blueprintId: this.context.blueprint.id,
+						executionId: this.context.executionId,
 						isFatal: false,
 					})
 		}

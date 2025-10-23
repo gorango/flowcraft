@@ -3,11 +3,11 @@
 echo "Pre-loading Testcontainers Docker images..."
 
 # Pull LocalStack image
-docker pull localstack/localstack:latest
+docker pull localstack/localstack:3.8.1
 if [ $? -eq 0 ]; then
-	echo "Successfully pulled localstack/localstack:latest"
+	echo "Successfully pulled localstack/localstack:3.8.1"
 else
-	echo "Failed to pull localstack/localstack:latest"
+	echo "Failed to pull localstack/localstack:3.8.1"
 	exit 1
 fi
 

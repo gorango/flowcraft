@@ -1,5 +1,7 @@
 import type { FlowcraftError } from './errors'
 import type { BaseNode } from './node'
+import type { ExecutionContext } from './runtime/execution-context'
+import type { WorkflowState } from './runtime/state'
 
 // =================================================================================
 // Blueprint Interfaces (The Declarative Definition)
@@ -77,7 +79,10 @@ export interface NodeContext<
 	/** Static parameters defined in the blueprint. */
 	params: Record<string, any>
 	/** Shared, runtime-level dependencies (e.g., database clients, loggers). */
-	dependencies: TDependencies
+	dependencies: TDependencies & {
+		runtime: ExecutionContext<TContext, TDependencies>
+		workflowState: WorkflowState<TContext>
+	}
 	/** A signal to gracefully cancel long-running node operations. */
 	signal?: AbortSignal
 }
@@ -98,7 +103,7 @@ export type NodeClass<
 	TInput = any,
 	TOutput = any,
 	TAction extends string = string,
-> = new (params?: Record<string, any>) => BaseNode<TContext, TDependencies, TInput, TOutput, TAction>
+> = new (params?: Record<string, any>, nodeId?: string) => BaseNode<TContext, TDependencies, TInput, TOutput, TAction>
 
 /** A union of all possible node implementation types. */
 export type NodeImplementation = NodeFunction | NodeClass
@@ -253,7 +258,7 @@ export interface WorkflowError extends FlowcraftError {
 export interface WorkflowResult<TContext = Record<string, any>> {
 	context: TContext
 	serializedContext: string
-	status: 'completed' | 'failed' | 'stalled' | 'cancelled'
+	status: 'completed' | 'failed' | 'stalled' | 'cancelled' | 'awaiting'
 	errors?: WorkflowError[]
 }
 

@@ -12,20 +12,20 @@ else
 fi
 
 # Pull Cassandra image
-docker pull cassandra:latest
+docker pull cassandra:5.0.5
 if [ $? -eq 0 ]; then
-	echo "Successfully pulled cassandra:latest"
+	echo "Successfully pulled cassandra:5.0.5"
 else
-	echo "Failed to pull cassandra:latest"
+	echo "Failed to pull cassandra:5.0.5"
 	exit 1
 fi
 
 # Pull Redis image
-docker pull redis:latest
+docker pull redis:8.2.2
 if [ $? -eq 0 ]; then
-	echo "Successfully pulled redis:latest"
+	echo "Successfully pulled redis:8.2.2"
 else
-	echo "Failed to pull redis:latest"
+	echo "Failed to pull redis:8.2.2"
 	exit 1
 fi
 

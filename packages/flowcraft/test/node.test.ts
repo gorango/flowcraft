@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { AsyncContextView } from '../src/context'
 import { BaseNode, isNodeClass } from '../src/node'
+import { ExecutionContext } from '../src/runtime/execution-context'
+import { WorkflowState } from '../src/runtime/state'
 import type { ISyncContext, NodeContext, NodeResult } from '../src/types'
 
 class TestNodeForIsNodeClass extends BaseNode {
@@ -35,6 +37,17 @@ class MockSyncContext implements ISyncContext {
 }
 
 describe('BaseNode', () => {
+	const mockRuntime = {} as any
+	const mockWorkflowState = new WorkflowState({})
+	const mockExecutionContext = new ExecutionContext({} as any, mockWorkflowState, new Map(), 'test-id', mockRuntime, {
+		logger: {} as any,
+		eventBus: {} as any,
+		serializer: {} as any,
+		evaluator: {} as any,
+		middleware: [],
+		dependencies: {} as any,
+	})
+
 	class TestNode extends BaseNode {
 		prepCalled = false
 		execCalled = false
@@ -125,7 +138,10 @@ describe('BaseNode', () => {
 			context: asyncContext,
 			input: {},
 			params: {},
-			dependencies: {},
+			dependencies: {
+				runtime: mockExecutionContext,
+				workflowState: mockWorkflowState,
+			},
 		}
 		const prepResult = await node.prep(context)
 		await node.exec(prepResult, context)
@@ -143,7 +159,10 @@ describe('BaseNode', () => {
 			context: asyncContext,
 			input: {},
 			params: {},
-			dependencies: {},
+			dependencies: {
+				runtime: mockExecutionContext,
+				workflowState: mockWorkflowState,
+			},
 		}
 		await expect(node.prep(context)).rejects.toThrow('Prep failed')
 		expect(node.postCalled).toBe(false)
@@ -157,7 +176,10 @@ describe('BaseNode', () => {
 			context: asyncContext,
 			input: {},
 			params: {},
-			dependencies: {},
+			dependencies: {
+				runtime: mockExecutionContext,
+				workflowState: mockWorkflowState,
+			},
 		}
 		const prepResult = await node.prep(context)
 		await expect(node.exec(prepResult, context)).rejects.toThrow('Exec failed')
@@ -172,7 +194,10 @@ describe('BaseNode', () => {
 			context: asyncContext,
 			input: {},
 			params: {},
-			dependencies: {},
+			dependencies: {
+				runtime: mockExecutionContext,
+				workflowState: mockWorkflowState,
+			},
 		}
 		const prepResult = await node.prep(context)
 		await expect(node.exec(prepResult, context)).rejects.toThrow('Exec failed')
@@ -190,7 +215,10 @@ describe('BaseNode', () => {
 			context: asyncContext,
 			input: {},
 			params: {},
-			dependencies: {},
+			dependencies: {
+				runtime: mockExecutionContext,
+				workflowState: mockWorkflowState,
+			},
 		}
 		const prepResult = await node.prep(context)
 		await expect(node.exec(prepResult, context)).rejects.toThrow('Exec failed')

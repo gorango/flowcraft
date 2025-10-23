@@ -18,9 +18,13 @@ describe('FlowRuntime', () => {
 		const state = new WorkflowState({})
 		const runtime = new FlowRuntime({})
 		const mockExecutor = {
-			execute: vi.fn().mockResolvedValue({ output: 'result' }),
+			execute: vi.fn().mockResolvedValue({
+				status: 'success',
+				result: { output: 'result' },
+			}),
 		}
-		vi.spyOn(runtime as any, 'getExecutor').mockReturnValue(mockExecutor)
+
+		vi.spyOn((runtime as any).executorFactory, 'createExecutorForNode').mockReturnValue(mockExecutor)
 		const result = await runtime.executeNode(blueprint, 'A', state)
 		expect(result.output).toBe('result')
 	})
@@ -54,25 +58,6 @@ describe('FlowRuntime', () => {
 		} as any
 		await runtime.applyEdgeTransform(edge, sourceResult, targetNode, context)
 		expect(context.set).toHaveBeenCalledWith('_inputs.B', 10)
-	})
-
-	it('should handle built-in nodes', async () => {
-		const runtime = new FlowRuntime({})
-		const nodeDef = {
-			id: 'batch',
-			uses: 'batch-scatter',
-			params: { workerUsesKey: 'worker', gatherNodeId: 'gather' },
-			inputs: 'data',
-		}
-		const context = {
-			type: 'sync',
-			get: vi.fn().mockResolvedValue(['item1']),
-			set: vi.fn(),
-			has: vi.fn().mockReturnValue(false),
-		} as any
-		const result = await (runtime as any)._executeBuiltInNode(nodeDef, context)
-		expect(result.dynamicNodes).toBeDefined()
-		expect(result.output.gatherNodeId).toBeDefined()
 	})
 
 	it('should respect abort signals', async () => {

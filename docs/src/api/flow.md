@@ -47,6 +47,14 @@ Creates a scatter-gather batch processing pattern with full type safety.
     -   `outputKey`: The key in the context where the array of results will be stored.
 -   **Returns**: `this` (for chaining).
 
+### `.wait(id, options?)`
+
+Creates a wait node that pauses workflow execution for external input.
+
+-   **`id`** `string`: A unique identifier for the wait node.
+-   **`options?`** `Omit<NodeDefinition, 'id' | 'uses'>`: Optional configuration for the wait node.
+-   **Returns**: `this` (for chaining).
+
 ### `.loop(id, options)`
 
 Creates an iterative loop in the workflow graph.

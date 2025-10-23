@@ -1,19 +1,21 @@
 import type {
 	ContextImplementation,
 	EdgeDefinition,
-	IEvaluator,
+	NodeClass,
 	NodeDefinition,
+	NodeFunction,
 	NodeResult,
 	RuntimeDependencies,
 	RuntimeOptions,
 	WorkflowBlueprint,
 	WorkflowResult,
 } from '../types'
+import type { ExecutionContext } from './execution-context'
 import type { NodeExecutionResult, NodeExecutor } from './executors'
 import type { WorkflowState } from './state'
 import type { GraphTraverser } from './traverser'
 
-export type NodeExecutorFactory = (blueprint: WorkflowBlueprint) => (nodeId: string) => NodeExecutor<any, any>
+export type NodeExecutorFactory = (context: ExecutionContext<any, any>) => (nodeId: string) => NodeExecutor<any, any>
 
 export interface ExecutionServices {
 	determineNextNodes: (
@@ -34,18 +36,7 @@ export interface ExecutionServices {
 }
 
 export interface IOrchestrator {
-	run(
-		traverser: GraphTraverser,
-		executorFactory: NodeExecutorFactory,
-		initialState: WorkflowState<any>,
-		services: ExecutionServices,
-		blueprint: WorkflowBlueprint,
-		functionRegistry: Map<string, any> | undefined,
-		executionId: string,
-		evaluator: IEvaluator,
-		signal?: AbortSignal,
-		concurrency?: number,
-	): Promise<WorkflowResult<any>>
+	run(context: ExecutionContext<any, any>, traverser: GraphTraverser): Promise<WorkflowResult<any>>
 }
 
 export type { NodeExecutor, NodeExecutionResult }
@@ -55,7 +46,7 @@ export interface IRuntime<
 	TDependencies extends RuntimeDependencies = RuntimeDependencies,
 > {
 	options: RuntimeOptions<TDependencies>
-	registry: Record<string, any>
+	registry: Map<string, NodeFunction | NodeClass>
 	executeNode: (
 		blueprint: WorkflowBlueprint,
 		nodeId: string,
@@ -79,4 +70,14 @@ export interface IRuntime<
 		context: ContextImplementation<TContext>,
 		allPredecessors?: Map<string, Set<string>>,
 	) => Promise<void>
+	createForSubflow: (
+		subBlueprint: WorkflowBlueprint,
+		initialSubState: Partial<TContext>,
+		executionId: string,
+		signal?: AbortSignal,
+	) => ExecutionContext<TContext, TDependencies>
+	getExecutorForNode: (
+		nodeId: string,
+		context: ExecutionContext<TContext, TDependencies>,
+	) => NodeExecutor<TContext, TDependencies>
 }

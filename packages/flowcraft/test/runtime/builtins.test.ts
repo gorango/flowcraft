@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { UnsafeEvaluator } from '../../src/evaluator'
 import { createFlow } from '../../src/flow'
+import { SubflowNode } from '../../src/nodes/subflow'
 import { FlowRuntime } from '../../src/runtime'
 
 describe('Built-In Nodes', () => {
@@ -177,19 +178,13 @@ describe('Built-In Nodes', () => {
 			})
 			mainFlow.edge('input', 'test-subflow')
 			mainFlow.edge('test-subflow', 'output')
-			mainFlow.node('test-subflow', async () => ({ output: 'subflow' }), {
+			mainFlow.node('test-subflow', SubflowNode, {
 				params: {
 					blueprintId: 'subflow-test',
 					inputs: { input: 'input' },
 					outputs: { subflow_output: 'process' },
 				},
 			})
-			// Manually set uses for subflow
-			const blueprint = mainFlow.toBlueprint()
-			const subflowNode = blueprint.nodes.find((n) => n.id === 'test-subflow')
-			if (subflowNode) {
-				subflowNode.uses = 'subflow'
-			}
 
 			const subFlow = createFlow('subflow-test')
 			subFlow.node(
@@ -201,6 +196,7 @@ describe('Built-In Nodes', () => {
 				{ inputs: 'input' },
 			)
 
+			const blueprint = mainFlow.toBlueprint()
 			const combinedRegistry = new Map([...mainFlow.getFunctionRegistry(), ...subFlow.getFunctionRegistry()])
 			const runtime = new FlowRuntime({
 				blueprints: { 'subflow-test': subFlow.toBlueprint() },
@@ -214,18 +210,12 @@ describe('Built-In Nodes', () => {
 		it('should handle subflow errors and propagate them', async () => {
 			const mainFlow = createFlow('subflow-error-test')
 			mainFlow.node('input', async () => ({ output: 'test' }))
-			mainFlow.node('test-subflow', async () => ({ output: 'subflow' }), {
+			mainFlow.node('test-subflow', SubflowNode, {
 				params: {
 					blueprintId: 'failing-subflow',
 					inputs: { input: 'input' },
 				},
 			})
-			// Manually set uses for subflow
-			const blueprint2 = mainFlow.toBlueprint()
-			const subflowNode2 = blueprint2.nodes.find((n) => n.id === 'test-subflow')
-			if (subflowNode2) {
-				subflowNode2.uses = 'subflow'
-			}
 			mainFlow.edge('input', 'test-subflow')
 
 			const subFlow = createFlow('failing-subflow')
@@ -233,6 +223,7 @@ describe('Built-In Nodes', () => {
 				throw new Error('Subflow failed')
 			})
 
+			const blueprint2 = mainFlow.toBlueprint()
 			const combinedRegistry2 = new Map([...mainFlow.getFunctionRegistry(), ...subFlow.getFunctionRegistry()])
 			const runtime = new FlowRuntime({
 				blueprints: { 'failing-subflow': subFlow.toBlueprint() },
@@ -240,15 +231,7 @@ describe('Built-In Nodes', () => {
 			const result = await runtime.run(blueprint2, {}, { functionRegistry: combinedRegistry2 })
 
 			expect(result.status).toBe('failed')
-			expect(
-				result.errors?.some(
-					(e) =>
-						e.message.includes('Sub-workflow') ||
-						e.originalError?.message?.includes('Sub-workflow') ||
-						e.message.includes('Subflow failed') ||
-						e.originalError?.message?.includes('Subflow failed'),
-				),
-			).toBe(true)
+			expect(result.errors?.some((e) => e.message?.includes("Node 'fail' execution failed"))).toBe(true)
 		})
 	})
 })
