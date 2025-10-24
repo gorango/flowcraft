@@ -101,11 +101,12 @@ export class WorkflowState<TContext extends Record<string, any>> {
 		}
 	}
 
-	getStatus(allNodeIds: Set<string>, _fallbackNodeIds: Set<string>): WorkflowResult['status'] {
-		if (this._isAwaiting && this._awaitingNodeIds.size > 0) return 'awaiting'
+	getStatus(isTraversalComplete = false): WorkflowResult['status'] {
+		if (this._isAwaiting) return 'awaiting'
 		if (this.anyFallbackExecuted) return 'completed'
 		if (this.errors.length > 0) return 'failed'
-		return this._completedNodes.size < allNodeIds.size ? 'stalled' : 'completed'
+		if (isTraversalComplete) return 'completed'
+		return 'stalled'
 	}
 
 	async toResult(serializer: ISerializer): Promise<WorkflowResult<TContext>> {
@@ -116,7 +117,7 @@ export class WorkflowState<TContext extends Record<string, any>> {
 		return {
 			context: contextJSON,
 			serializedContext: serializer.serialize(contextJSON),
-			status: this.getStatus(new Set(), new Set()),
+			status: this.getStatus(),
 			errors: this.errors.length > 0 ? this.errors : undefined,
 		}
 	}

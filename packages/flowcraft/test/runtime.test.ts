@@ -305,6 +305,34 @@ describe('Flowcraft Runtime - Integration Tests', () => {
 			expect(result.status).toBe('completed')
 			expect(maxConcurrent).toBe(1) // Should be strictly sequential
 		})
+
+		it('should execute a flow with conditional edges and context', async () => {
+			const flow = createFlow('conditional-flow')
+				.node('A', async ({ context }) => {
+					await context.set('shared_value', 42)
+					return { output: 'start' }
+				})
+				.node('B', async () => ({
+					output: true,
+					action: 'path-c', // Deterministically choose one path
+				}))
+				.node('C', async ({ context }) => {
+					const val = await context.get('shared_value')
+					return { output: `C received ${val}` }
+				})
+				.node('D', async () => ({ output: 'D should not run' }))
+				.edge('A', 'B')
+				.edge('B', 'C', { action: 'path-c' })
+				.edge('B', 'D', { action: 'path-d' })
+
+			const runtime = new FlowRuntime({})
+			const result = await runtime.run(flow.toBlueprint(), {}, { functionRegistry: flow.getFunctionRegistry() })
+
+			expect(result.status).toBe('completed')
+			expect(result.context['_outputs.C']).toBe('C received 42')
+			expect(result.context['_outputs.D']).toBeUndefined()
+			expect(result.context['shared_value']).toBe(42)
+		})
 	})
 
 	describe('State Management & Data Flow', () => {

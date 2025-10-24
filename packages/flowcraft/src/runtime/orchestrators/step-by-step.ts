@@ -25,7 +25,8 @@ export class StepByStepOrchestrator implements IOrchestrator {
 		}
 
 		if (!traverser.hasMoreWork()) {
-			const status = context.state.getStatus(traverser.getAllNodeIds(), traverser.getFallbackNodeIds())
+			const isTraversalComplete = !traverser.hasMoreWork()
+			const status = context.state.getStatus(isTraversalComplete)
 			const result = await context.state.toResult(context.services.serializer)
 			result.status = status
 			return result
@@ -57,7 +58,8 @@ export class StepByStepOrchestrator implements IOrchestrator {
 			traverser.addToFrontier(nodeId)
 		}
 
-		const status = context.state.getStatus(traverser.getAllNodeIds(), traverser.getFallbackNodeIds())
+		const isTraversalComplete = !traverser.hasMoreWork()
+		const status = context.state.getStatus(isTraversalComplete)
 		const result = await context.state.toResult(context.services.serializer)
 		result.status = status
 		return result
