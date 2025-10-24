@@ -25,6 +25,16 @@ export class BatchGatherNode extends BaseNode {
 				if (result !== undefined) results.push(result)
 			}
 			await context.context.set(outputKey as any, results)
+
+			const parentBatchId = gatherNodeId.replace('_gather', '')
+			await context.dependencies.runtime.services.eventBus.emit({
+				type: 'batch:finish',
+				payload: {
+					batchId: parentBatchId,
+					gatherNodeId,
+					results,
+				},
+			})
 		}
 		return { dynamicNodes, output: results }
 	}

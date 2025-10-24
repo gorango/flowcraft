@@ -220,6 +220,10 @@ export type FlowcraftEvent =
 			type: 'batch:start'
 			payload: { batchId: string; scatterNodeId: string; workerNodeIds: string[] }
 	  }
+	| {
+			type: 'batch:finish'
+			payload: { batchId: string; gatherNodeId: string; results: any[] }
+	  }
 
 /** Interface for a pluggable event bus. */
 export interface IEventBus {
