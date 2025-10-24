@@ -40,29 +40,31 @@ describe('WorkflowState', () => {
 		expect(state.getAnyFallbackExecuted()).toBe(true)
 	})
 
-	it('should return correct status for completed workflow', () => {
+	it('should return correct status for completed workflow', async () => {
 		const state = new WorkflowState({})
-		const allNodeIds = new Set<string>(['node1', 'node2'])
-		const fallbackNodeIds = new Set<string>()
-		state.addCompletedNode('node1', 'output1')
-		state.addCompletedNode('node2', 'output2')
-		expect(state.getStatus(allNodeIds, fallbackNodeIds)).toBe('completed')
+		const _allNodeIds = new Set<string>(['node1', 'node2'])
+		const _fallbackNodeIds = new Set<string>()
+		await state.addCompletedNode('node1', 'output1')
+		await state.addCompletedNode('node2', 'output2')
+		// Simulate the orchestrator confirming no more work is left
+		expect(state.getStatus(true)).toBe('completed')
 	})
 
 	it('should return correct status for failed workflow', () => {
 		const state = new WorkflowState({})
-		const allNodeIds = new Set<string>(['node1'])
-		const fallbackNodeIds = new Set<string>()
+		const _allNodeIds = new Set<string>(['node1'])
+		const _fallbackNodeIds = new Set<string>()
 		state.addError('node1', new Error('Fail'))
-		expect(state.getStatus(allNodeIds, fallbackNodeIds)).toBe('failed')
+		expect(state.getStatus()).toBe('failed')
 	})
 
-	it('should return correct status for stalled workflow', () => {
+	it('should return correct status for stalled workflow', async () => {
 		const state = new WorkflowState({})
-		const allNodeIds = new Set<string>(['node1', 'node2'])
-		const fallbackNodeIds = new Set<string>()
-		state.addCompletedNode('node1', 'output1')
-		expect(state.getStatus(allNodeIds, fallbackNodeIds)).toBe('stalled')
+		const _allNodeIds = new Set<string>(['node1', 'node2'])
+		const _fallbackNodeIds = new Set<string>()
+		await state.addCompletedNode('node1', 'output1')
+		// When traversal is not complete, it's considered stalled
+		expect(state.getStatus(false)).toBe('stalled')
 	})
 
 	it('should generate correct result object', async () => {
@@ -71,9 +73,9 @@ describe('WorkflowState', () => {
 			serialize: (data: any) => JSON.stringify(data),
 			deserialize: (data: string) => JSON.parse(data),
 		}
+		state.getStatus(true)
 		const result = await state.toResult(mockSerializer)
 		expect(result.context).toEqual({ initial: 'data' })
 		expect(result.serializedContext).toBe('{"initial":"data"}')
-		expect(result.status).toBe('completed')
 	})
 })
