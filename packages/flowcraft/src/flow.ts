@@ -2,8 +2,9 @@ import { isNodeClass } from './node'
 import type { EdgeDefinition, NodeClass, NodeDefinition, NodeFunction, UIGraph, WorkflowBlueprint } from './types'
 
 /**
- * Generates a deterministic hash for a function based on its source code.
+ * Generates a deterministic hash for a function based on its source code and a unique counter.
  */
+let hashCounter = 0
 function _hashFunction(fn: NodeFunction<any, any, any, any, any> | NodeClass<any, any, any, any, any>): string {
 	const source = fn.toString()
 	let hash = 0
@@ -12,7 +13,8 @@ function _hashFunction(fn: NodeFunction<any, any, any, any, any> | NodeClass<any
 		hash = (hash << 5) - hash + char
 		hash = hash & hash // Convert to 32-bit integer
 	}
-	return Math.abs(hash).toString(16)
+	// Add counter to ensure uniqueness even for identical functions
+	return (Math.abs(hash) + hashCounter++).toString(16)
 }
 
 /**
