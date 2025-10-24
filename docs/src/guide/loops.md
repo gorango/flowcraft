@@ -45,7 +45,7 @@ const flow = createFlow('loop-workflow')
 	.loop('counter', {
 		startNodeId: 'increment',
 		endNodeId: 'increment', // The loop body is just one node.
-		condition: 'context.count < 5' // Continue as long as this is true.
+		condition: 'count < 5' // Continue as long as this is true.
 	})
 
 	// 4. Define the edges.
@@ -55,21 +55,19 @@ const flow = createFlow('loop-workflow')
 
 ### How It Works
 
-The [`.loop()`](/api/flow#loop-id-options) method intelligently wires the graph for you. It adds a `loop-controller` node and creates the necessary edges. The resulting graph looks like this:
+The [`.loop()`](/api/flow#loop-id-options) method adds a `loop-controller` node.
 
-```mermaid
-flowchart TD
-	initialize["initialize"] --> increment["increment"]
-	increment --> controller["counter-loop"]
-	controller -- "continue (context.count < 5)" --> increment
-	controller -- "break" --> exit((Exit Loop))
-```
+<script setup>
+import LoopsExample from '../.vitepress/theme/examples/LoopsExample.vue'
+</script>
+
+<LoopsExample />
 
 1.  `initialize` runs once, setting `count` to 0.
 2.  It triggers `increment`, which sets `count` to 1.
 3.  `increment` completes and triggers `counter-loop`.
-4.  The controller evaluates `"context.count < 5"`. Since `1 < 5` is true, it triggers `increment` again.
-5.  This cycle repeats until `count` reaches 5. At that point, the condition is false, and the workflow branch terminates.
+4.  The controller evaluates the condition. If true, it triggers `increment` again.
+5.  This repeats until the condition is false.
 
 > [!NOTE]
 > The [`.loop()`](/api/flow#loop-id-options) method automatically configures the `joinStrategy` of the loop's start and end nodes to `'any'` so they can be re-executed on each iteration.

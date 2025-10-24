@@ -1,5 +1,7 @@
 <script setup>
 import UserProcessingSimple from '../.vitepress/theme/examples/UserProcessingSimple.vue'
+import BatchExample from '../.vitepress/theme/examples/BatchExample.vue'
+import LoopExample from '../.vitepress/theme/examples/LoopExample.vue'
 </script>
 
 # Defining Workflows
@@ -91,44 +93,77 @@ This workflow can be visualized as:
 
 <UserProcessingSimple />
 
-## Adding Wait Nodes for Human-in-the-Loop
+## Batch Processing
 
-For workflows that require external input (e.g., approvals), use the `.wait()` method to create pause points.
+For processing multiple items in parallel, use the `.batch()` method. This extends the UserProcessing example to handle a batch of users.
 
 ```typescript
-const flowBuilder = createFlow<UserProcessingContext>('approval-workflow')
+const batchFlow = createFlow<UserProcessingContext>('batch-user-processing')
+  .node('prepare-users', async ({ context }) => {
+    const users = [
+      { id: 1, name: 'Alice' },
+      { id: 2, name: 'Bob' },
+      { id: 3, name: 'Charlie' }
+    ]
+    await context.set('users', users)
+    return { output: users }
+  })
+  .batch('process-users', async ({ input, context }) => {
+    // This function runs for each user in the batch
+    const user = input as { id: number; name: string }
+    const isValid = user.name.length > 0
+    return { output: { user, isValid } }
+  }, {
+    inputKey: 'users', // From context
+    outputKey: 'processed_users' // To context
+  })
+  .node('summarize', async ({ context }) => {
+    const processed = await context.get('processed_users')
+    const validCount = processed.filter((p: any) => p.isValid).length
+    return { output: `Processed ${processed.length} users, ${validCount} valid.` }
+  })
+  .edge('prepare-users', 'process-users_scatter')
+  .edge('process-users_gather', 'summarize')
+```
+
+<BatchExample />
+
+## Loops
+
+For retrying operations, use the `.loop()` method.
+
+```typescript
+const loopFlow = createFlow<UserProcessingContext>('loop-user-processing')
   .node('fetch-user', async ({ context }) => {
     const user = { id: 1, name: 'Alice' }
     await context.set('user_data', user)
     return { output: user }
   })
-  .edge('fetch-user', 'wait-for-approval')
-  .wait('wait-for-approval')  // Pauses execution here
-  .edge('wait-for-approval', 'process')
-  .node('process', async ({ input, context }) => {
-    const approved = input?.approved
-    if (approved) {
-      await context.set('processing_status', 'completed')
-      return { output: 'User approved and processed' }
+  .loop('validate-loop', async ({ input, context }) => {
+    const userData = input as { id: number; name: string }
+    const isValid = Math.random() > 0.5 // Simulate validation
+    if (isValid) {
+      return { output: true, action: 'success' }
     }
-    return { output: 'User rejected' }
+    return { output: false, action: 'retry' }
+  }, {
+    maxIterations: 3,
+    inputs: 'fetch-user'
   })
-
-// Execute the workflow
-const blueprint = flowBuilder.toBlueprint()
-const functionRegistry = flowBuilder.getFunctionRegistry()
-const runtime = new FlowRuntime({ registry: functionRegistry })
-
-// Run until it pauses
-const initialResult = await runtime.run(blueprint, { user_data: { id: 1, name: 'Alice' } })
-if (initialResult.status === 'awaiting') {
-  // Provide external input and resume
-  const resumeResult = await runtime.resume(blueprint, initialResult.serializedContext, {
-    output: { approved: true }
+  .node('process-valid', async ({ context }) => {
+    await context.set('processing_status', 'completed')
+    return { output: 'User processed successfully' }
   })
-  console.log('Final result:', resumeResult.context)
-}
+  .node('handle-failure', async ({ context }) => {
+    await context.set('processing_status', 'failed')
+    return { output: 'Validation failed after retries' }
+  })
+  .edge('fetch-user', 'validate-loop')
+  .edge('validate-loop', 'process-valid', { action: 'success' })
+  .edge('validate-loop', 'handle-failure', { action: 'retry' })
 ```
+
+<LoopExample />
 
 ## Finalizing the Blueprint
 

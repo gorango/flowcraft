@@ -46,12 +46,29 @@ Configuration for a node's resiliency and execution behavior.
 
 ```typescript
 interface NodeConfig {
-  maxRetries?: number;
-  retryDelay?: number;
-  timeout?: number;
-  fallback?: string; // ID of a fallback node.
-  joinStrategy?: 'all' | 'any'; // For nodes with multiple inputs.
+   maxRetries?: number; // Number of retries on failure (default: 0)
+   retryDelay?: number; // Delay in ms between retries (default: 1000)
+   timeout?: number; // Timeout in ms for the node execution
+   fallback?: string; // ID of a fallback node to run on failure
+   joinStrategy?: 'all' | 'any'; // For nodes with multiple inputs: wait for all or any
 }
+```
+
+Example usage:
+
+```typescript
+.node('flaky-api', async ({ input }) => {
+  // Some API call that might fail
+  return { output: await callExternalAPI(input) }
+}, {
+  config: {
+    maxRetries: 3,
+    retryDelay: 2000,
+    timeout: 5000,
+    fallback: 'fallback-node',
+    joinStrategy: 'any'
+  }
+})
 ```
 
 ## `NodeResult` Interface
@@ -110,44 +127,56 @@ A structured, class-based node for complex logic with a safe, granular lifecycle
 
 ```typescript
 abstract class BaseNode<
-  TContext = Record<string, any>,
-  TDependencies = RuntimeDependencies,
-  TInput = any,
-  TOutput = any,
-  TAction extends string = string,
-> {
-  // ... methods with updated signatures
-}
+   TContext = Record<string, any>,
+   TDependencies = RuntimeDependencies,
+   TInput = any,
+   TOutput = any,
+   TAction extends string = string,
+ > {
+   constructor(params: Record<string, any>) {
+     // Initialize with params
+   }
+
+   async prep(context: NodeContext<TContext, TDependencies, TInput>): Promise<any> {
+     // Prepare data
+     return await context.context.get('someData')
+   }
+
+   abstract async exec(prepResult: any, context: NodeContext<TContext, TDependencies, TInput>): Promise<Omit<NodeResult<TOutput, TAction>, 'error'>>
+
+   async post(execResult: Omit<NodeResult<TOutput, TAction>, 'error'>, context: NodeContext<TContext, TDependencies, TInput>): Promise<NodeResult<TOutput, TAction>> {
+     // Process result
+     await context.context.set('result', execResult.output)
+     return execResult
+   }
+
+   async fallback(error: Error, context: NodeContext<TContext, TDependencies, TInput>): Promise<Omit<NodeResult<TOutput, TAction>, 'error'>> {
+     // Fallback logic
+     return { output: 'Fallback result' }
+   }
+
+   async recover(error: Error, context: NodeContext<TContext, TDependencies, TInput>): Promise<void> {
+     // Cleanup
+   }
+ }
 ```
 
-### `constructor(params)`
--   **`params`**: Static parameters for this node instance, passed from the [`NodeDefinition`](/api/nodes-and-edges#nodedefinition-interface).
+Example implementation:
 
-### `async prep(context)`
-Phase 1: Gathers and prepares data for execution. This phase is **not** retried.
--   **`context`**: The node's `NodeContext<TContext, TDependencies, TInput>`.
--   **Returns**: `Promise<any>` - The data needed for the `exec` phase.
+```typescript
+class MyNode extends BaseNode {
+  async prep(context) {
+    return await context.context.get('userId')
+  }
 
-### `abstract async exec(prepResult, context)`
-Phase 2: Performs the core, isolated logic. This is the **only** phase that is retried.
--   **`prepResult`**: The data returned from the `prep` phase.
--   **`context`**: The node's `NodeContext<TContext, TDependencies, TInput>`.
--   **Returns**: `Promise<Omit<NodeResult<TOutput, TAction>, 'error'>>`
+  async exec(userId, context) {
+    const user = await fetchUser(userId)
+    return { output: user, action: 'success' }
+  }
 
-### `async post(execResult, context)`
-Phase 3: Processes the result and saves state. This phase is **not** retried.
--   **`execResult`**: The successful result from the `exec` or `fallback` phase.
--   **`context`**: The node's `NodeContext<TContext, TDependencies, TInput>`.
--   **Returns**: `Promise<NodeResult<TOutput, TAction>>`
-
-### `async fallback(error, context)`
-An optional safety net that runs if all `exec` retries fail.
--   **`error`**: The final error from the last `exec` attempt.
--   **`context`**: The node's `NodeContext<TContext, TDependencies, TInput>`.
--   **Returns**: `Promise<Omit<NodeResult<TOutput, TAction>, 'error'>>`
-
-### `async recover(error, context)`
-An optional cleanup phase for non-retriable errors that occur outside the main `exec` method.
--   **`error`**: The error that caused the failure.
--   **`context`**: The node's `NodeContext<TContext, TDependencies, TInput>`.
--   **Returns**: `Promise<void>`
+  async post(execResult, context) {
+    await context.context.set('processedUser', execResult.output)
+    return execResult
+  }
+}
+```

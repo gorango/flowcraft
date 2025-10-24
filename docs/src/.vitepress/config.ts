@@ -89,6 +89,7 @@ export default defineConfig({
 					items: [
 						{ text: 'Batch Processing', link: '/guide/batch-processing' },
 						{ text: 'Loops', link: '/guide/loops' },
+						{ text: 'Awaitable Workflows', link: '/guide/awaitable-workflows' },
 						{ text: 'Subflows', link: '/guide/subflows' },
 						{
 							text: 'Declarative Workflows',
@@ -142,7 +143,7 @@ export default defineConfig({
 					items: [
 						{ text: 'Overview', link: '/examples/' },
 						{ text: 'Basic Workflow', link: '/examples/basic' },
-						{ text: 'Parallel Workflow', link: '/examples/translate' },
+						{ text: 'Parallel Workflow', link: '/examples/parallel' },
 						{ text: 'Research Agent', link: '/examples/research' },
 						{
 							text: 'Declarative Workflow',
@@ -152,7 +153,7 @@ export default defineConfig({
 							],
 						},
 						{ text: 'RAG Workflow', link: '/examples/rag' },
-						{ text: 'HITL Worfkflow', link: '/examples/hitl' },
+						{ text: 'HITL Workflow', link: '/examples/hitl' },
 					],
 				},
 			],

@@ -1,10 +1,19 @@
 @reference "tailwindcss";
 
-:root {
-	--vf-node-bg: var(--vp-c-bg);
-	--vf-node-text: #222;
-	--vf-connection-path: #b1b1b7;
-	--vf-handle: #555;
+.flowcraft-flow {
+	height: 333px;
+	width: 100%;
+
+	header button {
+		@apply text-sm font-medium rounded-md py-1 px-2;
+
+		&.brand {
+			@apply bg-[var(--vp-button-brand-bg)] hover:bg-[var(--vp-button-brand-hover-bg)] ;
+		}
+		&.alt {
+			@apply bg-[var(--vp-button-alt-bg)] hover:bg-[var(--vp-button-alt-hover-bg)] ;
+		}
+	}
 }
 
 .vue-flow {

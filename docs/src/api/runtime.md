@@ -51,6 +51,8 @@ export type FlowcraftEvent =
   | { type: 'node:skipped'; payload: { nodeId: string; edge: EdgeDefinition; executionId: string; blueprintId: string } }
   | { type: 'edge:evaluate'; payload: { source: string; target: string; condition?: string; result: boolean } }
   | { type: 'context:change'; payload: { sourceNode: string; key: string; value: any } }
+  | { type: 'batch:start'; payload: { batchId: string; scatterNodeId: string; workerNodeIds: string[] } }
+  | { type: 'batch:finish'; payload: { batchId: string; gatherNodeId: string; results: any[] } }
 ```
 
 ### `IEventBus` Interface
@@ -76,6 +78,8 @@ export interface IEventBus {
 - **`node:skipped`**: Emitted when a conditional edge is not taken.
 - **`edge:evaluate`**: Emitted when an edge condition is evaluated, showing the condition and result.
 - **`context:change`**: Emitted when data is written to the workflow context.
+- **`batch:start`**: Emitted when a batch operation begins.
+- **`batch:finish`**: Emitted when a batch operation completes.
 
 ### `.run(blueprint, initialState?, options?)`
 

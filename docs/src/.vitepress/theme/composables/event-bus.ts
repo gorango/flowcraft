@@ -76,7 +76,7 @@ export function useEventBus() {
 	const eventBus = new InMemoryEventBus()
 
 	return {
-		eventBus,
+		eventBus, // Always return the same instance
 		getNodeData: (nodeId: string) => eventBus.getNodeData(nodeId),
 		clearNodeData: () => eventBus.clear(),
 	}

@@ -3,12 +3,13 @@ import type { Edge, Node } from '@vue-flow/core'
 import type { Flow } from 'flowcraft'
 import { Background } from '@vue-flow/background'
 import { useVueFlow, Position, VueFlow } from '@vue-flow/core'
-import { ConsoleLogger, FlowRuntime } from 'flowcraft'
+import { ConsoleLogger, FlowRuntime, UnsafeEvaluator } from 'flowcraft'
 import { onMounted, provide, ref } from 'vue'
 import NodeInput from './Node/Input.vue'
 import NodeOutput from './Node/Output.vue'
 import NodeDefault from './Node/Default.vue'
 import { useEventBus } from '../../composables/event-bus'
+import { useLayout } from '../../composables/layout'
 
 export type NodeDataStatus = 'idle' | 'pending' | 'completed' | 'failed'
 
@@ -19,8 +20,9 @@ const props = defineProps<{
 }>()
 
 const direction = ref<'TB' | 'LR'>('LR')
-const flow = useVueFlow('basic-workflow')
+const flow = useVueFlow()
 const { eventBus } = useEventBus()
+const { layout } = useLayout()
 
 provide('flow', flow)
 
@@ -30,6 +32,7 @@ const functionRegistry = props.flow.getFunctionRegistry()
 const runtime = new FlowRuntime({
 	logger: new ConsoleLogger(),
 	eventBus,
+	evaluator: new UnsafeEvaluator(),
 })
 
 const vueFlowNodes: Node[] = blueprint.nodes.map((node) => ({
@@ -55,16 +58,17 @@ onMounted(() => {
 	flow.setEdges(vueFlowEdges)
 })
 
+const isRunning = ref(false)
+const executionResult = ref<any>(null)
+const executionError = ref<string | null>(null)
+const awaitingNodes = ref<string[]>([])
+const serializedContext = ref<string | null>(null)
 const nodeData = ref(new Map<string, {
 	inputs?: any,
 	outputs?: any,
 	contextChanges?: Record<string, any>,
 	status?: NodeDataStatus
 }>())
-
-function getNodeData(nodeId: string) {
-	return nodeData.value.get(nodeId) || {}
-}
 
 eventBus.on('node:start', (event) => {
 	const { nodeId, input } = event.payload as any
@@ -82,14 +86,13 @@ eventBus.on('context:change', (event) => {
 	const { sourceNode, key, value } = event.payload as any
 	const currentData = nodeData.value.get(sourceNode) || { contextChanges: {} }
 	const updatedContextChanges = { ...currentData.contextChanges, [key]: value }
-	nodeData.value.set(sourceNode, { ...currentData, contextChanges: updatedContextChanges })
+	nodeData.value.set(sourceNode, { ...currentData, contextChanges: updatedContextChanges, status: 'completed' })
+	awaitingNodes.value = awaitingNodes.value.filter((id) => id !== sourceNode)
 })
 
-const isRunning = ref(false)
-const executionResult = ref<any>(null)
-const executionError = ref<string | null>(null)
-const awaitingNodes = ref<string[]>([])
-const serializedContext = ref<string | null>(null)
+function getNodeData(nodeId: string) {
+	return nodeData.value.get(nodeId) || {}
+}
 
 async function runWorkflow() {
 	if (executionResult.value) {
@@ -161,18 +164,33 @@ async function clearWorkflow() {
 		nodeData.value.set(node.id, { status: 'idle' })
 	})
 }
+
+function toggleLayout() {
+	direction.value = direction.value === 'LR' ? 'TB' : 'LR'
+	layout(vueFlowNodes, vueFlowEdges, direction.value)
+}
 </script>
 
 <template>
 	<div class="flex flex-col h-full rounded-[8px] overflow-hidden">
-		<div class="flex gap-2 p-2 bg-[var(--vp-c-bg-alt)] border-b border-[var(--vp-c-divider)]">
-			<button
-				@click="runWorkflow"
-				class="outline-none bg-[var(--vp-c-bg)] hover:bg-[var(--vp-c-bg-soft)] text-sm font-medium rounded-md"
-			>
-				Play
+		<header class="flex items-center gap-2 p-2 bg-[var(--vp-c-bg-alt)] border-b border-[var(--vp-c-divider)]">
+			<button @click="runWorkflow" class="brand">
+				{{ executionResult ? 'Restart' : 'Play' }}
 			</button>
-		</div>
+			<button @click="clearWorkflow" :disabled="!executionResult" class="alt">
+				Clear
+			</button>
+			<!-- <button @click="toggleLayout" class="alt">
+				Layout: {{ direction }}
+			</button> -->
+			<div v-if="awaitingNodes.length > 0" class="flex items-center gap-2">
+				<span class="border-l border-[var(--vp-c-divider)] h-4 mx-4" />
+				<span class="text-sm font-medium">Resume:</span>
+				<button v-for="nodeId in awaitingNodes" :key="nodeId" @click="resumeWorkflow(nodeId)" class="brand">
+					{{ nodeId }}
+				</button>
+			</div>
+		</header>
 		<VueFlow
 			fit-view-on-init
 			:max-zoom="1.25"

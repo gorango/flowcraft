@@ -14,7 +14,7 @@ async function mockApiCall(name: string, delay: number, shouldFail = false) {
 
 // --- 1. Basic Sequential Workflow ---
 
-const basicFlow = createFlow('basic-workflow')
+export const basicFlow = createFlow('basic-workflow')
 	.node('step-a', () => mockApiCall('Step A', 1000))
 	.node('step-b', async ({ input }) => {
 		console.log('[Step B] Received input:', input)
@@ -48,7 +48,7 @@ const branchingFlow = createFlow('branching-workflow')
 
 // --- 3. Parallel Execution Workflow ---
 
-const parallelFlow = createFlow('parallel-workflow')
+export const parallelFlow = createFlow('parallel-workflow')
 	.node('start-parallel', async () => ({ output: 'start' }))
 	.node('task-1', () => mockApiCall('Task 1', 2000))
 	.node('task-2', () => mockApiCall('Task 2', 1000))
@@ -77,7 +77,7 @@ async function flakyApi() {
 	return mockApiCall('Flaky API', 500, false) // Succeed on the 3rd
 }
 
-const errorFlow = createFlow('error-workflow')
+export const errorFlow = createFlow('error-workflow')
 	.node('start-error', async () => ({ output: 'start' }))
 	.node('flaky-node', flakyApi, { config: { maxRetries: 3 } })
 	.node('fallback-node', () => mockApiCall('Fallback', 500))
@@ -87,6 +87,21 @@ const errorFlow = createFlow('error-workflow')
 	})
 	.edge('start-error', 'flaky-node')
 	.edge('flaky-node', 'final-step')
+
+// --- 5. Awaitable (HITL) Workflow ---
+
+export const hitlFlow = createFlow('hitl-workflow')
+	.node('start-approval', async () => ({ output: { user: 'Alice', amount: 1500 } }))
+	.wait('wait-for-approval') // This node pauses execution
+	.node('process-decision', async ({ input }) => {
+		// The `input` comes from the runtime.resume() call
+		if (input?.approved) {
+			return { output: 'Request was approved.' }
+		}
+		return { output: 'Request was denied.', action: 'denied' }
+	})
+	.edge('start-approval', 'wait-for-approval')
+	.edge('wait-for-approval', 'process-decision')
 
 // --- Export Collection ---
 
@@ -110,6 +125,10 @@ export const simpleExamples: Record<string, {
 		blueprint: errorFlow.toBlueprint(),
 		functionRegistry: errorFlow.getFunctionRegistry(),
 	},
+	'5.hitl': {
+		blueprint: hitlFlow.toBlueprint(),
+		functionRegistry: hitlFlow.getFunctionRegistry(),
+	},
 }
 
 export const simpleExamplesConfig: Record<string, {
@@ -130,6 +149,10 @@ export const simpleExamplesConfig: Record<string, {
 	},
 	'4.error-handling': {
 		entryWorkflowId: 'error-workflow',
+		initialContext: {},
+	},
+	'5.hitl': {
+		entryWorkflowId: 'hitl-workflow',
 		initialContext: {},
 	},
 }

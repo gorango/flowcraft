@@ -1,13 +1,7 @@
-<script setup lang="ts">
+<script setup>
 import { createFlow } from 'flowcraft'
 
-interface UserProcessingContext {
-	user_data?: { id: number; name: string }
-	validation_result?: boolean
-	processing_status?: 'pending' | 'completed' | 'failed'
-}
-
-const userProcessingFlow = createFlow<UserProcessingContext>('user-processing')
+const userProcessingFlow = createFlow('user-processing')
 	.node('fetch-user', async ({ context }) => {
 		const user = { id: 1, name: 'Alice' }
 		await context.set('user_data', user)
@@ -15,18 +9,18 @@ const userProcessingFlow = createFlow<UserProcessingContext>('user-processing')
 		return { output: user }
 	})
 	.node('validate-user', async ({ context, input }) => {
-		const userData = input as { id: number; name: string }
+		const userData = input
 		const isValid = userData.name === 'Alice'
 		await context.set('validation_result', isValid)
 		await new Promise(r => setTimeout(r, 1000))
 		return {
 			output: isValid,
-			action: isValid ? 'valid' : 'invalid'
+			action: isValid ? 'valid' : 'invalid',
 		}
 	}, { inputs: 'fetch-user' })
 	.node('process-valid', async ({ context }) => {
 		const userData = await context.get('user_data')
-		const validation = await context.get('validation_result')
+		// const validation = await context.get('validation_result')
 		await context.set('processing_status', 'completed')
 		await new Promise(r => setTimeout(r, 1000))
 		return { output: `Processed user ${userData?.name}` }
@@ -56,14 +50,7 @@ const typesMap = {
 </script>
 
 <template>
-	<div class="user-processing-example">
+	<div class="flowcraft-flow">
 		<Flow :flow="userProcessingFlow" :positions-map :types-map />
 	</div>
 </template>
-
-<style scoped>
-.user-processing-example {
-	height: 333px;
-	width: 100%;
-}
-</style>

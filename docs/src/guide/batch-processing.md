@@ -1,3 +1,7 @@
+<script setup>
+import BatchProcessingExample from '../.vitepress/theme/examples/BatchProcessingExample.vue'
+</script>
+
 # Batch Processing
 
 A common workflow requirement is to perform the same operation on every item in a collection, often in parallel to save time. This is known as the **scatter-gather** pattern. The [`Flow`](/api/flow#flow-class) builder provides a high-level [`.batch()`](/api/flow#batch-tinput-toutput-taction-id-worker-options) method to make this easy.
@@ -64,21 +68,9 @@ const flow = createFlow("batch-workflow")
 
 ## How It Looks
 
-Behind the scenes, [`.batch()`](/api/flow#batch-tinput-toutput-taction-id-worker-options) creates a `scatter` and a `gather` node. The workflow graph looks like this:
+Behind the scenes, [`.batch()`](/api/flow#batch-tinput-toutput-taction-id-worker-options) creates a `scatter` and a `gather` node.
 
-```mermaid
-flowchart TD
-	start["start"] --> scatter["double-items_scatter"]
-	subgraph "Parallel Workers"
-		scatter --> worker1["worker(10)"]
-		scatter --> worker2["worker(20)"]
-		scatter --> worker3["worker(30)"]
-	end
-	worker1 --> gather["double-items_gather"]
-	worker2 --> gather
-	worker3 --> gather
-	gather --> sum["sum-results"]
-```
+<BatchProcessingExample />
 
 The runtime dynamically creates and executes the worker nodes, providing a powerful and simple API for parallel processing.
 

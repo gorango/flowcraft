@@ -164,6 +164,8 @@ The event bus uses structured events for observability. See the [`FlowcraftEvent
 - **`node:skipped`**: Emitted when a conditional edge is not taken.
 - **`edge:evaluate`**: Emitted when an edge condition is evaluated, showing the condition and result.
 - **`context:change`**: Emitted when data is written to the workflow context.
+- **`batch:start`**: Emitted when a batch operation begins.
+- **`batch:finish`**: Emitted when a batch operation completes.
 
 ### Using the Event Bus
 

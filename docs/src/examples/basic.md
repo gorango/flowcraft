@@ -1,8 +1,6 @@
 # Basic Workflow
 
-[[view source code]](https://github.com/gorango/flowcraft/tree/master/examples/1.basic)
-
-This example demonstrates a basic, linear workflow that creates a greeting message. It showcases:
+This example demonstrates a basic, linear workflow with sequential steps. It showcases:
 - Defining a workflow with [`createFlow`](/api/flow#createflow-id).
 - Passing data from one node to the next.
 - Executing the workflow with [`FlowRuntime`](/api/runtime#flowruntime-class).
@@ -10,82 +8,68 @@ This example demonstrates a basic, linear workflow that creates a greeting messa
 ## The Goal
 
 We want to create a workflow that:
-1. Fetches a user object.
-2. Extracts the user's name.
-3. Generates a greeting message.
+1. Starts with an initial step.
+2. Processes the data in a second step.
+3. Finishes with a final step.
 
-```mermaid
-flowchart TD
-	A["fetch-user"] --> B["extract-name"]
-	B --> C["create-greeting"]
-```
+<script setup>
+import BasicExample from '../.vitepress/theme/examples/BasicExample.vue'
+</script>
+
+<BasicExample />
 
 ## The Code
+
+The workflow is defined using mock API calls for each step.
 
 #### `flow.ts`
 ```typescript
 import { createFlow } from 'flowcraft'
 
-// --- 1. Define the Node Logic ---
-
-// Node to simulate fetching a user
-async function fetchUser() {
-	console.log('Fetching user...')
-	return { output: { id: 1, name: 'Alice' } }
+async function mockApiCall(name: string, delay: number, shouldFail = false) {
+  console.log(`[${name}] Starting...`)
+  await new Promise(resolve => setTimeout(resolve, delay))
+  if (shouldFail) {
+    console.error(`[${name}] Failing as requested.`)
+    throw new Error(`API call "${name}" failed.`)
+  }
+  const result = { data: `Data from ${name}` }
+  console.log(`[${name}] Finished.`)
+  return { output: result }
 }
 
-// Node to extract the user's name
-async function extractName(ctx: any) {
-	const input = ctx.input as { name: string }
-	console.log('Extracting name...')
-	return { output: input.name }
-}
-
-// Node to create a greeting
-async function createGreeting(ctx: any) {
-	const input = ctx.input as string
-	console.log('Creating greeting...')
-	return { output: `Hello, ${input}!` }
-}
-
-// --- 2. Define the Workflow ---
-
-export function createGreetingFlow() {
-	return createFlow('greeting-workflow')
-		.node('fetch-user', fetchUser)
-		.node('extract-name', extractName)
-		.node('create-greeting', createGreeting)
-		// Define the execution order
-		.edge('fetch-user', 'extract-name')
-		.edge('extract-name', 'create-greeting')
-}
+const basicFlow = createFlow('basic-workflow')
+  .node('step-a', () => mockApiCall('Step A', 1000))
+  .node('step-b', async ({ input }) => {
+    console.log('[Step B] Received input:', input)
+    return mockApiCall('Step B', 1500)
+  })
+  .node('step-c', async ({ input }) => {
+    console.log('[Step C] Received input:', input)
+    return mockApiCall('Step C', 500)
+  })
+  .edge('step-a', 'step-b')
+  .edge('step-b', 'step-c')
 ```
 
 #### `main.ts`
 ```typescript
 import { ConsoleLogger, FlowRuntime } from 'flowcraft'
-import { createGreetingFlow } from './flow.js'
-
-// --- 3. Run the Workflow ---
+import { basicFlow } from './flow.js'
 
 async function main() {
-	const greetingFlow = createGreetingFlow()
+  const blueprint = basicFlow.toBlueprint()
+  const functionRegistry = basicFlow.getFunctionRegistry()
 
-	// Get the serializable blueprint and the function registry.
-	const blueprint = greetingFlow.toBlueprint()
-	const functionRegistry = greetingFlow.getFunctionRegistry()
+  const runtime = new FlowRuntime({
+    logger: new ConsoleLogger(),
+  })
 
-	// Create a runtime.
-	const runtime = new FlowRuntime({
-		logger: new ConsoleLogger(),
-	})
+  console.log('Starting workflow...')
+  const result = await runtime.run(blueprint, {}, { functionRegistry })
 
-	console.log('Starting workflow...')
-	const result = await runtime.run(blueprint, {}, { functionRegistry })
-
-	console.log('\n--- Workflow Complete ---')
-	console.log('Final Greeting:', result.context['create-greeting'])
-	console.log('Final Context:', result.context)
+  console.log('\n--- Workflow Complete ---')
+  console.log('Final Result:', result.context)
 }
 
 main()
@@ -93,27 +77,27 @@ main()
 
 ## The Output
 
-When you run this code, you will see the logs from each node executing in sequence, followed by the final result.
+When you run this code, you will see the logs from each node executing in sequence.
 
 ```
 Starting workflow...
 [INFO] Starting workflow execution
-Fetching user...
-Extracting name...
-Creating greeting...
+[Step A] Starting...
+[Step A] Finished.
+[Step B] Received input: { data: 'Data from Step A' }
+[Step B] Starting...
+[Step B] Finished.
+[Step C] Received input: { data: 'Data from Step B' }
+[Step C] Starting...
+[Step C] Finished.
 [INFO] Workflow execution completed
 
 --- Workflow Complete ---
-Final Greeting: Hello, Alice!
-Final Context: {
-	'fetch-user': { id: 1, name: 'Alice' },
-	'extract-name': 'Alice',
-	'create-greeting': 'Hello, Alice!'
+Final Result: {
+  'step-a': { data: 'Data from Step A' },
+  'step-b': { data: 'Data from Step B' },
+  'step-c': { data: 'Data from Step C' }
 }
 ```
 
-This example forms the foundation for building more complex and dynamic workflows with Flowcraft.
-
----
-
-[[view source code]](https://github.com/gorango/flowcraft/tree/master/examples/1.basic)
+This example forms the foundation for building more complex workflows with Flowcraft.

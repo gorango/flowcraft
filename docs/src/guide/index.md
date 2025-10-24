@@ -17,3 +17,37 @@ Unlike heavy platforms like Temporal or Airflow, or domain-specific libraries li
 -   **Extensibility**: Pluggable loggers, evaluators, serializers, and middleware.
 -   **Static Analysis**: Tools to detect cycles, validate blueprints, and generate visual diagrams.
 -   **Type-Safe API**: Fully typed with TypeScript for a robust developer experience.
+
+## Use Cases
+
+Flowcraft is versatile for various workflow scenarios.
+
+### AI Agents
+
+Build intelligent agents that process data, make decisions, and interact with users.
+
+- **Example**: Research Agent (see /examples/research)
+- **Features**: Conditional branching, LLM integration, human-in-the-loop.
+
+### ETL Pipelines
+
+Extract, transform, and load data efficiently.
+
+- **Example**: Parallel Workflow (see /examples/parallel)
+- **Features**: Batch processing, parallel execution, error handling.
+
+### Business Process Automation
+
+Automate routine business tasks like approvals and notifications.
+
+- **Example**: HITL Workflow (see /examples/hitl)
+- **Features**: Awaitable workflows, declarative definitions.
+
+### Distributed Execution
+
+Run workflows across multiple machines or services.
+
+- **Example**: Distributed Workflow (see /examples/distributed)
+- **Features**: Adapters for queues, persistence.
+
+Choose the right pattern for your needs!
