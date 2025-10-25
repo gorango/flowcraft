@@ -61,7 +61,7 @@ class MultiplyNode extends BaseNode {
 // .node("multiply", MultiplyNode, { params: { factor: 3 } })
 ```
 
-## Edge: Defining Control Flow
+## Edge: Defining Flow
 
 Edges connect nodes, creating the directed graph. They can be simple dependencies or include powerful control flow logic.
 

@@ -56,7 +56,7 @@ The runtime is responsible for:
 -   Injecting dependencies and middleware.
 -   Orchestrating both in-memory and distributed execution.
 
-## Dependency Injection Container
+## Dependency Injection
 
 The [`DIContainer`](/api/container#dicontainer-class) implements the Inversion of Control (IoC) principle, allowing components to receive dependencies from a central container rather than creating them directly. This promotes loose coupling, making the framework highly configurable, testable, and extensible.
 
@@ -73,7 +73,7 @@ The [`DIContainer`](/api/container#dicontainer-class) implements the Inversion o
 
 For usage examples, see the [Container API docs](/api/container#usage-example).
 
-## Human-in-the-Loop (HITL) Orchestration
+<!-- ## Human-in-the-Loop (HITL) Orchestration
 
 Flowcraft supports human-in-the-loop workflows, allowing workflows to pause at defined points and await external input before resuming. This is essential for interactive processes like approvals or manual interventions.
 
@@ -94,4 +94,4 @@ Workflows can have the following statuses:
 - **`cancelled`**: Execution was cancelled.
 - **`awaiting`**: Execution is paused at a wait node, waiting for external input.
 
-For more details, see [Defining Workflows](/guide/defining-workflows) and the [Runtime API](/api/runtime).
+For more details, see [Defining Workflows](/guide/defining-workflows) and the [Runtime API](/api/runtime). -->

@@ -1,5 +1,5 @@
-import type { Edge, GraphEdge, GraphNode, Node } from '@vue-flow/core'
 import dagre from '@dagrejs/dagre'
+import type { Edge, GraphEdge, GraphNode, Node } from '@vue-flow/core'
 import { Position, useVueFlow } from '@vue-flow/core'
 import { ref } from 'vue'
 

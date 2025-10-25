@@ -1,15 +1,15 @@
 <script setup lang="ts">
-import type { Edge, Node } from '@vue-flow/core'
-import type { Flow } from 'flowcraft'
 import { Background } from '@vue-flow/background'
-import { useVueFlow, Position, VueFlow } from '@vue-flow/core'
+import type { Edge, Node } from '@vue-flow/core'
+import { Position, useVueFlow, VueFlow } from '@vue-flow/core'
+import type { Flow } from 'flowcraft'
 import { ConsoleLogger, FlowRuntime, UnsafeEvaluator } from 'flowcraft'
 import { onMounted, provide, ref } from 'vue'
-import NodeInput from './Node/Input.vue'
-import NodeOutput from './Node/Output.vue'
-import NodeDefault from './Node/Default.vue'
 import { useEventBus } from '../../composables/event-bus'
 import { useLayout } from '../../composables/layout'
+import NodeDefault from './Node/Default.vue'
+import NodeInput from './Node/Input.vue'
+import NodeOutput from './Node/Output.vue'
 
 export type NodeDataStatus = 'idle' | 'pending' | 'completed' | 'failed'
 
@@ -59,6 +59,7 @@ onMounted(() => {
 })
 
 const isRunning = ref(false)
+const viewContext = ref(false)
 const executionResult = ref<any>(null)
 const executionError = ref<string | null>(null)
 const awaitingNodes = ref<string[]>([])
@@ -126,14 +127,18 @@ async function runWorkflow() {
 	}
 }
 
-async function resumeWorkflow(nodeId: string) {
+async function resumeWorkflow(nodeId: string, payload: { output: any }) {
 	if (!serializedContext.value) return
 	isRunning.value = true
 	executionError.value = null
 	try {
-		const result = await runtime.resume(blueprint, serializedContext.value, { output: { value: 42 } }, nodeId, {
-			functionRegistry,
-		})
+		const result = await runtime.resume(
+			blueprint,
+			serializedContext.value,
+			payload,
+			nodeId,
+			{ functionRegistry }
+		)
 		executionResult.value = result
 		if (result.status === 'awaiting') {
 			awaitingNodes.value = result.context._awaitingNodeIds || []
@@ -151,10 +156,13 @@ async function resumeWorkflow(nodeId: string) {
 		console.error('Error resuming workflow:', error)
 	} finally {
 		isRunning.value = false
+		await new Promise(r => setTimeout(r))
+		flow.fitView({ duration: 1000 })
 	}
 }
 
 async function clearWorkflow() {
+	viewContext.value = false
 	executionResult.value = null
 	executionError.value = null
 	awaitingNodes.value = []
@@ -172,25 +180,37 @@ function toggleLayout() {
 </script>
 
 <template>
-	<div class="flex flex-col h-full rounded-[8px] overflow-hidden">
+	<div class="relative flex flex-col h-full rounded-[8px] overflow-hidden">
 		<header class="flex items-center gap-2 p-2 bg-[var(--vp-c-bg-alt)] border-b border-[var(--vp-c-divider)]">
 			<button @click="runWorkflow" class="brand">
-				{{ executionResult ? 'Restart' : 'Play' }}
+				{{ executionResult ? 'Restart' : 'Run' }}
 			</button>
-			<button @click="clearWorkflow" :disabled="!executionResult" class="alt">
+			<!-- <button @click="clearWorkflow" :disabled="!executionResult" class="alt">
 				Clear
-			</button>
+			</button> -->
 			<!-- <button @click="toggleLayout" class="alt">
 				Layout: {{ direction }}
 			</button> -->
 			<div v-if="awaitingNodes.length > 0" class="flex items-center gap-2">
 				<span class="border-l border-[var(--vp-c-divider)] h-4 mx-4" />
 				<span class="text-sm font-medium">Resume:</span>
-				<button v-for="nodeId in awaitingNodes" :key="nodeId" @click="resumeWorkflow(nodeId)" class="brand">
-					{{ nodeId }}
+				<button v-for="nodeId in awaitingNodes" :key="nodeId" @click="resumeWorkflow(nodeId, { output: { approved: true } })" class="brand">
+					Approve
+				</button>
+				<button v-for="nodeId in awaitingNodes" :key="nodeId" @click="resumeWorkflow(nodeId, { output: { approved: false } })" class="brand">
+					Deny
 				</button>
 			</div>
+			<span class="flex-auto" />
+			<button @click="viewContext = !viewContext" v-if="executionResult" class="alt">
+				<template v-if="viewContext">Hide Context</template>
+				<template v-else>View Context</template>
+			</button>
 		</header>
+		<pre
+			v-show="viewContext"
+			class="absolute inset-0 top-[45px] z-10 overflow-auto p-4 text-sm flex-auto bg-[var(--vp-code-block-bg)]"
+		>{{ JSON.stringify(executionResult, null, 2) }}</pre>
 		<VueFlow
 			fit-view-on-init
 			:max-zoom="1.25"
