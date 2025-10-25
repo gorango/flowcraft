@@ -1,3 +1,7 @@
+<script setup>
+import LoopsDemo from '../.vitepress/theme/components/Demo/Loops.vue'
+</script>
+
 # Loops
 
 For workflows that require iteration, the [`Flow`](/api/flow#flow-class) builder provides a [`.loop()`](/api/flow#loop-id-options) method. This allows you to execute a portion of your graph repeatedly until a condition is met.
@@ -57,11 +61,7 @@ const flow = createFlow('loop-workflow')
 
 The [`.loop()`](/api/flow#loop-id-options) method adds a `loop-controller` node.
 
-<script setup>
-import LoopsExample from '../.vitepress/theme/examples/LoopsExample.vue'
-</script>
-
-<LoopsExample />
+<LoopsDemo />
 
 1.  `initialize` runs once, setting `count` to 0.
 2.  It triggers `increment`, which sets `count` to 1.

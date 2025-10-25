@@ -1,6 +1,5 @@
 <script setup>
-import Flow from '../components/Flow/Flow.vue'
-import { parallelFlow } from '../composables/simple-examples'
+import { parallelFlow } from '../../composables/simple-examples'
 
 const example = parallelFlow
 const positionsMap = {

@@ -1,7 +1,7 @@
 <script setup>
-import UserProcessingSimple from '../.vitepress/theme/examples/UserProcessingSimple.vue'
-import BatchExample from '../.vitepress/theme/examples/BatchExample.vue'
-import LoopExample from '../.vitepress/theme/examples/LoopExample.vue'
+import UserProcessingSimple from '../.vitepress/theme/components/Demo/UserProcessingSimple.vue'
+import BatchDemo from '../.vitepress/theme/components/Demo/Batch.vue'
+import LoopDemo from '../.vitepress/theme/components/Demo/Loop.vue'
 </script>
 
 # Defining Workflows
@@ -126,7 +126,7 @@ const batchFlow = createFlow<UserProcessingContext>('batch-user-processing')
   .edge('process-users_gather', 'summarize')
 ```
 
-<BatchExample />
+<BatchDemo />
 
 ## Loops
 
@@ -163,7 +163,7 @@ const loopFlow = createFlow<UserProcessingContext>('loop-user-processing')
   .edge('validate-loop', 'handle-failure', { action: 'retry' })
 ```
 
-<LoopExample />
+<LoopDemo />
 
 ## Finalizing the Blueprint
 

@@ -1,3 +1,7 @@
+<script setup>
+import DeclarativeWorkflowsDemo from '../.vitepress/theme/components/Demo/DeclarativeWorkflows.vue'
+</script>
+
 # Declarative Workflows
 
 Flowcraft allows defining workflows using JSON blueprints, decoupling structure from implementation.
@@ -64,11 +68,7 @@ Define the workflow as a JSON object.
 }
 ```
 
-<script setup>
-import DeclarativeWorkflowsExample from '../.vitepress/theme/examples/DeclarativeWorkflowsExample.vue'
-</script>
-
-<DeclarativeWorkflowsExample />
+<DeclarativeWorkflowsDemo />
 
 ## Execution
 

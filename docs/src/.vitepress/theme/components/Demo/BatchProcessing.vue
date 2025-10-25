@@ -1,6 +1,5 @@
 <script setup>
 import { createFlow } from 'flowcraft'
-import Flow from '../components/Flow/Flow.vue'
 
 const batchFlow = createFlow('batch-example')
 	.node('start', async () => {

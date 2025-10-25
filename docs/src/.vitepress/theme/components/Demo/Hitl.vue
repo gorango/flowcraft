@@ -1,6 +1,5 @@
 <script setup>
-import Flow from '../components/Flow/Flow.vue'
-import { hitlFlow } from '../composables/simple-examples'
+import { hitlFlow } from '../../composables/simple-examples'
 
 const example = hitlFlow
 const positionsMap = {

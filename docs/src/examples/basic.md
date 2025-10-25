@@ -1,3 +1,7 @@
+<script setup>
+import BasicDemo from '../.vitepress/theme/components/Demo/Basic.vue'
+</script>
+
 # Basic Workflow
 
 This example demonstrates a basic, linear workflow with sequential steps. It showcases:
@@ -12,11 +16,7 @@ We want to create a workflow that:
 2. Processes the data in a second step.
 3. Finishes with a final step.
 
-<script setup>
-import BasicExample from '../.vitepress/theme/examples/BasicExample.vue'
-</script>
-
-<BasicExample />
+<BasicDemo />
 
 ## The Code
 

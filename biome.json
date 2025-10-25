@@ -12,7 +12,7 @@
 		"enabled": true,
 		"indentStyle": "tab",
 		"lineWidth": 120,
-		"includes": ["packages/**/*"]
+		"includes": ["packages/**/*", "!examples/*", "!docs"]
 	},
 	"linter": {
 		"enabled": true,
@@ -25,7 +25,7 @@
 				"noNonNullAssertion": "warn"
 			}
 		},
-		"includes": ["packages/**/*"]
+		"includes": ["packages/**/*", "!examples/*", "!docs"]
 	},
 	"javascript": {
 		"formatter": {

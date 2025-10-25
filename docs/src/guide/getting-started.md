@@ -1,5 +1,5 @@
 <script setup>
-import GettingStarted from '../.vitepress/theme/examples/GettingStarted.vue'
+import GettingStarted from '../.vitepress/theme/components/Demo/GettingStarted.vue'
 </script>
 
 # Getting Started

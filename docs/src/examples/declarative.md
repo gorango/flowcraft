@@ -1,3 +1,7 @@
+<script setup>
+import { goal, job, review, moderation } from '../.vitepress/theme/composables/declarative-in-memory.ts'
+</script>
+
 # Dynamic AI Agent from JSON Files
 
 [[view source code]](https://github.com/gorango/flowcraft/tree/master/examples/4a.declarative-in-memory)
@@ -8,101 +12,21 @@ This example demonstrates a runtime engine that can execute complex, graph-based
 
 Demonstrate a runtime engine that executes complex, graph-based AI workflows defined as JSON files, with support for parallelism, branching, and nested workflows.
 
-```mermaid
-graph TD
-    subgraph "Workflow Definition"
-        Blueprint["JSON Blueprint <br><small>(e.g., 200.json)</small>"]
-    end
-
-    subgraph "Execution Logic"
-        Runtime("FlowRuntime")
-        Registry["Node Registry"]
-        Functions["Node Functions"]
-    end
-
-    Main("Entry")
-
-    Main -- "1. Loads" --> Blueprint
-    Main -- "2. Creates & Configures" --> Runtime
-
-    Runtime -- "Reads graph from" --> Blueprint
-    Runtime -- "Uses" --> Registry
-
-    Registry -- "Maps string types to" --> Functions
-```
+<Diagram :nodes="goal.nodes" :edges="goal.edges" style="height: 600px" />
 
 ## The Blueprints
 
-#### [`blog-post`](https://github.com/gorango/flowcraft/tree/master/examples/5.declarative-shared-logic/data/1.blog-post)
-```mermaid
-graph TD
-    subgraph "Blog Post Generation (ID: 100)"
-        A[generate_outline] --> B[draft_post]
-        B --> C[suggest_titles]
-        C --> D[final_output]
-    end
-```
-
 #### [`job-application`](https://github.com/gorango/flowcraft/tree/master/examples/5.declarative-shared-logic/data/2.job-application)
-```mermaid
-graph TD
-    subgraph "Job Application Screener (ID: 200)"
-        A(Resume) --> B[extract_skills]
-        C(Cover Letter) --> D[analyze_tone]
-        B --> E{check_qualifications}
-        D --> E
-        E -- true --> F["Sub-Workflow: Send Interview (201)"]
-        E -- false --> G["Sub-Workflow: Send Rejection (202)"]
-        F --> H[final_output]
-        G --> H
-    end
-```
+
+<Diagram :nodes="job.nodes" :edges="job.edges" />
 
 #### [`customer-review`](https://github.com/gorango/flowcraft/tree/master/examples/5.declarative-shared-logic/data/3.customer-review)
-```mermaid
-graph TD
-    subgraph "Customer Review Analysis (ID: 300)"
-        A(Initial Review) --> B[summarize]
-        A --> C[categorize]
-        B --> D{check_sentiment}
-        C --> D
-        D -- true --> E["Sub-Workflow: Positive Reply (301)"]
-        D -- false --> F["Sub-Workflow: Create Ticket & Reply (302)"]
 
-        subgraph "Negative Path (Parallel Fan-Out)"
-            F --> G[send_to_ticketing_system]
-            F --> H[send_email_to_customer]
-        end
-
-        E --> Z[final_step]
-        G --> Z
-        H --> Z
-    end
-```
+<Diagram :nodes="review.nodes" :edges="review.edges" />
 
 #### [`content-moderation`](https://github.com/gorango/flowcraft/tree/master/examples/5.declarative-shared-logic/data/4.content-moderation)
-```mermaid
-graph TD
-    subgraph "Content Moderation (ID: 400)"
-        A(User Post) --> B[check_for_pii]
-        A --> C[check_for_hate_speech]
-        A --> D[check_for_spam]
 
-        B --> E{triage_post}
-        C --> E
-        D --> E
-
-        E -- action_ban --> F["Sub-Workflow: Ban User (401)"]
-        E -- action_redact --> G["Sub-Workflow: Redact Post (402)"]
-        E -- action_delete_spam --> H["Sub-Workflow: Delete Spam (403)"]
-        E -- action_approve --> I[approve_post_branch]
-
-        F --> Z[final_log]
-        G --> Z
-        H --> Z
-        I --> Z
-    end
-```
+<Diagram :nodes="moderation.nodes" :edges="moderation.edges" />
 
 ## The Code
 
@@ -311,7 +235,7 @@ function loadAndProcessBlueprint(filePath: string): WorkflowBlueprint {
 // Load all blueprints from the data directory
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const dataDir = path.join(__dirname, '..', 'data')
-const useCaseDirs = ['1.blog-post', '2.job-application', '3.customer-review', '4.content-moderation']
+const useCaseDirs = ['1_job-application', '2_customer-review', '3_content-moderation']
 
 export const blueprints: Record<string, WorkflowBlueprint> = {}
 
@@ -333,14 +257,8 @@ Defines configuration objects for various use cases, specifying the entry workfl
 ```typescript
 // The configuration object defines the different scenarios this example can run.
 export const config = {
-	'1.blog-post': {
+	'1_job-application': {
 		entryWorkflowId: '100',
-		initialContext: {
-			topic: 'The rise of AI-powered workflow automation in modern software development.',
-		},
-	},
-	'2.job-application': {
-		entryWorkflowId: '200',
 		initialContext: {
 			applicantName: 'Jane Doe',
 			resume:
@@ -348,15 +266,15 @@ export const config = {
 			coverLetter: 'To Whom It May Concern, I am writing to express my interest in the Senior Developer position.',
 		},
 	},
-	'3.customer-review': {
-		entryWorkflowId: '300',
+	'2_customer-review': {
+		entryWorkflowId: '200',
 		initialContext: {
 			initial_review:
 				'The new dashboard is a huge improvement, but I noticed that the export-to-PDF feature is really slow and sometimes crashes the app on large datasets. It would be great if you could look into this.',
 		},
 	},
-	'4.content-moderation': {
-		entryWorkflowId: '400',
+	'3_content-moderation': {
+		entryWorkflowId: '300',
 		initialContext: {
 			userId: 'user-456',
 			userPost: 'Hi, I need help with my account. My email is test@example.com and my phone is 555-123-4567.',

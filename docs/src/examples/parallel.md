@@ -1,3 +1,7 @@
+<script setup>
+import ParallelDemo from '../.vitepress/theme/components/Demo/Parallel.vue'
+</script>
+
 # Parallel Execution Workflow
 
 This example demonstrates parallel execution of multiple tasks. It showcases:
@@ -8,11 +12,7 @@ This example demonstrates parallel execution of multiple tasks. It showcases:
 
 Execute multiple tasks in parallel and collect their results.
 
-<script setup>
-import ParallelExample from '../.vitepress/theme/examples/ParallelExample.vue'
-</script>
-
-<ParallelExample />
+<ParallelDemo />
 
 ## The Code
 

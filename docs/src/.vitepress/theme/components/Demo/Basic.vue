@@ -1,6 +1,5 @@
 <script setup>
-import Flow from '../components/Flow/Flow.vue'
-import { basicFlow } from '../composables/simple-examples'
+import { basicFlow } from '../../composables/simple-examples'
 
 const example = basicFlow
 const positionsMap = {

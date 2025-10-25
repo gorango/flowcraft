@@ -1,6 +1,5 @@
 <script setup>
 import { createFlow } from 'flowcraft'
-import Flow from '../components/Flow/Flow.vue'
 
 const coffeeFlow = createFlow('coffee-shop')
 	.node('take-order', () => ({ output: { item: 'Coffee', size: 'Medium' } }))
@@ -10,9 +9,9 @@ const coffeeFlow = createFlow('coffee-shop')
 	.edge('make-drink', 'serve-customer')
 
 const positionsMap = {
-	'take-order': { x: 100, y: 100 },
+	'take-order': { x: 0, y: 100 },
 	'make-drink': { x: 300, y: 100 },
-	'serve-customer': { x: 500, y: 100 },
+	'serve-customer': { x: 600, y: 100 },
 }
 const typesMap = {
 	'take-order': 'input',

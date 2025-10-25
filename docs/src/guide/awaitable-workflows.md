@@ -1,5 +1,5 @@
 <script setup>
-import AwaitableWorkflowsExample from '../.vitepress/theme/examples/AwaitableWorkflowsExample.vue'
+import AwaitableWorkflowsDemo from '../.vitepress/theme/components/Demo/AwaitableWorkflows.vue'
 </script>
 
 # Awaitable Workflows
@@ -40,7 +40,7 @@ if (result.status === 'awaiting') {
 }
 ```
 
-<AwaitableWorkflowsExample />
+<AwaitableWorkflowsDemo />
 
 ## Key Concepts
 

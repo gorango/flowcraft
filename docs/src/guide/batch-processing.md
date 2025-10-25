@@ -1,5 +1,5 @@
 <script setup>
-import BatchProcessingExample from '../.vitepress/theme/examples/BatchProcessingExample.vue'
+import BatchProcessingDemo from '../.vitepress/theme/components/Demo/BatchProcessing.vue'
 </script>
 
 # Batch Processing
@@ -70,7 +70,7 @@ const flow = createFlow("batch-workflow")
 
 Behind the scenes, [`.batch()`](/api/flow#batch-tinput-toutput-taction-id-worker-options) creates a `scatter` and a `gather` node.
 
-<BatchProcessingExample />
+<BatchProcessingDemo />
 
 The runtime dynamically creates and executes the worker nodes, providing a powerful and simple API for parallel processing.
 
