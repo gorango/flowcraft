@@ -48,20 +48,20 @@ describe.skip('AzureQueueAdapter - Testcontainers Integration', () => {
 
 	beforeAll(async () => {
 		console.log('Starting all containers...')
-			;[azuriteContainer, redisContainer, cosmosContainer] = await Promise.all([
-				new AzuriteContainer('mcr.microsoft.com/azure-storage/azurite:latest').start(),
-				new RedisContainer('redis:latest').start(),
-				new GenericContainer('mcr.microsoft.com/cosmosdb/linux/azure-cosmos-emulator')
-					.withExposedPorts(8081)
-					.withResourcesQuota({ memory: 3 * 1024 * 1024 * 1024 })
-					.withEnvironment({
-						AZURE_COSMOS_EMULATOR_PARTITION_COUNT: '3',
-						AZURE_COSMOS_EMULATOR_ENABLE_DATA_PERSISTENCE: 'false',
-						AZURE_COSMOS_EMULATOR_IP_ADDRESS_OVERRIDE: '127.0.0.1',
-					})
-					.withWaitStrategy(Wait.forLogMessage('Started').withStartupTimeout(180_000))
-					.start(),
-			])
+		;[azuriteContainer, redisContainer, cosmosContainer] = await Promise.all([
+			new AzuriteContainer('mcr.microsoft.com/azure-storage/azurite:latest').start(),
+			new RedisContainer('redis:latest').start(),
+			new GenericContainer('mcr.microsoft.com/cosmosdb/linux/azure-cosmos-emulator')
+				.withExposedPorts(8081)
+				.withResourcesQuota({ memory: 3 * 1024 * 1024 * 1024 })
+				.withEnvironment({
+					AZURE_COSMOS_EMULATOR_PARTITION_COUNT: '3',
+					AZURE_COSMOS_EMULATOR_ENABLE_DATA_PERSISTENCE: 'false',
+					AZURE_COSMOS_EMULATOR_IP_ADDRESS_OVERRIDE: '127.0.0.1',
+				})
+				.withWaitStrategy(Wait.forLogMessage('Started').withStartupTimeout(180_000))
+				.start(),
+		])
 		console.log('All containers started.')
 
 		const cosmosHost = cosmosContainer?.getHost()
