@@ -57,7 +57,7 @@ export class DefaultOrchestrator implements IOrchestrator {
         }
 
         // Once the loop finishes, determine the final status and return the result.
-        const status = state.getStatus(traverser.getAllNodeIds(), traverser.getFallbackNodeIds())
+        const status = state.getStatus()
         const result = state.toResult(serializer)
         result.status = status
         return result
@@ -98,7 +98,7 @@ export class StepByStepOrchestrator implements IOrchestrator {
         // Check if there is work to do. If the frontier is empty,
         // it means the workflow has stalled or completed in a previous step.
         if (!traverser.hasMoreWork()) {
-            const status = state.getStatus(traverser.getAllNodeIds(), traverser.getFallbackNodeIds())
+            const status = state.getStatus(true)
             const result = state.toResult(serializer)
             result.status = status
             return result
@@ -123,7 +123,7 @@ export class StepByStepOrchestrator implements IOrchestrator {
 
         // 4. Return the result. The status will likely be 'stalled' until the
         //    final step, which is the expected behavior for this orchestrator.
-        const status = state.getStatus(traverser.getAllNodeIds(), traverser.getFallbackNodeIds())
+        const status = state.getStatus()
         const result = state.toResult(serializer)
         result.status = status
         return result
