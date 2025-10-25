@@ -14,7 +14,7 @@ export class WorkflowLogicHandler {
 	constructor(
 		private readonly evaluator: IEvaluator,
 		private readonly eventBus: IEventBus,
-	) {}
+	) { }
 
 	public async determineNextNodes(
 		blueprint: WorkflowBlueprint,
@@ -23,7 +23,17 @@ export class WorkflowLogicHandler {
 		context: ContextImplementation<any>,
 		executionId?: string,
 	): Promise<{ node: NodeDefinition; edge: EdgeDefinition }[]> {
-		const directOutgoingEdges = blueprint.edges.filter((edge) => edge.source === completedNodeId)
+		let effectiveSourceNodeId = completedNodeId
+		const completedNodeDef = blueprint.nodes.find((n) => n.id === completedNodeId)
+		if (completedNodeDef?.uses === 'loop-controller' && result.action !== 'continue')
+			// act as if the loop's end node just finished
+			effectiveSourceNodeId = completedNodeDef.params?.endNodeId
+
+		let directOutgoingEdges = blueprint.edges.filter((edge) => edge.source === effectiveSourceNodeId)
+		if (effectiveSourceNodeId !== completedNodeId)
+			// breaking from a loop, ignore the edge that leads back to the controller
+			directOutgoingEdges = directOutgoingEdges.filter((edge) => edge.target !== completedNodeId)
+
 		const nodesThisIsAFallbackFor = blueprint.nodes.filter((n) => n.config?.fallback === completedNodeId)
 		const inheritedOutgoingEdges = nodesThisIsAFallbackFor.flatMap((originalNode) =>
 			blueprint.edges.filter((edge) => edge.source === originalNode.id),
@@ -104,9 +114,9 @@ export class WorkflowLogicHandler {
 
 		const finalInput = edge.transform
 			? this.evaluator.evaluate(edge.transform, {
-					input: sourceResult.output,
-					context: await asyncContext.toJSON(),
-				})
+				input: sourceResult.output,
+				context: await asyncContext.toJSON(),
+			})
 			: sourceResult.output
 		const inputKey = `_inputs.${targetNode.id}`
 		await asyncContext.set(inputKey as any, finalInput)
