@@ -11,7 +11,8 @@
 	"formatter": {
 		"enabled": true,
 		"indentStyle": "tab",
-		"lineWidth": 120
+		"lineWidth": 120,
+		"includes": ["packages/**/*"]
 	},
 	"linter": {
 		"enabled": true,
@@ -23,7 +24,8 @@
 			"style": {
 				"noNonNullAssertion": "warn"
 			}
-		}
+		},
+		"includes": ["packages/**/*"]
 	},
 	"javascript": {
 		"formatter": {
