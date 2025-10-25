@@ -115,6 +115,7 @@ header,
 aside,
 .aside,
 .title,
+.tagline,
 h1,
 h2,
 h3,
@@ -122,6 +123,37 @@ h4,
 h5,
 h6 {
 	font-family: var(--vp-font-family-mono);
+}
+
+.VPHero {
+	.tagline {
+		font-size: 1.125rem;
+
+		@media (min-width: 640px) {
+			font-size: 1.25rem;
+		}
+	}
+
+	.image {
+		display: none;
+
+		@media (min-width: 640px) {
+			display: block;
+		}
+
+		.image-container {
+			transform: translate(0, -32px);
+		}
+
+		.image-src {
+			max-width: 469px;
+			max-height: 100%;
+			left: auto;
+			right: 0;
+			transform: translate(0%, -50%);
+			border-radius: 8px;
+		}
+	}
 }
 
 /**

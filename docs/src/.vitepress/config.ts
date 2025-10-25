@@ -1,5 +1,5 @@
-import tailwindcss from '@tailwindcss/vite'
 import { resolve } from 'node:path'
+import tailwindcss from '@tailwindcss/vite'
 import Components from 'unplugin-vue-components/vite'
 import { defineConfig } from 'vitepress'
 // import llmstxt from 'vitepress-plugin-llms'
@@ -61,8 +61,8 @@ export default defineConfig({
 		],
 		socialLinks: [{ icon: 'github', link: 'https://github.com/gorango/flowcraft' }],
 		footer: {
-			message: 'Released under the MIT License.',
-			copyright: 'Copyright © 2025-present @gorango',
+			message: 'Released under the MIT License',
+			copyright: 'Copyright © 2025-present',
 		},
 		sidebar: {
 			'/guide/': [
