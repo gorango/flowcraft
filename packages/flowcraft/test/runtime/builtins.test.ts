@@ -112,32 +112,66 @@ describe('Built-In Nodes', () => {
 	})
 
 	describe('Loop Controller', () => {
+		it('should correctly exit a simple loop with an intuitive edge definition', async () => {
+			const flow = createFlow('simple-loop-exit-test')
+				.node('initialize', async ({ context }) => {
+					await context.set('count', 0)
+					return { output: 'Initialized' }
+				})
+				.node('increment', async ({ context }) => {
+					const currentCount = (await context.get('count')) || 0
+					const newCount = currentCount + 1
+					await context.set('count', newCount)
+					return { output: newCount }
+				})
+				.loop('counter', {
+					startNodeId: 'increment',
+					endNodeId: 'increment',
+					condition: 'count < 5',
+				})
+				.node('finalize', async ({ context }) => {
+					const finalCount = await context.get('count')
+					return { output: `Finalized at ${finalCount}` }
+				})
+				.edge('initialize', 'increment')
+				// The intuitive edge that now works, replacing the need for .edge('counter-loop', 'finalize')
+				.edge('increment', 'finalize')
+
+			const runtime = new FlowRuntime({ evaluator: new UnsafeEvaluator() })
+			const result = await runtime.run(flow.toBlueprint(), {}, { functionRegistry: flow.getFunctionRegistry() })
+
+			expect(result.status).toBe('completed')
+			expect(result.context['_outputs.finalize']).toBe('Finalized at 5')
+			expect(result.context['count']).toBe(5)
+		})
+
 		it('should execute loop for specified iterations and break correctly', async () => {
 			let executionCount = 0
 			const flow = createFlow('loop-iterations-test')
-			flow.node('initialize', async ({ context }) => {
-				await context.set('counter', 0)
-				return { output: 'initialized' }
-			})
-			flow.node('increment', async ({ context }) => {
-				executionCount++
-				const counter = (await context.get('counter')) || 0
-				await context.set('counter', counter + 1)
-				return { output: `iteration_${counter + 1}` }
-			})
-			flow.node('check', async ({ context }) => {
-				const counter = (await context.get('counter')) || 0
-				return { output: `checked_${counter}` }
-			})
-			flow.node('final', async () => ({ output: 'final' }))
-			flow.edge('initialize', 'increment')
-			flow.edge('increment', 'check')
-			flow.loop('test-loop', {
-				startNodeId: 'increment',
-				endNodeId: 'check',
-				condition: 'counter < 3',
-			})
-			flow.edge('test-loop-loop', 'final', { action: 'break' })
+				.node('initialize', async ({ context }) => {
+					await context.set('counter', 0)
+					return { output: 'initialized' }
+				})
+				.node('increment', async ({ context }) => {
+					executionCount++
+					const counter = (await context.get('counter')) || 0
+					await context.set('counter', counter + 1)
+					return { output: `iteration_${counter + 1}` }
+				})
+				.node('check', async ({ context }) => {
+					const counter = (await context.get('counter')) || 0
+					return { output: `checked_${counter}` }
+				})
+				.node('final', async () => ({ output: 'final' }))
+				.edge('initialize', 'increment')
+				.edge('increment', 'check')
+				.loop('test-loop', {
+					startNodeId: 'increment',
+					endNodeId: 'check',
+					condition: 'counter < 3',
+				})
+				// This intuitive edge from the loop's end node ('check') now correctly wires the exit.
+				.edge('check', 'final')
 
 			const runtime = new FlowRuntime({ evaluator: new UnsafeEvaluator() })
 			const result = await runtime.run(flow.toBlueprint(), {}, { functionRegistry: flow.getFunctionRegistry() })
@@ -149,18 +183,17 @@ describe('Built-In Nodes', () => {
 
 		it('should handle infinite loop prevention', async () => {
 			const flow = createFlow('infinite-loop-test')
-			flow.node('always-true', async () => ({ output: 'continue' }))
-			flow.node('work', async () => ({ output: 'work' }))
-			flow.loop('test-loop', {
-				startNodeId: 'work',
-				endNodeId: 'always-true',
-				condition: 'true',
-			})
-			flow.edge('work', 'always-true')
-			flow.edge('always-true', 'test-loop-loop', { action: 'continue' })
-			flow.edge('test-loop-loop', 'work')
+				.node('always-true', async () => ({ output: 'continue' }))
+				.node('work', async () => ({ output: 'work' }))
+				.loop('test-loop', {
+					startNodeId: 'work',
+					endNodeId: 'always-true',
+					condition: 'true', // This condition will always be met
+				})
+				.edge('work', 'always-true')
+			// No break/exit edge is defined, so the workflow should loop until the safety limit is hit.
 
-			const runtime = new FlowRuntime({})
+			const runtime = new FlowRuntime({ evaluator: new UnsafeEvaluator() })
 			await expect(
 				runtime.run(flow.toBlueprint(), {}, { functionRegistry: flow.getFunctionRegistry() }),
 			).rejects.toThrow('Traversal exceeded maximum iterations')

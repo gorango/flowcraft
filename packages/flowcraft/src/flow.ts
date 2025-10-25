@@ -213,6 +213,32 @@ export class Flow<
 			throw new Error('Cannot build a blueprint with no nodes.')
 		}
 
+		const finalEdges: EdgeDefinition[] = []
+		const processedOriginalEdges = new Set<EdgeDefinition>()
+
+		for (const loopDef of this.loopDefinitions) {
+			const controllerId = this.getLoopControllerId(loopDef.id)
+
+			const edgesToRewire =
+				this.blueprint.edges?.filter((e) => e.source === loopDef.endNodeId && e.target !== controllerId) || []
+
+			for (const edge of edgesToRewire) {
+				finalEdges.push({
+					...edge,
+					source: controllerId,
+					action: edge.action || 'break',
+				})
+				processedOriginalEdges.add(edge)
+			}
+		}
+
+		for (const edge of this.blueprint.edges || []) {
+			if (!processedOriginalEdges.has(edge)) {
+				finalEdges.push(edge)
+			}
+		}
+		this.blueprint.edges = finalEdges
+
 		for (const loopDef of this.loopDefinitions) {
 			const startNode = this.blueprint.nodes?.find((n) => n.id === loopDef.startNodeId)
 			const endNode = this.blueprint.nodes?.find((n) => n.id === loopDef.endNodeId)
