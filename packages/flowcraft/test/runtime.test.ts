@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { UnsafeEvaluator } from '../src/evaluator'
 import { createFlow } from '../src/flow'
 import { FlowRuntime } from '../src/runtime'
+import { InMemoryEventLogger } from '../src/testing'
 import type { FlowcraftEvent, IEventBus, Middleware, NodeResult } from '../src/types'
 
 // A mock event bus for testing observability
@@ -118,52 +119,35 @@ describe('Flowcraft Runtime - Integration Tests', () => {
 		})
 
 		it('should correctly break out of a loop when the condition is met', async () => {
-			let executionCount = 0
-			const flow = createFlow('loop-test')
-			flow
-				.node('initialize', async ({ context }) => {
-					await context.set('loop_count', 0)
-					await context.set('last_action', null)
-					return { output: 'initialized' }
+			const loopBodyMock = vi.fn(async ({ context }) => {
+				const currentCount = (await context.get('counter')) || 0
+				await context.set('counter', currentCount + 1)
+				return { output: `iteration_${currentCount + 1}` }
+			})
+
+			const flow = createFlow('loop-break-test')
+				.node('start', async ({ context }) => {
+					await context.set('counter', 0)
+					return { output: 0 }
 				})
-				.node('decide', async ({ context }) => {
-					executionCount++
-					const loopCount = (await context.get('loop_count')) || 0
-					const lastAction = await context.get('last_action')
-					// For this test, always return 'search' to trigger the loop
-					await context.set('last_action', 'search')
-					return {
-						action: 'search',
-						output: `decide_${loopCount}_${lastAction}`,
-					}
+				.node('loopBody', loopBodyMock)
+				.node('end', async () => ({ output: 'finished' }))
+				.loop('mainLoop', {
+					startNodeId: 'loopBody',
+					endNodeId: 'loopBody',
+					condition: 'counter < 2',
 				})
-				.node('search', async ({ context }) => {
-					const currentLoopCount = (await context.get('loop_count')) || 0
-					await context.set('loop_count', currentLoopCount + 1)
-					return { output: `search_${currentLoopCount + 1}` }
-				})
-				.node('answer', async () => {
-					return { output: 'final_answer' }
-				})
-				.loop('research', {
-					startNodeId: 'decide',
-					endNodeId: 'search',
-					condition: "loop_count < 2 && last_action !== 'answer'",
-				})
-				.edge('initialize', 'decide')
-				.edge('decide', 'search', { action: 'search' })
-				.edge('decide', 'answer', { action: 'answer' })
-				.edge('search', 'decide')
-				.edge('research-loop', 'answer', { action: 'break' })
+				.edge('start', 'loopBody')
+				// The break path is the default edge (no action) from the loop controller
+				.edge('mainLoop-loop', 'end')
 
 			const runtime = new FlowRuntime({ evaluator: new UnsafeEvaluator() })
 			const result = await runtime.run(flow.toBlueprint(), {}, { functionRegistry: flow.getFunctionRegistry() })
 
-			// The loop should run 2 times (loop_count goes from 0 to 1 to 2)
-			// After 2 iterations, the condition should be false and it should break
-			expect(executionCount).toBe(2) // decide should only run 2 times
 			expect(result.status).toBe('completed')
-			expect(result.context['_outputs.answer']).toBe('final_answer')
+			expect(loopBodyMock).toHaveBeenCalledTimes(2)
+			expect(result.context.counter).toBe(2)
+			expect(result.context['_outputs.end']).toBe('finished')
 		})
 
 		it('should execute fallback node when main node fails', async () => {
@@ -188,30 +172,29 @@ describe('Flowcraft Runtime - Integration Tests', () => {
 		})
 
 		it('should retry a node and execute fallback after max retries exceeded', async () => {
-			const flakyApi = vi.fn().mockRejectedValue(new Error('Flaky failed'))
-			const mockApiCall = vi.fn().mockResolvedValue({ output: 'Fallback result' })
+			const failingNodeImpl = vi.fn().mockRejectedValue(new Error('Failing permanently'))
+			const fallbackNodeImpl = vi.fn().mockResolvedValue({ output: 'fallback-success' })
 
-			const flow = createFlow('error-workflow')
-			flow
-				.node('start-error', async () => ({ output: 'start' }))
-				.node('flaky', flakyApi, { config: { maxRetries: 2, fallback: 'fallback' } })
-				.node('fallback', () => mockApiCall('Fallback', 500))
-				.node('final-step', async ({ input }) => {
-					console.log('[Final Step] Received:', input)
-					return { output: 'Workflow finished' }
-				})
-				.edge('start-error', 'flaky')
-				.edge('fallback', 'final-step')
+			const flow = createFlow('retry-fallback-flow')
+				.node('start', async () => ({ output: 'start' }))
+				.node('failingNode', failingNodeImpl, { config: { maxRetries: 3, fallback: 'fallbackNode' } })
+				.node('fallbackNode', fallbackNodeImpl)
+				.node('endNode', async ({ input }) => ({ output: `end-with-${input}` }))
+				.edge('start', 'failingNode')
+				// This edge is for the successful case, which won't be taken.
+				.edge('failingNode', 'endNode')
 
-			const blueprint = flow.toBlueprint()
-			const runtime = new FlowRuntime({})
-			const result = await runtime.run(blueprint, {}, { functionRegistry: flow.getFunctionRegistry() })
+			const eventLogger = new InMemoryEventLogger()
+			const runtime = new FlowRuntime({
+				eventBus: eventLogger,
+			})
+			const result = await runtime.run(flow.toBlueprint(), {}, { functionRegistry: flow.getFunctionRegistry() })
+			eventLogger.printLog('Workflow Execution Trace')
 
 			expect(result.status).toBe('completed')
-			expect(flakyApi).toHaveBeenCalledTimes(2) // 1 initial + 1 retry (maxRetries: 2 means 2 total attempts)
-			expect(mockApiCall).toHaveBeenCalledWith('Fallback', 500)
-			expect(result.context['_outputs.final-step']).toBe('Workflow finished')
-			expect(result.context['_outputs.fallback']).toBe('Fallback result')
+			expect(failingNodeImpl).toHaveBeenCalledTimes(3)
+			expect(fallbackNodeImpl).toHaveBeenCalledTimes(1)
+			expect(result.context['_outputs.endNode']).toBe('end-with-fallback-success')
 		})
 
 		it('should throw an error on a graph with a cycle when strict mode is on', async () => {
@@ -331,7 +314,7 @@ describe('Flowcraft Runtime - Integration Tests', () => {
 			expect(result.status).toBe('completed')
 			expect(result.context['_outputs.C']).toBe('C received 42')
 			expect(result.context['_outputs.D']).toBeUndefined()
-			expect(result.context['shared_value']).toBe(42)
+			expect(result.context.shared_value).toBe(42)
 		})
 	})
 

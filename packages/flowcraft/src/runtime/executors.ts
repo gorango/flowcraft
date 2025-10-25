@@ -239,13 +239,9 @@ export class NodeExecutor<TContext extends Record<string, any>, TDependencies ex
 								executionId: this.context.executionId,
 								isFatal: false,
 							})
-				const isFatal =
-					flowcraftError.isFatal || (flowcraftError.cause instanceof FlowcraftError && flowcraftError.cause.isFatal)
-				if (isFatal) {
-					return { status: 'failed', error: flowcraftError }
-				}
+
 				const fallbackNodeId = this.nodeDef.config?.fallback
-				if (fallbackNodeId) {
+				if (fallbackNodeId && !flowcraftError.isFatal) {
 					this.context.services.logger.warn(`Node failed, fallback required`, {
 						nodeId: this.nodeDef.id,
 						fallbackNodeId,

@@ -18,12 +18,26 @@ export class WorkflowLogicHandler {
 
 	public async determineNextNodes(
 		blueprint: WorkflowBlueprint,
-		nodeId: string,
+		completedNodeId: string,
 		result: NodeResult<any, any>,
 		context: ContextImplementation<any>,
 		executionId?: string,
 	): Promise<{ node: NodeDefinition; edge: EdgeDefinition }[]> {
-		const outgoingEdges = blueprint.edges.filter((edge) => edge.source === nodeId)
+		const directOutgoingEdges = blueprint.edges.filter((edge) => edge.source === completedNodeId)
+		const nodesThisIsAFallbackFor = blueprint.nodes.filter((n) => n.config?.fallback === completedNodeId)
+		const inheritedOutgoingEdges = nodesThisIsAFallbackFor.flatMap((originalNode) =>
+			blueprint.edges.filter((edge) => edge.source === originalNode.id),
+		)
+		const allPossibleEdges = [...directOutgoingEdges, ...inheritedOutgoingEdges]
+		const outgoingEdges = [
+			...new Map(
+				allPossibleEdges.map((edge) => [
+					`${edge.source}-${edge.target}-${edge.action || ''}-${edge.condition || ''}`,
+					edge,
+				]),
+			).values(),
+		]
+
 		const matched: { node: NodeDefinition; edge: EdgeDefinition }[] = []
 		const evaluateEdge = async (edge: EdgeDefinition): Promise<boolean> => {
 			if (!edge.condition) return true
@@ -34,10 +48,11 @@ export class WorkflowLogicHandler {
 			})
 			await this.eventBus.emit({
 				type: 'edge:evaluate',
-				payload: { source: nodeId, target: edge.target, condition: edge.condition, result: evaluationResult },
+				payload: { source: edge.source, target: edge.target, condition: edge.condition, result: evaluationResult },
 			})
 			return evaluationResult
 		}
+
 		if (result.action) {
 			const actionEdges = outgoingEdges.filter((edge) => edge.action === result.action)
 			for (const edge of actionEdges) {
@@ -47,11 +62,12 @@ export class WorkflowLogicHandler {
 				} else {
 					await this.eventBus.emit({
 						type: 'node:skipped',
-						payload: { nodeId, edge, executionId: executionId || '', blueprintId: blueprint.id },
+						payload: { nodeId: completedNodeId, edge, executionId: executionId || '', blueprintId: blueprint.id },
 					})
 				}
 			}
 		}
+
 		if (matched.length === 0) {
 			const defaultEdges = outgoingEdges.filter((edge) => !edge.action)
 			for (const edge of defaultEdges) {
@@ -61,7 +77,7 @@ export class WorkflowLogicHandler {
 				} else {
 					await this.eventBus.emit({
 						type: 'node:skipped',
-						payload: { nodeId, edge, executionId: executionId || '', blueprintId: blueprint.id },
+						payload: { nodeId: completedNodeId, edge, executionId: executionId || '', blueprintId: blueprint.id },
 					})
 				}
 			}
