@@ -87,58 +87,49 @@ export async function processResults(
 				}
 			}
 
-			if (!result._fallbackExecuted) {
-				const matched = await runtime.determineNextNodes(
-					traverser.getDynamicBlueprint(),
-					nodeId,
-					result,
-					state.getContext(),
-					executionId,
-				)
+			const matched = await runtime.determineNextNodes(
+				traverser.getDynamicBlueprint(),
+				nodeId,
+				result,
+				state.getContext(),
+				executionId,
+			)
 
-				const loopControllerMatch = matched.find(
-					(m: { node: NodeDefinition; edge: any }) => m.node.uses === 'loop-controller',
-				)
-				const finalMatched = loopControllerMatch ? [loopControllerMatch] : matched
+			const loopControllerMatch = matched.find(
+				(m: { node: NodeDefinition; edge: any }) => m.node.uses === 'loop-controller',
+			)
+			const finalMatched = loopControllerMatch ? [loopControllerMatch] : matched
 
-				for (const { node, edge } of finalMatched) {
-					await runtime.applyEdgeTransform(edge, result, node, state.getContext(), traverser.getAllPredecessors())
-				}
-
-				traverser.markNodeCompleted(
-					nodeId,
-					result,
-					finalMatched.map((m: { node: NodeDefinition; edge: any }) => m.node),
-				)
+			for (const { node, edge } of finalMatched) {
+				await runtime.applyEdgeTransform(edge, result, node, state.getContext(), traverser.getAllPredecessors())
 			}
-		} else {
-			const blueprint = traverser.getDynamicBlueprint()
-			const failedNodeDef = blueprint.nodes.find((n) => n.id === nodeId)
-			const fallbackNodeId = failedNodeDef?.config?.fallback
 
-			if (fallbackNodeId) {
+			traverser.markNodeCompleted(
+				nodeId,
+				result,
+				finalMatched.map((m: { node: NodeDefinition; edge: any }) => m.node),
+			)
+		} else if (executionResult.status === 'failed_with_fallback') {
+			const { fallbackNodeId, error } = executionResult
+			const blueprint = traverser.getDynamicBlueprint()
+			const fallbackNodeDef = blueprint.nodes.find((n) => n.id === fallbackNodeId)
+
+			if (!fallbackNodeDef) {
+				const notFoundError = new FlowcraftError(`Fallback node '${fallbackNodeId}' not found in blueprint.`, {
+					nodeId,
+					cause: error,
+				})
+				state.addError(nodeId, notFoundError)
+			} else {
 				state.addCompletedNode(nodeId, null)
 				state.markFallbackExecuted()
 
-				const fallbackNodeDef = blueprint.nodes.find((n) => n.id === fallbackNodeId)
-
-				if (!fallbackNodeDef) {
-					// The configured fallback node doesn't exist, so we must fail.
-					const error = new FlowcraftError(`Fallback node '${fallbackNodeId}' not found in blueprint.`, { nodeId })
-					state.addError(nodeId, error)
-				} else {
-					// Mark the failed node as "completed" and explicitly add the fallback node
-					// to the frontier to be executed in the next batch.
-					traverser.markNodeCompleted(
-						nodeId,
-						{ action: 'fallback', output: null, _fallbackExecuted: true },
-						[fallbackNodeDef], // Directly provide the next node
-					)
-				}
-			} else {
-				// No fallback configured, so this is a genuine failure.
-				state.addError(nodeId, executionResult.error)
+				traverser.markNodeCompleted(nodeId, { action: 'fallback', output: null, _fallbackExecuted: true }, [
+					fallbackNodeDef,
+				])
 			}
+		} else {
+			state.addError(nodeId, executionResult.error)
 		}
 	}
 }
