@@ -62,7 +62,6 @@ export default defineConfig({
 		search: { provider: 'local' },
 		nav: [
 			{ text: 'Guide', link: '/guide/', activeMatch: '/guide/' },
-			{ text: 'Examples', link: '/examples/', activeMatch: '/examples/' },
 			{ text: 'API', link: '/api/', activeMatch: '/api/' },
 		],
 		socialLinks: [{ icon: 'github', link: 'https://github.com/gorango/flowcraft' }],
@@ -164,26 +163,6 @@ export default defineConfig({
 								{ text: 'Kafka & Cassandra', link: '/guide/adapters/kafka' },
 							],
 						},
-					],
-				},
-			],
-			'/examples/': [
-				{
-					text: 'Examples',
-					items: [
-						{ text: 'Overview', link: '/examples/' },
-						{ text: 'Basic Workflow', link: '/examples/basic' },
-						{ text: 'Parallel Workflow', link: '/examples/parallel' },
-						{ text: 'Research Agent', link: '/examples/research' },
-						{
-							text: 'Declarative Workflow',
-							items: [
-								{ text: 'In-Memory', link: '/examples/declarative' },
-								{ text: 'Distributed', link: '/examples/distributed' },
-							],
-						},
-						{ text: 'RAG Workflow', link: '/examples/rag' },
-						{ text: 'HITL Workflow', link: '/examples/hitl' },
 					],
 				},
 			],

@@ -10,8 +10,8 @@ hero:
       text: Get Started
       link: /guide/
     - theme: alt
-      text: Examples
-      link: /examples/
+      text: GitHub
+      link: https://github.com/gorango/flowcraft
 
 features:
   - title: Zero Dependencies

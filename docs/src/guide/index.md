@@ -11,7 +11,7 @@ Unlike heavy platforms like Temporal or Airflow, or domain-specific libraries li
 -   **Zero Dependencies**: Lightweight and dependency-free, runs in any environment.
 -   **Declarative Workflows**: Simple [serializable objects](/guide/core-concepts#workflow-blueprint) with [nodes and edges](/guide/core-concepts#nodes-edges).
 -   **Unopinionated Logic**: Nodes can be simple [functions](/guide/core-concepts#function-based-nodes) or structured [classes](/guide/core-concepts#class-based-nodes).
--   **Progressive Scalability**: Run [in-memory](/examples/declarative) or scale to [distributed systems](/guide/distributed-execution).
+-   **Progressive Scalability**: Run [in-memory](/guide/programmatic) or scale to [distributed systems](/guide/distributed-execution).
 -   **Resilient Execution**: [Retries](/guide/error-handling#retries), [fallbacks](/guide/error-handling#fallbacks), [timeouts](/guide/core-concepts#config), and [cancellation](/guide/core-concepts#cancellation).
 -   **Advanced Patterns**: Includes [batches](/guide/batches), [loops](/guide/loops), [subflows](/guide/subflows), and [HITL](/guide/awaitable) constructs.
 -   **Extensibility**: Pluggable [loggers](/guide/loggers), [evaluators](/guide/evaluators), [serializers](/guide/serializers), and [middleware](/guide/middleware).
@@ -26,28 +26,28 @@ Flowcraft is versatile for various workflow scenarios.
 
 Build intelligent agents that process data, make decisions, and interact with users.
 
-- **Example**: Research Agent (see /examples/research)
+- **Example**: Research Agent (see [/examples/research](https://github.com/gorango/flowcraft/tree/master/examples/3_research))
 - **Features**: Conditional branching, LLM integration, human-in-the-loop.
 
 ### ETL Pipelines
 
 Extract, transform, and load data efficiently.
 
-- **Example**: Parallel Workflow (see /examples/parallel)
+- **Example**: Parallel Workflow (see [/examples/translate](https://github.com/gorango/flowcraft/tree/master/examples/2_translate))
 - **Features**: Batch processing, parallel execution, error handling.
 
 ### Business Process Automation
 
 Automate routine business tasks like approvals and notifications.
 
-- **Example**: HITL Workflow (see /examples/hitl)
+- **Example**: HITL Workflow (see [Awatiable Workflows](/guide/awaitable))
 - **Features**: Awaitable workflows, declarative definitions.
 
 ### Distributed Execution
 
 Run workflows across multiple machines or services.
 
-- **Example**: Distributed Workflow (see /examples/distributed)
+- **Example**: Distributed Workflow (see [/examples/distributed](https://github.com/gorango/flowcraft/tree/master/examples/4b_distributed))
 - **Features**: Adapters for queues, persistence.
 
 Choose the right pattern for your needs!
