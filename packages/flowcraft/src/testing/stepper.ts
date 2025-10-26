@@ -1,9 +1,9 @@
+import type { FlowRuntime } from '../runtime'
 import { ExecutionContext } from '../runtime/execution-context'
 import { StepByStepOrchestrator } from '../runtime/orchestrators/step-by-step'
-import type { FlowRuntime } from '../runtime/runtime'
 import { WorkflowState } from '../runtime/state'
 import { GraphTraverser } from '../runtime/traverser'
-import type { WorkflowBlueprint, WorkflowResult } from '../types'
+import type { NodeClass, NodeFunction, WorkflowBlueprint, WorkflowResult } from '../types'
 
 /**
  * Represents the controlled, step-by-step execution of a workflow.
@@ -22,6 +22,17 @@ export interface IWorkflowStepper<TContext extends Record<string, any>> {
 	 * @returns A `WorkflowResult` representing the state after the step, or `null` if the workflow has already completed.
 	 */
 	next(options?: { signal?: AbortSignal; concurrency?: number }): Promise<WorkflowResult<TContext> | null>
+
+	/**
+	 * Reverts the workflow to its previous state.
+	 * @returns The `WorkflowResult` of the previous state, or `null` if there is no history to revert to.
+	 */
+	prev(): Promise<WorkflowResult<TContext> | null>
+
+	/**
+	 * Resets the stepper to its initial state, clearing all progress and history.
+	 */
+	reset(): void
 
 	/**
 	 * A convenience method to check if the workflow has any more steps to run.
@@ -66,55 +77,70 @@ export interface IWorkflowStepper<TContext extends Record<string, any>> {
  * @param runtime The `FlowRuntime` instance, used for its configuration.
  * @param blueprint The `WorkflowBlueprint` to execute.
  * @param functionRegistry The function registry from createFlow, containing the node implementations.
- * @param initialState The initial state for the workflow run, can be a serialized string.
+ * @param initialState The initial state for the workflow run.
  * @returns A Promise that resolves to an `IWorkflowStepper` instance.
  */
 export async function createStepper<TContext extends Record<string, any>, TDependencies extends Record<string, any>>(
 	runtime: FlowRuntime<TContext, TDependencies>,
 	blueprint: WorkflowBlueprint,
-	functionRegistry: Map<string, any>,
-	initialState: Partial<TContext> | string = {},
+	functionRegistry: Map<string, NodeFunction | NodeClass>,
+	initialState: Partial<TContext> = {},
 ): Promise<IWorkflowStepper<TContext>> {
-	const contextData =
-		typeof initialState === 'string'
-			? (runtime.serializer.deserialize(initialState) as Partial<TContext>)
-			: initialState
+	const _initialBlueprint = structuredClone(blueprint)
+	const _initialState = structuredClone(initialState)
 
-	const state = new WorkflowState<TContext>(contextData)
-	const traverser = new GraphTraverser(blueprint)
+	let state: WorkflowState<TContext>
+	let traverser: GraphTraverser
+	const history: string[] = []
+
 	const orchestrator = new StepByStepOrchestrator()
 	const executionId = globalThis.crypto?.randomUUID()
-
 	const nodeRegistry = new Map([...runtime.registry, ...functionRegistry])
-	const _executionContext = new ExecutionContext(
-		blueprint,
-		state,
-		nodeRegistry,
-		executionId,
-		runtime,
-		{
-			logger: runtime.logger,
-			eventBus: runtime.eventBus,
-			serializer: runtime.serializer,
-			evaluator: runtime.evaluator,
-			middleware: runtime.middleware,
-			dependencies: runtime.dependencies,
-		},
-		undefined,
-	)
 
-	return {
-		state,
-		traverser,
-		isDone() {
-			return !traverser.hasMoreWork()
+	const initialize = () => {
+		state = new WorkflowState<TContext>(_initialState)
+		traverser = new GraphTraverser(_initialBlueprint)
+		history.length = 0
+	}
+
+	initialize()
+
+	const stepper: IWorkflowStepper<TContext> = {
+		get state() {
+			return state
 		},
-		async next(options: { signal?: AbortSignal; concurrency?: number } = {}) {
-			if (!traverser.hasMoreWork()) {
+		get traverser() {
+			return traverser
+		},
+		isDone() {
+			return !traverser.hasMoreWork() && !state.isAwaiting()
+		},
+		reset() {
+			initialize()
+		},
+		async prev() {
+			const previousStateJson = history.pop()
+			if (!previousStateJson) {
 				return null
 			}
-			const stepExecutionContext = new ExecutionContext(
-				blueprint,
+
+			const previousStateData = runtime.serializer.deserialize(previousStateJson) as Partial<TContext>
+
+			state = new WorkflowState(previousStateData)
+			traverser = GraphTraverser.fromState(_initialBlueprint, state)
+
+			return state.toResult(runtime.serializer)
+		},
+		async next(options: { signal?: AbortSignal; concurrency?: number } = {}) {
+			if (stepper.isDone()) {
+				return null
+			}
+
+			const serializedContext = (await state.toResult(runtime.serializer)).serializedContext
+			history.push(serializedContext)
+
+			const executionContext = new ExecutionContext(
+				_initialBlueprint,
 				state,
 				nodeRegistry,
 				executionId,
@@ -130,7 +156,9 @@ export async function createStepper<TContext extends Record<string, any>, TDepen
 				options.signal,
 				options.concurrency,
 			)
-			return orchestrator.run(stepExecutionContext, traverser)
+			return orchestrator.run(executionContext, traverser)
 		},
 	}
+
+	return stepper
 }
