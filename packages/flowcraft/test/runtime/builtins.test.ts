@@ -31,8 +31,8 @@ describe('Built-In Nodes', () => {
 				inputKey: 'prepare',
 				outputKey: 'results',
 			})
-			flow.edge('prepare', 'test-batch_scatter')
-			flow.edge('test-batch_gather', 'verify')
+			flow.edge('prepare', 'test-batch')
+			flow.edge('test-batch', 'verify')
 
 			const runtime = new FlowRuntime({})
 			const result = await runtime.run(flow.toBlueprint(), {}, { functionRegistry: flow.getFunctionRegistry() })
@@ -61,8 +61,8 @@ describe('Built-In Nodes', () => {
 				inputKey: 'prepare',
 				outputKey: 'results',
 			})
-			flow.edge('prepare', 'test-batch_scatter')
-			flow.edge('test-batch_gather', 'verify')
+			flow.edge('prepare', 'test-batch')
+			flow.edge('test-batch', 'verify')
 
 			const runtime = new FlowRuntime({})
 			const result = await runtime.run(flow.toBlueprint(), {}, { functionRegistry: flow.getFunctionRegistry() })
@@ -98,8 +98,8 @@ describe('Built-In Nodes', () => {
 				inputKey: 'prepare',
 				outputKey: 'results',
 			})
-			flow.edge('prepare', 'test-batch_scatter')
-			flow.edge('test-batch_gather', 'verify')
+			flow.edge('prepare', 'test-batch')
+			flow.edge('test-batch', 'verify')
 
 			const runtime = new FlowRuntime({})
 			const result = await runtime.run(flow.toBlueprint(), {}, { functionRegistry: flow.getFunctionRegistry() })
