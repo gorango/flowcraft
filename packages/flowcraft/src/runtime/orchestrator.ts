@@ -78,5 +78,3 @@ export class DefaultOrchestrator implements IOrchestrator {
 		return result
 	}
 }
-
-export class RunToCompletionOrchestrator extends DefaultOrchestrator {}

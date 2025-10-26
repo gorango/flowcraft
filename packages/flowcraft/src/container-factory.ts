@@ -1,7 +1,7 @@
 import { DIContainer, ServiceTokens } from './container'
 import { PropertyEvaluator } from './evaluator'
 import { NullLogger } from './logger'
-import { RunToCompletionOrchestrator } from './runtime/orchestrator'
+import { DefaultOrchestrator } from './runtime/orchestrator'
 import { JsonSerializer } from './serializer'
 import type {
 	IEvaluator,
@@ -40,7 +40,7 @@ export function createDefaultContainer<TDependencies extends RuntimeDependencies
 	container.register(ServiceTokens.BlueprintRegistry, options.blueprints || {})
 	container.register(ServiceTokens.Dependencies, options.dependencies || ({} as TDependencies))
 
-	container.registerFactory(ServiceTokens.Orchestrator, () => new RunToCompletionOrchestrator())
+	container.registerFactory(ServiceTokens.Orchestrator, () => new DefaultOrchestrator())
 
 	return container
 }

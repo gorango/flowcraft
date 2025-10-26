@@ -39,7 +39,7 @@ export interface ExecutionServices {
 
 ## `DefaultOrchestrator` Class
 
-The `DefaultOrchestrator` is the default orchestrator that executes a workflow from start to finish, but can gracefully pause when encountering wait nodes or awaiting subflows. It replaces the `RunToCompletionOrchestrator` for better support of human-in-the-loop workflows.
+The `DefaultOrchestrator` is the default orchestrator that executes a workflow from start to finish, but can gracefully pause when encountering wait nodes or awaiting subflows.
 
 ### `constructor()`
 
@@ -51,30 +51,6 @@ Executes a workflow, checking for awaiting state after each batch and pausing if
 
 - **`context`** `ExecutionContext<any, any>`: The execution context containing all necessary services, state, and configuration.
 - **`traverser`** `GraphTraverser`: The graph traverser managing the workflow execution state.
-- **Returns**: `Promise<WorkflowResult<any>>`: The result of the workflow execution.
-
-## `RunToCompletionOrchestrator` Class
-
-The `RunToCompletionOrchestrator` is an alias for `DefaultOrchestrator` and is maintained for backward compatibility. It executes a workflow from start to finish in a single, blocking operation.
-
-### `constructor()`
-
-Creates a new `RunToCompletionOrchestrator` instance.
-
-### `.run(...)`
-
-Executes a workflow using the run-to-completion strategy.
-
-- **`traverser`** `GraphTraverser`: The graph traverser managing the workflow execution state.
-- **`executorFactory`** `NodeExecutorFactory`: Factory for creating node executors.
-- **`state`** `WorkflowState<any>`: The current workflow state.
-- **`services`** `ExecutionServices`: Execution services including options and utilities.
-- **`blueprint`** `WorkflowBlueprint`: The workflow blueprint.
-- **`functionRegistry`** `Map<string, any> | undefined`: Optional function registry for node implementations.
-- **`executionId`** `string`: Unique identifier for this execution.
-- **`evaluator`** `IEvaluator`: Expression evaluator for conditions and transforms.
-- **`signal?`** `AbortSignal`: Optional abort signal for cancellation.
-- **`concurrency?`** `number`: Optional concurrency limit for node execution.
 - **Returns**: `Promise<WorkflowResult<any>>`: The result of the workflow execution.
 
 For examples of custom orchestrators, see [Orchestrators Guide](/guide/orchestrators).

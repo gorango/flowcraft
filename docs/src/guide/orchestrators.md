@@ -260,7 +260,7 @@ export class EventDrivenOrchestrator {
 
 ## `ResumptionOrchestrator`
 
-This orchestrator is a great example of composition. It doesn't re-implement the execution loop. Instead, it performs a "reconciliation" step to prepare the `GraphTraverser` and then delegates the actual execution to another orchestrator (like `RunToCompletionOrchestrator`).
+This orchestrator is a great example of composition. It doesn't re-implement the execution loop. Instead, it performs a "reconciliation" step to prepare the `GraphTraverser` and then delegates the actual execution to another orchestrator (like `DefaultOrchestrator`).
 
 #### Implementation
 
