@@ -56,9 +56,9 @@ const flow = createFlow("batch-workflow")
 
 	// 4. Wire the dependencies.
 	// The output of 'start' goes to the scatter part of the batch.
-	.edge("start", "double-items_scatter")
+	.edge("start", "double-items")
 	// The output of the gather part of the batch goes to 'sum-results'.
-	.edge("double-items_gather", "sum-results")
+	.edge("double-items", "sum-results")
 	.toBlueprint();
 ```
 

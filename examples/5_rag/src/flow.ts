@@ -141,10 +141,10 @@ export function createRagFlow() {
 			})
 
 			// 3. Wire the graph edges to connect the steps
-			.edge('load_and_chunk', 'generate-embeddings_scatter')
+			.edge('load_and_chunk', 'generate-embeddings')
 			// Connect the batch gatherer to the next step. The data flow is now
 			// handled by the `inputs` mapping on the 'store_in_db' node itself.
-			.edge('generate-embeddings_gather', 'store_in_db')
+			.edge('generate-embeddings', 'store_in_db')
 			.edge('store_in_db', 'vector_search')
 			.edge('vector_search', 'generate_final_answer')
 	)

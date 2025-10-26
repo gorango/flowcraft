@@ -2,7 +2,10 @@
 import { createFlow } from 'flowcraft'
 
 const batchFlow = createFlow('batch-example')
-	.node('start', () => ({ output: [10, 20, 30] }))
+	.node('start', async () => {
+		await new Promise(r => setTimeout(r, 1000))
+		return { output: [10, 20, 30] }
+	})
 	.batch(
 		'double-items',
 		async ({ input }) => {
@@ -22,21 +25,17 @@ const batchFlow = createFlow('batch-example')
 		},
 		{ inputs: 'doubled' },
 	)
-	.edge('start', 'double-items_scatter')
-	.edge('double-items_gather', 'sum-results')
+	.edge('start', 'double-items')
+	.edge('double-items', 'sum-results')
 
 const positionsMap = {
 	'start': { x: 100, y: 100 },
 	'double-items': { x: 350, y: 100 },
-	// 'double-items_scatter': { x: 300, y: 100 },
-	// 'double-items_gather': { x: 500, y: 100 },
 	'sum-results': { x: 600, y: 100 },
 }
 const typesMap = {
 	'start': 'input',
 	'double-items': 'default',
-	// 'double-items_scatter': 'default',
-	// 'double-items_gather': 'default',
 	'sum-results': 'output',
 }
 </script>

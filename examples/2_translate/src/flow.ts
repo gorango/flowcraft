@@ -94,8 +94,8 @@ export function createTranslateFlow() {
 	// 1. Run 'prepare-jobs' first.
 	// 2. The output of 'prepare-jobs' is used by 'translate-batch_scatter'.
 	// 3. When 'translate-batch_gather' is complete, run 'save-results'.
-	flow.edge('prepare-jobs', 'translate-batch_scatter')
-	flow.edge('translate-batch_gather', 'save-results')
+	flow.edge('prepare-jobs', 'translate-batch')
+	flow.edge('translate-batch', 'save-results')
 
 	return flow
 }
