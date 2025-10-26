@@ -72,7 +72,11 @@ Load and run the blueprint with the registry.
 import { FlowRuntime } from 'flowcraft'
 
 const runtime = new FlowRuntime({ registry: nodeRegistry })
-const result = await runtime.run(blueprint, {}, { functionRegistry: nodeRegistry })
+const result = await runtime.run(
+	blueprint,
+	{ /* Initial context */ },
+	{ functionRegistry: nodeRegistry }
+)
 ```
 
 This approach separates workflow structure from code, enabling dynamic configurations.

@@ -1,19 +1,22 @@
-<script setup>
+<script setup lang="ts">
+import type { NodeContext } from 'flowcraft'
 import { createFlow } from 'flowcraft'
 
-const simpleFlow = createFlow('simple-workflow')
-	.node('start', async ({ context }) => {
-		const value = 42
-		await context.set('initial_value', value)
-		await new Promise(r => setTimeout(r, 1000))
-		return { output: value }
-	})
-	.node('double', async ({ context, input }) => {
-		const doubled = input * 2
-		await context.set('doubled_value', doubled)
-		await new Promise(r => setTimeout(r, 1000))
-		return { output: doubled }
-	})
+const init = { value: 42 }
+
+async function startNode({ context }: NodeContext) {
+	await new Promise(r => setTimeout(r, 500))
+	return { output: await context.get('value') }
+}
+
+async function doubleNode({ input }: NodeContext) {
+	await new Promise(r => setTimeout(r, 500))
+	return { output: input * 2 }
+}
+
+const flow = createFlow('simple-workflow')
+	.node('start', startNode)
+	.node('double', doubleNode)
 	.edge('start', 'double')
 
 const positionsMap = {
@@ -28,6 +31,6 @@ const typesMap = {
 
 <template>
 	<div class="flowcraft-flow">
-		<Flow :flow="simpleFlow" :positions-map :types-map />
+		<Flow :flow :init :positions-map :types-map />
 	</div>
 </template>

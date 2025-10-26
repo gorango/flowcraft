@@ -11,6 +11,7 @@ export type NodeDataStatus = 'idle' | 'pending' | 'completed' | 'failed'
 
 const props = defineProps<{
 	flow?: Flow<any, Record<string, any>>
+	init?: Record<string, any>
 	blueprint?: WorkflowBlueprint
 	registry?: NodeRegistry
 	positionsMap: Record<string, { x: number; y: number }>
@@ -25,6 +26,7 @@ const { layout } = useLayout()
 const uiGraph = (props.blueprint || props.flow?.toGraphRepresentation()) as UIGraph
 const blueprint = (props.blueprint || props.flow?.toBlueprint()) as WorkflowBlueprint
 const functionRegistry = props.flow?.getFunctionRegistry() || new Map()
+const initalState = props.init ? props.init : {}
 
 const runtime = new FlowRuntime({
 	logger: new ConsoleLogger(),
@@ -124,7 +126,7 @@ async function runWorkflow() {
 		nodeData.value.set(node.id, { status: 'idle' })
 	})
 	try {
-		const result = await runtime.run(blueprint, { value: 42 }, { functionRegistry })
+		const result = await runtime.run(blueprint, initalState, { functionRegistry })
 		executionResult.value = result
 		if (result.status === 'awaiting') {
 			awaitingNodes.value = result.context._awaitingNodeIds || []

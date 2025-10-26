@@ -15,106 +15,49 @@ npm install flowcraft
 Let's create a simple workflow with two steps: one node to provide a starting number, and a second node to double it, using Flowcraft's strongly-typed context system.
 
 ```typescript
-import { ConsoleLogger, createFlow, FlowRuntime } from 'flowcraft'
+import { createFlow, FlowRuntime } from 'flowcraft'
 
-// 1. Define your context interface for type safety (optional)
-interface SimpleWorkflowContext {
-  initial_value?: number
-  doubled_value?: number
+// 1. Define your functions for the nodes
+async function startNode({ context }: NodeContext) {
+	const output = await context.get('value')
+	return { output }
+}
+async function doubleNode({ input }: NodeContext) {
+	return { output: input * 2 }
 }
 
-// 2. Define the workflow structure with (optional) strong typing
-const flow = createFlow<SimpleWorkflowContext>('simple-workflow')
-	// The first node, 'start', takes no input and outputs the number 42.
-	.node('start', async ({ context }) => {
-		const value = 42
-		// Type-safe context access
-		await context.set('initial_value', value)
-		return { output: value }
-	})
-	// The second node, 'double', depends on 'start'.
-	// Its input is automatically the output of its single predecessor.
-	.node('double', async ({ context, input }) => {
-		const doubled = input * 2
-		// Type-safe context operations
-		await context.set('doubled_value', doubled)
-		return { output: doubled }
-	})
-	// Define the dependency: 'start' must run before 'double'.
+// 2. Define the workflow structure
+const flow = createFlow('simple-workflow')
+	.node('start', startNode)
+	.node('double', doubleNode)
 	.edge('start', 'double')
-	// Finalize the definition into a serializable blueprint.
-	.toBlueprint()
 
-// 3. Set up the runtime
-// The runtime needs the implementations of the nodes, which are
-// collected by the flow builder.
-const runtime = new FlowRuntime({
-	logger: new ConsoleLogger(),
-	registry: flow.getFunctionRegistry(),
-})
+// 3. Initialize the runtime
+const runtime = new FlowRuntime()
 
 // 4. Run the workflow
 async function run() {
-	// Start the workflow with an empty initial context.
-	const result = await runtime.run(flow, {})
+	const blueprint = flow.toBlueprint()
+	const result = await runtime.run(blueprint, { value: 42 })
 
 	console.log('Workflow Result:', result)
 	// Expected Output:
 	// {
-	//	"context": {
-	//		"value": 42,
-	//		"initial_value": 42,
-	//		"_outputs.start": 42,
-	//		"_inputs.double": 42,
-	//		"doubled_value": 84,
-	//		"_outputs.double": 84
-	//	},
-	//	"serializedContext": "{\"value\":42,\"initial_value\":42,\"_outputs.start\":42,\"_inputs.double\":42,\"doubled_value\":84,\"_outputs.double\":84}",
-	//	"status": "completed"
-	//	}
+	//   "context": {
+	//     "value": 42,
+	//     "_outputs.start": 42,
+	//     "_inputs.double": 42,
+	//     "_outputs.double": 84
+	//   },
+	//   "serializedContext": "{\"value\":42,\"_outputs.start\":42,\"_inputs.double\":42,\"_outputs.double\":84}",
+	//   "status": "completed"
 	// }
-}
 
 run()
 ```
 
-This workflow can be visualized as:
+## Demo
+
+This workflow can be visualized and run in the demo below:
 
 <DemoGettingStarted />
-
-## Type Safety Benefits
-
-This example demonstrates Flowcraft's strongly-typed context system:
-
-- **Context Interface**: `SimpleWorkflowContext` defines the shape of your workflow's shared state
-- **Type-safe Operations**: `context.get()` and `context.set()` provide compile-time type checking
-- **IntelliSense Support**: Full autocomplete for context keys and their types
-- **Runtime Safety**: Type mismatches are caught during development, not execution
-
-## Using the DI Container
-
-For better modularity and testability, you can use the Dependency Injection container with [`createDefaultContainer`](/api/container#createdefaultcontainer-options):
-
-```typescript
-import { ConsoleLogger, createDefaultContainer, createFlow, FlowRuntime } from 'flowcraft'
-
-// ... (same flow definition as above)
-
-// Set up the runtime with DI container
-const container = createDefaultContainer({
-  logger: new ConsoleLogger(),
-  registry: flow.getFunctionRegistry(),
-})
-
-const runtime = new FlowRuntime(container)
-
-// Run the workflow (same as before)
-async function run() {
-  const result = await runtime.run(flow, {})
-  console.log('Workflow Result:', result)
-}
-
-run()
-```
-
-This approach centralizes configuration and makes it easy to swap implementations (e.g., for testing).

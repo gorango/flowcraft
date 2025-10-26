@@ -19,10 +19,8 @@ import { executeBatch, processResults } from 'flowcraft'
  */
 export class DefaultOrchestrator implements IOrchestrator {
     public async run(
+        context: ExecutionContext<any, any>,
         traverser: GraphTraverser,
-        executorFactory: NodeExecutorFactory,
-        state: WorkflowState<any>,
-        services: ExecutionServices,
     ): Promise<WorkflowResult<any>> {
         const { signal, concurrency, serializer } = services.options
 
@@ -85,10 +83,8 @@ import { executeBatch, processResults } from 'flowcraft'
  */
 export class StepByStepOrchestrator implements IOrchestrator {
     public async run(
+        context: ExecutionContext<any, any>,
         traverser: GraphTraverser,
-        executorFactory: NodeExecutorFactory,
-        state: WorkflowState<any>,
-        services: ExecutionServices,
     ): Promise<WorkflowResult<any>> {
         const { signal, concurrency, serializer } = services.options
         signal?.throwIfAborted()
@@ -143,13 +139,13 @@ const traverser = new GraphTraverser(blueprint)
 const orchestrator = new StepByStepOrchestrator()
 
 // Step 1: Execute start nodes
-let result = await orchestrator.run(traverser, executorFactory, state, services)
+let result = await orchestrator.run(context, traverser)
 console.log('After Step 1 Context:', result.context)
 expect(result.status).toBe('stalled')
 expect(result.context.startNodeOutput).toBeDefined()
 
 // Step 2: Execute the next set of nodes
-result = await orchestrator.run(traverser, executorFactory, state, services)
+result = await orchestrator.run(context, traverser)
 console.log('After Step 2 Context:', result.context)
 
 // ... continue stepping until completion
@@ -286,10 +282,8 @@ export class ResumptionOrchestrator implements IOrchestrator {
     }
 
     public async run(
+        context: ExecutionContext<any, any>,
         traverser: GraphTraverser,
-        executorFactory: NodeExecutorFactory,
-        state: WorkflowState<any>,
-        services: ExecutionServices,
     ): Promise<WorkflowResult<any>> {
         const blueprint = traverser.getDynamicBlueprint()
 

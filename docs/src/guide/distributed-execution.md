@@ -4,6 +4,9 @@ One of Flowcraft's core strengths is its ability to scale from a simple, in-memo
 
 The [`FlowRuntime`](/api/runtime#flowruntime-class) handles in-memory execution. For distributed systems, you use a **Distributed Adapter** that handles the technology-specific parts of queueing and state management.
 
+> [!TIP]
+> Your core business logic—the node implementations—remains exactly the same whether you're running in-memory or distributed. Simply swap the adapter, and your workflows scale without rewriting a single line of node code. This seamless transition is a huge selling point for teams building scalable AI agents and data pipelines.
+
 ## The Adapter Pattern
 
 A distributed system requires three key components:

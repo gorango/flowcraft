@@ -39,7 +39,7 @@ graph TD
 
 ## [Dynamic AI Workflows from JSON Files](/examples/declarative)
 
-An in-memory runtime engine for executing [declarative workflows](/guide/declarative-workflows) defined as JSON files, with support for parallelism, branching, and [subflows](/guide/subflows).
+An in-memory runtime engine for executing [declarative workflows](/guide/declarative) defined as JSON files, with support for parallelism, branching, and [subflows](/guide/subflows).
 
 ```mermaid
 graph TD

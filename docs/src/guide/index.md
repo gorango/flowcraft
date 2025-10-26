@@ -9,14 +9,14 @@ Unlike heavy platforms like Temporal or Airflow, or domain-specific libraries li
 ## Key Features
 
 -   **Zero Dependencies**: Lightweight and dependency-free, runs in any environment.
--   **Declarative Workflows**: Simple [serializable objects](/guide/core-concepts#workflow-blueprint) with [nodes and edges](/guide/nodes-and-edges).
--   **Unopinionated Logic**: Nodes can be simple [functions](/guide/nodes-and-edges#function-based-nodes) or structured [classes](/guide/nodes-and-edges#class-based-nodes).
+-   **Declarative Workflows**: Simple [serializable objects](/guide/core-concepts#workflow-blueprint) with [nodes and edges](/guide/core-concepts#nodes-edges).
+-   **Unopinionated Logic**: Nodes can be simple [functions](/guide/core-concepts#function-based-nodes) or structured [classes](/guide/core-concepts#class-based-nodes).
 -   **Progressive Scalability**: Run [in-memory](/examples/declarative) or scale to [distributed systems](/guide/distributed-execution).
 -   **Resilient Execution**: [Retries](/guide/error-handling#retries), [fallbacks](/guide/error-handling#fallbacks), [timeouts](/guide/core-concepts#config), and [cancellation](/guide/core-concepts#cancellation).
 -   **Advanced Patterns**: Includes [batches](/guide/batches), [loops](/guide/loops), [subflows](/guide/subflows), and [HITL](/guide/awaitable) constructs.
 -   **Extensibility**: Pluggable [loggers](/guide/loggers), [evaluators](/guide/evaluators), [serializers](/guide/serializers), and [middleware](/guide/middleware).
 -   **Static Analysis**: [Detect cycles](/guide/static-analysis#detecting-cycles), [validate blueprints](/guide/static-analysis#linting-a-blueprint), and [generate diagrams](/guide/visualizing-workflows#generatemermaid).
--   **Type-Safe API**: [Fully typed](/guide/context-management#strongly-typed-context-api) with TypeScript for a robust developer experience.
+-   **Type-Safe API**: [Fully typed](/guide/core-concepts#context) with TypeScript for a robust developer experience.
 
 ## Use Cases
 

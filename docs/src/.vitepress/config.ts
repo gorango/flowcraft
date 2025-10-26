@@ -74,25 +74,34 @@ export default defineConfig({
 			'/guide/': [
 				{
 					text: 'Introduction',
+					collapsed: false,
 					items: [
 						{ text: 'What is Flowcraft?', link: '/guide/' },
 						{ text: 'Getting Started', link: '/guide/getting-started' },
-						{
-							text: 'Core Concepts', link: '/guide/core-concepts', items: [
-								{ text: 'Nodes and Edges', link: '/guide/nodes-and-edges' },
-								{ text: 'Context Management', link: '/guide/context-management' },
-							]
-						},
+						{ text: 'Core Concepts', link: '/guide/core-concepts' },
+						// {
+						// 	text: 'Core Concepts', link: '/guide/core-concepts', items: [
+						// 		{ text: 'Nodes and Edges', link: '/guide/nodes-and-edges' },
+						// 		{ text: 'Context Management', link: '/guide/context-management' },
+						// 	]
+						// },
 					],
 				},
 				{
 					text: 'Building Workflows',
+					collapsed: false,
 					items: [
-						{ text: 'Introduction', link: '/guide/building-workflows' },
+						{ text: 'Programmatic Flows', link: '/guide/programmatic' },
 						{
-							text: 'Declarative',
+							text: 'Declarative Flows',
 							link: '/guide/declarative',
 						},
+					],
+				},
+				{
+					text: 'Patterns',
+					collapsed: false,
+					items: [
 						{ text: 'Batches', link: '/guide/batches' },
 						{ text: 'Loops', link: '/guide/loops' },
 						{ text: 'Awaitable', link: '/guide/awaitable' },
@@ -108,10 +117,16 @@ export default defineConfig({
 							text: 'Visualizing Workflows',
 							link: '/guide/visualizing-workflows',
 						},
-						{ text: 'Testing and Debugging', link: '/guide/testing' },
-						{ text: 'Error Handling', link: '/guide/error-handling' },
 						{ text: 'Observability', link: '/guide/observability' },
-						// { text: 'Best Practices', link: '/guide/best-practices' },
+						{ text: 'Error Handling', link: '/guide/error-handling' },
+					],
+				},
+				{
+					text: 'Validation',
+					collapsed: false,
+					items: [
+						{ text: 'Testing', link: '/guide/testing' },
+						{ text: 'Debugging', link: '/guide/debugging' },
 					],
 				},
 				{
@@ -119,9 +134,9 @@ export default defineConfig({
 					collapsed: true,
 					items: [
 						{ text: 'Loggers', link: '/guide/loggers' },
+						{ text: 'Middleware', link: '/guide/middleware' },
 						{ text: 'Evaluators', link: '/guide/evaluators' },
 						{ text: 'Serializers', link: '/guide/serializers' },
-						{ text: 'Middleware', link: '/guide/middleware' },
 						{ text: 'Orchestrators', link: '/guide/orchestrators' },
 					],
 				},

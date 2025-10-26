@@ -22,16 +22,75 @@ interface WorkflowBlueprint {
 
 Because blueprints are just data, they can be stored as JSON, sent over a network, or generated dynamically.
 
-## Nodes
+## Nodes & Edges
 
-A node represents a single unit of work in your workflow.It encapsulates the logic you want to execute. For a detailed guide, see [Nodes and Edges](/guide/nodes-and-edges). Flowcraft supports two ways to define node logic:
+Nodes and edges are the core components of any workflow. Nodes define *what* happens, and edges define *when* it happens.
+
+### Node: The Unit of Work
+
+A node is a single, executable task. Flowcraft offers two primary ways to implement a node's logic.
 
 -   **Function-based**: A simple `async` function that receives a [`NodeContext`](/api/nodes-and-edges#nodecontext-interface) and returns a [`NodeResult`](/api/nodes-and-edges#noderesult-interface). Ideal for simple, self-contained tasks.
 -   **Class-based**: A class that extends [`BaseNode`](/api/nodes-and-edges#basenode-abstract-class). This provides a more structured lifecycle (`prep`, `exec`, `post`, `fallback`, `recover`), which is useful for complex logic, dependency injection, and testability.
 
+#### Function-Based Nodes
+
+For simple, self-contained logic, an `async` function is the easiest approach. The function receives a [`NodeContext`](/api/nodes-and-edges#nodecontext-interface) object and must return a [`NodeResult`](/api/nodes-and-edges#noderesult-interface).
+
+```typescript
+import { NodeContext, NodeResult } from 'flowcraft'
+
+async function fetchUserData(ctx: NodeContext): Promise<NodeResult> {
+	const userId = ctx.input // Assume input is the user ID
+	// const user = await db.users.find(userId);
+	const user = { id: userId, name: 'Mock User' } // Mock
+	return { output: user }
+}
+
+// Usage in a flow:
+// .node("fetch-user", fetchUserData)
+```
+
+#### Class-Based Nodes
+
+For more complex logic, dependency injection, or better testability, you can extend the [`BaseNode`](/api/nodes-and-edges#basenode-abstract-class) class. This provides a structured lifecycle.
+
+-   **`prep()`**: Prepares data for execution. This phase is **not** retried on failure.
+-   **`exec()`**: Contains the core, isolated logic. This is the **only** phase that is retried.
+-   **`post()`**: Processes the result from `exec` or `fallback`. Not retried.
+-   **`fallback()`**: An optional safety net that runs if all `exec` retries fail.
+-   **`recover()`**: An optional cleanup phase for non-retriable errors, ensuring resources are released.
+
+```typescript
+import { BaseNode, NodeContext, NodeResult } from 'flowcraft'
+
+// Example: A node to multiply a value by a factor passed in params
+class MultiplyNode extends BaseNode {
+	// `params` are passed from the node definition in the blueprint
+	constructor(protected params: { factor: number }) {
+		super(params)
+	}
+
+	// The 'exec' method contains the core logic
+	async exec(
+		prepResult: number, // The result from `prep()`
+		context: NodeContext
+	): Promise<Omit<NodeResult, 'error'>> {
+		if (typeof prepResult !== 'number') {
+			throw new TypeError('Input must be a number.')
+		}
+		const result = prepResult * this.params.factor
+		return { output: result }
+	}
+}
+
+// Usage in a flow:
+// .node("multiply", MultiplyNode, { params: { factor: 3 } })
+```
+
 ## Context
 
-The [`Context`](/api/context#context-class) is the strongly-typed, shared state of a running workflow. It's a key-value store where nodes can read and write data with compile-time type safety. For example, an early node might fetch user data and save it to the context, allowing a later node to read that user data and perform an action with full type checking. Learn more about [Context Management](/guide/context-management).
+The [`Context`](/api/context#context-class) is the strongly-typed, shared state of a running workflow. It's a key-value store where nodes can read and write data with compile-time type safety. For example, an early node might fetch user data and save it to the context, allowing a later node to read that user data and perform an action with full type checking.
 
 Flowcraft provides two strongly-typed context interfaces:
 -   **[`ISyncContext<TContext>`](/api/context#isynccontext-interface)**: A high-performance, in-memory context used for local execution with full type safety.
@@ -44,6 +103,111 @@ Nodes always interact with an [`IAsyncContext<TContext>`](/api/context#iasynccon
 - Get compile-time validation for context key access
 - Receive precise type inference for context values
 - Catch type mismatches during development, not runtime
+
+### Defining Context Types
+
+Before creating workflows, define the shape of your context data using a TypeScript interface:
+
+```typescript
+interface SearchWorkflowContext {
+  query: string
+  search_results: SearchResult[]
+  final_answer?: string
+  metadata: {
+    startTime: Date
+    userId: string
+  }
+}
+```
+
+### How it Works
+
+The context is a strongly-typed key-value store. When a node completes, the [`FlowRuntime`](/api/runtime#flowruntime-class) automatically saves its `output` to the context using the node's `id` as the key.
+
+```typescript
+const flow = createFlow<SearchWorkflowContext>('state-example')
+	// This node's output will be saved as `context.initial_data`
+	.node('initial_data', async () => ({ output: { value: 100 } }))
+	// This node has no direct input from its predecessor, but it can still
+	// access the data from the context with full type safety.
+	.node('process_data', async ({ context }) => {
+		// ✅ Type-safe access with autocomplete
+		const data = await context.get('initial_data') // { value: 100 }
+		const processed = data.value * 2
+		return { output: processed }
+	})
+	.edge('initial_data', 'process_data')
+```
+
+After this workflow runs, the final context will be:
+```json
+{
+	"initial_data": { "value": 100 },
+	"process_data": 200
+}
+```
+
+### Strongly-Typed Context API
+
+Inside any node implementation, you get access to the `context` object, which provides a consistent, asynchronous API with full type safety:
+
+-   **`context.get<K>(key)`**: Retrieves a value with precise typing. `K` is constrained to `keyof TContext`.
+-   **`context.set<K>(key, value)`**: Sets a value with type checking. `value` must match `TContext[K]`.
+-   **`context.has<K>(key)`**: Checks if a key exists with type safety.
+-   **`context.delete<K>(key)`**: Deletes a key with type safety.
+
+#### Type Safety Benefits
+
+```typescript
+// ✅ Compile-time key validation
+const query = await context.get('query') // string | undefined
+
+// ✅ Precise return types
+const results = await context.get('search_results') // SearchResult[] | undefined
+
+// ✅ Type-safe value assignment
+await context.set('final_answer', 'Found 5 results')
+
+// ❌ Compile-time error: 'invalid_key' not in SearchWorkflowContext
+await context.get('invalid_key')
+
+// ❌ Compile-time error: wrong type
+await context.set('query', 123) // Expected string, got number
+```
+
+### Example: Typed Workflow
+
+This workflow demonstrates type-safe state accumulation:
+
+```typescript
+interface CounterContext {
+  count: number
+  history: string[]
+}
+
+const flow = createFlow<CounterContext>('stateful-workflow')
+	.node('step1', async ({ context }) => {
+		// ✅ Type-safe initialization
+		await context.set('count', 1)
+		await context.set('history', ['Step 1 started'])
+		return { output: 'Step 1 complete' }
+	})
+	.node('step2', async ({ context }) => {
+		// ✅ Type-safe reading and writing
+		const currentCount = await context.get('count') || 0
+		const history = await context.get('history') || []
+
+		const newCount = currentCount + 1
+		const newHistory = [...history, `Step 2: count is now ${newCount}`]
+
+		await context.set('count', newCount)
+		await context.set('history', newHistory)
+		return { output: 'Step 2 complete' }
+	})
+	.edge('step1', 'step2')
+```
+
+After execution, the final context will contain `count: 2` and `history: ['Step 1 started', 'Step 2: count is now 2']` with full type safety.
 
 ## Runtime
 
