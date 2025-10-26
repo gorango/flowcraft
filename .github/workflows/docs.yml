@@ -3,7 +3,7 @@ name: Docs
 on:
   push:
     tags:
-      - 'flowcraft@*'
+      - 'flowcraft*'
 
 permissions:
   contents: read
