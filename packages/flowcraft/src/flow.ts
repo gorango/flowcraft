@@ -33,6 +33,11 @@ export class Flow<
 		endNodeId: string
 		condition: string
 	}>
+	private batchDefinitions: Array<{
+		id: string
+		scatterId: string
+		gatherId: string
+	}>
 	private cycleEntryPoints: Map<string, string>
 
 	constructor(id: string) {
@@ -40,6 +45,7 @@ export class Flow<
 		this.functionRegistry = new Map()
 		this.loopControllerIds = new Map()
 		this.loopDefinitions = []
+		this.batchDefinitions = []
 		this.cycleEntryPoints = new Map()
 	}
 
@@ -101,6 +107,8 @@ export class Flow<
 		const { inputKey, outputKey } = options
 		const scatterId = `${id}_scatter`
 		const gatherId = `${id}_gather`
+
+		this.batchDefinitions.push({ id, scatterId, gatherId })
 
 		// register worker implementation under a unique key.
 		let workerUsesKey: string
@@ -215,24 +223,35 @@ export class Flow<
 
 		const finalEdges: EdgeDefinition[] = []
 		const processedOriginalEdges = new Set<EdgeDefinition>()
+		const allOriginalEdges = this.blueprint.edges || []
 
+		// loop edge re-wiring
 		for (const loopDef of this.loopDefinitions) {
 			const controllerId = this.getLoopControllerId(loopDef.id)
-
-			const edgesToRewire =
-				this.blueprint.edges?.filter((e) => e.source === loopDef.endNodeId && e.target !== controllerId) || []
-
+			const edgesToRewire = allOriginalEdges.filter((e) => e.source === loopDef.endNodeId && e.target !== controllerId)
 			for (const edge of edgesToRewire) {
-				finalEdges.push({
-					...edge,
-					source: controllerId,
-					action: edge.action || 'break',
-				})
+				finalEdges.push({ ...edge, source: controllerId, action: edge.action || 'break' })
 				processedOriginalEdges.add(edge)
 			}
 		}
 
-		for (const edge of this.blueprint.edges || []) {
+		// batch edge re-wiring
+		for (const batchDef of this.batchDefinitions) {
+			const incomingEdges = allOriginalEdges.filter((e) => e.target === batchDef.id)
+			for (const edge of incomingEdges) {
+				finalEdges.push({ ...edge, target: batchDef.scatterId })
+				processedOriginalEdges.add(edge)
+			}
+
+			const outgoingEdges = allOriginalEdges.filter((e) => e.source === batchDef.id)
+			for (const edge of outgoingEdges) {
+				finalEdges.push({ ...edge, source: batchDef.gatherId })
+				processedOriginalEdges.add(edge)
+			}
+		}
+
+		// all remaining edges
+		for (const edge of allOriginalEdges) {
 			if (!processedOriginalEdges.has(edge)) {
 				finalEdges.push(edge)
 			}
