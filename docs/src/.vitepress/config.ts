@@ -224,6 +224,7 @@ export default defineConfig({
 					items: [
 						{ text: 'Analysis', link: '/api/analysis' },
 						{ text: 'Linter', link: '/api/linter' },
+						{ text: 'Testing', link: '/api/testing' },
 					]
 				}
 			],
