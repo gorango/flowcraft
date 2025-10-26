@@ -51,6 +51,13 @@ async function fetchUserData(ctx: NodeContext): Promise<NodeResult> {
 // .node("fetch-user", fetchUserData)
 ```
 
+> [!NOTE]
+> **Data Flow: `input` vs. `context.get()`**
+>
+> - **`ctx.input`**: Contains data directly from the node's immediate predecessor via an edge. This is the primary way nodes receive data from connected nodes.
+> - **`ctx.context.get(key)`**: Fetches data from the shared workflow context, which can be written by any node in the workflow, not just predecessors.
+> - **`inputs` Mapping**: In the node definition, you can specify an `inputs` mapping (e.g., `{ inputs: 'userId' }`) to tell the runtime to populate `ctx.input` from the context using the specified key. This is a convenience feature that bridges the context to the `input` property for easier access.
+
 #### Class-Based Nodes
 
 For more complex logic, dependency injection, or better testability, you can extend the [`BaseNode`](/api/nodes-and-edges#basenode-abstract-class) class. This provides a structured lifecycle.

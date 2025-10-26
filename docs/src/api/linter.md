@@ -35,3 +35,5 @@ A string literal representing the type of issue found:
 -   `'INVALID_EDGE_TARGET'`: An edge's target ID does not exist.
 -   `'MISSING_NODE_IMPLEMENTATION'`: A node's `uses` key is not in the registry.
 -   `'ORPHAN_NODE'`: A node is not reachable from any start node.
+-   `'INVALID_BATCH_WORKER_KEY'`: A batch node's `workerUsesKey` is not in the registry.
+-   `'INVALID_SUBFLOW_BLUEPRINT_ID'`: A subflow node's `blueprintId` is not in the blueprints registry.
