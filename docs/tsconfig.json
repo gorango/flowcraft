@@ -1,0 +1,27 @@
+{
+	"compilerOptions": {
+		"module": "esnext",
+		"target": "esnext",
+		"lib": [
+			"dom",
+			"esnext"
+		],
+		"preserveSymlinks": true,
+		"strict": true,
+		"esModuleInterop": true,
+		"incremental": false,
+		"skipLibCheck": true,
+		"moduleResolution": "bundler",
+		"resolveJsonModule": true,
+		"noUnusedLocals": false,
+		"strictNullChecks": true,
+		"forceConsistentCasingInFileNames": true,
+		"declaration": true,
+		"emitDeclarationOnly": true,
+		"types": [
+			"vite/client",
+			"@types/node"
+		]
+	}
+}
+

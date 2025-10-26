@@ -10,18 +10,11 @@
 		"test": "turbo test",
 		"typecheck": "turbo typecheck",
 		"coverage": "pnpm --filter flowcraft test:coverage",
-		"changeset": "changeset",
-		"docs:dev": "vitepress dev docs",
-		"docs:build": "vitepress build docs",
-		"docs:preview": "vitepress preview docs"
+		"changeset": "changeset"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^2.2.6",
 		"@changesets/cli": "^2.29.7",
-		"mermaid": "^11.12.0",
-		"turbo": "^2.5.8",
-		"typescript": "^5.9.3",
-		"vitepress": "^1.6.4",
-		"vitepress-plugin-mermaid": "^2.0.17"
+		"turbo": "^2.5.8"
 	}
 }

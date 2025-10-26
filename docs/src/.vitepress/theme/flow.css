@@ -1,0 +1,102 @@
+@reference "tailwindcss";
+
+.flowcraft-flow {
+	height: 333px;
+	width: 100%;
+
+	header button {
+		@apply text-xs font-medium rounded-md py-1 px-2 disabled:pointer-events-none disabled:opacity-50;
+
+		&.brand {
+			@apply bg-[var(--vp-button-brand-bg)] hover:bg-[var(--vp-button-brand-hover-bg)] ;
+		}
+		&.alt {
+			@apply bg-[var(--vp-button-alt-bg)] hover:bg-[var(--vp-button-alt-hover-bg)] ;
+		}
+	}
+}
+
+.vue-flow {
+	background-color: var(--vp-code-block-bg);
+}
+
+:root {
+	--vf-node-bg: var(--vp-c-bg);
+	--vf-node-text: var(--vp-c-text-1);
+	--vf-connection-path: var(--vp-c-text-2);
+	--vf-handle: var(--vp-c-border);
+}
+
+/* Handles */
+
+.vue-flow__handle {
+	width: 0.5rem;
+	height: 0.5rem;
+	background: var(--vp-c-bg);
+	border: 1px solid var(--vp-c-border);
+	border-radius: 100%;
+}
+
+/* Nodes */
+
+.vue-flow__node {
+	border-radius: 8px;
+	border: 1px solid transparent;
+	background-color: var(--vp-c-bg);
+	transition: box-shadow 0.1s ease-in-out;
+	box-shadow: none;
+}
+
+.vue-flow__node.selected,
+.vue-flow__node.selected:hover {
+	@apply ring-gray-500/50 ring-[3px];
+}
+
+.vue-flow__node.selected,
+.vue-flow__node:focus,
+.vue-flow__node:focus-visible {
+	@apply ring-gray-500/50 ring-[3px];
+}
+
+.vue-flow__node.selectable:hover:not(.selected) {
+	@apply ring-gray-500/50 ring-[1.5px];
+}
+
+/* Connections */
+
+.vue-flow__edge-path, .vue-flow__connection-path {
+	stroke: var(--vf-connection-path);
+	stroke-width: 2;
+}
+
+.vue-flow__edge-text {
+	font-size: 10px;
+	fill: var(--vp-c-text-2);
+}
+
+.vue-flow__edge-textbg {
+	fill: var(--vp-c-bg);
+}
+
+.vue-flow__edge.updating .vue-flow__edge-path {
+	stroke: var(--vp-c-border);
+}
+
+/* Selection */
+
+.vue-flow__node.selectable:focus,
+.vue-flow__node.selectable:focus-visible {
+	outline: none;
+}
+.vue-flow__nodesselection-rect,
+.vue-flow__selection {
+	background: oklab(var(--vp-c-bg) / 10%);
+	border: 1px dashed var(--vp-c-border);
+}
+
+.vue-flow__nodesselection-rect:focus,
+.vue-flow__nodesselection-rect:focus-visible,
+.vue-flow__selection:focus,
+.vue-flow__selection:focus-visible {
+	outline: none;
+}
