@@ -142,7 +142,7 @@ describe('Built-In Nodes', () => {
 
 			expect(result.status).toBe('completed')
 			expect(result.context['_outputs.finalize']).toBe('Finalized at 5')
-			expect(result.context['count']).toBe(5)
+			expect(result.context.count).toBe(5)
 		})
 
 		it('should execute loop for specified iterations and break correctly', async () => {

@@ -14,7 +14,7 @@ export class WorkflowLogicHandler {
 	constructor(
 		private readonly evaluator: IEvaluator,
 		private readonly eventBus: IEventBus,
-	) { }
+	) {}
 
 	public async determineNextNodes(
 		blueprint: WorkflowBlueprint,
@@ -114,9 +114,9 @@ export class WorkflowLogicHandler {
 
 		const finalInput = edge.transform
 			? this.evaluator.evaluate(edge.transform, {
-				input: sourceResult.output,
-				context: await asyncContext.toJSON(),
-			})
+					input: sourceResult.output,
+					context: await asyncContext.toJSON(),
+				})
 			: sourceResult.output
 		const inputKey = `_inputs.${targetNode.id}`
 		await asyncContext.set(inputKey as any, finalInput)

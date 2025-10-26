@@ -36,7 +36,8 @@ import type { IOrchestrator, IRuntime } from './types'
 import { WorkflowLogicHandler } from './workflow-logic-handler'
 
 export class FlowRuntime<TContext extends Record<string, any>, TDependencies extends Record<string, any>>
-	implements IRuntime<TContext, TDependencies> {
+	implements IRuntime<TContext, TDependencies>
+{
 	private container: DIContainer
 	public registry: Map<string, NodeFunction | NodeClass>
 	private blueprints: Record<string, WorkflowBlueprint>
@@ -63,7 +64,7 @@ export class FlowRuntime<TContext extends Record<string, any>, TDependencies ext
 			this.logger = this.container.resolve<ILogger>(ServiceTokens.Logger)
 			this.serializer = this.container.resolve<ISerializer>(ServiceTokens.Serializer)
 			this.evaluator = this.container.resolve<IEvaluator>(ServiceTokens.Evaluator)
-			this.eventBus = this.container.resolve<IEventBus>(ServiceTokens.EventBus) || { emit: async () => { } }
+			this.eventBus = this.container.resolve<IEventBus>(ServiceTokens.EventBus) || { emit: async () => {} }
 			this.middleware = this.container.resolve<Middleware[]>(ServiceTokens.Middleware) || []
 			this.registry = this.container.resolve<Map<string, NodeFunction | NodeClass>>(ServiceTokens.NodeRegistry)
 			this.blueprints = this.container.resolve<Record<string, WorkflowBlueprint>>(ServiceTokens.BlueprintRegistry)
@@ -75,7 +76,7 @@ export class FlowRuntime<TContext extends Record<string, any>, TDependencies ext
 			this.logger = options.logger || new NullLogger()
 			this.serializer = options.serializer || new JsonSerializer()
 			this.evaluator = options.evaluator || new PropertyEvaluator()
-			this.eventBus = options.eventBus || { emit: async () => { } }
+			this.eventBus = options.eventBus || { emit: async () => {} }
 			this.middleware = options.middleware || []
 			const loopControllerFunction: NodeFunction = async (context) => {
 				const condition = context.params.condition
