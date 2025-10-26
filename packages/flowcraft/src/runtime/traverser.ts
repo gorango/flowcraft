@@ -61,6 +61,27 @@ export class GraphTraverser {
 		const completedNodes = state.getCompletedNodes()
 		traverser.completedNodes = new Set(completedNodes)
 
+		for (const node of traverser.dynamicBlueprint.nodes) {
+			if (traverser.completedNodes.has(node.id)) continue
+
+			const requiredPredecessors = traverser.allPredecessors.get(node.id)
+			const joinStrategy = traverser.getEffectiveJoinStrategy(node.id)
+
+			// if no predecessors and not completed, it's a start node and should be in the frontier
+			if (!requiredPredecessors || requiredPredecessors.size === 0) {
+				traverser.frontier.add(node.id)
+				continue
+			}
+
+			const completedPredecessors = [...requiredPredecessors].filter((p) => traverser.completedNodes.has(p))
+			const isReady =
+				joinStrategy === 'any'
+					? completedPredecessors.length > 0
+					: completedPredecessors.length === requiredPredecessors.size
+
+			if (isReady) traverser.frontier.add(node.id)
+		}
+
 		return traverser
 	}
 
