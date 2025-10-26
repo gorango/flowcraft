@@ -155,6 +155,12 @@ h6 {
 		}
 	}
 }
+.VPSidebar {
+	.VPLink .text {
+		font-size: 13px;
+		line-height: 1.5;
+	}
+}
 
 /**
  * Component: Code

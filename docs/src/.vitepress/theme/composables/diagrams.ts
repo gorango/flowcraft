@@ -1,5 +1,3 @@
-import { ref } from 'vue'
-
 // Data for the Goal Diagram
 export const goal = {
 	nodes: [

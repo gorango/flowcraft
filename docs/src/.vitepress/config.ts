@@ -1,5 +1,6 @@
 import { resolve } from 'node:path'
 import tailwindcss from '@tailwindcss/vite'
+import AutoImport from 'unplugin-auto-import/vite'
 import Components from 'unplugin-vue-components/vite'
 import { defineConfig } from 'vitepress'
 // import llmstxt from 'vitepress-plugin-llms'
@@ -20,9 +21,14 @@ export default defineConfig({
 			Components({
 				dirs: [resolve(__dirname, './theme/components')],
 				deep: true,
+				directoryAsNamespace: true,
 				extensions: ['vue', 'md'],
 				include: [/\.vue$/, /\.vue\?vue/, /\.md$/],
-				// dts: resolve(__dirname, '../components.d.ts'),
+				dts: resolve(__dirname, '../components.d.ts'),
+			}),
+			AutoImport({
+				imports: ['vue', '@vueuse/core'],
+				dts: resolve(__dirname, '../auto-imports.d.ts'),
 			}),
 			// llmstxt(),
 		],
@@ -71,30 +77,32 @@ export default defineConfig({
 					items: [
 						{ text: 'What is Flowcraft?', link: '/guide/' },
 						{ text: 'Getting Started', link: '/guide/getting-started' },
-						{ text: 'Core Concepts', link: '/guide/core-concepts' },
+						{
+							text: 'Core Concepts', link: '/guide/core-concepts', items: [
+								{ text: 'Nodes and Edges', link: '/guide/nodes-and-edges' },
+								{ text: 'Context Management', link: '/guide/context-management' },
+							]
+						},
 					],
 				},
 				{
 					text: 'Building Workflows',
-					collapsed: false,
 					items: [
-						{ text: 'Nodes and Edges', link: '/guide/nodes-and-edges' },
-						{ text: 'Defining Workflows', link: '/guide/defining-workflows' },
-						{ text: 'Context Management', link: '/guide/context-management' },
+						{ text: 'Introduction', link: '/guide/building-workflows' },
+						{
+							text: 'Declarative',
+							link: '/guide/declarative',
+						},
+						{ text: 'Batches', link: '/guide/batches' },
+						{ text: 'Loops', link: '/guide/loops' },
+						{ text: 'Awaitable', link: '/guide/awaitable' },
+						{ text: 'Subflows', link: '/guide/subflows' },
 					],
 				},
 				{
-					text: 'Advanced Patterns',
+					text: 'Reliability',
 					collapsed: false,
 					items: [
-						{ text: 'Batch Processing', link: '/guide/batch-processing' },
-						{ text: 'Loops', link: '/guide/loops' },
-						{ text: 'Awaitable Workflows', link: '/guide/awaitable-workflows' },
-						{ text: 'Subflows', link: '/guide/subflows' },
-						{
-							text: 'Declarative Workflows',
-							link: '/guide/declarative-workflows',
-						},
 						{ text: 'Static Analysis', link: '/guide/static-analysis' },
 						{
 							text: 'Visualizing Workflows',
@@ -102,6 +110,7 @@ export default defineConfig({
 						},
 						{ text: 'Testing and Debugging', link: '/guide/testing' },
 						{ text: 'Error Handling', link: '/guide/error-handling' },
+						{ text: 'Observability', link: '/guide/observability' },
 						// { text: 'Best Practices', link: '/guide/best-practices' },
 					],
 				},
@@ -114,13 +123,19 @@ export default defineConfig({
 						{ text: 'Serializers', link: '/guide/serializers' },
 						{ text: 'Middleware', link: '/guide/middleware' },
 						{ text: 'Orchestrators', link: '/guide/orchestrators' },
+					],
+				},
+				{
+					text: 'Distributed Systems',
+					collapsed: true,
+					items: [
 						{
-							text: 'Distributed Execution',
+							text: 'Introduction',
 							link: '/guide/distributed-execution',
 						},
 						{
 							text: 'Official Adapters',
-							collapsed: true,
+							// collapsed: false,
 							link: '/guide/adapters/',
 							items: [
 								{ text: 'BullMQ', link: '/guide/adapters/bullmq' },
@@ -162,22 +177,40 @@ export default defineConfig({
 					text: 'API Reference',
 					items: [
 						{ text: 'Overview', link: '/api/' },
+					],
+				},
+				{
+					text: 'Core API',
+					collapsed: false,
+					items: [
 						{ text: 'Flow', link: '/api/flow' },
 						{ text: 'Runtime', link: '/api/runtime' },
-						{ text: 'DI Container', link: '/api/container' },
-						{ text: 'Orchestrators', link: '/api/orchestrators' },
 						{ text: 'Nodes and Edges', link: '/api/nodes-and-edges' },
 						{ text: 'Context', link: '/api/context' },
-						{ text: 'Analysis', link: '/api/analysis' },
-						{ text: 'Linter', link: '/api/linter' },
+						{ text: 'DI Container', link: '/api/container' },
+						{ text: 'Errors', link: '/api/errors' },
+					]
+				},
+				{
+					text: 'Extensibility',
+					collapsed: false,
+					items: [
+						{ text: 'Orchestrators', link: '/api/orchestrators' },
 						{ text: 'Middleware', link: '/api/middleware' },
 						{ text: 'Serializer', link: '/api/serializer' },
 						{ text: 'Evaluator', link: '/api/evaluator' },
 						{ text: 'Logger', link: '/api/logger' },
-						{ text: 'Errors', link: '/api/errors' },
 						{ text: 'Distributed Adapter', link: '/api/distributed-adapter' },
-					],
+					]
 				},
+				{
+					text: 'Tooling',
+					collapsed: false,
+					items: [
+						{ text: 'Analysis', link: '/api/analysis' },
+						{ text: 'Linter', link: '/api/linter' },
+					]
+				}
 			],
 		},
 	},

@@ -12,10 +12,10 @@ The Flowcraft API is organized into several key modules, each responsible for a 
 -   **[Context](/api/context)**: The interfaces and classes for managing workflow state ([`ISyncContext`](/api/context#isynccontext-interface), `IAsyncContext`).
 -   **[Analysis](/api/analysis)**: Utilities for validating and visualizing blueprints ([`analyzeBlueprint`](/api/analysis#analyzeblueprint-blueprint), `generateMermaid`).
 -   **[Linter](/api/linter)**: Tools for static analysis to find common errors before runtime.
+-   **[Errors](/api/errors)**: Custom error classes thrown by the runtime.
 -   **Extensibility Interfaces**:
     -   **[Middleware](/api/middleware)**: The `Middleware` interface for adding cross-cutting concerns like tracing and transactions.
     -   **[Serializer](/api/serializer)**: The `ISerializer` interface for custom data serialization.
     -   **[Evaluator](/api/evaluator)**: The `IEvaluator` interface for custom expression evaluation.
     -   **[Logger](/api/logger)**: The `ILogger` interface for plugging in custom logging providers.
--   **[Errors](/api/errors)**: Custom error classes thrown by the runtime.
--   **[Distributed Adapter](/api/distributed-adapter)**: The base classes and interfaces for building distributed execution adapters.
+    -   **[Distributed Adapter](/api/distributed-adapter)**: The base classes and interfaces for building distributed execution adapters.

@@ -10,7 +10,7 @@ async function mockApiCall(name, delay, shouldFail = false) {
 	return { output: result }
 }
 
-const basicFlow = createFlow('basic-workflow')
+const flow = createFlow('basic-workflow')
 	.node('step-a', () => mockApiCall('Step A', 1000))
 	.node('step-b', async () => {
 		return mockApiCall('Step B', 1500)
@@ -23,8 +23,8 @@ const basicFlow = createFlow('basic-workflow')
 
 const positionsMap = {
 	'step-a': { x: 0, y: 100 },
-	'step-b': { x: 300, y: 100 },
-	'step-c': { x: 600, y: 100 },
+	'step-b': { x: 250, y: 100 },
+	'step-c': { x: 500, y: 100 },
 }
 const typesMap = {
 	'step-a': 'input',
@@ -35,6 +35,8 @@ const typesMap = {
 
 <template>
 	<div class="flowcraft-flow">
-		<Flow :flow="basicFlow" :positions-map :types-map />
+		<Suspense>
+			<Stepper :flow :positions-map :types-map />
+		</Suspense>
 	</div>
 </template>

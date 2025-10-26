@@ -1,5 +1,5 @@
 <script setup>
-import { goal, job, review, moderation } from '../.vitepress/theme/composables/declarative-in-memory.ts'
+import { goal, job, review, moderation } from '../.vitepress/theme/composables/diagrams.ts'
 </script>
 
 # Dynamic AI Agent from JSON Files

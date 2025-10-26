@@ -1,7 +1,3 @@
-<script setup>
-import BatchProcessingDemo from '../.vitepress/theme/components/Demo/BatchProcessing.vue'
-</script>
-
 # Batch Processing
 
 A common workflow requirement is to perform the same operation on every item in a collection, often in parallel to save time. This is known as the **scatter-gather** pattern. The [`Flow`](/api/flow#flow-class) builder provides a high-level [`.batch()`](/api/flow#batch-tinput-toutput-taction-id-worker-options) method to make this easy.
@@ -70,7 +66,7 @@ const flow = createFlow("batch-workflow")
 
 Behind the scenes, [`.batch()`](/api/flow#batch-tinput-toutput-taction-id-worker-options) creates a `scatter` and a `gather` node.
 
-<BatchProcessingDemo />
+<DemoBatch />
 
 The runtime dynamically creates and executes the worker nodes, providing a powerful and simple API for parallel processing.
 

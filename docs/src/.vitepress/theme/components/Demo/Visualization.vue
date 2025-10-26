@@ -1,6 +1,5 @@
 <script setup>
 import { createFlow } from 'flowcraft'
-import Flow from '../components/Flow/Flow.vue'
 
 const vizFlow = createFlow('visualization-example')
 	.node('fetch', async () => ({ output: { value: 10 } }))

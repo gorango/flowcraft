@@ -49,6 +49,13 @@ Nodes always interact with an [`IAsyncContext<TContext>`](/api/context#iasynccon
 
 The [`FlowRuntime`](/api/runtime#flowruntime-class) is the engine that executes a [`WorkflowBlueprint`](/api/flow#workflowblueprint-interface). It takes the blueprint and an initial context, then traverses the graph, executing each node in the correct order. For production use, you can configure concurrency limits to control resource usage during execution. See the [Runtime API docs](/api/runtime) for configuration options.
 
+```mermaid
+graph TD
+    A["Blueprint (JSON)<br><small>Defines the 'what' and 'when'</small>"] --> B{FlowRuntime};
+    C["Node Implementations<br><small>Defines the 'how'</small>"] --> B;
+    B -- "Executes" --> D[Workflow Result];
+```
+
 The runtime is responsible for:
 -   Managing the workflow's state (the Context).
 -   Handling retries and fallbacks.

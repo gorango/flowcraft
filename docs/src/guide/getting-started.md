@@ -1,7 +1,3 @@
-<script setup>
-import GettingStarted from '../.vitepress/theme/components/Demo/GettingStarted.vue'
-</script>
-
 # Getting Started
 
 This guide will walk you through installing Flowcraft and running your first strongly-typed workflow.
@@ -17,9 +13,6 @@ npm install flowcraft
 ## Your First Workflow
 
 Let's create a simple workflow with two steps: one node to provide a starting number, and a second node to double it, using Flowcraft's strongly-typed context system.
-
-1.  Create a new file named `simple-flow.ts`.
-2.  Add the following code:
 
 ```typescript
 import { ConsoleLogger, createFlow, FlowRuntime } from 'flowcraft'
@@ -68,14 +61,17 @@ async function run() {
 	console.log('Workflow Result:', result)
 	// Expected Output:
 	// {
-	//   context: {
-	//     initial_value: 42,
-	//     doubled_value: 84,
-	//     start: 42,
-	//     double: 84
-	//   },
-	//   serializedContext: '{"initial_value":42,"doubled_value":84,"start":42,"double":84}',
-	//   status: 'completed'
+	//	"context": {
+	//		"value": 42,
+	//		"initial_value": 42,
+	//		"_outputs.start": 42,
+	//		"_inputs.double": 42,
+	//		"doubled_value": 84,
+	//		"_outputs.double": 84
+	//	},
+	//	"serializedContext": "{\"value\":42,\"initial_value\":42,\"_outputs.start\":42,\"_inputs.double\":42,\"doubled_value\":84,\"_outputs.double\":84}",
+	//	"status": "completed"
+	//	}
 	// }
 }
 
@@ -84,7 +80,7 @@ run()
 
 This workflow can be visualized as:
 
-<GettingStarted />
+<DemoGettingStarted />
 
 ## Type Safety Benefits
 
@@ -122,12 +118,3 @@ run()
 ```
 
 This approach centralizes configuration and makes it easy to swap implementations (e.g., for testing).
-
-## Running the Example
-
-Execute the file:
-```bash
-npx tsx simple-flow.ts
-```
-
-You should see the final workflow result logged to the console, showing that the `context` contains both the node outputs and your custom context values with full type safety.

@@ -4,11 +4,7 @@ layout: home
 hero:
   name: flowcraft
   text: a workflow engine
-  tagline: Build complex, multi-step processes, running in-memory or across distributed systems.
-  image:
-    light: /hero-light.png
-    dark: /hero-dark.png
-    alt: VitePress
+  tagline: Orchestrate any process, from in-memory scripts to distributed AI agents.
   actions:
     - theme: brand
       text: Get Started

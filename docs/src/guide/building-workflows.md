@@ -1,9 +1,3 @@
-<script setup>
-import UserProcessingSimple from '../.vitepress/theme/components/Demo/UserProcessingSimple.vue'
-import BatchDemo from '../.vitepress/theme/components/Demo/Batch.vue'
-import LoopDemo from '../.vitepress/theme/components/Demo/Loop.vue'
-</script>
-
 # Defining Workflows
 
 Workflows can be defined programmatically using the fluent [`Flow`](/api/flow#flow-class) builder API or declaratively using JSON, YAML, or in a database, before converting them ... TODO
@@ -91,7 +85,7 @@ const flowBuilder = createFlow<UserProcessingContext>('user-processing')
 
 This workflow can be visualized as:
 
-<UserProcessingSimple />
+<DemoUserProcessingSimple />
 
 ## Batch Processing
 
@@ -126,7 +120,7 @@ const batchFlow = createFlow<UserProcessingContext>('batch-user-processing')
   .edge('process-users_gather', 'summarize')
 ```
 
-<BatchDemo />
+<DemoBatch />
 
 ## Loops
 
@@ -163,7 +157,7 @@ const loopFlow = createFlow<UserProcessingContext>('loop-user-processing')
   .edge('validate-loop', 'handle-failure', { action: 'retry' })
 ```
 
-<LoopDemo />
+<DemoLoop />
 
 ## Finalizing the Blueprint
 

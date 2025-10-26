@@ -12,6 +12,8 @@ Flowcraft provides built-in utilities for testing and debugging workflows, espec
 
 The `createStepper` utility enables step-by-step execution of workflows, allowing you to inspect the state after each logical step. This is invaluable for debugging complex workflows and writing fine-grained tests where you need to assert the state after each node execution.
 
+<DemoSteps />
+
 #### Usage
 
 ```typescript
@@ -22,8 +24,8 @@ it('should correctly execute step-by-step', async () => {
   const runtime = new FlowRuntime({})
   const flow = createFlow('test')
     .node('a', async () => ({ output: 10 }))
-    .node('b', async ({ context }) => ({ 
-      output: (await context.get('a')) * 2 
+    .node('b', async ({ context }) => ({
+      output: (await context.get('a')) * 2
     }))
     .edge('a', 'b')
 
@@ -62,6 +64,8 @@ it('should correctly execute step-by-step', async () => {
 - **Interactive Tools**: Build debugging or visualization tools
 - **Performance Analysis**: Measure execution time per step
 
+***
+
 ### `InMemoryEventLogger`
 
 The `InMemoryEventLogger` acts as a "flight recorder" for debugging complex workflow executions. It captures all events emitted during a workflow run, allowing you to inspect the sequence of operations, data flow, and errors in detail.
@@ -92,6 +96,8 @@ it('should capture events for a workflow run', async () => {
 - **Non-Intrusive**: Captures events without modifying workflow logic.
 - **Detailed Trace**: Records node executions, context changes, and errors.
 - **In-Memory**: Fast and lightweight, ideal for unit tests or local debugging.
+
+***
 
 ### `runWithTrace`
 

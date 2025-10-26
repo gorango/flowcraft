@@ -1,7 +1,3 @@
-<script setup>
-import HitlDemo from '../.vitepress/theme/components/Demo/Hitl.vue'
-</script>
-
 # Human-in-the-Loop Workflow
 
 This example demonstrates a workflow that pauses for external input. It showcases:
@@ -15,7 +11,7 @@ Create a workflow that:
 2. Pauses for human input.
 3. Processes the decision based on the input.
 
-<HitlDemo />
+<DemoHitl />
 
 ## The Code
 

@@ -2,7 +2,7 @@
 
 Evaluators are responsible for executing the string expressions found in edge `condition` and `transform` properties. This allows for dynamic, data-driven control flow and data manipulation.
 
-## The Default: `PropertyEvaluator`
+## `PropertyEvaluator`
 
 Flowcraft ships with `PropertyEvaluator`, which provides secure property access for simple expressions.
 
@@ -19,7 +19,16 @@ flow.edge('A', 'B', { condition: 'result.output.status' })
 >
 > In controlled enviroments, you can use the `UnsafeEvaluator` or implement a custom evaluator like the `jsep` example below.
 
-## Replacing the Evaluator
+## `UnsafeEvaluator`
+
+For complex expressions with full JavaScript support, use [`UnsafeEvaluator`](/api/evaluator#unsafeevaluator-class). However, it uses `new Function()` and poses a potential security risk. See the [Evaluator API docs](/api/evaluator) for details. Only use in controlled environments.
+
+By implementing a custom evaluator, you gain full control over expression execution, enabling you to build robust workflow systems.
+
+> [!WARNING]
+> [`UnsafeEvaluator`](/api/evaluator#unsafeevaluator-class) uses `new Function()` and can execute arbitrary JavaScript code. Only use it in trusted environments where all workflow definitions are authored by trusted developers. For production systems, consider implementing a custom evaluator using a sandboxed library like [`jsep`](https://npmjs.com/package/jsep).
+
+## Extending the Evaluator
 
 You can provide your own evaluator by creating a class that implements the `IEvaluator` interface and passing it to the [`FlowRuntime`](/api/runtime#flowruntime-class). For simple use cases, the built-in `PropertyEvaluator` is sufficient and secure.
 
@@ -85,16 +94,10 @@ const runtime = new FlowRuntime({
 })
 ```
 
-#### Using `UnsafeEvaluator`
-
-For complex expressions with full JavaScript support, use [`UnsafeEvaluator`](/api/evaluator#unsafeevaluator-class). However, it uses `new Function()` and poses a security risk. See the [Evaluator API docs](/api/evaluator) for details. Only use in controlled environments.
-
-By implementing a custom evaluator, you gain full control over expression execution, enabling you to build secure and robust workflow systems.
-
 ## Evaluator Comparison
 
 | Evaluator | Security | Use Case | Example Expression |
 |-----------|----------|----------|-------------------|
 | [`PropertyEvaluator`](/api/evaluator#propertyevaluator-class) | High | Production, simple property access | `'result.output.status'` |
 | [`UnsafeEvaluator`](/api/evaluator#unsafeevaluator-class) | Low | Trusted environments, complex expressions | `'result.output > 100'` |
-| Custom (e.g., `jsep`) | Configurable | Advanced, secure needs | AST-based evaluation |
+| Custom (`jsep`) | Configurable | Advanced, secure needs | AST-based evaluation |

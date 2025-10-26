@@ -2,9 +2,7 @@
 
 Orchestrators define how a workflow is executed. By default, Flowcraft uses the [`DefaultOrchestrator`](/api/orchestrators#defaultorchestrator-class), which can handle both standard and awaitable workflows. You can implement custom orchestrators for different execution strategies.
 
-## Orchestrator Examples
-
-### 1. `DefaultOrchestrator` (Default)
+## `DefaultOrchestrator`
 
 This is the standard orchestrator that runs a workflow from start to finish, but can gracefully pause when encountering wait nodes or awaiting subflows. It is designed for human-in-the-loop workflows.
 
@@ -66,11 +64,11 @@ export class DefaultOrchestrator implements IOrchestrator {
 ```
 
 > [!TIP]
-> [`executeBatch`](/api/orchestrators#executebatch) and [`processResults`](/api/orchestrators#processresults) are helper functions exported from `flowcraft/runtime` that handle node execution and result processing. These functions encapsulate the core orchestration logic, making it easy to build custom orchestrators without duplicating code.
+> [`executeBatch`](/api/orchestrators#executebatch) and [`processResults`](/api/orchestrators#processresults) are helper functions exported from `flowcraft` that handle node execution and result processing. These functions encapsulate the core orchestration logic, making it easier to build custom orchestrators.
 
 ---
 
-### 2. `StepByStepOrchestrator`
+## `StepByStepOrchestrator`
 
 This orchestrator executes only one "turn" of the workflow—a single batch of ready nodes. It's designed for debugging, interactive tools, or fine-grained testing where you want to inspect the state after each step.
 
@@ -162,7 +160,7 @@ if (!traverser.hasMoreWork()) {
 
 ---
 
-### 3. `EventDrivenOrchestrator`
+## `EventDrivenOrchestrator`
 
 This example shows the *logic* that would power a distributed adapter. It doesn't implement [`IOrchestrator`](/api/orchestrators#iorchestrator-interface) directly because it's not a self-contained loop. Instead, it provides a method (`handleJob`) that is triggered externally for each node.
 
@@ -264,7 +262,7 @@ export class EventDrivenOrchestrator {
 
 ---
 
-### 4. `ResumptionOrchestrator`
+## `ResumptionOrchestrator`
 
 This orchestrator is a great example of composition. It doesn't re-implement the execution loop. Instead, it performs a "reconciliation" step to prepare the `GraphTraverser` and then delegates the actual execution to another orchestrator (like `RunToCompletionOrchestrator`).
 

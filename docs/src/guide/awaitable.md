@@ -1,7 +1,3 @@
-<script setup>
-import AwaitableWorkflowsDemo from '../.vitepress/theme/components/Demo/AwaitableWorkflows.vue'
-</script>
-
 # Awaitable Workflows
 
 This guide covers Human-in-the-Loop (HITL) workflows, where execution pauses for external input.
@@ -40,7 +36,7 @@ if (result.status === 'awaiting') {
 }
 ```
 
-<AwaitableWorkflowsDemo />
+<DemoAwaitable />
 
 ## Key Concepts
 

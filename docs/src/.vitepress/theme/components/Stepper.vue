@@ -2,19 +2,17 @@
 import { Background } from '@vue-flow/background'
 import type { Edge, Node } from '@vue-flow/core'
 import { Position, useVueFlow, VueFlow } from '@vue-flow/core'
-import type { Flow } from 'flowcraft'
+import type { Flow, NodeRegistry, UIGraph, WorkflowBlueprint } from 'flowcraft'
 import { ConsoleLogger, FlowRuntime, UnsafeEvaluator } from 'flowcraft'
-import { onMounted, provide, ref } from 'vue'
-import { useEventBus } from '../../composables/event-bus'
-import { useLayout } from '../../composables/layout'
-import NodeDefault from './Node/Default.vue'
-import NodeInput from './Node/Input.vue'
-import NodeOutput from './Node/Output.vue'
+import { useEventBus } from '../composables/event-bus'
+import { createStepper } from 'flowcraft/testing'
 
 export type NodeDataStatus = 'idle' | 'pending' | 'completed' | 'failed'
 
 const props = defineProps<{
-	flow: Flow<any, Record<string, any>>
+	flow?: Flow<any, Record<string, any>>
+	blueprint?: WorkflowBlueprint
+	registry?: NodeRegistry
 	positionsMap: Record<string, { x: number; y: number }>
 	typesMap: Record<string, 'input' | 'default' | 'output'>
 }>()
@@ -22,35 +20,47 @@ const props = defineProps<{
 const direction = ref<'TB' | 'LR'>('LR')
 const flow = useVueFlow()
 const { eventBus } = useEventBus()
-const { layout } = useLayout()
 
-provide('flow', flow)
-
-const blueprint = props.flow.toBlueprint()
-const functionRegistry = props.flow.getFunctionRegistry()
+const uiGraph = (props.blueprint || props.flow?.toGraphRepresentation()) as UIGraph
+const blueprint = (props.blueprint || props.flow?.toBlueprint()) as WorkflowBlueprint
+const functionRegistry = props.flow?.getFunctionRegistry() || new Map()
 
 const runtime = new FlowRuntime({
 	logger: new ConsoleLogger(),
 	eventBus,
 	evaluator: new UnsafeEvaluator(),
+	...(props.registry ? { registry: props.registry } : {}),
 })
 
-const vueFlowNodes: Node[] = blueprint.nodes.map((node) => ({
+const stepper = await createStepper(
+	runtime,
+	blueprint,
+	functionRegistry,
+)
+
+const vueFlowNodes: Node[] = uiGraph.nodes.map((node) => ({
 	id: node.id,
-	position: props.positionsMap[node.id],
+	position: props.positionsMap[node.id] || { x: 0, y: 0 },
 	data: { label: node.id.replace('-', ' ').replace(/\b\w/g, l => l.toUpperCase()) },
 	type: props.typesMap[node.id],
 	targetPosition: Position.Left,
 	sourcePosition: Position.Right,
 }))
 
-const vueFlowEdges: Edge[] = blueprint.edges.map((edge, index) => ({
+const vueFlowEdges: Edge[] = uiGraph.edges.map((edge, index) => ({
 	id: `edge-${index}`,
 	source: edge.source,
 	target: edge.target,
 	label: edge.action,
 	// type: 'smoothstep',
 	animated: true,
+	...(edge.data?.isLoopback
+		? {
+			type: 'loopback',
+			data: { pathType: 'bezier' }
+		}
+		: {}
+	),
 }))
 
 onMounted(() => {
@@ -58,12 +68,9 @@ onMounted(() => {
 	flow.setEdges(vueFlowEdges)
 })
 
-const isRunning = ref(false)
 const viewContext = ref(false)
 const executionResult = ref<any>(null)
-const executionError = ref<string | null>(null)
 const awaitingNodes = ref<string[]>([])
-const serializedContext = ref<string | null>(null)
 const nodeData = ref(new Map<string, {
 	inputs?: any,
 	outputs?: any,
@@ -88,108 +95,91 @@ eventBus.on('context:change', (event) => {
 	const currentData = nodeData.value.get(sourceNode) || { contextChanges: {} }
 	const updatedContextChanges = { ...currentData.contextChanges, [key]: value }
 	nodeData.value.set(sourceNode, { ...currentData, contextChanges: updatedContextChanges, status: 'completed' })
-	awaitingNodes.value = awaitingNodes.value.filter((id) => id !== sourceNode)
+	awaitingNodes.value = awaitingNodes.value.filter((id: string) => id !== sourceNode)
+})
+
+eventBus.on('batch:start', (event) => {
+	const { batchId } = event.payload as any
+	const currentData = nodeData.value.get(batchId) || { status: 'idle' }
+	nodeData.value.set(batchId, { ...currentData, status: 'pending' })
+})
+
+eventBus.on('batch:finish', (event) => {
+	const { batchId, results } = event.payload as any
+	const currentData = nodeData.value.get(batchId) || { status: 'idle' }
+	nodeData.value.set(batchId, { ...currentData, status: 'completed', outputs: results })
 })
 
 function getNodeData(nodeId: string) {
 	return nodeData.value.get(nodeId) || {}
 }
 
-async function runWorkflow() {
-	if (executionResult.value) {
-		await clearWorkflow()
-		await new Promise(r => setTimeout(r, 300))
-	}
-	isRunning.value = true
-	executionError.value = null
-	nodeData.value.clear()
-	blueprint.nodes.forEach((node) => {
-		nodeData.value.set(node.id, { status: 'idle' })
-	})
-	try {
-		const result = await runtime.run(blueprint, { value: 42 }, { functionRegistry })
-		executionResult.value = result
-		if (result.status === 'awaiting') {
-			awaitingNodes.value = result.context._awaitingNodeIds || []
-			serializedContext.value = result.serializedContext
-			awaitingNodes.value.forEach((nodeId) => {
-				const currentData = nodeData.value.get(nodeId) || { status: 'idle' }
-				nodeData.value.set(nodeId, { ...currentData, status: 'pending' })
-			})
-		}
-	} catch (error) {
-		executionError.value = error instanceof Error ? error.message : 'Unknown error'
-		console.error('Error running workflow:', error)
-	} finally {
-		isRunning.value = false
-		await new Promise(r => setTimeout(r))
-		flow.fitView({ duration: 1000 })
-	}
-}
+function syncUiWithStepperState() {
+	const newMap = new Map<string, any>()
+	const completedNodes = stepper.state.getCompletedNodes()
+	const context = stepper.state.getContext()
 
-async function resumeWorkflow(nodeId: string, payload: { output: any }) {
-	if (!serializedContext.value) return
-	isRunning.value = true
-	executionError.value = null
-	try {
-		const result = await runtime.resume(
-			blueprint,
-			serializedContext.value,
-			payload,
-			nodeId,
-			{ functionRegistry }
-		)
-		executionResult.value = result
-		if (result.status === 'awaiting') {
-			awaitingNodes.value = result.context._awaitingNodeIds || []
-			serializedContext.value = result.serializedContext
-			awaitingNodes.value.forEach((id) => {
-				const currentData = nodeData.value.get(id) || { status: 'idle' }
-				nodeData.value.set(id, { ...currentData, status: 'pending' })
-			})
-		} else {
-			awaitingNodes.value = []
-			serializedContext.value = null
-		}
-	} catch (error) {
-		executionError.value = error instanceof Error ? error.message : 'Unknown error'
-		console.error('Error resuming workflow:', error)
-	} finally {
-		isRunning.value = false
-		await new Promise(r => setTimeout(r))
-		flow.fitView({ duration: 1000 })
-	}
-}
+	context.toJSON().then(contextJSON => {
+		executionResult.value = Object.keys(contextJSON).length > 0 ? contextJSON : null
+		blueprint.nodes.forEach(node => {
+			const data: {
+				inputs?: any,
+				outputs?: any,
+				contextChanges?: Record<string, any>,
+				status?: NodeDataStatus
+			} = { status: 'idle' }
 
-async function clearWorkflow() {
-	viewContext.value = false
-	executionResult.value = null
-	executionError.value = null
-	awaitingNodes.value = []
-	serializedContext.value = null
-	nodeData.value.clear()
-	blueprint.nodes.forEach((node) => {
-		nodeData.value.set(node.id, { status: 'idle' })
+			if (completedNodes.has(node.id)) {
+				data.status = 'completed'
+				data.outputs = contextJSON[`_outputs.${node.id}`]
+			}
+			newMap.set(node.id, data)
+		})
+
+		const frontierIds = (stepper.traverser as any).frontier as Set<string>
+		frontierIds.forEach(nodeId => {
+			const currentData = newMap.get(nodeId) || {}
+			newMap.set(nodeId, { ...currentData, status: 'idle' })
+		})
+
+		nodeData.value = newMap
 	})
 }
 
-function toggleLayout() {
-	direction.value = direction.value === 'LR' ? 'TB' : 'LR'
-	layout(vueFlowNodes, vueFlowEdges, direction.value)
+async function next() {
+	try {
+		const result = await stepper.next()
+		if (result) syncUiWithStepperState()
+	} finally {
+	}
+}
+
+async function prev() {
+	const result = await stepper.prev()
+	if (result) {
+		syncUiWithStepperState()
+	} else {
+		await clear()
+	}
+}
+
+async function clear() {
+	stepper.reset()
+	syncUiWithStepperState()
 }
 </script>
 
 <template>
 	<div class="relative flex flex-col h-full rounded-[8px] overflow-hidden">
 		<header class="flex items-center gap-2 p-2 bg-[var(--vp-c-bg-alt)] border-b border-[var(--vp-c-divider)]">
-			<button @click="runWorkflow" class="brand">
-				{{ executionResult ? 'Restart' : 'Run' }}
+			<button @click="prev" class="brand" :disabled="!executionResult">
+				Prev
 			</button>
-			<!-- <button @click="clearWorkflow" :disabled="!executionResult" class="alt">
+			<button @click="next" class="brand">
+				Next
+			</button>
+			<!-- <button :disabled="!executionResult" @click="clear" class="alt">
 				Clear
-			</button> -->
-			<!-- <button @click="toggleLayout" class="alt">
-				Layout: {{ direction }}
 			</button> -->
 			<div v-if="awaitingNodes.length > 0" class="flex items-center gap-2">
 				<span class="border-l border-[var(--vp-c-divider)] h-4 mx-4" />
@@ -203,8 +193,8 @@ function toggleLayout() {
 			</div>
 			<span class="flex-auto" />
 			<button @click="viewContext = !viewContext" v-if="executionResult" class="alt">
-				<template v-if="viewContext">Hide Context</template>
-				<template v-else>View Context</template>
+				<template v-if="viewContext">Hide State</template>
+				<template v-else>View State</template>
 			</button>
 		</header>
 		<pre
@@ -225,9 +215,9 @@ function toggleLayout() {
 			<template #node-output="nodeProps">
 				<NodeOutput v-bind="nodeProps" :node-data="getNodeData(nodeProps.id)" :direction />
 			</template>
-			<div class="absolute top-0 right-0 p-2">
-
-			</div>
+			<template #edge-loopback="edgeProps">
+				<EdgeLoopback v-bind="edgeProps" />
+			</template>
 		</VueFlow>
 	</div>
 </template>

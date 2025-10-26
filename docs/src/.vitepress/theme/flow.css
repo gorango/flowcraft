@@ -5,7 +5,7 @@
 	width: 100%;
 
 	header button {
-		@apply text-sm font-medium rounded-md py-1 px-2;
+		@apply text-xs font-medium rounded-md py-1 px-2 disabled:pointer-events-none disabled:opacity-50;
 
 		&.brand {
 			@apply bg-[var(--vp-button-brand-bg)] hover:bg-[var(--vp-button-brand-hover-bg)] ;
@@ -23,7 +23,7 @@
 :root {
 	--vf-node-bg: var(--vp-c-bg);
 	--vf-node-text: var(--vp-c-text-1);
-	--vf-connection-path: var(--vp-c-border);
+	--vf-connection-path: var(--vp-c-text-2);
 	--vf-handle: var(--vp-c-border);
 }
 
@@ -64,8 +64,9 @@
 
 /* Connections */
 
-.vue-flow__connection-path {
+.vue-flow__edge-path, .vue-flow__connection-path {
 	stroke: var(--vf-connection-path);
+	stroke-width: 2;
 }
 
 .vue-flow__edge-text {
