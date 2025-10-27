@@ -32,7 +32,7 @@ export interface CompilerState {
 }
 
 export interface Scope {
-	variables: Map<string, string> // var name to type
+	variables: Map<string, { nodeId: string; type: import('typescript').Type }>
 }
 
 export interface PendingEdge {

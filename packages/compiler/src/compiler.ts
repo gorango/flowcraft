@@ -1,4 +1,5 @@
 import * as ts from 'typescript'
+import * as path from 'path'
 import resolve from 'resolve'
 import type { CompilationOutput, FileAnalysis } from './types'
 import type { WorkflowBlueprint } from 'flowcraft'
@@ -52,16 +53,28 @@ export class Compiler {
 			ts.forEachChild(sourceFile, (node) => {
 				if (ts.isExportDeclaration(node)) {
 					// Handle export { ... }
-					// For simplicity, assume direct exports for now
+					if (node.exportClause && ts.isNamedExports(node.exportClause)) {
+						node.exportClause.elements.forEach((element) => {
+							const symbol = this.typeChecker.getSymbolAtLocation(element.name)
+							if (symbol) {
+								const declarations = symbol.getDeclarations()
+								if (declarations && declarations.length > 0) {
+									const decl = declarations[0]
+									if (ts.isFunctionDeclaration(decl) && decl.name) {
+										const type = 'step' // For now, assume step; can add JSDoc later
+										exports.set(element.name.text, { type, node: decl })
+									}
+								}
+							}
+						})
+					}
 				} else if (
 					ts.isFunctionDeclaration(node) &&
 					node.name &&
 					ts.getCombinedModifierFlags(node) & ts.ModifierFlags.Export &&
 					node.modifiers?.some((mod) => mod.kind === ts.SyntaxKind.AsyncKeyword)
 				) {
-					const jsDoc = ts.getJSDocTags(node)
-					const flowTag = jsDoc.find((tag) => tag.tagName.text === 'flow')
-					const type = flowTag ? 'flow' : 'step'
+					const type = 'step' // For now, assume step; can add JSDoc later
 					exports.set(node.name.text, { type, node })
 				}
 			})
@@ -78,7 +91,7 @@ export class Compiler {
 		const registryEntries: string[] = []
 
 		for (const [uses, { importPath, exportName }] of Object.entries(registry)) {
-			const relativePath = importPath.replace(process.cwd() + '/', './')
+			const relativePath = path.relative(process.cwd(), importPath)
 			imports.push(`import { ${exportName} } from '${relativePath}'`)
 			registryEntries.push(`  '${uses}': ${exportName}`)
 		}

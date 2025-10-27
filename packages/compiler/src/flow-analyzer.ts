@@ -29,6 +29,8 @@ export class FlowAnalyzer {
 		registry: Record<string, { importPath: string; exportName: string }>
 		diagnostics: import('./types').CompilationDiagnostic[]
 	} {
+		// Push initial scope
+		this.state.scopes.push({ variables: new Map() })
 		this.traverse(this.functionNode.body!)
 		// If no nodes, add a start node
 		if (this.state.nodes.length === 0) {
@@ -54,6 +56,21 @@ export class FlowAnalyzer {
 			lastCursor = this.state.cursor
 		})
 		return lastCursor
+	}
+
+	private findFirstAwait(node: ts.Node): string | null {
+		let first: string | null = null
+		const visitor = (n: ts.Node) => {
+			if (first) return
+			if (ts.isAwaitExpression(n)) {
+				this.visit(n)
+				first = this.state.cursor
+			} else {
+				ts.forEachChild(n, visitor)
+			}
+		}
+		visitor(node)
+		return first
 	}
 
 	private visit(node: ts.Node): string | null {
@@ -136,6 +153,17 @@ export class FlowAnalyzer {
 								this.state.edges.push(edge)
 							}
 							this.state.cursor = nodeDef.id
+
+							// Map variable to node output if it's a VariableDeclaration
+							const parent = node.parent
+							if (ts.isVariableDeclaration(parent) && parent.name && ts.isIdentifier(parent.name)) {
+								const varName = parent.name.text
+								const returnType = this.typeChecker.getTypeAtLocation(node)
+								this.state.scopes[this.state.scopes.length - 1].variables.set(varName, {
+									nodeId: nodeDef.id,
+									type: returnType,
+								})
+							}
 						}
 					}
 				}
@@ -156,6 +184,9 @@ export class FlowAnalyzer {
 			}
 		})
 
+		// Push scope for loop body
+		this.state.scopes.push({ variables: new Map() })
+
 		const exportName = 'loop-controller'
 		const count = (this.state.usageCounts.get(exportName) || 0) + 1
 		this.state.usageCounts.set(exportName, count)
@@ -174,19 +205,8 @@ export class FlowAnalyzer {
 		this.state.cursor = controllerId
 
 		// Traverse the body and capture the first node
-		let firstInBody: string | null = null
-		const originalVisit = this.visit.bind(this)
-		this.visit = (node: ts.Node) => {
-			if (!firstInBody && ts.isAwaitExpression(node)) {
-				originalVisit(node)
-				firstInBody = this.state.cursor
-			} else {
-				originalVisit(node)
-			}
-			return this.state.cursor
-		}
+		const firstInBody = this.findFirstAwait(node.statement)
 		const lastInBody = this.traverse(node.statement)
-		this.visit = originalVisit
 
 		// Add continue edge from controller to first node in body
 		if (firstInBody) {
@@ -197,6 +217,9 @@ export class FlowAnalyzer {
 		if (lastInBody) {
 			this.state.edges.push({ source: lastInBody, target: controllerId })
 		}
+
+		// Pop scope
+		this.state.scopes.pop()
 
 		// The exit path is the current cursor (controller), next nodes will connect with break
 		this.state.cursor = controllerId
@@ -223,19 +246,8 @@ export class FlowAnalyzer {
 		this.state.scopes.push({ variables: new Map() })
 
 		// Traverse if block and capture first node
-		let firstInIf: string | null = null
-		const originalVisit = this.visit.bind(this)
-		this.visit = (node: ts.Node) => {
-			if (!firstInIf && ts.isAwaitExpression(node)) {
-				originalVisit(node)
-				firstInIf = this.state.cursor
-			} else {
-				originalVisit(node)
-			}
-			return this.state.cursor
-		}
+		const firstInIf = this.findFirstAwait(node.thenStatement)
 		const lastInIf = this.traverse(node.thenStatement)
-		this.visit = originalVisit
 
 		// Pop scope
 		this.state.scopes.pop()
@@ -262,17 +274,8 @@ export class FlowAnalyzer {
 			this.state.scopes.push({ variables: new Map() })
 
 			// Traverse else block and capture first node
-			this.visit = (node: ts.Node) => {
-				if (!firstInElse && ts.isAwaitExpression(node)) {
-					originalVisit(node)
-					firstInElse = this.state.cursor
-				} else {
-					originalVisit(node)
-				}
-				return this.state.cursor
-			}
+			firstInElse = this.findFirstAwait(node.elseStatement)
 			lastInElse = this.traverse(node.elseStatement)
-			this.visit = originalVisit
 
 			// Pop scope
 			this.state.scopes.pop()
