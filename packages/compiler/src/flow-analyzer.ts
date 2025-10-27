@@ -68,6 +68,8 @@ export class FlowAnalyzer {
 			return this.state.cursor
 		} else if (ts.isWhileStatement(node)) {
 			return this.visitWhileStatement(node)
+		} else if (ts.isForOfStatement(node)) {
+			return this.visitForOfStatement(node)
 		} else if (ts.isIfStatement(node)) {
 			return this.visitIfStatement(node)
 		} else if (ts.isTryStatement(node)) {
@@ -76,7 +78,7 @@ export class FlowAnalyzer {
 			this.addDiagnostic(node, 'error', `Break and continue statements are not supported in flow functions.`)
 			return this.state.cursor
 		} else {
-			return this.traverse(node)
+			return this.state.cursor // Unknown type
 		}
 	}
 
@@ -100,123 +102,106 @@ export class FlowAnalyzer {
 		}
 	}
 
-	private visitAwaitExpression(node: ts.AwaitExpression): string | null {
+	private _addNodeAndWire(nodeDef: NodeDefinition, node: ts.Node): void {
+		this.state.nodes.push(nodeDef)
+		if (this.state.pendingBranches) {
+			for (const end of this.state.pendingBranches.ends) {
+				this.state.edges.push({
+					source: end,
+					target: nodeDef.id,
+					_sourceLocation: this.getSourceLocation(node),
+				})
+			}
+			nodeDef.config = {
+				...nodeDef.config,
+				joinStrategy: this.state.pendingBranches.joinStrategy as 'all' | 'any',
+			}
+			this.state.pendingBranches = null
+		}
+		if (this.state.pendingForkEdges.length > 0) {
+			for (const forkEdge of this.state.pendingForkEdges) {
+				this.state.edges.push({
+					source: forkEdge.source,
+					target: nodeDef.id,
+					condition: forkEdge.condition,
+					_sourceLocation: this.getSourceLocation(node),
+				})
+			}
+			this.state.pendingForkEdges = []
+		}
+		if (this.state.cursor) {
+			const edge: any = {
+				source: this.state.cursor,
+				target: nodeDef.id,
+				_sourceLocation: this.getSourceLocation(node),
+			}
+			// If source is a loop-controller, add break action
+			const sourceNode = this.state.nodes.find((n) => n.id === this.state.cursor)
+			if (sourceNode && sourceNode.uses === 'loop-controller') {
+				edge.action = 'break'
+			}
+			this.state.edges.push(edge)
+		}
+		this.state.cursor = nodeDef.id
+
+		// Map variable to node output if it's a VariableDeclaration
+		const parent = node.parent
+		if (ts.isVariableDeclaration(parent) && parent.name && ts.isIdentifier(parent.name)) {
+			const varName = parent.name.text
+			const returnType = this.typeChecker.getTypeAtLocation(node)
+			this.state.scopes[this.state.scopes.length - 1].variables.set(varName, {
+				nodeId: nodeDef.id,
+				type: returnType,
+			})
+		}
+	}
+
+	private visitAwaitExpression(node: ts.AwaitExpression): void {
 		const callee = node.expression
 		if (ts.isCallExpression(callee)) {
 			// Check for Promise.all parallel execution
 			if (this.isPromiseAllCall(callee)) {
-				return this.visitPromiseAll(callee, node)
+				this.visitPromiseAll(callee, node)
+				return
 			}
 
 			// Check if it's context.get or context.set, ignore
 			if (ts.isPropertyAccessExpression(callee.expression)) {
 				const propAccess = callee.expression
 				if (propAccess.expression.getText() === 'context') {
-					return this.state.cursor
+					return
 				}
 			}
 
 			// Perform type checking for function calls
 			this.checkFunctionCallTypes(callee)
 
-			const symbol = this.typeChecker.getSymbolAtLocation(callee.expression)
-			if (symbol) {
-				let originalSymbol = symbol
-				if (symbol.flags & ts.SymbolFlags.Alias) {
-					originalSymbol = this.typeChecker.getAliasedSymbol(symbol)
-				}
-				if (originalSymbol?.valueDeclaration) {
-					const decl = originalSymbol.valueDeclaration
-					const filePath = decl.getSourceFile().fileName
-					const fileAnalysis = this.compiler.fileCache.get(filePath)
-					if (fileAnalysis) {
-						const exportName = originalSymbol.name
-						const exportInfo = fileAnalysis.exports.get(exportName)
-						if (exportInfo) {
-							// This is an exported function
-							let nodeDef: NodeDefinition
-							const count = (this.state.usageCounts.get(exportName) || 0) + 1
-							this.state.usageCounts.set(exportName, count)
-							if (exportInfo.type === 'step') {
-								nodeDef = {
-									id: `${exportName}_${count}`,
-									uses: exportName,
-									_sourceLocation: this.getSourceLocation(node),
-								}
-								if (this.state.fallbackScope) {
-									nodeDef.config = { fallback: this.state.fallbackScope }
-								}
-								this.registry[exportName] = { importPath: filePath, exportName }
-							} else if (exportInfo.type === 'flow') {
-								nodeDef = {
-									id: `${exportName}_${count}`,
-									uses: 'subflow',
-									params: { blueprintId: exportName },
-									_sourceLocation: this.getSourceLocation(node),
-								}
-								if (this.state.fallbackScope) {
-									nodeDef.config = { fallback: this.state.fallbackScope }
-								}
-							} else {
-								return this.state.cursor // Unknown type
-							}
-							this.state.nodes.push(nodeDef)
-							if (this.state.pendingBranches) {
-								for (const end of this.state.pendingBranches.ends) {
-									this.state.edges.push({
-										source: end,
-										target: nodeDef.id,
-										_sourceLocation: this.getSourceLocation(node),
-									})
-								}
-								nodeDef.config = {
-									...nodeDef.config,
-									joinStrategy: this.state.pendingBranches.joinStrategy as 'all' | 'any',
-								}
-								this.state.pendingBranches = null
-							}
-							if (this.state.pendingForkEdges.length > 0) {
-								for (const forkEdge of this.state.pendingForkEdges) {
-									this.state.edges.push({
-										source: forkEdge.source,
-										target: nodeDef.id,
-										condition: forkEdge.condition,
-										_sourceLocation: this.getSourceLocation(node),
-									})
-								}
-								this.state.pendingForkEdges = []
-							}
-							if (this.state.cursor) {
-								const edge: any = {
-									source: this.state.cursor,
-									target: nodeDef.id,
-									_sourceLocation: this.getSourceLocation(node),
-								}
-								// If source is a loop-controller, add break action
-								const sourceNode = this.state.nodes.find((n) => n.id === this.state.cursor)
-								if (sourceNode && sourceNode.uses === 'loop-controller') {
-									edge.action = 'break'
-								}
-								this.state.edges.push(edge)
-							}
-							this.state.cursor = nodeDef.id
+			// Handle the await call
+			this.handleAwaitCall(callee, node)
+		}
+	}
 
-							// Map variable to node output if it's a VariableDeclaration
-							const parent = node.parent
-							if (ts.isVariableDeclaration(parent) && parent.name && ts.isIdentifier(parent.name)) {
-								const varName = parent.name.text
-								const returnType = this.typeChecker.getTypeAtLocation(node)
-								this.state.scopes[this.state.scopes.length - 1].variables.set(varName, {
-									nodeId: nodeDef.id,
-									type: returnType,
-								})
-							}
-						} else if (ts.isFunctionDeclaration(decl) || ts.isFunctionExpression(decl) || ts.isArrowFunction(decl)) {
-							// This is a local function declaration in the same file, treat as step
-							const count = (this.state.usageCounts.get(exportName) || 0) + 1
-							this.state.usageCounts.set(exportName, count)
-
-							const nodeDef: NodeDefinition = {
+	private handleAwaitCall(callee: ts.CallExpression, node: ts.AwaitExpression): void {
+		const symbol = this.typeChecker.getSymbolAtLocation(callee.expression)
+		if (symbol) {
+			let originalSymbol = symbol
+			if (symbol.flags & ts.SymbolFlags.Alias) {
+				originalSymbol = this.typeChecker.getAliasedSymbol(symbol)
+			}
+			if (originalSymbol?.valueDeclaration) {
+				const decl = originalSymbol.valueDeclaration
+				const filePath = decl.getSourceFile().fileName
+				const fileAnalysis = this.compiler.fileCache.get(filePath)
+				if (fileAnalysis) {
+					const exportName = originalSymbol.name
+					const exportInfo = fileAnalysis.exports.get(exportName)
+					if (exportInfo) {
+						// This is an exported function
+						let nodeDef: NodeDefinition
+						const count = (this.state.usageCounts.get(exportName) || 0) + 1
+						this.state.usageCounts.set(exportName, count)
+						if (exportInfo.type === 'step') {
+							nodeDef = {
 								id: `${exportName}_${count}`,
 								uses: exportName,
 								_sourceLocation: this.getSourceLocation(node),
@@ -225,64 +210,39 @@ export class FlowAnalyzer {
 								nodeDef.config = { fallback: this.state.fallbackScope }
 							}
 							this.registry[exportName] = { importPath: filePath, exportName }
-							this.state.nodes.push(nodeDef)
-							if (this.state.pendingBranches) {
-								for (const end of this.state.pendingBranches.ends) {
-									this.state.edges.push({
-										source: end,
-										target: nodeDef.id,
-										_sourceLocation: this.getSourceLocation(node),
-									})
-								}
-								nodeDef.config = {
-									...nodeDef.config,
-									joinStrategy: this.state.pendingBranches.joinStrategy as 'all' | 'any',
-								}
-								this.state.pendingBranches = null
+						} else if (exportInfo.type === 'flow') {
+							nodeDef = {
+								id: `${exportName}_${count}`,
+								uses: 'subflow',
+								params: { blueprintId: exportName },
+								_sourceLocation: this.getSourceLocation(node),
 							}
-							if (this.state.pendingForkEdges.length > 0) {
-								for (const forkEdge of this.state.pendingForkEdges) {
-									this.state.edges.push({
-										source: forkEdge.source,
-										target: nodeDef.id,
-										condition: forkEdge.condition,
-										_sourceLocation: this.getSourceLocation(node),
-									})
-								}
-								this.state.pendingForkEdges = []
+							if (this.state.fallbackScope) {
+								nodeDef.config = { fallback: this.state.fallbackScope }
 							}
-							if (this.state.cursor) {
-								const edge: any = {
-									source: this.state.cursor,
-									target: nodeDef.id,
-									_sourceLocation: this.getSourceLocation(node),
-								}
-								// If source is a loop-controller, add break action
-								const sourceNode = this.state.nodes.find((n) => n.id === this.state.cursor)
-								if (sourceNode && sourceNode.uses === 'loop-controller') {
-									edge.action = 'break'
-								}
-								this.state.edges.push(edge)
-							}
-							// Map variable to node output if it's a VariableDeclaration
-							const parent = node.parent
-							if (ts.isVariableDeclaration(parent) && parent.name && ts.isIdentifier(parent.name)) {
-								const varName = parent.name.text
-								const returnType = this.typeChecker.getTypeAtLocation(node)
-								this.state.scopes[this.state.scopes.length - 1].variables.set(varName, {
-									nodeId: nodeDef.id,
-									type: returnType,
-								})
-							}
+						} else {
+							return // Unknown type
 						}
+						this._addNodeAndWire(nodeDef, node)
+					} else if (ts.isFunctionDeclaration(decl) || ts.isFunctionExpression(decl) || ts.isArrowFunction(decl)) {
+						// This is a local function declaration in the same file, treat as step
+						const count = (this.state.usageCounts.get(exportName) || 0) + 1
+						this.state.usageCounts.set(exportName, count)
+
+						const nodeDef: NodeDefinition = {
+							id: `${exportName}_${count}`,
+							uses: exportName,
+							_sourceLocation: this.getSourceLocation(node),
+						}
+						if (this.state.fallbackScope) {
+							nodeDef.config = { fallback: this.state.fallbackScope }
+						}
+						this.registry[exportName] = { importPath: filePath, exportName }
+						this._addNodeAndWire(nodeDef, node)
 					}
 				}
 			}
-
-			return this.state.cursor
 		}
-
-		return null
 	}
 
 	private visitWhileStatement(node: ts.WhileStatement): string | null {
@@ -304,6 +264,73 @@ export class FlowAnalyzer {
 			id: controllerId,
 			uses: 'loop-controller',
 			params: { condition: node.expression.getText() || 'true' },
+			config: { joinStrategy: 'any' },
+			_sourceLocation: this.getSourceLocation(node),
+		}
+		this.state.nodes.push(controllerNode)
+		if (this.state.cursor) {
+			this.state.edges.push({
+				source: this.state.cursor,
+				target: controllerId,
+				_sourceLocation: this.getSourceLocation(node),
+			})
+		}
+		const _prevCursor = this.state.cursor
+		this.state.cursor = controllerId
+
+		// Traverse the body and find first and last nodes
+		const nodesBeforeBody = this.state.nodes.length
+		const lastInBody = this.traverse(node.statement)
+		const firstInBody = this.state.nodes.length > nodesBeforeBody ? this.state.nodes[nodesBeforeBody].id : null
+
+		// Add continue edge from controller to first node in body
+		if (firstInBody) {
+			this.state.edges.push({
+				source: controllerId,
+				target: firstInBody,
+				action: 'continue',
+				_sourceLocation: this.getSourceLocation(node),
+			})
+		}
+
+		// Add loopback edge from last in body to controller
+		if (lastInBody) {
+			this.state.edges.push({ source: lastInBody, target: controllerId, _sourceLocation: this.getSourceLocation(node) })
+		}
+
+		// Pop scope
+		this.state.scopes.pop()
+
+		// The exit path is the current cursor (controller), next nodes will connect with break
+		this.state.cursor = controllerId
+		return this.state.cursor
+	}
+
+	private visitForOfStatement(node: ts.ForOfStatement): string | null {
+		// De-sugar for...of into a while loop pattern
+		// Create iterator variable: const __iterator = items[Symbol.iterator]()
+		// Create result variable: let __result
+		// While condition: !(__result = __iterator.next()).done
+		// In body: const item = __result.value; ...original body...
+
+		// Check for break/continue in the loop body
+		ts.forEachChild(node.statement, (child) => {
+			if (ts.isBreakStatement(child) || ts.isContinueStatement(child)) {
+				this.addDiagnostic(child, 'error', `Break and continue statements are not supported in flow functions.`)
+			}
+		})
+
+		// Push scope for loop body
+		this.state.scopes.push({ variables: new Map() })
+
+		const exportName = 'loop-controller'
+		const count = (this.state.usageCounts.get(exportName) || 0) + 1
+		this.state.usageCounts.set(exportName, count)
+		const controllerId = `${exportName}_${count}`
+		const controllerNode: NodeDefinition = {
+			id: controllerId,
+			uses: 'loop-controller',
+			params: { condition: `${node.expression.getText()}.length > 0` }, // Simplified condition for loop controller
 			config: { joinStrategy: 'any' },
 			_sourceLocation: this.getSourceLocation(node),
 		}
@@ -471,53 +498,49 @@ export class FlowAnalyzer {
 	}
 
 	private checkFunctionCallTypes(callExpr: ts.CallExpression): void {
-		try {
-			// Get the type of the function being called
-			const funcType = this.typeChecker.getTypeAtLocation(callExpr.expression)
-			if (!funcType) return
+		// Get the type of the function being called
+		const funcType = this.typeChecker.getTypeAtLocation(callExpr.expression)
+		if (!funcType) return
 
-			// Get the call signatures
-			const signatures = this.typeChecker.getSignaturesOfType(funcType, ts.SignatureKind.Call)
-			if (signatures.length === 0) return
+		// Get the call signatures
+		const signatures = this.typeChecker.getSignaturesOfType(funcType, ts.SignatureKind.Call)
+		if (signatures.length === 0) return
 
-			// Use the first signature (most common case)
-			const signature = signatures[0]
-			const parameters = signature.getParameters()
-			const args = callExpr.arguments
+		// Use the first signature (most common case)
+		const signature = signatures[0]
+		const parameters = signature.getParameters()
+		const args = callExpr.arguments
 
-			// Check each argument against its corresponding parameter
-			for (let i = 0; i < Math.min(parameters.length, args.length); i++) {
-				const param = parameters[i]
-				const arg = args[i]
+		// Check each argument against its corresponding parameter
+		for (let i = 0; i < Math.min(parameters.length, args.length); i++) {
+			const param = parameters[i]
+			const arg = args[i]
 
-				// Get the expected parameter type
-				if (!param.valueDeclaration) continue
-				const paramType = this.typeChecker.getTypeOfSymbolAtLocation(param, param.valueDeclaration)
-				if (!paramType) continue
+			// Get the expected parameter type
+			if (!param.valueDeclaration) continue
+			const paramType = this.typeChecker.getTypeOfSymbolAtLocation(param, param.valueDeclaration)
+			if (!paramType) continue
 
-				// Get the actual argument type
-				const argType = this.typeChecker.getTypeAtLocation(arg)
-				if (!argType) continue
+			// Get the actual argument type
+			const argType = this.typeChecker.getTypeAtLocation(arg)
+			if (!argType) continue
 
-				// Check if the argument type is assignable to the parameter type
-				const isAssignable = this.typeChecker.isTypeAssignableTo(argType, paramType)
+			// Check if the argument type is assignable to the parameter type
+			const isAssignable = this.typeChecker.isTypeAssignableTo(argType, paramType)
 
-				if (!isAssignable) {
-					// Add a diagnostic for type mismatch
-					const paramName = param.getName()
-					const argTypeStr = this.typeChecker.typeToString(argType)
-					const paramTypeStr = this.typeChecker.typeToString(paramType)
-					const funcName = callExpr.expression.getText()
+			if (!isAssignable) {
+				// Add a diagnostic for type mismatch
+				const paramName = param.getName()
+				const argTypeStr = this.typeChecker.typeToString(argType)
+				const paramTypeStr = this.typeChecker.typeToString(paramType)
+				const funcName = callExpr.expression.getText()
 
-					this.addDiagnostic(
-						arg,
-						'error',
-						`Type error in call to '${funcName}': argument of type '${argTypeStr}' is not assignable to parameter '${paramName}' of type '${paramTypeStr}'`,
-					)
-				}
+				this.addDiagnostic(
+					arg,
+					'error',
+					`Type error in call to '${funcName}': argument of type '${argTypeStr}' is not assignable to parameter '${paramName}' of type '${paramTypeStr}'`,
+				)
 			}
-		} catch (_error) {
-			// If type checking fails, don't add diagnostics - this is a best-effort feature
 		}
 	}
 
@@ -617,9 +640,12 @@ export class FlowAnalyzer {
 						this.state.usageCounts.set(exportName, count)
 
 						const nodeDef: NodeDefinition = {
-							id: `${exportName}_parallel_${count}`,
+							id: `${exportName}_${count}`,
 							uses: exportName,
 							_sourceLocation: this.getSourceLocation(callNode),
+						}
+						if (this.state.fallbackScope) {
+							nodeDef.config = { fallback: this.state.fallbackScope }
 						}
 						this.registry[exportName] = { importPath: filePath, exportName }
 						this.state.nodes.push(nodeDef)
