@@ -1,0 +1,42 @@
+import type { WorkflowBlueprint, NodeDefinition, EdgeDefinition } from 'flowcraft'
+
+export interface FileAnalysis {
+	filePath: string
+	sourceFile: import('typescript').SourceFile
+	exports: Map<string, { type: 'flow' | 'step'; node: import('typescript').FunctionDeclaration }>
+}
+
+export interface CompilationOutput {
+	blueprints: Record<string, WorkflowBlueprint>
+	registry: Record<string, { importPath: string; exportName: string }>
+	diagnostics: CompilationDiagnostic[]
+	manifestSource: string
+}
+
+export interface CompilationDiagnostic {
+	file: string
+	line: number
+	column: number
+	message: string
+	severity: 'error' | 'warning' | 'info'
+}
+
+export interface CompilerState {
+	cursor: string | null
+	nodes: NodeDefinition[]
+	edges: EdgeDefinition[]
+	scopes: Scope[]
+	pendingEdges: PendingEdge[]
+	fallbackScope: string | null
+	usageCounts: Map<string, number>
+}
+
+export interface Scope {
+	variables: Map<string, string> // var name to type
+}
+
+export interface PendingEdge {
+	sourceId: string
+	condition?: string
+	action?: string
+}
