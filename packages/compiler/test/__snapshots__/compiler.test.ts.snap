@@ -5,87 +5,141 @@ exports[`Compiler > should compile all test fixtures 1`] = `
   "complexControlFlow": {
     "edges": [
       {
+        "_sourceLocation": {
+          "column": 2,
+          "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/complex-control-flow.ts",
+          "line": 8,
+        },
         "condition": "!validated.isValid",
-        "source": "validateData_1",
+        "source": "start",
         "target": "handleValidationError_1",
       },
       {
-        "source": "validateData_1",
-        "target": "loop-controller_1",
-      },
-      {
+        "_sourceLocation": {
+          "column": 4,
+          "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/complex-control-flow.ts",
+          "line": 26,
+        },
         "source": "handleValidationError_1",
         "target": "handleBatchError_1",
       },
       {
+        "_sourceLocation": {
+          "column": 4,
+          "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/complex-control-flow.ts",
+          "line": 26,
+        },
         "condition": "!(!validated.isValid)",
-        "source": "validateData_1",
+        "source": "start",
         "target": "handleBatchError_1",
       },
       {
+        "_sourceLocation": {
+          "column": 4,
+          "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/complex-control-flow.ts",
+          "line": 26,
+        },
         "action": "break",
         "source": "loop-controller_1",
         "target": "handleBatchError_1",
       },
       {
-        "source": "processBatch_1",
-        "target": "handleBatchError_1",
-      },
-      {
+        "_sourceLocation": {
+          "column": 2,
+          "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/complex-control-flow.ts",
+          "line": 17,
+        },
         "action": "continue",
         "source": "loop-controller_1",
         "target": "processBatch_1",
       },
       {
-        "source": "handleBatchError_1",
-        "target": "loop-controller_1",
-      },
-      {
+        "_sourceLocation": {
+          "column": 34,
+          "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/complex-control-flow.ts",
+          "line": 33,
+        },
         "source": "loop-controller_1",
         "target": "generateSummary_parallel_1",
       },
       {
+        "_sourceLocation": {
+          "column": 34,
+          "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/complex-control-flow.ts",
+          "line": 33,
+        },
         "source": "loop-controller_1",
         "target": "generateReport_parallel_1",
       },
       {
+        "_sourceLocation": {
+          "column": 3,
+          "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/complex-control-flow.ts",
+          "line": 40,
+        },
         "source": "generateSummary_parallel_1",
-        "target": "gather_1",
+        "target": "sendHighVolumeNotification_1",
       },
       {
+        "_sourceLocation": {
+          "column": 3,
+          "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/complex-control-flow.ts",
+          "line": 40,
+        },
         "source": "generateReport_parallel_1",
-        "target": "gather_1",
-      },
-      {
-        "source": "processBatch_1",
         "target": "sendHighVolumeNotification_1",
       },
       {
-        "source": "handleBatchError_1",
-        "target": "sendHighVolumeNotification_1",
-      },
-      {
+        "_sourceLocation": {
+          "column": 2,
+          "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/complex-control-flow.ts",
+          "line": 39,
+        },
         "condition": "processedCount > 1000",
-        "source": "gather_1",
+        "source": "loop-controller_1",
         "target": "sendHighVolumeNotification_1",
       },
       {
+        "_sourceLocation": {
+          "column": 2,
+          "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/complex-control-flow.ts",
+          "line": 39,
+        },
         "condition": "!(processedCount > 1000)",
-        "source": "gather_1",
+        "source": "loop-controller_1",
         "target": "sendStandardNotification_1",
       },
     ],
     "id": "complexControlFlow",
     "nodes": [
       {
+        "id": "start",
+        "uses": "start",
+      },
+      {
+        "_sourceLocation": {
+          "column": 20,
+          "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/complex-control-flow.ts",
+          "line": 6,
+        },
         "id": "validateData_1",
         "uses": "validateData",
       },
       {
+        "_sourceLocation": {
+          "column": 3,
+          "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/complex-control-flow.ts",
+          "line": 9,
+        },
         "id": "handleValidationError_1",
         "uses": "handleValidationError",
       },
       {
+        "_sourceLocation": {
+          "column": 2,
+          "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/complex-control-flow.ts",
+          "line": 17,
+        },
         "config": {
           "joinStrategy": "any",
         },
@@ -96,6 +150,11 @@ exports[`Compiler > should compile all test fixtures 1`] = `
         "uses": "loop-controller",
       },
       {
+        "_sourceLocation": {
+          "column": 20,
+          "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/complex-control-flow.ts",
+          "line": 19,
+        },
         "config": {
           "fallback": "handleBatchError_1",
         },
@@ -103,32 +162,50 @@ exports[`Compiler > should compile all test fixtures 1`] = `
         "uses": "processBatch",
       },
       {
+        "_sourceLocation": {
+          "column": 4,
+          "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/complex-control-flow.ts",
+          "line": 26,
+        },
         "id": "handleBatchError_1",
         "uses": "handleBatchError",
       },
       {
+        "_sourceLocation": {
+          "column": 3,
+          "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/complex-control-flow.ts",
+          "line": 34,
+        },
         "id": "generateSummary_parallel_1",
         "uses": "generateSummary",
       },
       {
+        "_sourceLocation": {
+          "column": 3,
+          "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/complex-control-flow.ts",
+          "line": 35,
+        },
         "id": "generateReport_parallel_1",
         "uses": "generateReport",
       },
       {
+        "_sourceLocation": {
+          "column": 3,
+          "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/complex-control-flow.ts",
+          "line": 40,
+        },
         "config": {
           "joinStrategy": "all",
-        },
-        "id": "gather_1",
-        "uses": "gather",
-      },
-      {
-        "config": {
-          "joinStrategy": "any",
         },
         "id": "sendHighVolumeNotification_1",
         "uses": "sendHighVolumeNotification",
       },
       {
+        "_sourceLocation": {
+          "column": 3,
+          "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/complex-control-flow.ts",
+          "line": 42,
+        },
         "id": "sendStandardNotification_1",
         "uses": "sendStandardNotification",
       },
@@ -137,70 +214,131 @@ exports[`Compiler > should compile all test fixtures 1`] = `
   "complexParallelFlow": {
     "edges": [
       {
+        "_sourceLocation": {
+          "column": 3,
+          "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/parallel-flow.ts",
+          "line": 30,
+        },
         "source": "processItems_parallel_1",
-        "target": "gather_1",
-      },
-      {
-        "source": "validateItems_parallel_1",
-        "target": "gather_1",
-      },
-      {
-        "source": "enrichItems_parallel_1",
-        "target": "gather_1",
-      },
-      {
-        "condition": "validated.valid",
-        "source": "gather_1",
         "target": "saveValidItems_1",
       },
       {
+        "_sourceLocation": {
+          "column": 3,
+          "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/parallel-flow.ts",
+          "line": 30,
+        },
+        "source": "validateItems_parallel_1",
+        "target": "saveValidItems_1",
+      },
+      {
+        "_sourceLocation": {
+          "column": 3,
+          "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/parallel-flow.ts",
+          "line": 30,
+        },
+        "source": "enrichItems_parallel_1",
+        "target": "saveValidItems_1",
+      },
+      {
+        "_sourceLocation": {
+          "column": 2,
+          "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/parallel-flow.ts",
+          "line": 29,
+        },
+        "condition": "validated.valid",
+        "source": "start",
+        "target": "saveValidItems_1",
+      },
+      {
+        "_sourceLocation": {
+          "column": 2,
+          "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/parallel-flow.ts",
+          "line": 29,
+        },
         "condition": "!(validated.valid)",
-        "source": "gather_1",
+        "source": "start",
         "target": "handleInvalidItems_1",
       },
       {
+        "_sourceLocation": {
+          "column": 9,
+          "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/parallel-flow.ts",
+          "line": 36,
+        },
         "source": "saveValidItems_1",
         "target": "finalizeResults_1",
       },
       {
+        "_sourceLocation": {
+          "column": 9,
+          "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/parallel-flow.ts",
+          "line": 36,
+        },
         "source": "handleInvalidItems_1",
-        "target": "finalizeResults_1",
-      },
-      {
-        "source": "gather_1",
         "target": "finalizeResults_1",
       },
     ],
     "id": "complexParallelFlow",
     "nodes": [
       {
+        "id": "start",
+        "uses": "start",
+      },
+      {
+        "_sourceLocation": {
+          "column": 3,
+          "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/parallel-flow.ts",
+          "line": 23,
+        },
         "id": "processItems_parallel_1",
         "uses": "processItems",
       },
       {
+        "_sourceLocation": {
+          "column": 3,
+          "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/parallel-flow.ts",
+          "line": 24,
+        },
         "id": "validateItems_parallel_1",
         "uses": "validateItems",
       },
       {
+        "_sourceLocation": {
+          "column": 3,
+          "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/parallel-flow.ts",
+          "line": 25,
+        },
         "id": "enrichItems_parallel_1",
         "uses": "enrichItems",
       },
       {
+        "_sourceLocation": {
+          "column": 3,
+          "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/parallel-flow.ts",
+          "line": 30,
+        },
         "config": {
           "joinStrategy": "all",
         },
-        "id": "gather_1",
-        "uses": "gather",
-      },
-      {
         "id": "saveValidItems_1",
         "uses": "saveValidItems",
       },
       {
+        "_sourceLocation": {
+          "column": 3,
+          "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/parallel-flow.ts",
+          "line": 32,
+        },
         "id": "handleInvalidItems_1",
         "uses": "handleInvalidItems",
       },
       {
+        "_sourceLocation": {
+          "column": 9,
+          "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/parallel-flow.ts",
+          "line": 36,
+        },
         "config": {
           "joinStrategy": "any",
         },
@@ -212,10 +350,20 @@ exports[`Compiler > should compile all test fixtures 1`] = `
   "mainFlow": {
     "edges": [
       {
+        "_sourceLocation": {
+          "column": 2,
+          "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/main-flow.ts",
+          "line": 7,
+        },
         "source": "fetchUser_1",
         "target": "subFlow_1",
       },
       {
+        "_sourceLocation": {
+          "column": 2,
+          "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/main-flow.ts",
+          "line": 8,
+        },
         "source": "subFlow_1",
         "target": "processOrders_1",
       },
@@ -223,10 +371,20 @@ exports[`Compiler > should compile all test fixtures 1`] = `
     "id": "mainFlow",
     "nodes": [
       {
+        "_sourceLocation": {
+          "column": 2,
+          "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/main-flow.ts",
+          "line": 6,
+        },
         "id": "fetchUser_1",
         "uses": "fetchUser",
       },
       {
+        "_sourceLocation": {
+          "column": 2,
+          "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/main-flow.ts",
+          "line": 7,
+        },
         "id": "subFlow_1",
         "params": {
           "blueprintId": "subFlow",
@@ -234,6 +392,11 @@ exports[`Compiler > should compile all test fixtures 1`] = `
         "uses": "subflow",
       },
       {
+        "_sourceLocation": {
+          "column": 2,
+          "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/main-flow.ts",
+          "line": 8,
+        },
         "id": "processOrders_1",
         "uses": "processOrders",
       },
@@ -242,69 +405,134 @@ exports[`Compiler > should compile all test fixtures 1`] = `
   "nestedControlFlow": {
     "edges": [
       {
+        "_sourceLocation": {
+          "column": 4,
+          "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/complex-control-flow.ts",
+          "line": 58,
+        },
         "condition": "reviewed.approved",
-        "source": "reviewItem_1",
+        "source": "start",
         "target": "approveItem_1",
       },
       {
+        "_sourceLocation": {
+          "column": 4,
+          "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/complex-control-flow.ts",
+          "line": 58,
+        },
         "condition": "!(reviewed.approved)",
-        "source": "reviewItem_1",
+        "source": "start",
         "target": "rejectItem_1",
       },
       {
+        "_sourceLocation": {
+          "column": 3,
+          "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/complex-control-flow.ts",
+          "line": 55,
+        },
         "condition": "processed.needsReview",
-        "source": "processItem_1",
-        "target": "reviewItem_1",
+        "source": "start",
+        "target": "processItem_1",
       },
       {
+        "_sourceLocation": {
+          "column": 4,
+          "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/complex-control-flow.ts",
+          "line": 64,
+        },
         "source": "approveItem_1",
         "target": "autoApproveItem_1",
       },
       {
+        "_sourceLocation": {
+          "column": 4,
+          "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/complex-control-flow.ts",
+          "line": 64,
+        },
         "source": "rejectItem_1",
         "target": "autoApproveItem_1",
       },
       {
-        "source": "autoApproveItem_1",
-        "target": "flagItemForManualReview_1",
-      },
-      {
+        "_sourceLocation": {
+          "column": 3,
+          "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/complex-control-flow.ts",
+          "line": 55,
+        },
         "condition": "!(processed.needsReview)",
-        "source": "processItem_1",
+        "source": "start",
         "target": "autoApproveItem_1",
       },
       {
-        "source": "reviewItem_1",
-        "target": "finalizeProcessing_1",
-      },
-      {
-        "source": "flagItemForManualReview_1",
-        "target": "finalizeProcessing_1",
-      },
-      {
+        "_sourceLocation": {
+          "column": 9,
+          "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/complex-control-flow.ts",
+          "line": 70,
+        },
         "source": "processItem_1",
+        "target": "finalizeProcessing_1",
+      },
+      {
+        "_sourceLocation": {
+          "column": 9,
+          "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/complex-control-flow.ts",
+          "line": 70,
+        },
+        "source": "autoApproveItem_1",
         "target": "finalizeProcessing_1",
       },
     ],
     "id": "nestedControlFlow",
     "nodes": [
       {
+        "id": "start",
+        "uses": "start",
+      },
+      {
+        "id": "start",
+        "uses": "start",
+      },
+      {
+        "_sourceLocation": {
+          "column": 21,
+          "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/complex-control-flow.ts",
+          "line": 53,
+        },
         "id": "processItem_1",
         "uses": "processItem",
       },
       {
+        "_sourceLocation": {
+          "column": 21,
+          "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/complex-control-flow.ts",
+          "line": 56,
+        },
         "id": "reviewItem_1",
         "uses": "reviewItem",
       },
       {
+        "_sourceLocation": {
+          "column": 5,
+          "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/complex-control-flow.ts",
+          "line": 59,
+        },
         "id": "approveItem_1",
         "uses": "approveItem",
       },
       {
+        "_sourceLocation": {
+          "column": 5,
+          "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/complex-control-flow.ts",
+          "line": 61,
+        },
         "id": "rejectItem_1",
         "uses": "rejectItem",
       },
       {
+        "_sourceLocation": {
+          "column": 4,
+          "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/complex-control-flow.ts",
+          "line": 64,
+        },
         "config": {
           "joinStrategy": "any",
         },
@@ -312,10 +540,20 @@ exports[`Compiler > should compile all test fixtures 1`] = `
         "uses": "autoApproveItem",
       },
       {
+        "_sourceLocation": {
+          "column": 4,
+          "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/complex-control-flow.ts",
+          "line": 66,
+        },
         "id": "flagItemForManualReview_1",
         "uses": "flagItemForManualReview",
       },
       {
+        "_sourceLocation": {
+          "column": 9,
+          "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/complex-control-flow.ts",
+          "line": 70,
+        },
         "config": {
           "joinStrategy": "any",
         },
@@ -327,45 +565,72 @@ exports[`Compiler > should compile all test fixtures 1`] = `
   "parallelFlow": {
     "edges": [
       {
+        "_sourceLocation": {
+          "column": 17,
+          "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/parallel-flow.ts",
+          "line": 13,
+        },
         "source": "fetchProfile_parallel_1",
-        "target": "aggregateData_parallel_1",
+        "target": "aggregateData_1",
       },
       {
+        "_sourceLocation": {
+          "column": 17,
+          "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/parallel-flow.ts",
+          "line": 13,
+        },
         "source": "fetchOrders_parallel_1",
-        "target": "aggregateData_parallel_1",
+        "target": "aggregateData_1",
       },
       {
+        "_sourceLocation": {
+          "column": 17,
+          "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/parallel-flow.ts",
+          "line": 13,
+        },
         "source": "fetchActivity_parallel_1",
-        "target": "aggregateData_parallel_1",
-      },
-      {
-        "source": "aggregateData_parallel_1",
-        "target": "aggregateData_2",
+        "target": "aggregateData_1",
       },
     ],
     "id": "parallelFlow",
     "nodes": [
       {
+        "_sourceLocation": {
+          "column": 3,
+          "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/parallel-flow.ts",
+          "line": 7,
+        },
         "id": "fetchProfile_parallel_1",
         "uses": "fetchProfile",
       },
       {
+        "_sourceLocation": {
+          "column": 3,
+          "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/parallel-flow.ts",
+          "line": 8,
+        },
         "id": "fetchOrders_parallel_1",
         "uses": "fetchOrders",
       },
       {
+        "_sourceLocation": {
+          "column": 3,
+          "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/parallel-flow.ts",
+          "line": 9,
+        },
         "id": "fetchActivity_parallel_1",
         "uses": "fetchActivity",
       },
       {
+        "_sourceLocation": {
+          "column": 17,
+          "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/parallel-flow.ts",
+          "line": 13,
+        },
         "config": {
           "joinStrategy": "all",
         },
-        "id": "aggregateData_parallel_1",
-        "uses": "aggregateData",
-      },
-      {
-        "id": "aggregateData_2",
+        "id": "aggregateData_1",
         "uses": "aggregateData",
       },
     ],
@@ -373,6 +638,11 @@ exports[`Compiler > should compile all test fixtures 1`] = `
   "simpleFlow": {
     "edges": [
       {
+        "_sourceLocation": {
+          "column": 2,
+          "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/simple-flow.ts",
+          "line": 4,
+        },
         "source": "fetchUser_1",
         "target": "processOrders_1",
       },
@@ -380,10 +650,20 @@ exports[`Compiler > should compile all test fixtures 1`] = `
     "id": "simpleFlow",
     "nodes": [
       {
+        "_sourceLocation": {
+          "column": 2,
+          "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/simple-flow.ts",
+          "line": 3,
+        },
         "id": "fetchUser_1",
         "uses": "fetchUser",
       },
       {
+        "_sourceLocation": {
+          "column": 2,
+          "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/simple-flow.ts",
+          "line": 4,
+        },
         "id": "processOrders_1",
         "uses": "processOrders",
       },
@@ -392,20 +672,40 @@ exports[`Compiler > should compile all test fixtures 1`] = `
   "simpleIfElseFlow": {
     "edges": [
       {
+        "_sourceLocation": {
+          "column": 2,
+          "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/simple-if-else.ts",
+          "line": 5,
+        },
         "condition": "condition",
         "source": "start",
         "target": "doSomething_1",
       },
       {
+        "_sourceLocation": {
+          "column": 2,
+          "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/simple-if-else.ts",
+          "line": 5,
+        },
         "condition": "!(condition)",
         "source": "start",
         "target": "doSomethingElse_1",
       },
       {
+        "_sourceLocation": {
+          "column": 2,
+          "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/simple-if-else.ts",
+          "line": 11,
+        },
         "source": "doSomething_1",
         "target": "finalize_1",
       },
       {
+        "_sourceLocation": {
+          "column": 2,
+          "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/simple-if-else.ts",
+          "line": 11,
+        },
         "source": "doSomethingElse_1",
         "target": "finalize_1",
       },
@@ -417,14 +717,29 @@ exports[`Compiler > should compile all test fixtures 1`] = `
         "uses": "start",
       },
       {
+        "_sourceLocation": {
+          "column": 3,
+          "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/simple-if-else.ts",
+          "line": 6,
+        },
         "id": "doSomething_1",
         "uses": "doSomething",
       },
       {
+        "_sourceLocation": {
+          "column": 3,
+          "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/simple-if-else.ts",
+          "line": 8,
+        },
         "id": "doSomethingElse_1",
         "uses": "doSomethingElse",
       },
       {
+        "_sourceLocation": {
+          "column": 2,
+          "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/simple-if-else.ts",
+          "line": 11,
+        },
         "config": {
           "joinStrategy": "any",
         },
@@ -436,37 +751,54 @@ exports[`Compiler > should compile all test fixtures 1`] = `
   "simpleParallelFlow": {
     "edges": [
       {
+        "_sourceLocation": {
+          "column": 17,
+          "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/simple-parallel.ts",
+          "line": 9,
+        },
         "source": "fetchProfile_parallel_1",
-        "target": "aggregateData_parallel_1",
+        "target": "aggregateData_1",
       },
       {
+        "_sourceLocation": {
+          "column": 17,
+          "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/simple-parallel.ts",
+          "line": 9,
+        },
         "source": "fetchOrders_parallel_1",
-        "target": "aggregateData_parallel_1",
-      },
-      {
-        "source": "aggregateData_parallel_1",
-        "target": "aggregateData_2",
+        "target": "aggregateData_1",
       },
     ],
     "id": "simpleParallelFlow",
     "nodes": [
       {
+        "_sourceLocation": {
+          "column": 47,
+          "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/simple-parallel.ts",
+          "line": 6,
+        },
         "id": "fetchProfile_parallel_1",
         "uses": "fetchProfile",
       },
       {
+        "_sourceLocation": {
+          "column": 73,
+          "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/simple-parallel.ts",
+          "line": 6,
+        },
         "id": "fetchOrders_parallel_1",
         "uses": "fetchOrders",
       },
       {
+        "_sourceLocation": {
+          "column": 17,
+          "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/simple-parallel.ts",
+          "line": 9,
+        },
         "config": {
           "joinStrategy": "all",
         },
-        "id": "aggregateData_parallel_1",
-        "uses": "aggregateData",
-      },
-      {
-        "id": "aggregateData_2",
+        "id": "aggregateData_1",
         "uses": "aggregateData",
       },
     ],
@@ -476,8 +808,28 @@ exports[`Compiler > should compile all test fixtures 1`] = `
     "id": "subFlow",
     "nodes": [
       {
+        "_sourceLocation": {
+          "column": 2,
+          "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/sub-flow.ts",
+          "line": 5,
+        },
         "id": "recordTransaction_1",
         "uses": "recordTransaction",
+      },
+    ],
+  },
+  "typeMismatchFlow": {
+    "edges": [],
+    "id": "typeMismatchFlow",
+    "nodes": [
+      {
+        "_sourceLocation": {
+          "column": 17,
+          "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/type-mismatch.ts",
+          "line": 4,
+        },
+        "id": "processNumber_1",
+        "uses": "processNumber",
       },
     ],
   },
@@ -574,6 +926,10 @@ exports[`Compiler > should compile all test fixtures 2`] = `
     "exportName": "processItems",
     "importPath": "/home/g/m/flowcraft/packages/compiler/test/fixtures/parallel-flow.ts",
   },
+  "processNumber": {
+    "exportName": "processNumber",
+    "importPath": "/home/g/m/flowcraft/packages/compiler/test/fixtures/type-mismatch.ts",
+  },
   "processOrders": {
     "exportName": "processOrders",
     "importPath": "/home/g/m/flowcraft/packages/compiler/test/fixtures/simple-flow.ts",
@@ -646,6 +1002,7 @@ import { finalizeResults } from '../test/fixtures/parallel-flow'
 import { doSomething } from '../test/fixtures/simple-if-else'
 import { doSomethingElse } from '../test/fixtures/simple-if-else'
 import { finalize } from '../test/fixtures/simple-if-else'
+import { processNumber } from '../test/fixtures/type-mismatch'
 
 import type { NodeImplementation, WorkflowBlueprint } from 'flowcraft'
 
@@ -680,7 +1037,8 @@ export const registry: Record<string, NodeImplementation> = {
   'finalizeResults': finalizeResults,
   'doSomething': doSomething,
   'doSomethingElse': doSomethingElse,
-  'finalize': finalize
+  'finalize': finalize,
+  'processNumber': processNumber
 }
 
 export const blueprints: Record<string, WorkflowBlueprint> = {
@@ -688,12 +1046,26 @@ export const blueprints: Record<string, WorkflowBlueprint> = {
   "id": "complexControlFlow",
   "nodes": [
     {
+      "id": "start",
+      "uses": "start"
+    },
+    {
       "id": "validateData_1",
-      "uses": "validateData"
+      "uses": "validateData",
+      "_sourceLocation": {
+        "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/complex-control-flow.ts",
+        "line": 6,
+        "column": 20
+      }
     },
     {
       "id": "handleValidationError_1",
-      "uses": "handleValidationError"
+      "uses": "handleValidationError",
+      "_sourceLocation": {
+        "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/complex-control-flow.ts",
+        "line": 9,
+        "column": 3
+      }
     },
     {
       "id": "loop-controller_1",
@@ -703,116 +1075,179 @@ export const blueprints: Record<string, WorkflowBlueprint> = {
       },
       "config": {
         "joinStrategy": "any"
+      },
+      "_sourceLocation": {
+        "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/complex-control-flow.ts",
+        "line": 17,
+        "column": 2
       }
     },
     {
       "id": "processBatch_1",
       "uses": "processBatch",
+      "_sourceLocation": {
+        "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/complex-control-flow.ts",
+        "line": 19,
+        "column": 20
+      },
       "config": {
         "fallback": "handleBatchError_1"
       }
     },
     {
       "id": "handleBatchError_1",
-      "uses": "handleBatchError"
+      "uses": "handleBatchError",
+      "_sourceLocation": {
+        "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/complex-control-flow.ts",
+        "line": 26,
+        "column": 4
+      }
     },
     {
       "id": "generateSummary_parallel_1",
-      "uses": "generateSummary"
+      "uses": "generateSummary",
+      "_sourceLocation": {
+        "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/complex-control-flow.ts",
+        "line": 34,
+        "column": 3
+      }
     },
     {
       "id": "generateReport_parallel_1",
-      "uses": "generateReport"
-    },
-    {
-      "id": "gather_1",
-      "uses": "gather",
-      "config": {
-        "joinStrategy": "all"
+      "uses": "generateReport",
+      "_sourceLocation": {
+        "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/complex-control-flow.ts",
+        "line": 35,
+        "column": 3
       }
     },
     {
       "id": "sendHighVolumeNotification_1",
       "uses": "sendHighVolumeNotification",
+      "_sourceLocation": {
+        "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/complex-control-flow.ts",
+        "line": 40,
+        "column": 3
+      },
       "config": {
-        "joinStrategy": "any"
+        "joinStrategy": "all"
       }
     },
     {
       "id": "sendStandardNotification_1",
-      "uses": "sendStandardNotification"
+      "uses": "sendStandardNotification",
+      "_sourceLocation": {
+        "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/complex-control-flow.ts",
+        "line": 42,
+        "column": 3
+      }
     }
   ],
   "edges": [
     {
-      "source": "validateData_1",
+      "source": "start",
       "target": "handleValidationError_1",
-      "condition": "!validated.isValid"
-    },
-    {
-      "source": "validateData_1",
-      "target": "loop-controller_1"
+      "condition": "!validated.isValid",
+      "_sourceLocation": {
+        "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/complex-control-flow.ts",
+        "line": 8,
+        "column": 2
+      }
     },
     {
       "source": "handleValidationError_1",
-      "target": "handleBatchError_1"
+      "target": "handleBatchError_1",
+      "_sourceLocation": {
+        "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/complex-control-flow.ts",
+        "line": 26,
+        "column": 4
+      }
     },
     {
-      "source": "validateData_1",
+      "source": "start",
       "target": "handleBatchError_1",
-      "condition": "!(!validated.isValid)"
+      "condition": "!(!validated.isValid)",
+      "_sourceLocation": {
+        "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/complex-control-flow.ts",
+        "line": 26,
+        "column": 4
+      }
     },
     {
       "source": "loop-controller_1",
       "target": "handleBatchError_1",
+      "_sourceLocation": {
+        "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/complex-control-flow.ts",
+        "line": 26,
+        "column": 4
+      },
       "action": "break"
-    },
-    {
-      "source": "processBatch_1",
-      "target": "handleBatchError_1"
     },
     {
       "source": "loop-controller_1",
       "target": "processBatch_1",
-      "action": "continue"
-    },
-    {
-      "source": "handleBatchError_1",
-      "target": "loop-controller_1"
-    },
-    {
-      "source": "loop-controller_1",
-      "target": "generateSummary_parallel_1"
+      "action": "continue",
+      "_sourceLocation": {
+        "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/complex-control-flow.ts",
+        "line": 17,
+        "column": 2
+      }
     },
     {
       "source": "loop-controller_1",
-      "target": "generateReport_parallel_1"
+      "target": "generateSummary_parallel_1",
+      "_sourceLocation": {
+        "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/complex-control-flow.ts",
+        "line": 33,
+        "column": 34
+      }
+    },
+    {
+      "source": "loop-controller_1",
+      "target": "generateReport_parallel_1",
+      "_sourceLocation": {
+        "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/complex-control-flow.ts",
+        "line": 33,
+        "column": 34
+      }
     },
     {
       "source": "generateSummary_parallel_1",
-      "target": "gather_1"
+      "target": "sendHighVolumeNotification_1",
+      "_sourceLocation": {
+        "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/complex-control-flow.ts",
+        "line": 40,
+        "column": 3
+      }
     },
     {
       "source": "generateReport_parallel_1",
-      "target": "gather_1"
-    },
-    {
-      "source": "processBatch_1",
-      "target": "sendHighVolumeNotification_1"
-    },
-    {
-      "source": "handleBatchError_1",
-      "target": "sendHighVolumeNotification_1"
-    },
-    {
-      "source": "gather_1",
       "target": "sendHighVolumeNotification_1",
-      "condition": "processedCount > 1000"
+      "_sourceLocation": {
+        "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/complex-control-flow.ts",
+        "line": 40,
+        "column": 3
+      }
     },
     {
-      "source": "gather_1",
+      "source": "loop-controller_1",
+      "target": "sendHighVolumeNotification_1",
+      "condition": "processedCount > 1000",
+      "_sourceLocation": {
+        "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/complex-control-flow.ts",
+        "line": 39,
+        "column": 2
+      }
+    },
+    {
+      "source": "loop-controller_1",
       "target": "sendStandardNotification_1",
-      "condition": "!(processedCount > 1000)"
+      "condition": "!(processedCount > 1000)",
+      "_sourceLocation": {
+        "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/complex-control-flow.ts",
+        "line": 39,
+        "column": 2
+      }
     }
   ]
 },
@@ -820,35 +1255,78 @@ export const blueprints: Record<string, WorkflowBlueprint> = {
   "id": "nestedControlFlow",
   "nodes": [
     {
+      "id": "start",
+      "uses": "start"
+    },
+    {
+      "id": "start",
+      "uses": "start"
+    },
+    {
       "id": "processItem_1",
-      "uses": "processItem"
+      "uses": "processItem",
+      "_sourceLocation": {
+        "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/complex-control-flow.ts",
+        "line": 53,
+        "column": 21
+      }
     },
     {
       "id": "reviewItem_1",
-      "uses": "reviewItem"
+      "uses": "reviewItem",
+      "_sourceLocation": {
+        "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/complex-control-flow.ts",
+        "line": 56,
+        "column": 21
+      }
     },
     {
       "id": "approveItem_1",
-      "uses": "approveItem"
+      "uses": "approveItem",
+      "_sourceLocation": {
+        "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/complex-control-flow.ts",
+        "line": 59,
+        "column": 5
+      }
     },
     {
       "id": "rejectItem_1",
-      "uses": "rejectItem"
+      "uses": "rejectItem",
+      "_sourceLocation": {
+        "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/complex-control-flow.ts",
+        "line": 61,
+        "column": 5
+      }
     },
     {
       "id": "autoApproveItem_1",
       "uses": "autoApproveItem",
+      "_sourceLocation": {
+        "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/complex-control-flow.ts",
+        "line": 64,
+        "column": 4
+      },
       "config": {
         "joinStrategy": "any"
       }
     },
     {
       "id": "flagItemForManualReview_1",
-      "uses": "flagItemForManualReview"
+      "uses": "flagItemForManualReview",
+      "_sourceLocation": {
+        "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/complex-control-flow.ts",
+        "line": 66,
+        "column": 4
+      }
     },
     {
       "id": "finalizeProcessing_1",
       "uses": "finalizeProcessing",
+      "_sourceLocation": {
+        "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/complex-control-flow.ts",
+        "line": 70,
+        "column": 9
+      },
       "config": {
         "joinStrategy": "any"
       }
@@ -856,48 +1334,80 @@ export const blueprints: Record<string, WorkflowBlueprint> = {
   ],
   "edges": [
     {
-      "source": "reviewItem_1",
+      "source": "start",
       "target": "approveItem_1",
-      "condition": "reviewed.approved"
+      "condition": "reviewed.approved",
+      "_sourceLocation": {
+        "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/complex-control-flow.ts",
+        "line": 58,
+        "column": 4
+      }
     },
     {
-      "source": "reviewItem_1",
+      "source": "start",
       "target": "rejectItem_1",
-      "condition": "!(reviewed.approved)"
+      "condition": "!(reviewed.approved)",
+      "_sourceLocation": {
+        "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/complex-control-flow.ts",
+        "line": 58,
+        "column": 4
+      }
     },
     {
-      "source": "processItem_1",
-      "target": "reviewItem_1",
-      "condition": "processed.needsReview"
+      "source": "start",
+      "target": "processItem_1",
+      "condition": "processed.needsReview",
+      "_sourceLocation": {
+        "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/complex-control-flow.ts",
+        "line": 55,
+        "column": 3
+      }
     },
     {
       "source": "approveItem_1",
-      "target": "autoApproveItem_1"
+      "target": "autoApproveItem_1",
+      "_sourceLocation": {
+        "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/complex-control-flow.ts",
+        "line": 64,
+        "column": 4
+      }
     },
     {
       "source": "rejectItem_1",
-      "target": "autoApproveItem_1"
+      "target": "autoApproveItem_1",
+      "_sourceLocation": {
+        "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/complex-control-flow.ts",
+        "line": 64,
+        "column": 4
+      }
+    },
+    {
+      "source": "start",
+      "target": "autoApproveItem_1",
+      "condition": "!(processed.needsReview)",
+      "_sourceLocation": {
+        "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/complex-control-flow.ts",
+        "line": 55,
+        "column": 3
+      }
+    },
+    {
+      "source": "processItem_1",
+      "target": "finalizeProcessing_1",
+      "_sourceLocation": {
+        "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/complex-control-flow.ts",
+        "line": 70,
+        "column": 9
+      }
     },
     {
       "source": "autoApproveItem_1",
-      "target": "flagItemForManualReview_1"
-    },
-    {
-      "source": "processItem_1",
-      "target": "autoApproveItem_1",
-      "condition": "!(processed.needsReview)"
-    },
-    {
-      "source": "reviewItem_1",
-      "target": "finalizeProcessing_1"
-    },
-    {
-      "source": "flagItemForManualReview_1",
-      "target": "finalizeProcessing_1"
-    },
-    {
-      "source": "processItem_1",
-      "target": "finalizeProcessing_1"
+      "target": "finalizeProcessing_1",
+      "_sourceLocation": {
+        "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/complex-control-flow.ts",
+        "line": 70,
+        "column": 9
+      }
     }
   ]
 },
@@ -906,7 +1416,12 @@ export const blueprints: Record<string, WorkflowBlueprint> = {
   "nodes": [
     {
       "id": "recordTransaction_1",
-      "uses": "recordTransaction"
+      "uses": "recordTransaction",
+      "_sourceLocation": {
+        "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/sub-flow.ts",
+        "line": 5,
+        "column": 2
+      }
     }
   ],
   "edges": []
@@ -916,28 +1431,53 @@ export const blueprints: Record<string, WorkflowBlueprint> = {
   "nodes": [
     {
       "id": "fetchUser_1",
-      "uses": "fetchUser"
+      "uses": "fetchUser",
+      "_sourceLocation": {
+        "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/main-flow.ts",
+        "line": 6,
+        "column": 2
+      }
     },
     {
       "id": "subFlow_1",
       "uses": "subflow",
       "params": {
         "blueprintId": "subFlow"
+      },
+      "_sourceLocation": {
+        "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/main-flow.ts",
+        "line": 7,
+        "column": 2
       }
     },
     {
       "id": "processOrders_1",
-      "uses": "processOrders"
+      "uses": "processOrders",
+      "_sourceLocation": {
+        "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/main-flow.ts",
+        "line": 8,
+        "column": 2
+      }
     }
   ],
   "edges": [
     {
       "source": "fetchUser_1",
-      "target": "subFlow_1"
+      "target": "subFlow_1",
+      "_sourceLocation": {
+        "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/main-flow.ts",
+        "line": 7,
+        "column": 2
+      }
     },
     {
       "source": "subFlow_1",
-      "target": "processOrders_1"
+      "target": "processOrders_1",
+      "_sourceLocation": {
+        "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/main-flow.ts",
+        "line": 8,
+        "column": 2
+      }
     }
   ]
 },
@@ -946,44 +1486,71 @@ export const blueprints: Record<string, WorkflowBlueprint> = {
   "nodes": [
     {
       "id": "fetchProfile_parallel_1",
-      "uses": "fetchProfile"
-    },
-    {
-      "id": "fetchOrders_parallel_1",
-      "uses": "fetchOrders"
-    },
-    {
-      "id": "fetchActivity_parallel_1",
-      "uses": "fetchActivity"
-    },
-    {
-      "id": "aggregateData_parallel_1",
-      "uses": "aggregateData",
-      "config": {
-        "joinStrategy": "all"
+      "uses": "fetchProfile",
+      "_sourceLocation": {
+        "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/parallel-flow.ts",
+        "line": 7,
+        "column": 3
       }
     },
     {
-      "id": "aggregateData_2",
-      "uses": "aggregateData"
+      "id": "fetchOrders_parallel_1",
+      "uses": "fetchOrders",
+      "_sourceLocation": {
+        "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/parallel-flow.ts",
+        "line": 8,
+        "column": 3
+      }
+    },
+    {
+      "id": "fetchActivity_parallel_1",
+      "uses": "fetchActivity",
+      "_sourceLocation": {
+        "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/parallel-flow.ts",
+        "line": 9,
+        "column": 3
+      }
+    },
+    {
+      "id": "aggregateData_1",
+      "uses": "aggregateData",
+      "_sourceLocation": {
+        "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/parallel-flow.ts",
+        "line": 13,
+        "column": 17
+      },
+      "config": {
+        "joinStrategy": "all"
+      }
     }
   ],
   "edges": [
     {
       "source": "fetchProfile_parallel_1",
-      "target": "aggregateData_parallel_1"
+      "target": "aggregateData_1",
+      "_sourceLocation": {
+        "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/parallel-flow.ts",
+        "line": 13,
+        "column": 17
+      }
     },
     {
       "source": "fetchOrders_parallel_1",
-      "target": "aggregateData_parallel_1"
+      "target": "aggregateData_1",
+      "_sourceLocation": {
+        "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/parallel-flow.ts",
+        "line": 13,
+        "column": 17
+      }
     },
     {
       "source": "fetchActivity_parallel_1",
-      "target": "aggregateData_parallel_1"
-    },
-    {
-      "source": "aggregateData_parallel_1",
-      "target": "aggregateData_2"
+      "target": "aggregateData_1",
+      "_sourceLocation": {
+        "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/parallel-flow.ts",
+        "line": 13,
+        "column": 17
+      }
     }
   ]
 },
@@ -991,35 +1558,65 @@ export const blueprints: Record<string, WorkflowBlueprint> = {
   "id": "complexParallelFlow",
   "nodes": [
     {
+      "id": "start",
+      "uses": "start"
+    },
+    {
       "id": "processItems_parallel_1",
-      "uses": "processItems"
+      "uses": "processItems",
+      "_sourceLocation": {
+        "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/parallel-flow.ts",
+        "line": 23,
+        "column": 3
+      }
     },
     {
       "id": "validateItems_parallel_1",
-      "uses": "validateItems"
+      "uses": "validateItems",
+      "_sourceLocation": {
+        "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/parallel-flow.ts",
+        "line": 24,
+        "column": 3
+      }
     },
     {
       "id": "enrichItems_parallel_1",
-      "uses": "enrichItems"
+      "uses": "enrichItems",
+      "_sourceLocation": {
+        "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/parallel-flow.ts",
+        "line": 25,
+        "column": 3
+      }
     },
     {
-      "id": "gather_1",
-      "uses": "gather",
+      "id": "saveValidItems_1",
+      "uses": "saveValidItems",
+      "_sourceLocation": {
+        "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/parallel-flow.ts",
+        "line": 30,
+        "column": 3
+      },
       "config": {
         "joinStrategy": "all"
       }
     },
     {
-      "id": "saveValidItems_1",
-      "uses": "saveValidItems"
-    },
-    {
       "id": "handleInvalidItems_1",
-      "uses": "handleInvalidItems"
+      "uses": "handleInvalidItems",
+      "_sourceLocation": {
+        "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/parallel-flow.ts",
+        "line": 32,
+        "column": 3
+      }
     },
     {
       "id": "finalizeResults_1",
       "uses": "finalizeResults",
+      "_sourceLocation": {
+        "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/parallel-flow.ts",
+        "line": 36,
+        "column": 9
+      },
       "config": {
         "joinStrategy": "any"
       }
@@ -1028,37 +1625,68 @@ export const blueprints: Record<string, WorkflowBlueprint> = {
   "edges": [
     {
       "source": "processItems_parallel_1",
-      "target": "gather_1"
+      "target": "saveValidItems_1",
+      "_sourceLocation": {
+        "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/parallel-flow.ts",
+        "line": 30,
+        "column": 3
+      }
     },
     {
       "source": "validateItems_parallel_1",
-      "target": "gather_1"
+      "target": "saveValidItems_1",
+      "_sourceLocation": {
+        "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/parallel-flow.ts",
+        "line": 30,
+        "column": 3
+      }
     },
     {
       "source": "enrichItems_parallel_1",
-      "target": "gather_1"
-    },
-    {
-      "source": "gather_1",
       "target": "saveValidItems_1",
-      "condition": "validated.valid"
+      "_sourceLocation": {
+        "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/parallel-flow.ts",
+        "line": 30,
+        "column": 3
+      }
     },
     {
-      "source": "gather_1",
+      "source": "start",
+      "target": "saveValidItems_1",
+      "condition": "validated.valid",
+      "_sourceLocation": {
+        "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/parallel-flow.ts",
+        "line": 29,
+        "column": 2
+      }
+    },
+    {
+      "source": "start",
       "target": "handleInvalidItems_1",
-      "condition": "!(validated.valid)"
+      "condition": "!(validated.valid)",
+      "_sourceLocation": {
+        "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/parallel-flow.ts",
+        "line": 29,
+        "column": 2
+      }
     },
     {
       "source": "saveValidItems_1",
-      "target": "finalizeResults_1"
+      "target": "finalizeResults_1",
+      "_sourceLocation": {
+        "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/parallel-flow.ts",
+        "line": 36,
+        "column": 9
+      }
     },
     {
       "source": "handleInvalidItems_1",
-      "target": "finalizeResults_1"
-    },
-    {
-      "source": "gather_1",
-      "target": "finalizeResults_1"
+      "target": "finalizeResults_1",
+      "_sourceLocation": {
+        "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/parallel-flow.ts",
+        "line": 36,
+        "column": 9
+      }
     }
   ]
 },
@@ -1067,17 +1695,32 @@ export const blueprints: Record<string, WorkflowBlueprint> = {
   "nodes": [
     {
       "id": "fetchUser_1",
-      "uses": "fetchUser"
+      "uses": "fetchUser",
+      "_sourceLocation": {
+        "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/simple-flow.ts",
+        "line": 3,
+        "column": 2
+      }
     },
     {
       "id": "processOrders_1",
-      "uses": "processOrders"
+      "uses": "processOrders",
+      "_sourceLocation": {
+        "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/simple-flow.ts",
+        "line": 4,
+        "column": 2
+      }
     }
   ],
   "edges": [
     {
       "source": "fetchUser_1",
-      "target": "processOrders_1"
+      "target": "processOrders_1",
+      "_sourceLocation": {
+        "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/simple-flow.ts",
+        "line": 4,
+        "column": 2
+      }
     }
   ]
 },
@@ -1090,15 +1733,30 @@ export const blueprints: Record<string, WorkflowBlueprint> = {
     },
     {
       "id": "doSomething_1",
-      "uses": "doSomething"
+      "uses": "doSomething",
+      "_sourceLocation": {
+        "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/simple-if-else.ts",
+        "line": 6,
+        "column": 3
+      }
     },
     {
       "id": "doSomethingElse_1",
-      "uses": "doSomethingElse"
+      "uses": "doSomethingElse",
+      "_sourceLocation": {
+        "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/simple-if-else.ts",
+        "line": 8,
+        "column": 3
+      }
     },
     {
       "id": "finalize_1",
       "uses": "finalize",
+      "_sourceLocation": {
+        "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/simple-if-else.ts",
+        "line": 11,
+        "column": 2
+      },
       "config": {
         "joinStrategy": "any"
       }
@@ -1108,20 +1766,40 @@ export const blueprints: Record<string, WorkflowBlueprint> = {
     {
       "source": "start",
       "target": "doSomething_1",
-      "condition": "condition"
+      "condition": "condition",
+      "_sourceLocation": {
+        "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/simple-if-else.ts",
+        "line": 5,
+        "column": 2
+      }
     },
     {
       "source": "start",
       "target": "doSomethingElse_1",
-      "condition": "!(condition)"
+      "condition": "!(condition)",
+      "_sourceLocation": {
+        "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/simple-if-else.ts",
+        "line": 5,
+        "column": 2
+      }
     },
     {
       "source": "doSomething_1",
-      "target": "finalize_1"
+      "target": "finalize_1",
+      "_sourceLocation": {
+        "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/simple-if-else.ts",
+        "line": 11,
+        "column": 2
+      }
     },
     {
       "source": "doSomethingElse_1",
-      "target": "finalize_1"
+      "target": "finalize_1",
+      "_sourceLocation": {
+        "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/simple-if-else.ts",
+        "line": 11,
+        "column": 2
+      }
     }
   ]
 },
@@ -1130,39 +1808,73 @@ export const blueprints: Record<string, WorkflowBlueprint> = {
   "nodes": [
     {
       "id": "fetchProfile_parallel_1",
-      "uses": "fetchProfile"
-    },
-    {
-      "id": "fetchOrders_parallel_1",
-      "uses": "fetchOrders"
-    },
-    {
-      "id": "aggregateData_parallel_1",
-      "uses": "aggregateData",
-      "config": {
-        "joinStrategy": "all"
+      "uses": "fetchProfile",
+      "_sourceLocation": {
+        "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/simple-parallel.ts",
+        "line": 6,
+        "column": 47
       }
     },
     {
-      "id": "aggregateData_2",
-      "uses": "aggregateData"
+      "id": "fetchOrders_parallel_1",
+      "uses": "fetchOrders",
+      "_sourceLocation": {
+        "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/simple-parallel.ts",
+        "line": 6,
+        "column": 73
+      }
+    },
+    {
+      "id": "aggregateData_1",
+      "uses": "aggregateData",
+      "_sourceLocation": {
+        "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/simple-parallel.ts",
+        "line": 9,
+        "column": 17
+      },
+      "config": {
+        "joinStrategy": "all"
+      }
     }
   ],
   "edges": [
     {
       "source": "fetchProfile_parallel_1",
-      "target": "aggregateData_parallel_1"
+      "target": "aggregateData_1",
+      "_sourceLocation": {
+        "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/simple-parallel.ts",
+        "line": 9,
+        "column": 17
+      }
     },
     {
       "source": "fetchOrders_parallel_1",
-      "target": "aggregateData_parallel_1"
-    },
-    {
-      "source": "aggregateData_parallel_1",
-      "target": "aggregateData_2"
+      "target": "aggregateData_1",
+      "_sourceLocation": {
+        "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/simple-parallel.ts",
+        "line": 9,
+        "column": 17
+      }
     }
   ]
+},
+  'typeMismatchFlow': {
+  "id": "typeMismatchFlow",
+  "nodes": [
+    {
+      "id": "processNumber_1",
+      "uses": "processNumber",
+      "_sourceLocation": {
+        "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/type-mismatch.ts",
+        "line": 4,
+        "column": 17
+      }
+    }
+  ],
+  "edges": []
 }
 }
 "
 `;
+
+exports[`Compiler > should compile all test fixtures 4`] = `[]`;

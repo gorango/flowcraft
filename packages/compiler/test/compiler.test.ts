@@ -16,5 +16,6 @@ describe('Compiler', () => {
 		expect(result.blueprints).toMatchSnapshot()
 		expect(result.registry).toMatchSnapshot()
 		expect(result.manifestSource).toMatchSnapshot()
+		expect(result.diagnostics).toMatchSnapshot()
 	})
 })
