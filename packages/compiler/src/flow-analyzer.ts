@@ -2,16 +2,16 @@ import type { NodeDefinition, WorkflowBlueprint } from 'flowcraft'
 import * as ts from 'typescript'
 import type { Compiler } from './compiler'
 import { CompilerState } from './compiler-state'
-import { handleWhileStatement } from './visitors/handle-while-statement'
+import { handleAwaitExpression } from './visitors/handle-await-expression'
 import { handleForOfStatement } from './visitors/handle-for-of-statement'
 import { handleIfStatement } from './visitors/handle-if-statement'
 import { handleTryStatement } from './visitors/handle-try-statement'
-import { handleAwaitExpression } from './visitors/handle-await-expression'
+import { handleWhileStatement } from './visitors/handle-while-statement'
 
 export class FlowAnalyzer {
 	registry: Record<string, { importPath: string; exportName: string }> = {}
 	private diagnostics: import('./types').CompilationDiagnostic[] = []
-	private state: CompilerState
+	public state: CompilerState
 
 	constructor(
 		public compiler: Compiler,

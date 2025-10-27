@@ -758,7 +758,7 @@ exports[`Compiler > should compile all test fixtures 1`] = `
         "_sourceLocation": {
           "column": 17,
           "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/type-mismatch.ts",
-          "line": 4,
+          "line": 5,
         },
         "id": "processNumber_1",
         "uses": "processNumber",
@@ -1706,7 +1706,7 @@ export const blueprints: Record<string, WorkflowBlueprint> = {
       "uses": "processNumber",
       "_sourceLocation": {
         "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/type-mismatch.ts",
-        "line": 4,
+        "line": 5,
         "column": 17
       }
     }
@@ -1722,7 +1722,7 @@ exports[`Compiler > should compile all test fixtures 4`] = `
   {
     "column": 37,
     "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/type-mismatch.ts",
-    "line": 4,
+    "line": 5,
     "message": "Type error in call to 'processNumber': argument of type '{ value: string; }' is not assignable to parameter 'params' of type '{ value: number; }'",
     "severity": "error",
   },

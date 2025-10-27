@@ -1,4 +1,4 @@
-import * as ts from 'typescript'
+import type * as ts from 'typescript'
 import type { FlowAnalyzer } from '../flow-analyzer'
 
 export function handleTryStatement(analyzer: FlowAnalyzer, node: ts.TryStatement): string | null {

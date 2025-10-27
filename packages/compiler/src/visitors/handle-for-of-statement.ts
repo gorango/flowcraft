@@ -29,9 +29,10 @@ export function handleForOfStatement(analyzer: FlowAnalyzer, node: ts.ForOfState
 		_sourceLocation: analyzer.getSourceLocation(node),
 	}
 	analyzer.state.addNode(controllerNode)
-	if (analyzer.state.getCursor()) {
+	const cursor = analyzer.state.getCursor()
+	if (cursor) {
 		analyzer.state.addEdge({
-			source: analyzer.state.getCursor()!,
+			source: cursor,
 			target: controllerId,
 			_sourceLocation: analyzer.getSourceLocation(node),
 		})

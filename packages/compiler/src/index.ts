@@ -5,3 +5,5 @@ export function compileProject(entryFilePaths: string[], tsConfigPath: string): 
 	const compiler = new Compiler(tsConfigPath)
 	return compiler.compileProject(entryFilePaths)
 }
+
+export * from './build'

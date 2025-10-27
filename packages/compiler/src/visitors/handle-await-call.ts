@@ -1,6 +1,6 @@
+import type { NodeDefinition } from 'flowcraft'
 import * as ts from 'typescript'
 import type { FlowAnalyzer } from '../flow-analyzer'
-import type { NodeDefinition } from 'flowcraft'
 
 export function handleAwaitCall(analyzer: FlowAnalyzer, callee: ts.CallExpression, node: ts.AwaitExpression): void {
 	const symbol = analyzer.typeChecker.getSymbolAtLocation(callee.expression)
@@ -26,8 +26,9 @@ export function handleAwaitCall(analyzer: FlowAnalyzer, callee: ts.CallExpressio
 							uses: exportName,
 							_sourceLocation: analyzer.getSourceLocation(node),
 						}
-						if (analyzer.state.getFallbackScope()) {
-							nodeDef.config = { fallback: analyzer.state.getFallbackScope()! }
+						const fallback = analyzer.state.getFallbackScope()
+						if (fallback) {
+							nodeDef.config = { fallback }
 						}
 						analyzer.registry[exportName] = { importPath: filePath, exportName }
 					} else if (exportInfo.type === 'flow') {
@@ -37,8 +38,9 @@ export function handleAwaitCall(analyzer: FlowAnalyzer, callee: ts.CallExpressio
 							params: { blueprintId: exportName },
 							_sourceLocation: analyzer.getSourceLocation(node),
 						}
-						if (analyzer.state.getFallbackScope()) {
-							nodeDef.config = { fallback: analyzer.state.getFallbackScope()! }
+						const fallback = analyzer.state.getFallbackScope()
+						if (fallback) {
+							nodeDef.config = { fallback }
 						}
 					} else {
 						return // Unknown type
@@ -53,8 +55,9 @@ export function handleAwaitCall(analyzer: FlowAnalyzer, callee: ts.CallExpressio
 						uses: exportName,
 						_sourceLocation: analyzer.getSourceLocation(node),
 					}
-					if (analyzer.state.getFallbackScope()) {
-						nodeDef.config = { fallback: analyzer.state.getFallbackScope()! }
+					const fallback = analyzer.state.getFallbackScope()
+					if (fallback) {
+						nodeDef.config = { fallback }
 					}
 					analyzer.registry[exportName] = { importPath: filePath, exportName }
 					analyzer.state.addNodeAndWire(nodeDef, node, analyzer.sourceFile, analyzer.typeChecker)

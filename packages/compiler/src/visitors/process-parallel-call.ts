@@ -1,6 +1,6 @@
+import type { NodeDefinition } from 'flowcraft'
 import * as ts from 'typescript'
 import type { FlowAnalyzer } from '../flow-analyzer'
-import type { NodeDefinition } from 'flowcraft'
 
 export function processParallelCall(analyzer: FlowAnalyzer, callNode: ts.CallExpression): string | null {
 	// Process a single call expression within Promise.all
@@ -51,8 +51,9 @@ export function processParallelCall(analyzer: FlowAnalyzer, callNode: ts.CallExp
 						uses: exportName,
 						_sourceLocation: analyzer.getSourceLocation(callNode),
 					}
-					if (analyzer.state.getFallbackScope()) {
-						nodeDef.config = { fallback: analyzer.state.getFallbackScope()! }
+					const fallback = analyzer.state.getFallbackScope()
+					if (fallback) {
+						nodeDef.config = { fallback }
 					}
 					analyzer.registry[exportName] = { importPath: filePath, exportName }
 					analyzer.state.addNode(nodeDef)

@@ -1,4 +1,4 @@
-import * as ts from 'typescript'
+import type * as ts from 'typescript'
 import type { FlowAnalyzer } from '../flow-analyzer'
 
 export function handleIfStatement(analyzer: FlowAnalyzer, node: ts.IfStatement): string | null {

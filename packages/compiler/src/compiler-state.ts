@@ -1,4 +1,4 @@
-import type { NodeDefinition, EdgeDefinition } from 'flowcraft'
+import type { EdgeDefinition, NodeDefinition } from 'flowcraft'
 import * as ts from 'typescript'
 import type { Scope } from './types'
 
@@ -7,7 +7,6 @@ export class CompilerState {
 	private nodes: NodeDefinition[] = []
 	private edges: EdgeDefinition[] = []
 	private scopes: Scope[] = []
-	private pendingEdges: any[] = []
 	private fallbackScope: string | null = null
 	private usageCounts: Map<string, number> = new Map()
 	private pendingBranches: { ends: string[]; joinStrategy: 'any' | 'all' } | null = null
