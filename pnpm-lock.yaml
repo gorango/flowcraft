@@ -142,6 +142,9 @@ importers:
         specifier: ^6.3.0
         version: 6.4.0(ws@8.18.3)
     devDependencies:
+      '@types/node':
+        specifier: ^24.8.1
+        version: 24.8.1
       typescript:
         specifier: ^5.9.3
         version: 5.9.3
@@ -264,8 +267,8 @@ importers:
         specifier: ^5.61.0
         version: 5.61.0
       flowcraft:
-        specifier: ^2.2.0
-        version: 2.2.0
+        specifier: ^2.3.1
+        version: 2.3.1
       ioredis:
         specifier: ^5.8.1
         version: 5.8.1
@@ -3561,6 +3564,9 @@ packages:
 
   flowcraft@2.2.0:
     resolution: {integrity: sha512-UsrDJVrA2ONfrOulv0vsDbgHsdXWbaHfNTEtjclf1CagqRe/bWNHQINyyOCLYDvljuXjtR8q+T8Gn0jmHyl11w==}
+
+  flowcraft@2.3.1:
+    resolution: {integrity: sha512-HoqRwPWnEky6YSmjxicDKGV1hbWwrADvJwkhhwMbSPzK/lNOQYnogDlWmIMHrsPCZGC1YEJCKct4Q8XJs6i61A==}
 
   focus-trap@7.6.5:
     resolution: {integrity: sha512-7Ke1jyybbbPZyZXFxEftUtxFGLMpE2n6A+z//m4CRDlj0hW+o3iYSmh8nFlYMurOiJVDmJRilUQtJr08KfIxlg==}
@@ -9484,6 +9490,8 @@ snapshots:
   flatted@3.3.3: {}
 
   flowcraft@2.2.0: {}
+
+  flowcraft@2.3.1: {}
 
   focus-trap@7.6.5:
     dependencies:
