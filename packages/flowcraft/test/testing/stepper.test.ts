@@ -195,4 +195,61 @@ describe('createStepper', () => {
 		const nullState = await stepper.prev()
 		expect(nullState).toBeNull()
 	})
+
+	it('should handle node failure', async () => {
+		const flow = createFlow('failure-test')
+			.node('A', async () => ({ output: 'A' }))
+			.node('B', async () => {
+				throw new Error('Node B failed')
+			})
+			.node('C', async () => ({ output: 'C' }))
+			.edge('A', 'B')
+			.edge('B', 'C')
+
+		const runtime = new FlowRuntime({})
+		const stepper = await createStepper(runtime, flow.toBlueprint(), flow.getFunctionRegistry(), {})
+
+		// Step 1: Execute A
+		await stepper.next()
+		expect((await stepper.state.getContext().toJSON())['_outputs.A']).toBe('A')
+
+		// Step 2: Execute B, which fails
+		const result2 = await stepper.next()
+		expect(result2?.status).toBe('failed')
+		expect(
+			result2?.errors?.some((e) => e.message?.includes('Node B failed') || e.message?.includes('execution failed')),
+		).toBe(true)
+	})
+
+	it('should handle loop controller', async () => {
+		const flow = createFlow('loop-controller-test')
+			.node('init', async ({ context }) => {
+				await context.set('count', 0)
+				return { output: 'init' }
+			})
+			.node('work', async ({ context }) => {
+				const count = (await context.get('count')) || 0
+				await context.set('count', count + 1)
+				return { output: `work_${count}` }
+			})
+			.node('end', async () => ({ output: 'end' }))
+			.edge('init', 'work')
+			.loop('test-loop', {
+				startNodeId: 'work',
+				endNodeId: 'work',
+				condition: 'count < 1',
+			})
+			.edge('work', 'end')
+
+		const runtime = new FlowRuntime({ evaluator: new (await import('../../src/evaluator')).UnsafeEvaluator() })
+		const stepper = await createStepper(runtime, flow.toBlueprint(), flow.getFunctionRegistry(), {})
+
+		// Execute steps
+		await stepper.next() // init
+		await stepper.next() // work1
+		await stepper.next() // end
+		const result = await stepper.next()
+		expect(result?.status).toBe('completed')
+		expect((await stepper.state.getContext().toJSON())['_outputs.end']).toBe('end')
+	})
 })

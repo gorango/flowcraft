@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { UnsafeEvaluator } from '../../src/evaluator'
 import { createFlow } from '../../src/flow'
 import { SubflowNode } from '../../src/nodes/subflow'
+import { WaitNode } from '../../src/nodes/wait'
 import { FlowRuntime } from '../../src/runtime'
 
 describe('Built-In Nodes', () => {
@@ -108,6 +109,42 @@ describe('Built-In Nodes', () => {
 			expect(result.errors?.length).toBeGreaterThan(0)
 			expect(result.errors?.[0]?.message).toContain('execution failed')
 			expect(workerExecutionCount).toBe(2)
+		})
+
+		it('should throw error for non-array input in batch-scatter', async () => {
+			const flow = createFlow('non-array-input-test')
+			flow.node('prepare', async () => ({ output: 'not an array' }))
+			flow.node('verify', async () => ({ output: 'should not reach' }))
+			flow.batch('test-batch', async () => ({ output: 'worker' }), {
+				inputKey: 'prepare',
+				outputKey: 'results',
+			})
+			flow.edge('prepare', 'test-batch')
+			flow.edge('test-batch', 'verify')
+
+			const runtime = new FlowRuntime({})
+			const result = await runtime.run(flow.toBlueprint(), {}, { functionRegistry: flow.getFunctionRegistry() })
+
+			expect(result.status).toBe('failed')
+		})
+
+		it('should throw error for missing params in batch-scatter', async () => {
+			const flow = createFlow('missing-params-test')
+			flow.node('prepare', async () => ({ output: [] }))
+			flow.node('verify', async () => ({ output: 'should not reach' }))
+			flow.batch('test-batch', async () => ({ output: 'worker' }), {
+				inputKey: 'prepare',
+				outputKey: 'results',
+				// missing workerUsesKey and gatherNodeId
+			})
+			flow.edge('prepare', 'test-batch')
+			flow.edge('test-batch', 'verify')
+
+			const runtime = new FlowRuntime({})
+			const result = await runtime.run(flow.toBlueprint(), {}, { functionRegistry: flow.getFunctionRegistry() })
+
+			expect(result.status).toBe('completed')
+			expect(result.context['_outputs.verify']).toBe('should not reach')
 		})
 	})
 
@@ -265,6 +302,58 @@ describe('Built-In Nodes', () => {
 
 			expect(result.status).toBe('failed')
 			expect(result.errors?.some((e) => e.message?.includes("Node 'fail' execution failed"))).toBe(true)
+		})
+
+		it('should throw error for missing blueprintId in subflow', async () => {
+			const mainFlow = createFlow('missing-blueprintid-test')
+			mainFlow.node('input', async () => ({ output: 'test' }))
+			mainFlow.node('test-subflow', SubflowNode, {
+				params: {
+					// missing blueprintId
+					inputs: { input: 'input' },
+				},
+			})
+			mainFlow.edge('input', 'test-subflow')
+
+			const runtime = new FlowRuntime({})
+			const result = await runtime.run(mainFlow.toBlueprint(), {}, { functionRegistry: mainFlow.getFunctionRegistry() })
+
+			expect(result.status).toBe('failed')
+			expect(result.errors?.some((e) => e.message?.includes("missing 'blueprintId' parameter"))).toBe(true)
+		})
+
+		it('should throw error for missing subBlueprint in subflow', async () => {
+			const mainFlow = createFlow('missing-subblueprint-test')
+			mainFlow.node('input', async () => ({ output: 'test' }))
+			mainFlow.node('test-subflow', SubflowNode, {
+				params: {
+					blueprintId: 'nonexistent-subflow',
+					inputs: { input: 'input' },
+				},
+			})
+			mainFlow.edge('input', 'test-subflow')
+
+			const runtime = new FlowRuntime({})
+			const result = await runtime.run(mainFlow.toBlueprint(), {}, { functionRegistry: mainFlow.getFunctionRegistry() })
+
+			expect(result.status).toBe('failed')
+			expect(result.errors?.some((e) => e.message?.includes('not found in runtime registry'))).toBe(true)
+		})
+	})
+
+	describe('WaitNode', () => {
+		it('should mark workflow as awaiting', async () => {
+			const flow = createFlow('wait-test')
+			flow.node('start', async () => ({ output: 'start' }))
+			flow.node('wait', WaitNode, {})
+			flow.node('end', async () => ({ output: 'end' }))
+			flow.edge('start', 'wait')
+			flow.edge('wait', 'end')
+
+			const runtime = new FlowRuntime({})
+			const result = await runtime.run(flow.toBlueprint(), {}, { functionRegistry: flow.getFunctionRegistry() })
+
+			expect(result.status).toBe('awaiting')
 		})
 	})
 })
