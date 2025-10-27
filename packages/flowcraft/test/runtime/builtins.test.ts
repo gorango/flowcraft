@@ -41,7 +41,6 @@ describe('Built-In Nodes', () => {
 			if (result.status !== 'completed') {
 				console.log('Errors:', result.errors)
 			}
-			console.log('Final context:', result.context)
 			expect(result.status).toBe('completed')
 			expect(result.context['_outputs.verify']).toBe('verified')
 			expect(workerExecutionCount).toBe(3)
@@ -354,6 +353,39 @@ describe('Built-In Nodes', () => {
 			const result = await runtime.run(flow.toBlueprint(), {}, { functionRegistry: flow.getFunctionRegistry() })
 
 			expect(result.status).toBe('awaiting')
+		})
+
+		it('should handle subflow with multiple terminals', async () => {
+			const mainFlow = createFlow('multiple-terminals-test')
+			mainFlow.node('input', async () => ({ output: 'test' }))
+			mainFlow.node('output', async (ctx) => {
+				const subflowOutput = await ctx.context.get('_outputs.test-subflow')
+				expect(subflowOutput.term1).toBe('term1')
+				expect(subflowOutput.term2).toBe('term2')
+				return { output: 'main_complete' }
+			})
+			mainFlow.edge('input', 'test-subflow')
+			mainFlow.edge('test-subflow', 'output')
+			mainFlow.node('test-subflow', SubflowNode, {
+				params: {
+					blueprintId: 'multi-terminal-subflow',
+					inputs: { input: 'input' },
+				},
+			})
+
+			const subFlow = createFlow('multi-terminal-subflow')
+			subFlow.node('term1', async () => ({ output: 'term1' }))
+			subFlow.node('term2', async () => ({ output: 'term2' }))
+			// No edges, both are terminals
+
+			const blueprint = mainFlow.toBlueprint()
+			const combinedRegistry = new Map([...mainFlow.getFunctionRegistry(), ...subFlow.getFunctionRegistry()])
+			const runtime = new FlowRuntime({
+				blueprints: { 'multi-terminal-subflow': subFlow.toBlueprint() },
+			})
+			const result = await runtime.run(blueprint, {}, { functionRegistry: combinedRegistry })
+			expect(result.status).toBe('completed')
+			expect(result.context['_outputs.output']).toBe('main_complete')
 		})
 	})
 })

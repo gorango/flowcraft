@@ -99,6 +99,6 @@ export class SubflowNode extends BaseNode {
 		for (const terminalId of subAnalysis.terminalNodeIds) {
 			terminalOutputs[terminalId] = subflowFinalContext[`_outputs.${terminalId}`]
 		}
-		return terminalOutputs
+		return { output: terminalOutputs }
 	}
 }
