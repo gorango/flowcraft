@@ -39,12 +39,12 @@ export function createBullMQReconciler(options: BullMQReconcilerOptions) {
 				failedRuns: 0,
 			}
 
-			const stream = redis.scanStream({
-				match: `${keyPrefix}*`,
-				count: scanCount,
-			})
+			let cursor = 0
+			do {
+				const result = await redis.scan(cursor, 'MATCH', `${keyPrefix}*`, 'COUNT', scanCount)
+				cursor = Number(result[0])
+				const keys = result[1]
 
-			for await (const keys of stream) {
 				for (const key of keys) {
 					stats.scannedKeys++
 					const runId = key.replace(keyPrefix, '')
@@ -64,7 +64,7 @@ export function createBullMQReconciler(options: BullMQReconcilerOptions) {
 						}
 					}
 				}
-			}
+			} while (cursor !== 0)
 			return stats
 		},
 	}

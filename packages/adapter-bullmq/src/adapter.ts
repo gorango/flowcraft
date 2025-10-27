@@ -1,3 +1,4 @@
+import type { Job } from 'bullmq'
 import { Queue, Worker } from 'bullmq'
 import type { AdapterOptions, JobPayload } from 'flowcraft'
 import { BaseDistributedAdapter } from 'flowcraft'
@@ -32,7 +33,7 @@ export class BullMQAdapter extends BaseDistributedAdapter {
 	protected processJobs(handler: (job: JobPayload) => Promise<void>): void {
 		this.worker = new Worker(
 			this.queueName,
-			async (job) => {
+			async (job: Job) => {
 				console.log(`[BullMQAdapter] ==> Picked up job ID: ${job.id}, Name: ${job.name}`)
 				await handler(job.data as JobPayload)
 			},
