@@ -144,9 +144,13 @@ export abstract class BaseDistributedAdapter {
 			const isTerminalNode = analysis.terminalNodeIds.includes(nodeId)
 
 			if (isTerminalNode) {
-				const completedNodes = new Set(
-					Object.keys(await context.toJSON()).filter((k) => blueprint.nodes.some((n) => n.id === k)),
-				)
+				const allContextKeys = Object.keys(await context.toJSON())
+				const completedNodes = new Set<string>()
+				for (const key of allContextKeys) {
+					if (key.startsWith('_outputs.')) {
+						completedNodes.add(key.substring('_outputs.'.length))
+					}
+				}
 				const allTerminalNodesCompleted = analysis.terminalNodeIds.every((terminalId) => completedNodes.has(terminalId))
 
 				if (allTerminalNodesCompleted) {
@@ -213,7 +217,7 @@ export abstract class BaseDistributedAdapter {
 		}
 
 		const poisonKey = `flowcraft:fanin:poison:${runId}:${targetNodeId}`
-		const isPoisoned = !(await this.store.setIfNotExist(poisonKey, 'poisoned', 3600))
+		const isPoisoned = await this.store.get(poisonKey)
 		if (isPoisoned) {
 			console.log(`[Adapter] Node '${targetNodeId}' is poisoned due to failed predecessor. Failing immediately.`)
 			throw new Error(`Node '${targetNodeId}' failed due to poisoned predecessor in run '${runId}'`)
@@ -275,7 +279,12 @@ export abstract class BaseDistributedAdapter {
 
 		const state = await context.toJSON()
 		// filter out internal keys
-		const completedNodes = new Set(Object.keys(state).filter((k) => blueprint.nodes.some((n) => n.id === k)))
+		const completedNodes = new Set<string>()
+		for (const key of Object.keys(state)) {
+			if (key.startsWith('_outputs.')) {
+				completedNodes.add(key.substring('_outputs.'.length))
+			}
+		}
 
 		const frontier = this.calculateResumedFrontier(blueprint, completedNodes)
 
@@ -283,6 +292,13 @@ export abstract class BaseDistributedAdapter {
 		for (const nodeId of frontier) {
 			const nodeDef = blueprint.nodes.find((n) => n.id === nodeId)
 			const joinStrategy = nodeDef?.config?.joinStrategy || 'all'
+
+			const poisonKey = `flowcraft:fanin:poison:${runId}:${nodeId}`
+			const isPoisoned = await this.store.get(poisonKey)
+			if (isPoisoned) {
+				console.log(`[Adapter] Reconciling: Node '${nodeId}' is poisoned, skipping.`, { runId })
+				continue
+			}
 
 			let shouldEnqueue = false
 
