@@ -9,3 +9,7 @@ export async function fetchOrders({ userId }: { userId: number }) {
 export async function processOrders({ orders }: { orders: any[] }) {
 	console.log(orders)
 }
+
+export async function recordTransaction({ data }: { data: string }) {
+	console.log('Recording transaction:', data)
+}

@@ -1,4 +1,4 @@
-import type { WorkflowBlueprint, NodeDefinition, EdgeDefinition } from 'flowcraft'
+import type { EdgeDefinition, NodeDefinition, WorkflowBlueprint } from 'flowcraft'
 
 export interface FileAnalysis {
 	filePath: string

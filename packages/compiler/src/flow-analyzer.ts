@@ -1,10 +1,9 @@
+import type { NodeDefinition, WorkflowBlueprint } from 'flowcraft'
 import * as ts from 'typescript'
 import type { Compiler } from './compiler'
 import type { CompilerState } from './types'
-import type { WorkflowBlueprint, NodeDefinition } from 'flowcraft'
 
 export class FlowAnalyzer {
-	private nodeCounter = 0
 	private registry: Record<string, { importPath: string; exportName: string }> = {}
 	private diagnostics: import('./types').CompilationDiagnostic[] = []
 	private state: CompilerState = {
@@ -42,7 +41,7 @@ export class FlowAnalyzer {
 			this.state.cursor = 'start'
 		}
 		const blueprint: WorkflowBlueprint = {
-			id: this.functionNode.name!.text,
+			id: this.functionNode.name?.text,
 			nodes: this.state.nodes,
 			edges: this.state.edges,
 		}
@@ -115,13 +114,16 @@ export class FlowAnalyzer {
 
 			const symbol = this.typeChecker.getSymbolAtLocation(callee.expression)
 			if (symbol) {
-				const declarations = symbol.getDeclarations()
-				if (declarations && declarations.length > 0) {
-					const decl = declarations[0]
+				let originalSymbol = symbol
+				if (symbol.flags & ts.SymbolFlags.Alias) {
+					originalSymbol = this.typeChecker.getAliasedSymbol(symbol)
+				}
+				if (originalSymbol?.valueDeclaration) {
+					const decl = originalSymbol.valueDeclaration
 					const filePath = decl.getSourceFile().fileName
 					const fileAnalysis = this.compiler.fileCache.get(filePath)
 					if (fileAnalysis) {
-						const exportName = symbol.name
+						const exportName = originalSymbol.name
 						const exportInfo = fileAnalysis.exports.get(exportName)
 						if (exportInfo) {
 							let nodeDef: NodeDefinition
@@ -132,12 +134,18 @@ export class FlowAnalyzer {
 									id: `${exportName}_${count}`,
 									uses: exportName,
 								}
+								if (this.state.fallbackScope) {
+									nodeDef.config = { fallback: this.state.fallbackScope }
+								}
 								this.registry[exportName] = { importPath: filePath, exportName }
 							} else if (exportInfo.type === 'flow') {
 								nodeDef = {
 									id: `${exportName}_${count}`,
 									uses: 'subflow',
 									params: { blueprintId: exportName },
+								}
+								if (this.state.fallbackScope) {
+									nodeDef.config = { fallback: this.state.fallbackScope }
 								}
 							} else {
 								return this.state.cursor // Unknown type
@@ -201,7 +209,7 @@ export class FlowAnalyzer {
 		if (this.state.cursor) {
 			this.state.edges.push({ source: this.state.cursor, target: controllerId })
 		}
-		const prevCursor = this.state.cursor
+		const _prevCursor = this.state.cursor
 		this.state.cursor = controllerId
 
 		// Traverse the body and capture the first node
@@ -304,11 +312,54 @@ export class FlowAnalyzer {
 			this.addDiagnostic(node.finallyBlock, 'error', `Finally blocks are not supported in flow functions.`)
 		}
 
-		// Placeholder for try handling
-		this.traverse(node.tryBlock)
+		// Pre-scan catch block to find fallback node
+		let fallbackNodeId: string | null = null
 		if (node.catchClause) {
-			this.traverse(node.catchClause.block)
+			const firstInCatch = this.findFirstAwait(node.catchClause.block)
+			if (firstInCatch) {
+				fallbackNodeId = firstInCatch
+			}
 		}
+
+		// Set fallback scope
+		this.state.fallbackScope = fallbackNodeId
+
+		// Traverse try block
+		const lastInTry = this.traverse(node.tryBlock)
+
+		// Exit fallback scope
+		this.state.fallbackScope = null
+
+		// Traverse catch block
+		let lastInCatch: string | null = null
+		if (node.catchClause) {
+			lastInCatch = this.traverse(node.catchClause.block)
+		}
+
+		// Create merge node
+		const mergeExportName = 'merge'
+		const mergeCount = (this.state.usageCounts.get(mergeExportName) || 0) + 1
+		this.state.usageCounts.set(mergeExportName, mergeCount)
+		const mergeId = `${mergeExportName}_${mergeCount}`
+		const mergeNode: NodeDefinition = {
+			id: mergeId,
+			uses: 'merge',
+			config: { joinStrategy: 'any' },
+		}
+		this.state.nodes.push(mergeNode)
+
+		// Wire try branch to merge
+		if (lastInTry) {
+			this.state.edges.push({ source: lastInTry, target: mergeId })
+		}
+
+		// Wire catch branch to merge
+		if (lastInCatch) {
+			this.state.edges.push({ source: lastInCatch, target: mergeId })
+		}
+
+		// Set cursor to merge
+		this.state.cursor = mergeId
 		return this.state.cursor
 	}
 }

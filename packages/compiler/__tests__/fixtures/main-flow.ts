@@ -1,6 +1,9 @@
+import { fetchUser, processOrders } from './steps'
+import { subFlow } from './sub-flow'
+
 /** @flow */
-async function mainFlow(context: any) {
-	const user = await fetchUser({ id: 1 })
-	const orders = await fetchOrders({ userId: user.id })
-	await processOrders({ orders })
+export async function mainFlow(_context: any) {
+	await fetchUser({ id: 1 })
+	await subFlow()
+	await processOrders({ orders: [] })
 }

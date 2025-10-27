@@ -1,6 +1,5 @@
-import { describe, it, expect } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import { Compiler } from '../src/compiler'
-import * as path from 'path'
 
 describe('Compiler', () => {
 	it('should compile a simple project', () => {
@@ -11,9 +10,9 @@ describe('Compiler', () => {
 		expect(result.diagnostics).toBeDefined()
 	})
 
-	it('should compile fixture with subflow', () => {
+	it('should compile all test fixtures', () => {
 		const compiler = new Compiler('tsconfig.json')
-		const result = compiler.compileProject(['__tests__/fixtures/main-flow.ts'])
+		const result = compiler.compileProject(['__tests__/fixtures/index.ts'])
 		expect(result.blueprints).toMatchSnapshot()
 		expect(result.registry).toMatchSnapshot()
 		expect(result.manifestSource).toMatchSnapshot()

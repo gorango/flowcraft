@@ -1,23 +1,22 @@
-import * as ts from 'typescript'
-import * as path from 'path'
-import resolve from 'resolve'
-import type { CompilationOutput, FileAnalysis } from './types'
+import * as path from 'node:path'
 import type { WorkflowBlueprint } from 'flowcraft'
+import * as ts from 'typescript'
 import { FlowAnalyzer } from './flow-analyzer'
+import type { CompilationOutput, FileAnalysis } from './types'
 
 export class Compiler {
 	private program: ts.Program
 	private typeChecker: ts.TypeChecker
 	public fileCache: Map<string, FileAnalysis> = new Map()
 
-	constructor(private tsConfigPath: string) {
+	constructor(tsConfigPath: string) {
 		const config = ts.readConfigFile(tsConfigPath, ts.sys.readFile)
 		const parsed = ts.parseJsonConfigFileContent(config.config, ts.sys, process.cwd())
 		this.program = ts.createProgram(parsed.fileNames, parsed.options)
 		this.typeChecker = this.program.getTypeChecker()
 	}
 
-	compileProject(entryFilePaths: string[]): CompilationOutput {
+	compileProject(_entryFilePaths: string[]): CompilationOutput {
 		// Discovery Pass
 		this.discoveryPass()
 
@@ -26,7 +25,7 @@ export class Compiler {
 		const registry: Record<string, { importPath: string; exportName: string }> = {}
 		const diagnostics: import('./types').CompilationDiagnostic[] = []
 
-		for (const [filePath, fileAnalysis] of this.fileCache) {
+		for (const [_filePath, fileAnalysis] of this.fileCache) {
 			for (const [exportName, { type, node }] of fileAnalysis.exports) {
 				if (type === 'flow') {
 					const analyzer = new FlowAnalyzer(this, fileAnalysis.sourceFile, node, this.typeChecker)
@@ -57,13 +56,16 @@ export class Compiler {
 						node.exportClause.elements.forEach((element) => {
 							const symbol = this.typeChecker.getSymbolAtLocation(element.name)
 							if (symbol) {
-								const declarations = symbol.getDeclarations()
-								if (declarations && declarations.length > 0) {
-									const decl = declarations[0]
-									if (ts.isFunctionDeclaration(decl) && decl.name) {
-										const type = 'step' // For now, assume step; can add JSDoc later
-										exports.set(element.name.text, { type, node: decl })
-									}
+								let originalSymbol = symbol
+								if (symbol.flags & ts.SymbolFlags.Alias) {
+									originalSymbol = this.typeChecker.getAliasedSymbol(symbol)
+								}
+								if (originalSymbol?.valueDeclaration && ts.isFunctionDeclaration(originalSymbol.valueDeclaration)) {
+									const decl = originalSymbol.valueDeclaration
+									const jsDocTags = ts.getJSDocTags(decl)
+									const hasFlowTag = jsDocTags.some((tag) => tag.tagName.text === 'flow')
+									const type: 'flow' | 'step' = hasFlowTag ? 'flow' : 'step'
+									exports.set(element.name.text, { type, node: decl })
 								}
 							}
 						})
@@ -74,7 +76,9 @@ export class Compiler {
 					ts.getCombinedModifierFlags(node) & ts.ModifierFlags.Export &&
 					node.modifiers?.some((mod) => mod.kind === ts.SyntaxKind.AsyncKeyword)
 				) {
-					const type = 'step' // For now, assume step; can add JSDoc later
+					const jsDocTags = ts.getJSDocTags(node)
+					const hasFlowTag = jsDocTags.some((tag) => tag.tagName.text === 'flow')
+					const type: 'flow' | 'step' = hasFlowTag ? 'flow' : 'step'
 					exports.set(node.name.text, { type, node })
 				}
 			})
@@ -90,8 +94,9 @@ export class Compiler {
 		const imports: string[] = []
 		const registryEntries: string[] = []
 
+		const manifestDir = path.dirname(path.resolve('./dist/flowcraft.manifest.ts'))
 		for (const [uses, { importPath, exportName }] of Object.entries(registry)) {
-			const relativePath = path.relative(process.cwd(), importPath)
+			const relativePath = path.relative(manifestDir, importPath).replace(/\.ts$/, '')
 			imports.push(`import { ${exportName} } from '${relativePath}'`)
 			registryEntries.push(`  '${uses}': ${exportName}`)
 		}
