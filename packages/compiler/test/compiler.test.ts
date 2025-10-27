@@ -12,7 +12,7 @@ describe('Compiler', () => {
 
 	it('should compile all test fixtures', () => {
 		const compiler = new Compiler('tsconfig.json')
-		const result = compiler.compileProject(['__tests__/fixtures/index.ts'])
+		const result = compiler.compileProject(['test/fixtures/index.ts'])
 		expect(result.blueprints).toMatchSnapshot()
 		expect(result.registry).toMatchSnapshot()
 		expect(result.manifestSource).toMatchSnapshot()
