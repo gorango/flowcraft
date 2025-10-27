@@ -51,14 +51,27 @@ export class FlowAnalyzer {
 	traverse(node: ts.Node): string | null {
 		let lastCursor: string | null = null
 		ts.forEachChild(node, (child) => {
-			this.visit(child)
-			lastCursor = this.state.getCursor()
+			const result = this.visit(child)
+			if (result !== undefined) {
+				lastCursor = result
+			}
 		})
 		return lastCursor
 	}
 
 	private visit(node: ts.Node): string | null {
-		if (ts.isAwaitExpression(node)) {
+		if (ts.isExpressionStatement(node)) {
+			// Handle expression statements by visiting their expression
+			return this.visit(node.expression)
+		} else if (ts.isVariableStatement(node)) {
+			// Handle variable statements by visiting their declarations
+			for (const declaration of node.declarationList.declarations) {
+				if (declaration.initializer) {
+					this.visit(declaration.initializer)
+				}
+			}
+			return this.state.getCursor()
+		} else if (ts.isAwaitExpression(node)) {
 			handleAwaitExpression(this, node)
 			return this.state.getCursor()
 		} else if (ts.isWhileStatement(node)) {
