@@ -62,7 +62,7 @@ exports[`Compiler > should compile all test fixtures 1`] = `
         },
         "condition": "processed.needsReview",
         "source": "loop-controller_1",
-        "target": "loop-controller_1",
+        "target": "start",
       },
       {
         "_sourceLocation": {
@@ -72,7 +72,7 @@ exports[`Compiler > should compile all test fixtures 1`] = `
         },
         "action": "continue",
         "source": "loop-controller_1",
-        "target": "loop-controller_1",
+        "target": "start",
       },
       {
         "_sourceLocation": {
@@ -87,10 +87,6 @@ exports[`Compiler > should compile all test fixtures 1`] = `
     "id": "nestedControlFlow",
     "nodes": [
       {
-        "id": "start",
-        "uses": "start",
-      },
-      {
         "_sourceLocation": {
           "column": 2,
           "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/complex-control-flow.ts",
@@ -104,6 +100,10 @@ exports[`Compiler > should compile all test fixtures 1`] = `
           "condition": "items.length > 0",
         },
         "uses": "loop-controller",
+      },
+      {
+        "id": "start",
+        "uses": "start",
       },
     ],
   },
@@ -237,10 +237,6 @@ export const blueprints: Record<string, WorkflowBlueprint> = {
   "id": "nestedControlFlow",
   "nodes": [
     {
-      "id": "start",
-      "uses": "start"
-    },
-    {
       "id": "loop-controller_1",
       "uses": "loop-controller",
       "params": {
@@ -254,12 +250,16 @@ export const blueprints: Record<string, WorkflowBlueprint> = {
         "line": 52,
         "column": 2
       }
+    },
+    {
+      "id": "start",
+      "uses": "start"
     }
   ],
   "edges": [
     {
       "source": "loop-controller_1",
-      "target": "loop-controller_1",
+      "target": "start",
       "condition": "processed.needsReview",
       "_sourceLocation": {
         "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/complex-control-flow.ts",
@@ -269,7 +269,7 @@ export const blueprints: Record<string, WorkflowBlueprint> = {
     },
     {
       "source": "loop-controller_1",
-      "target": "loop-controller_1",
+      "target": "start",
       "action": "continue",
       "_sourceLocation": {
         "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/complex-control-flow.ts",

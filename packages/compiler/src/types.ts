@@ -21,7 +21,8 @@ export interface CompilationDiagnostic {
 	severity: 'error' | 'warning' | 'info'
 }
 
-export interface CompilerState {
+// Keep interface for backward compatibility if needed
+export interface CompilerStateInterface {
 	cursor: string | null
 	nodes: NodeDefinition[]
 	edges: EdgeDefinition[]
