@@ -5,53 +5,85 @@ exports[`Compiler > should compile all test fixtures 1`] = `
   "complexControlFlow": {
     "edges": [
       {
-        "source": "merge_1",
+        "condition": "!validated.isValid",
+        "source": "validateData_1",
+        "target": "handleValidationError_1",
+      },
+      {
+        "source": "validateData_1",
         "target": "loop-controller_1",
       },
       {
-        "source": "loop-controller_1",
-        "target": "merge_2",
+        "source": "handleValidationError_1",
+        "target": "handleBatchError_1",
       },
       {
+        "condition": "!(!validated.isValid)",
+        "source": "validateData_1",
+        "target": "handleBatchError_1",
+      },
+      {
+        "action": "break",
         "source": "loop-controller_1",
-        "target": "merge_2",
+        "target": "handleBatchError_1",
+      },
+      {
+        "source": "processBatch_1",
+        "target": "handleBatchError_1",
       },
       {
         "action": "continue",
         "source": "loop-controller_1",
+        "target": "processBatch_1",
+      },
+      {
+        "source": "handleBatchError_1",
         "target": "loop-controller_1",
       },
       {
-        "source": "merge_2",
-        "target": "loop-controller_1",
+        "source": "loop-controller_1",
+        "target": "generateSummary_parallel_1",
+      },
+      {
+        "source": "loop-controller_1",
+        "target": "generateReport_parallel_1",
+      },
+      {
+        "source": "generateSummary_parallel_1",
+        "target": "gather_1",
+      },
+      {
+        "source": "generateReport_parallel_1",
+        "target": "gather_1",
+      },
+      {
+        "source": "processBatch_1",
+        "target": "sendHighVolumeNotification_1",
+      },
+      {
+        "source": "handleBatchError_1",
+        "target": "sendHighVolumeNotification_1",
       },
       {
         "condition": "processedCount > 1000",
         "source": "gather_1",
-        "target": "gather_1",
-      },
-      {
-        "source": "gather_1",
-        "target": "merge_3",
+        "target": "sendHighVolumeNotification_1",
       },
       {
         "condition": "!(processedCount > 1000)",
         "source": "gather_1",
-        "target": "gather_1",
-      },
-      {
-        "source": "gather_1",
-        "target": "merge_3",
+        "target": "sendStandardNotification_1",
       },
     ],
     "id": "complexControlFlow",
     "nodes": [
       {
-        "config": {
-          "joinStrategy": "any",
-        },
-        "id": "merge_1",
-        "uses": "merge",
+        "id": "validateData_1",
+        "uses": "validateData",
+      },
+      {
+        "id": "handleValidationError_1",
+        "uses": "handleValidationError",
       },
       {
         "config": {
@@ -65,10 +97,22 @@ exports[`Compiler > should compile all test fixtures 1`] = `
       },
       {
         "config": {
-          "joinStrategy": "any",
+          "fallback": "handleBatchError_1",
         },
-        "id": "merge_2",
-        "uses": "merge",
+        "id": "processBatch_1",
+        "uses": "processBatch",
+      },
+      {
+        "id": "handleBatchError_1",
+        "uses": "handleBatchError",
+      },
+      {
+        "id": "generateSummary_parallel_1",
+        "uses": "generateSummary",
+      },
+      {
+        "id": "generateReport_parallel_1",
+        "uses": "generateReport",
       },
       {
         "config": {
@@ -81,34 +125,66 @@ exports[`Compiler > should compile all test fixtures 1`] = `
         "config": {
           "joinStrategy": "any",
         },
-        "id": "merge_3",
-        "uses": "merge",
+        "id": "sendHighVolumeNotification_1",
+        "uses": "sendHighVolumeNotification",
+      },
+      {
+        "id": "sendStandardNotification_1",
+        "uses": "sendStandardNotification",
       },
     ],
   },
   "complexParallelFlow": {
     "edges": [
       {
-        "condition": "validated.valid",
-        "source": "gather_1",
+        "source": "processItems_parallel_1",
         "target": "gather_1",
       },
       {
+        "source": "validateItems_parallel_1",
+        "target": "gather_1",
+      },
+      {
+        "source": "enrichItems_parallel_1",
+        "target": "gather_1",
+      },
+      {
+        "condition": "validated.valid",
         "source": "gather_1",
-        "target": "merge_1",
+        "target": "saveValidItems_1",
       },
       {
         "condition": "!(validated.valid)",
         "source": "gather_1",
-        "target": "gather_1",
+        "target": "handleInvalidItems_1",
+      },
+      {
+        "source": "saveValidItems_1",
+        "target": "finalizeResults_1",
+      },
+      {
+        "source": "handleInvalidItems_1",
+        "target": "finalizeResults_1",
       },
       {
         "source": "gather_1",
-        "target": "merge_1",
+        "target": "finalizeResults_1",
       },
     ],
     "id": "complexParallelFlow",
     "nodes": [
+      {
+        "id": "processItems_parallel_1",
+        "uses": "processItems",
+      },
+      {
+        "id": "validateItems_parallel_1",
+        "uses": "validateItems",
+      },
+      {
+        "id": "enrichItems_parallel_1",
+        "uses": "enrichItems",
+      },
       {
         "config": {
           "joinStrategy": "all",
@@ -117,11 +193,19 @@ exports[`Compiler > should compile all test fixtures 1`] = `
         "uses": "gather",
       },
       {
+        "id": "saveValidItems_1",
+        "uses": "saveValidItems",
+      },
+      {
+        "id": "handleInvalidItems_1",
+        "uses": "handleInvalidItems",
+      },
+      {
         "config": {
           "joinStrategy": "any",
         },
-        "id": "merge_1",
-        "uses": "merge",
+        "id": "finalizeResults_1",
+        "uses": "finalizeResults",
       },
     ],
   },
@@ -158,38 +242,131 @@ exports[`Compiler > should compile all test fixtures 1`] = `
   "nestedControlFlow": {
     "edges": [
       {
-        "source": "merge_2",
-        "target": "merge_1",
+        "condition": "reviewed.approved",
+        "source": "reviewItem_1",
+        "target": "approveItem_1",
+      },
+      {
+        "condition": "!(reviewed.approved)",
+        "source": "reviewItem_1",
+        "target": "rejectItem_1",
+      },
+      {
+        "condition": "processed.needsReview",
+        "source": "processItem_1",
+        "target": "reviewItem_1",
+      },
+      {
+        "source": "approveItem_1",
+        "target": "autoApproveItem_1",
+      },
+      {
+        "source": "rejectItem_1",
+        "target": "autoApproveItem_1",
+      },
+      {
+        "source": "autoApproveItem_1",
+        "target": "flagItemForManualReview_1",
+      },
+      {
+        "condition": "!(processed.needsReview)",
+        "source": "processItem_1",
+        "target": "autoApproveItem_1",
+      },
+      {
+        "source": "reviewItem_1",
+        "target": "finalizeProcessing_1",
+      },
+      {
+        "source": "flagItemForManualReview_1",
+        "target": "finalizeProcessing_1",
+      },
+      {
+        "source": "processItem_1",
+        "target": "finalizeProcessing_1",
       },
     ],
     "id": "nestedControlFlow",
     "nodes": [
       {
-        "config": {
-          "joinStrategy": "any",
-        },
-        "id": "merge_1",
-        "uses": "merge",
+        "id": "processItem_1",
+        "uses": "processItem",
+      },
+      {
+        "id": "reviewItem_1",
+        "uses": "reviewItem",
+      },
+      {
+        "id": "approveItem_1",
+        "uses": "approveItem",
+      },
+      {
+        "id": "rejectItem_1",
+        "uses": "rejectItem",
       },
       {
         "config": {
           "joinStrategy": "any",
         },
-        "id": "merge_2",
-        "uses": "merge",
+        "id": "autoApproveItem_1",
+        "uses": "autoApproveItem",
+      },
+      {
+        "id": "flagItemForManualReview_1",
+        "uses": "flagItemForManualReview",
+      },
+      {
+        "config": {
+          "joinStrategy": "any",
+        },
+        "id": "finalizeProcessing_1",
+        "uses": "finalizeProcessing",
       },
     ],
   },
   "parallelFlow": {
-    "edges": [],
+    "edges": [
+      {
+        "source": "fetchProfile_parallel_1",
+        "target": "aggregateData_parallel_1",
+      },
+      {
+        "source": "fetchOrders_parallel_1",
+        "target": "aggregateData_parallel_1",
+      },
+      {
+        "source": "fetchActivity_parallel_1",
+        "target": "aggregateData_parallel_1",
+      },
+      {
+        "source": "aggregateData_parallel_1",
+        "target": "aggregateData_2",
+      },
+    ],
     "id": "parallelFlow",
     "nodes": [
+      {
+        "id": "fetchProfile_parallel_1",
+        "uses": "fetchProfile",
+      },
+      {
+        "id": "fetchOrders_parallel_1",
+        "uses": "fetchOrders",
+      },
+      {
+        "id": "fetchActivity_parallel_1",
+        "uses": "fetchActivity",
+      },
       {
         "config": {
           "joinStrategy": "all",
         },
-        "id": "gather_1",
-        "uses": "gather",
+        "id": "aggregateData_parallel_1",
+        "uses": "aggregateData",
+      },
+      {
+        "id": "aggregateData_2",
+        "uses": "aggregateData",
       },
     ],
   },
@@ -212,6 +389,88 @@ exports[`Compiler > should compile all test fixtures 1`] = `
       },
     ],
   },
+  "simpleIfElseFlow": {
+    "edges": [
+      {
+        "condition": "condition",
+        "source": "start",
+        "target": "doSomething_1",
+      },
+      {
+        "condition": "!(condition)",
+        "source": "start",
+        "target": "doSomethingElse_1",
+      },
+      {
+        "source": "doSomething_1",
+        "target": "finalize_1",
+      },
+      {
+        "source": "doSomethingElse_1",
+        "target": "finalize_1",
+      },
+    ],
+    "id": "simpleIfElseFlow",
+    "nodes": [
+      {
+        "id": "start",
+        "uses": "start",
+      },
+      {
+        "id": "doSomething_1",
+        "uses": "doSomething",
+      },
+      {
+        "id": "doSomethingElse_1",
+        "uses": "doSomethingElse",
+      },
+      {
+        "config": {
+          "joinStrategy": "any",
+        },
+        "id": "finalize_1",
+        "uses": "finalize",
+      },
+    ],
+  },
+  "simpleParallelFlow": {
+    "edges": [
+      {
+        "source": "fetchProfile_parallel_1",
+        "target": "aggregateData_parallel_1",
+      },
+      {
+        "source": "fetchOrders_parallel_1",
+        "target": "aggregateData_parallel_1",
+      },
+      {
+        "source": "aggregateData_parallel_1",
+        "target": "aggregateData_2",
+      },
+    ],
+    "id": "simpleParallelFlow",
+    "nodes": [
+      {
+        "id": "fetchProfile_parallel_1",
+        "uses": "fetchProfile",
+      },
+      {
+        "id": "fetchOrders_parallel_1",
+        "uses": "fetchOrders",
+      },
+      {
+        "config": {
+          "joinStrategy": "all",
+        },
+        "id": "aggregateData_parallel_1",
+        "uses": "aggregateData",
+      },
+      {
+        "id": "aggregateData_2",
+        "uses": "aggregateData",
+      },
+    ],
+  },
   "subFlow": {
     "edges": [],
     "id": "subFlow",
@@ -227,9 +486,93 @@ exports[`Compiler > should compile all test fixtures 1`] = `
 
 exports[`Compiler > should compile all test fixtures 2`] = `
 {
+  "aggregateData": {
+    "exportName": "aggregateData",
+    "importPath": "/home/g/m/flowcraft/packages/compiler/__tests__/fixtures/simple-parallel.ts",
+  },
+  "approveItem": {
+    "exportName": "approveItem",
+    "importPath": "/home/g/m/flowcraft/packages/compiler/__tests__/fixtures/complex-control-flow.ts",
+  },
+  "autoApproveItem": {
+    "exportName": "autoApproveItem",
+    "importPath": "/home/g/m/flowcraft/packages/compiler/__tests__/fixtures/complex-control-flow.ts",
+  },
+  "doSomething": {
+    "exportName": "doSomething",
+    "importPath": "/home/g/m/flowcraft/packages/compiler/__tests__/fixtures/simple-if-else.ts",
+  },
+  "doSomethingElse": {
+    "exportName": "doSomethingElse",
+    "importPath": "/home/g/m/flowcraft/packages/compiler/__tests__/fixtures/simple-if-else.ts",
+  },
+  "enrichItems": {
+    "exportName": "enrichItems",
+    "importPath": "/home/g/m/flowcraft/packages/compiler/__tests__/fixtures/parallel-flow.ts",
+  },
+  "fetchActivity": {
+    "exportName": "fetchActivity",
+    "importPath": "/home/g/m/flowcraft/packages/compiler/__tests__/fixtures/parallel-flow.ts",
+  },
+  "fetchOrders": {
+    "exportName": "fetchOrders",
+    "importPath": "/home/g/m/flowcraft/packages/compiler/__tests__/fixtures/simple-parallel.ts",
+  },
+  "fetchProfile": {
+    "exportName": "fetchProfile",
+    "importPath": "/home/g/m/flowcraft/packages/compiler/__tests__/fixtures/simple-parallel.ts",
+  },
   "fetchUser": {
     "exportName": "fetchUser",
     "importPath": "/home/g/m/flowcraft/packages/compiler/__tests__/fixtures/simple-flow.ts",
+  },
+  "finalize": {
+    "exportName": "finalize",
+    "importPath": "/home/g/m/flowcraft/packages/compiler/__tests__/fixtures/simple-if-else.ts",
+  },
+  "finalizeProcessing": {
+    "exportName": "finalizeProcessing",
+    "importPath": "/home/g/m/flowcraft/packages/compiler/__tests__/fixtures/complex-control-flow.ts",
+  },
+  "finalizeResults": {
+    "exportName": "finalizeResults",
+    "importPath": "/home/g/m/flowcraft/packages/compiler/__tests__/fixtures/parallel-flow.ts",
+  },
+  "flagItemForManualReview": {
+    "exportName": "flagItemForManualReview",
+    "importPath": "/home/g/m/flowcraft/packages/compiler/__tests__/fixtures/complex-control-flow.ts",
+  },
+  "generateReport": {
+    "exportName": "generateReport",
+    "importPath": "/home/g/m/flowcraft/packages/compiler/__tests__/fixtures/complex-control-flow.ts",
+  },
+  "generateSummary": {
+    "exportName": "generateSummary",
+    "importPath": "/home/g/m/flowcraft/packages/compiler/__tests__/fixtures/complex-control-flow.ts",
+  },
+  "handleBatchError": {
+    "exportName": "handleBatchError",
+    "importPath": "/home/g/m/flowcraft/packages/compiler/__tests__/fixtures/complex-control-flow.ts",
+  },
+  "handleInvalidItems": {
+    "exportName": "handleInvalidItems",
+    "importPath": "/home/g/m/flowcraft/packages/compiler/__tests__/fixtures/parallel-flow.ts",
+  },
+  "handleValidationError": {
+    "exportName": "handleValidationError",
+    "importPath": "/home/g/m/flowcraft/packages/compiler/__tests__/fixtures/complex-control-flow.ts",
+  },
+  "processBatch": {
+    "exportName": "processBatch",
+    "importPath": "/home/g/m/flowcraft/packages/compiler/__tests__/fixtures/complex-control-flow.ts",
+  },
+  "processItem": {
+    "exportName": "processItem",
+    "importPath": "/home/g/m/flowcraft/packages/compiler/__tests__/fixtures/complex-control-flow.ts",
+  },
+  "processItems": {
+    "exportName": "processItems",
+    "importPath": "/home/g/m/flowcraft/packages/compiler/__tests__/fixtures/parallel-flow.ts",
   },
   "processOrders": {
     "exportName": "processOrders",
@@ -239,21 +582,105 @@ exports[`Compiler > should compile all test fixtures 2`] = `
     "exportName": "recordTransaction",
     "importPath": "/home/g/m/flowcraft/packages/compiler/__tests__/fixtures/steps.ts",
   },
+  "rejectItem": {
+    "exportName": "rejectItem",
+    "importPath": "/home/g/m/flowcraft/packages/compiler/__tests__/fixtures/complex-control-flow.ts",
+  },
+  "reviewItem": {
+    "exportName": "reviewItem",
+    "importPath": "/home/g/m/flowcraft/packages/compiler/__tests__/fixtures/complex-control-flow.ts",
+  },
+  "saveValidItems": {
+    "exportName": "saveValidItems",
+    "importPath": "/home/g/m/flowcraft/packages/compiler/__tests__/fixtures/parallel-flow.ts",
+  },
+  "sendHighVolumeNotification": {
+    "exportName": "sendHighVolumeNotification",
+    "importPath": "/home/g/m/flowcraft/packages/compiler/__tests__/fixtures/complex-control-flow.ts",
+  },
+  "sendStandardNotification": {
+    "exportName": "sendStandardNotification",
+    "importPath": "/home/g/m/flowcraft/packages/compiler/__tests__/fixtures/complex-control-flow.ts",
+  },
+  "validateData": {
+    "exportName": "validateData",
+    "importPath": "/home/g/m/flowcraft/packages/compiler/__tests__/fixtures/complex-control-flow.ts",
+  },
+  "validateItems": {
+    "exportName": "validateItems",
+    "importPath": "/home/g/m/flowcraft/packages/compiler/__tests__/fixtures/parallel-flow.ts",
+  },
 }
 `;
 
 exports[`Compiler > should compile all test fixtures 3`] = `
 "// Generated by @flowcraft/compiler
+import { validateData } from '../__tests__/fixtures/complex-control-flow'
+import { handleValidationError } from '../__tests__/fixtures/complex-control-flow'
+import { handleBatchError } from '../__tests__/fixtures/complex-control-flow'
+import { processBatch } from '../__tests__/fixtures/complex-control-flow'
+import { generateSummary } from '../__tests__/fixtures/complex-control-flow'
+import { generateReport } from '../__tests__/fixtures/complex-control-flow'
+import { sendHighVolumeNotification } from '../__tests__/fixtures/complex-control-flow'
+import { sendStandardNotification } from '../__tests__/fixtures/complex-control-flow'
+import { processItem } from '../__tests__/fixtures/complex-control-flow'
+import { reviewItem } from '../__tests__/fixtures/complex-control-flow'
+import { approveItem } from '../__tests__/fixtures/complex-control-flow'
+import { rejectItem } from '../__tests__/fixtures/complex-control-flow'
+import { autoApproveItem } from '../__tests__/fixtures/complex-control-flow'
+import { flagItemForManualReview } from '../__tests__/fixtures/complex-control-flow'
+import { finalizeProcessing } from '../__tests__/fixtures/complex-control-flow'
 import { recordTransaction } from '../__tests__/fixtures/steps'
 import { fetchUser } from '../__tests__/fixtures/simple-flow'
 import { processOrders } from '../__tests__/fixtures/simple-flow'
+import { fetchProfile } from '../__tests__/fixtures/simple-parallel'
+import { fetchOrders } from '../__tests__/fixtures/simple-parallel'
+import { fetchActivity } from '../__tests__/fixtures/parallel-flow'
+import { aggregateData } from '../__tests__/fixtures/simple-parallel'
+import { processItems } from '../__tests__/fixtures/parallel-flow'
+import { validateItems } from '../__tests__/fixtures/parallel-flow'
+import { enrichItems } from '../__tests__/fixtures/parallel-flow'
+import { saveValidItems } from '../__tests__/fixtures/parallel-flow'
+import { handleInvalidItems } from '../__tests__/fixtures/parallel-flow'
+import { finalizeResults } from '../__tests__/fixtures/parallel-flow'
+import { doSomething } from '../__tests__/fixtures/simple-if-else'
+import { doSomethingElse } from '../__tests__/fixtures/simple-if-else'
+import { finalize } from '../__tests__/fixtures/simple-if-else'
 
 import type { NodeImplementation, WorkflowBlueprint } from 'flowcraft'
 
 export const registry: Record<string, NodeImplementation> = {
+  'validateData': validateData,
+  'handleValidationError': handleValidationError,
+  'handleBatchError': handleBatchError,
+  'processBatch': processBatch,
+  'generateSummary': generateSummary,
+  'generateReport': generateReport,
+  'sendHighVolumeNotification': sendHighVolumeNotification,
+  'sendStandardNotification': sendStandardNotification,
+  'processItem': processItem,
+  'reviewItem': reviewItem,
+  'approveItem': approveItem,
+  'rejectItem': rejectItem,
+  'autoApproveItem': autoApproveItem,
+  'flagItemForManualReview': flagItemForManualReview,
+  'finalizeProcessing': finalizeProcessing,
   'recordTransaction': recordTransaction,
   'fetchUser': fetchUser,
-  'processOrders': processOrders
+  'processOrders': processOrders,
+  'fetchProfile': fetchProfile,
+  'fetchOrders': fetchOrders,
+  'fetchActivity': fetchActivity,
+  'aggregateData': aggregateData,
+  'processItems': processItems,
+  'validateItems': validateItems,
+  'enrichItems': enrichItems,
+  'saveValidItems': saveValidItems,
+  'handleInvalidItems': handleInvalidItems,
+  'finalizeResults': finalizeResults,
+  'doSomething': doSomething,
+  'doSomethingElse': doSomethingElse,
+  'finalize': finalize
 }
 
 export const blueprints: Record<string, WorkflowBlueprint> = {
@@ -261,11 +688,12 @@ export const blueprints: Record<string, WorkflowBlueprint> = {
   "id": "complexControlFlow",
   "nodes": [
     {
-      "id": "merge_1",
-      "uses": "merge",
-      "config": {
-        "joinStrategy": "any"
-      }
+      "id": "validateData_1",
+      "uses": "validateData"
+    },
+    {
+      "id": "handleValidationError_1",
+      "uses": "handleValidationError"
     },
     {
       "id": "loop-controller_1",
@@ -278,11 +706,23 @@ export const blueprints: Record<string, WorkflowBlueprint> = {
       }
     },
     {
-      "id": "merge_2",
-      "uses": "merge",
+      "id": "processBatch_1",
+      "uses": "processBatch",
       "config": {
-        "joinStrategy": "any"
+        "fallback": "handleBatchError_1"
       }
+    },
+    {
+      "id": "handleBatchError_1",
+      "uses": "handleBatchError"
+    },
+    {
+      "id": "generateSummary_parallel_1",
+      "uses": "generateSummary"
+    },
+    {
+      "id": "generateReport_parallel_1",
+      "uses": "generateReport"
     },
     {
       "id": "gather_1",
@@ -292,52 +732,87 @@ export const blueprints: Record<string, WorkflowBlueprint> = {
       }
     },
     {
-      "id": "merge_3",
-      "uses": "merge",
+      "id": "sendHighVolumeNotification_1",
+      "uses": "sendHighVolumeNotification",
       "config": {
         "joinStrategy": "any"
       }
+    },
+    {
+      "id": "sendStandardNotification_1",
+      "uses": "sendStandardNotification"
     }
   ],
   "edges": [
     {
-      "source": "merge_1",
+      "source": "validateData_1",
+      "target": "handleValidationError_1",
+      "condition": "!validated.isValid"
+    },
+    {
+      "source": "validateData_1",
       "target": "loop-controller_1"
     },
     {
-      "source": "loop-controller_1",
-      "target": "merge_2"
+      "source": "handleValidationError_1",
+      "target": "handleBatchError_1"
+    },
+    {
+      "source": "validateData_1",
+      "target": "handleBatchError_1",
+      "condition": "!(!validated.isValid)"
     },
     {
       "source": "loop-controller_1",
-      "target": "merge_2"
+      "target": "handleBatchError_1",
+      "action": "break"
+    },
+    {
+      "source": "processBatch_1",
+      "target": "handleBatchError_1"
     },
     {
       "source": "loop-controller_1",
-      "target": "loop-controller_1",
+      "target": "processBatch_1",
       "action": "continue"
     },
     {
-      "source": "merge_2",
+      "source": "handleBatchError_1",
       "target": "loop-controller_1"
     },
     {
+      "source": "loop-controller_1",
+      "target": "generateSummary_parallel_1"
+    },
+    {
+      "source": "loop-controller_1",
+      "target": "generateReport_parallel_1"
+    },
+    {
+      "source": "generateSummary_parallel_1",
+      "target": "gather_1"
+    },
+    {
+      "source": "generateReport_parallel_1",
+      "target": "gather_1"
+    },
+    {
+      "source": "processBatch_1",
+      "target": "sendHighVolumeNotification_1"
+    },
+    {
+      "source": "handleBatchError_1",
+      "target": "sendHighVolumeNotification_1"
+    },
+    {
       "source": "gather_1",
-      "target": "gather_1",
+      "target": "sendHighVolumeNotification_1",
       "condition": "processedCount > 1000"
     },
     {
       "source": "gather_1",
-      "target": "merge_3"
-    },
-    {
-      "source": "gather_1",
-      "target": "gather_1",
+      "target": "sendStandardNotification_1",
       "condition": "!(processedCount > 1000)"
-    },
-    {
-      "source": "gather_1",
-      "target": "merge_3"
     }
   ]
 },
@@ -345,15 +820,35 @@ export const blueprints: Record<string, WorkflowBlueprint> = {
   "id": "nestedControlFlow",
   "nodes": [
     {
-      "id": "merge_1",
-      "uses": "merge",
+      "id": "processItem_1",
+      "uses": "processItem"
+    },
+    {
+      "id": "reviewItem_1",
+      "uses": "reviewItem"
+    },
+    {
+      "id": "approveItem_1",
+      "uses": "approveItem"
+    },
+    {
+      "id": "rejectItem_1",
+      "uses": "rejectItem"
+    },
+    {
+      "id": "autoApproveItem_1",
+      "uses": "autoApproveItem",
       "config": {
         "joinStrategy": "any"
       }
     },
     {
-      "id": "merge_2",
-      "uses": "merge",
+      "id": "flagItemForManualReview_1",
+      "uses": "flagItemForManualReview"
+    },
+    {
+      "id": "finalizeProcessing_1",
+      "uses": "finalizeProcessing",
       "config": {
         "joinStrategy": "any"
       }
@@ -361,8 +856,48 @@ export const blueprints: Record<string, WorkflowBlueprint> = {
   ],
   "edges": [
     {
-      "source": "merge_2",
-      "target": "merge_1"
+      "source": "reviewItem_1",
+      "target": "approveItem_1",
+      "condition": "reviewed.approved"
+    },
+    {
+      "source": "reviewItem_1",
+      "target": "rejectItem_1",
+      "condition": "!(reviewed.approved)"
+    },
+    {
+      "source": "processItem_1",
+      "target": "reviewItem_1",
+      "condition": "processed.needsReview"
+    },
+    {
+      "source": "approveItem_1",
+      "target": "autoApproveItem_1"
+    },
+    {
+      "source": "rejectItem_1",
+      "target": "autoApproveItem_1"
+    },
+    {
+      "source": "autoApproveItem_1",
+      "target": "flagItemForManualReview_1"
+    },
+    {
+      "source": "processItem_1",
+      "target": "autoApproveItem_1",
+      "condition": "!(processed.needsReview)"
+    },
+    {
+      "source": "reviewItem_1",
+      "target": "finalizeProcessing_1"
+    },
+    {
+      "source": "flagItemForManualReview_1",
+      "target": "finalizeProcessing_1"
+    },
+    {
+      "source": "processItem_1",
+      "target": "finalizeProcessing_1"
     }
   ]
 },
@@ -429,18 +964,63 @@ export const blueprints: Record<string, WorkflowBlueprint> = {
   "id": "parallelFlow",
   "nodes": [
     {
-      "id": "gather_1",
-      "uses": "gather",
+      "id": "fetchProfile_parallel_1",
+      "uses": "fetchProfile"
+    },
+    {
+      "id": "fetchOrders_parallel_1",
+      "uses": "fetchOrders"
+    },
+    {
+      "id": "fetchActivity_parallel_1",
+      "uses": "fetchActivity"
+    },
+    {
+      "id": "aggregateData_parallel_1",
+      "uses": "aggregateData",
       "config": {
         "joinStrategy": "all"
       }
+    },
+    {
+      "id": "aggregateData_2",
+      "uses": "aggregateData"
     }
   ],
-  "edges": []
+  "edges": [
+    {
+      "source": "fetchProfile_parallel_1",
+      "target": "aggregateData_parallel_1"
+    },
+    {
+      "source": "fetchOrders_parallel_1",
+      "target": "aggregateData_parallel_1"
+    },
+    {
+      "source": "fetchActivity_parallel_1",
+      "target": "aggregateData_parallel_1"
+    },
+    {
+      "source": "aggregateData_parallel_1",
+      "target": "aggregateData_2"
+    }
+  ]
 },
   'complexParallelFlow': {
   "id": "complexParallelFlow",
   "nodes": [
+    {
+      "id": "processItems_parallel_1",
+      "uses": "processItems"
+    },
+    {
+      "id": "validateItems_parallel_1",
+      "uses": "validateItems"
+    },
+    {
+      "id": "enrichItems_parallel_1",
+      "uses": "enrichItems"
+    },
     {
       "id": "gather_1",
       "uses": "gather",
@@ -449,8 +1029,16 @@ export const blueprints: Record<string, WorkflowBlueprint> = {
       }
     },
     {
-      "id": "merge_1",
-      "uses": "merge",
+      "id": "saveValidItems_1",
+      "uses": "saveValidItems"
+    },
+    {
+      "id": "handleInvalidItems_1",
+      "uses": "handleInvalidItems"
+    },
+    {
+      "id": "finalizeResults_1",
+      "uses": "finalizeResults",
       "config": {
         "joinStrategy": "any"
       }
@@ -458,22 +1046,120 @@ export const blueprints: Record<string, WorkflowBlueprint> = {
   ],
   "edges": [
     {
+      "source": "processItems_parallel_1",
+      "target": "gather_1"
+    },
+    {
+      "source": "validateItems_parallel_1",
+      "target": "gather_1"
+    },
+    {
+      "source": "enrichItems_parallel_1",
+      "target": "gather_1"
+    },
+    {
       "source": "gather_1",
-      "target": "gather_1",
+      "target": "saveValidItems_1",
       "condition": "validated.valid"
     },
     {
       "source": "gather_1",
-      "target": "merge_1"
-    },
-    {
-      "source": "gather_1",
-      "target": "gather_1",
+      "target": "handleInvalidItems_1",
       "condition": "!(validated.valid)"
     },
     {
+      "source": "saveValidItems_1",
+      "target": "finalizeResults_1"
+    },
+    {
+      "source": "handleInvalidItems_1",
+      "target": "finalizeResults_1"
+    },
+    {
       "source": "gather_1",
-      "target": "merge_1"
+      "target": "finalizeResults_1"
+    }
+  ]
+},
+  'simpleParallelFlow': {
+  "id": "simpleParallelFlow",
+  "nodes": [
+    {
+      "id": "fetchProfile_parallel_1",
+      "uses": "fetchProfile"
+    },
+    {
+      "id": "fetchOrders_parallel_1",
+      "uses": "fetchOrders"
+    },
+    {
+      "id": "aggregateData_parallel_1",
+      "uses": "aggregateData",
+      "config": {
+        "joinStrategy": "all"
+      }
+    },
+    {
+      "id": "aggregateData_2",
+      "uses": "aggregateData"
+    }
+  ],
+  "edges": [
+    {
+      "source": "fetchProfile_parallel_1",
+      "target": "aggregateData_parallel_1"
+    },
+    {
+      "source": "fetchOrders_parallel_1",
+      "target": "aggregateData_parallel_1"
+    },
+    {
+      "source": "aggregateData_parallel_1",
+      "target": "aggregateData_2"
+    }
+  ]
+},
+  'simpleIfElseFlow': {
+  "id": "simpleIfElseFlow",
+  "nodes": [
+    {
+      "id": "start",
+      "uses": "start"
+    },
+    {
+      "id": "doSomething_1",
+      "uses": "doSomething"
+    },
+    {
+      "id": "doSomethingElse_1",
+      "uses": "doSomethingElse"
+    },
+    {
+      "id": "finalize_1",
+      "uses": "finalize",
+      "config": {
+        "joinStrategy": "any"
+      }
+    }
+  ],
+  "edges": [
+    {
+      "source": "start",
+      "target": "doSomething_1",
+      "condition": "condition"
+    },
+    {
+      "source": "start",
+      "target": "doSomethingElse_1",
+      "condition": "!(condition)"
+    },
+    {
+      "source": "doSomething_1",
+      "target": "finalize_1"
+    },
+    {
+      "source": "doSomethingElse_1",
+      "target": "finalize_1"
     }
   ]
 }

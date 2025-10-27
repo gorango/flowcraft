@@ -14,6 +14,8 @@ export class FlowAnalyzer {
 		pendingEdges: [],
 		fallbackScope: null,
 		usageCounts: new Map(),
+		pendingBranches: null,
+		pendingForkEdges: [],
 	}
 
 	constructor(
@@ -30,7 +32,9 @@ export class FlowAnalyzer {
 	} {
 		// Push initial scope
 		this.state.scopes.push({ variables: new Map() })
-		this.traverse(this.functionNode.body!)
+		if (this.functionNode.body) {
+			this.traverse(this.functionNode.body)
+		}
 		// If no nodes, add a start node
 		if (this.state.nodes.length === 0) {
 			const startNode: NodeDefinition = {
@@ -55,21 +59,6 @@ export class FlowAnalyzer {
 			lastCursor = this.state.cursor
 		})
 		return lastCursor
-	}
-
-	private findFirstAwait(node: ts.Node): string | null {
-		let first: string | null = null
-		const visitor = (n: ts.Node) => {
-			if (first) return
-			if (ts.isAwaitExpression(n)) {
-				this.visit(n)
-				first = this.state.cursor
-			} else {
-				ts.forEachChild(n, visitor)
-			}
-		}
-		visitor(node)
-		return first
 	}
 
 	private visit(node: ts.Node): string | null {
@@ -131,6 +120,7 @@ export class FlowAnalyzer {
 						const exportName = originalSymbol.name
 						const exportInfo = fileAnalysis.exports.get(exportName)
 						if (exportInfo) {
+							// This is an exported function
 							let nodeDef: NodeDefinition
 							const count = (this.state.usageCounts.get(exportName) || 0) + 1
 							this.state.usageCounts.set(exportName, count)
@@ -156,6 +146,73 @@ export class FlowAnalyzer {
 								return this.state.cursor // Unknown type
 							}
 							this.state.nodes.push(nodeDef)
+							if (this.state.pendingBranches) {
+								for (const end of this.state.pendingBranches.ends) {
+									this.state.edges.push({ source: end, target: nodeDef.id })
+								}
+								nodeDef.config = {
+									...nodeDef.config,
+									joinStrategy: this.state.pendingBranches.joinStrategy as 'all' | 'any',
+								}
+								this.state.pendingBranches = null
+							}
+							if (this.state.pendingForkEdges.length > 0) {
+								for (const forkEdge of this.state.pendingForkEdges) {
+									this.state.edges.push({ source: forkEdge.source, target: nodeDef.id, condition: forkEdge.condition })
+								}
+								this.state.pendingForkEdges = []
+							}
+							if (this.state.cursor) {
+								const edge: any = { source: this.state.cursor, target: nodeDef.id }
+								// If source is a loop-controller, add break action
+								const sourceNode = this.state.nodes.find((n) => n.id === this.state.cursor)
+								if (sourceNode && sourceNode.uses === 'loop-controller') {
+									edge.action = 'break'
+								}
+								this.state.edges.push(edge)
+							}
+							this.state.cursor = nodeDef.id
+
+							// Map variable to node output if it's a VariableDeclaration
+							const parent = node.parent
+							if (ts.isVariableDeclaration(parent) && parent.name && ts.isIdentifier(parent.name)) {
+								const varName = parent.name.text
+								const returnType = this.typeChecker.getTypeAtLocation(node)
+								this.state.scopes[this.state.scopes.length - 1].variables.set(varName, {
+									nodeId: nodeDef.id,
+									type: returnType,
+								})
+							}
+						} else if (ts.isFunctionDeclaration(decl) || ts.isFunctionExpression(decl) || ts.isArrowFunction(decl)) {
+							// This is a local function declaration in the same file, treat as step
+							const count = (this.state.usageCounts.get(exportName) || 0) + 1
+							this.state.usageCounts.set(exportName, count)
+
+							const nodeDef: NodeDefinition = {
+								id: `${exportName}_${count}`,
+								uses: exportName,
+							}
+							if (this.state.fallbackScope) {
+								nodeDef.config = { fallback: this.state.fallbackScope }
+							}
+							this.registry[exportName] = { importPath: filePath, exportName }
+							this.state.nodes.push(nodeDef)
+							if (this.state.pendingBranches) {
+								for (const end of this.state.pendingBranches.ends) {
+									this.state.edges.push({ source: end, target: nodeDef.id })
+								}
+								nodeDef.config = {
+									...nodeDef.config,
+									joinStrategy: this.state.pendingBranches.joinStrategy as 'all' | 'any',
+								}
+								this.state.pendingBranches = null
+							}
+							if (this.state.pendingForkEdges.length > 0) {
+								for (const forkEdge of this.state.pendingForkEdges) {
+									this.state.edges.push({ source: forkEdge.source, target: nodeDef.id, condition: forkEdge.condition })
+								}
+								this.state.pendingForkEdges = []
+							}
 							if (this.state.cursor) {
 								const edge: any = { source: this.state.cursor, target: nodeDef.id }
 								// If source is a loop-controller, add break action
@@ -180,7 +237,6 @@ export class FlowAnalyzer {
 						}
 					}
 				}
-				return this.state.cursor
 			}
 
 			return this.state.cursor
@@ -217,9 +273,10 @@ export class FlowAnalyzer {
 		const _prevCursor = this.state.cursor
 		this.state.cursor = controllerId
 
-		// Traverse the body and capture the first node
-		const firstInBody = this.findFirstAwait(node.statement)
+		// Traverse the body and find first and last nodes
+		const nodesBeforeBody = this.state.nodes.length
 		const lastInBody = this.traverse(node.statement)
+		const firstInBody = this.state.nodes.length > nodesBeforeBody ? this.state.nodes[nodesBeforeBody].id : null
 
 		// Add continue edge from controller to first node in body
 		if (firstInBody) {
@@ -240,27 +297,29 @@ export class FlowAnalyzer {
 	}
 
 	private visitIfStatement(node: ts.IfStatement): string | null {
-		const forkNodeId = this.state.cursor
+		let forkNodeId = this.state.cursor
 		const condition = node.expression.getText()
 
-		// Create merge node
-		const mergeExportName = 'merge'
-		const mergeCount = (this.state.usageCounts.get(mergeExportName) || 0) + 1
-		this.state.usageCounts.set(mergeExportName, mergeCount)
-		const mergeId = `${mergeExportName}_${mergeCount}`
-		const mergeNode: NodeDefinition = {
-			id: mergeId,
-			uses: 'merge',
-			config: { joinStrategy: 'any' },
+		// If no fork point, create a start node
+		if (!forkNodeId) {
+			const startNode: NodeDefinition = {
+				id: 'start',
+				uses: 'start',
+			}
+			this.state.nodes.unshift(startNode)
+			forkNodeId = 'start'
 		}
-		this.state.nodes.push(mergeNode)
 
 		// Push scope for if block
 		this.state.scopes.push({ variables: new Map() })
 
-		// Traverse if block and capture first node
-		const firstInIf = this.findFirstAwait(node.thenStatement)
+		// Traverse if block and find first and last nodes
+		const prevCursor = this.state.cursor
+		this.state.cursor = null // Prevent unconditional edges in branch
+		const nodesBeforeIf = this.state.nodes.length
 		const lastInIf = this.traverse(node.thenStatement)
+		const firstInIf = this.state.nodes.length > nodesBeforeIf ? this.state.nodes[nodesBeforeIf].id : null
+		this.state.cursor = prevCursor // Restore
 
 		// Pop scope
 		this.state.scopes.pop()
@@ -270,25 +329,18 @@ export class FlowAnalyzer {
 			this.state.edges.push({ source: forkNodeId, target: firstInIf, condition })
 		}
 
-		// Wire if branch to merge
-		if (lastInIf) {
-			this.state.edges.push({ source: lastInIf, target: mergeId })
-		} else if (firstInIf) {
-			this.state.edges.push({ source: firstInIf, target: mergeId })
-		}
-
 		let firstInElse: string | null = null
 		let lastInElse: string | null = null
 		if (node.elseStatement) {
-			// Reset cursor for else
-			this.state.cursor = forkNodeId
-
 			// Push scope for else block
 			this.state.scopes.push({ variables: new Map() })
 
-			// Traverse else block and capture first node
-			firstInElse = this.findFirstAwait(node.elseStatement)
+			// Traverse else block and find first and last nodes
+			this.state.cursor = null // Prevent unconditional edges in branch
+			const nodesBeforeElse = this.state.nodes.length
 			lastInElse = this.traverse(node.elseStatement)
+			firstInElse = this.state.nodes.length > nodesBeforeElse ? this.state.nodes[nodesBeforeElse].id : null
+			this.state.cursor = prevCursor // Restore
 
 			// Pop scope
 			this.state.scopes.pop()
@@ -297,18 +349,22 @@ export class FlowAnalyzer {
 			if (firstInElse && forkNodeId) {
 				this.state.edges.push({ source: forkNodeId, target: firstInElse, condition: `!(${condition})` })
 			}
-
-			// Wire else branch to merge
-			if (lastInElse) {
-				this.state.edges.push({ source: lastInElse, target: mergeId })
-			} else if (firstInElse) {
-				this.state.edges.push({ source: firstInElse, target: mergeId })
+		} else {
+			// If no else, add pending fork edge for the negated condition to successor
+			if (forkNodeId) {
+				this.state.pendingForkEdges.push({ source: forkNodeId, condition: `!(${condition})` })
 			}
 		}
 
-		// Set cursor to merge
-		this.state.cursor = mergeId
-		return this.state.cursor
+		// Set pending branches for the successor
+		const ends: string[] = []
+		if (lastInIf) ends.push(lastInIf)
+		else if (firstInIf) ends.push(firstInIf)
+		if (lastInElse) ends.push(lastInElse)
+		else if (firstInElse) ends.push(firstInElse)
+		this.state.pendingBranches = { ends, joinStrategy: 'any' }
+
+		return null
 	}
 
 	private visitTryStatement(node: ts.TryStatement): string | null {
@@ -320,10 +376,14 @@ export class FlowAnalyzer {
 		// Pre-scan catch block to find fallback node
 		let fallbackNodeId: string | null = null
 		if (node.catchClause) {
-			const firstInCatch = this.findFirstAwait(node.catchClause.block)
-			if (firstInCatch) {
-				fallbackNodeId = firstInCatch
-			}
+			const savedUsageCounts = new Map(this.state.usageCounts)
+			const nodesBeforeCatch = this.state.nodes.length
+			this.traverse(node.catchClause.block)
+			fallbackNodeId = this.state.nodes.length > nodesBeforeCatch ? this.state.nodes[nodesBeforeCatch].id : null
+			// Reset nodes and cursor since this was just a pre-scan
+			this.state.nodes.splice(nodesBeforeCatch)
+			this.state.cursor = null // Reset cursor
+			this.state.usageCounts = savedUsageCounts
 		}
 
 		// Set fallback scope
@@ -341,31 +401,13 @@ export class FlowAnalyzer {
 			lastInCatch = this.traverse(node.catchClause.block)
 		}
 
-		// Create merge node
-		const mergeExportName = 'merge'
-		const mergeCount = (this.state.usageCounts.get(mergeExportName) || 0) + 1
-		this.state.usageCounts.set(mergeExportName, mergeCount)
-		const mergeId = `${mergeExportName}_${mergeCount}`
-		const mergeNode: NodeDefinition = {
-			id: mergeId,
-			uses: 'merge',
-			config: { joinStrategy: 'any' },
-		}
-		this.state.nodes.push(mergeNode)
+		// Set pending branches for the successor
+		const ends: string[] = []
+		if (lastInTry) ends.push(lastInTry)
+		if (lastInCatch) ends.push(lastInCatch)
+		this.state.pendingBranches = { ends, joinStrategy: 'any' }
 
-		// Wire try branch to merge
-		if (lastInTry) {
-			this.state.edges.push({ source: lastInTry, target: mergeId })
-		}
-
-		// Wire catch branch to merge
-		if (lastInCatch) {
-			this.state.edges.push({ source: lastInCatch, target: mergeId })
-		}
-
-		// Set cursor to merge
-		this.state.cursor = mergeId
-		return this.state.cursor
+		return null
 	}
 
 	private isPromiseAllCall(node: ts.CallExpression): boolean {
@@ -387,27 +429,30 @@ export class FlowAnalyzer {
 			return this.state.cursor
 		}
 
+		// Store the scatter point (current cursor before Promise.all)
+		const scatterPoint = this.state.cursor
+
+		// Process each parallel call
+		const parallelNodeIds: string[] = []
+		for (const element of arrayArg.elements) {
+			if (ts.isCallExpression(element)) {
+				// This is a call expression in the array
+				const nodeId = this.processParallelCall(element)
+				if (nodeId) {
+					parallelNodeIds.push(nodeId)
+					// Create edge from scatter point to parallel node
+					if (scatterPoint) {
+						this.state.edges.push({ source: scatterPoint, target: nodeId })
+					}
+				}
+			}
+		}
+
 		// Find the gather node (the node that uses the Promise.all results)
 		const gatherNodeId = this.findGatherNode(awaitNode)
 		if (!gatherNodeId) {
 			this.addDiagnostic(awaitNode, 'warning', 'Could not find gather node for Promise.all results')
 			return this.state.cursor
-		}
-
-		// Process each parallel call
-		const parallelNodeIds: string[] = []
-		for (const element of arrayArg.elements) {
-			if (ts.isCallExpression(element) && ts.isAwaitExpression(element.parent)) {
-				// This is an await call expression in the array
-				const nodeId = this.processParallelCall(element)
-				if (nodeId) {
-					parallelNodeIds.push(nodeId)
-					// Create edge from current cursor to parallel node
-					if (this.state.cursor) {
-						this.state.edges.push({ source: this.state.cursor, target: nodeId })
-					}
-				}
-			}
 		}
 
 		// Wire all parallel nodes to the gather node
@@ -442,6 +487,7 @@ export class FlowAnalyzer {
 					const exportName = originalSymbol.name
 					const exportInfo = fileAnalysis.exports.get(exportName)
 					if (exportInfo) {
+						// This is an exported function (from another file or this file)
 						const count = (this.state.usageCounts.get(exportName) || 0) + 1
 						this.state.usageCounts.set(exportName, count)
 
@@ -464,6 +510,18 @@ export class FlowAnalyzer {
 
 						this.state.nodes.push(nodeDef)
 						return nodeDef.id
+					} else if (ts.isFunctionDeclaration(decl) || ts.isFunctionExpression(decl) || ts.isArrowFunction(decl)) {
+						// This is a local function declaration in the same file, treat as step
+						const count = (this.state.usageCounts.get(exportName) || 0) + 1
+						this.state.usageCounts.set(exportName, count)
+
+						const nodeDef: NodeDefinition = {
+							id: `${exportName}_parallel_${count}`,
+							uses: exportName,
+						}
+						this.registry[exportName] = { importPath: filePath, exportName }
+						this.state.nodes.push(nodeDef)
+						return nodeDef.id
 					}
 				}
 			}
@@ -473,23 +531,21 @@ export class FlowAnalyzer {
 
 	private findGatherNode(awaitNode: ts.AwaitExpression): string | null {
 		// Find the node that uses the Promise.all results
-		// This is typically the next await call that uses the destructured results
+		// Look for the next await expression that uses variables declared by the Promise.all
 		const parent = awaitNode.parent
-		if (ts.isVariableDeclaration(parent) && parent.name) {
-			// Check if it's a destructuring pattern
-			if (ts.isArrayBindingPattern(parent.name)) {
-				// Look for the next statement that uses any of these variables
-				const scope = this.findContainingScope(awaitNode)
-				if (scope) {
-					const nextStatement = this.findNextStatement(awaitNode, scope)
-					if (nextStatement && ts.isExpressionStatement(nextStatement)) {
-						const callExpr = this.findAwaitCallInStatement(nextStatement)
-						if (callExpr) {
-							// Process this as the gather node
-							return this.processParallelCall(callExpr)
-						}
-					}
+		if (ts.isVariableDeclaration(parent) && parent.name && ts.isArrayBindingPattern(parent.name)) {
+			// Get the variable names from the destructuring
+			const varNames: string[] = []
+			for (const element of parent.name.elements) {
+				if (ts.isBindingElement(element) && element.name && ts.isIdentifier(element.name)) {
+					varNames.push(element.name.text)
 				}
+			}
+
+			// Find the gather node by scanning subsequent statements for usage of these variables
+			const gatherNodeId = this.findGatherNodeByVariableUsage(awaitNode, varNames)
+			if (gatherNodeId) {
+				return gatherNodeId
 			}
 		}
 
@@ -516,14 +572,46 @@ export class FlowAnalyzer {
 		return undefined
 	}
 
-	private findNextStatement(node: ts.Node, scope: ts.Block): ts.Statement | undefined {
+	private findGatherNodeByVariableUsage(awaitNode: ts.AwaitExpression, varNames: string[]): string | null {
+		// Find the statement containing the Promise.all and scan subsequent statements
+		let current: ts.Node = awaitNode
+		while (current && !ts.isStatement(current)) {
+			current = current.parent
+		}
+		if (!current || !ts.isStatement(current)) return null
+
+		const statement = current
+		const scope = this.findContainingScope(statement)
+		if (!scope) return null
+
+		// Find the statement index
 		const statements = scope.statements
-		for (let i = 0; i < statements.length - 1; i++) {
-			if (statements[i].getStart() <= node.getStart() && node.getEnd() <= statements[i].getEnd()) {
-				return statements[i + 1]
+		const statementIndex = statements.indexOf(statement as ts.Statement)
+		if (statementIndex === -1) return null
+
+		// Scan subsequent statements
+		for (let i = statementIndex + 1; i < statements.length; i++) {
+			const stmt = statements[i]
+			const callExpr = this.findAwaitCallInStatement(stmt)
+			if (callExpr && this.callUsesVariables(callExpr, varNames)) {
+				return this.processParallelCall(callExpr)
 			}
 		}
-		return undefined
+
+		return null
+	}
+
+	private callUsesVariables(callExpr: ts.CallExpression, varNames: string[]): boolean {
+		let usesVars = false
+		const visitor = (node: ts.Node) => {
+			if (usesVars) return
+			if (ts.isIdentifier(node) && varNames.includes(node.text)) {
+				usesVars = true
+			}
+			ts.forEachChild(node, visitor)
+		}
+		ts.forEachChild(callExpr, visitor)
+		return usesVars
 	}
 
 	private findAwaitCallInStatement(statement: ts.Statement): ts.CallExpression | null {
@@ -531,6 +619,16 @@ export class FlowAnalyzer {
 			const awaitExpr = statement.expression
 			if (ts.isCallExpression(awaitExpr.expression)) {
 				return awaitExpr.expression
+			}
+		} else if (ts.isVariableStatement(statement)) {
+			// Check variable declarations for await expressions
+			for (const decl of statement.declarationList.declarations) {
+				if (decl.initializer && ts.isAwaitExpression(decl.initializer)) {
+					const awaitExpr = decl.initializer
+					if (ts.isCallExpression(awaitExpr.expression)) {
+						return awaitExpr.expression
+					}
+				}
 			}
 		}
 		return null

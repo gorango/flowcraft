@@ -57,7 +57,7 @@ async function processItems(params: { items: any[] }) {
 	return params.items.map((item) => ({ ...item, processed: true }))
 }
 
-async function validateItems(params: { items: any[] }) {
+async function validateItems(_params: { items: any[] }) {
 	return { valid: true, errors: [] }
 }
 

@@ -29,6 +29,8 @@ export interface CompilerState {
 	pendingEdges: PendingEdge[]
 	fallbackScope: string | null
 	usageCounts: Map<string, number>
+	pendingBranches: { ends: string[]; joinStrategy: string } | null
+	pendingForkEdges: { source: string; condition: string }[]
 }
 
 export interface Scope {
