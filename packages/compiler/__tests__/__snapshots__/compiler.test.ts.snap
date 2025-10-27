@@ -2,6 +2,129 @@
 
 exports[`Compiler > should compile all test fixtures 1`] = `
 {
+  "complexControlFlow": {
+    "edges": [
+      {
+        "source": "merge_1",
+        "target": "loop-controller_1",
+      },
+      {
+        "source": "loop-controller_1",
+        "target": "merge_2",
+      },
+      {
+        "source": "loop-controller_1",
+        "target": "merge_2",
+      },
+      {
+        "action": "continue",
+        "source": "loop-controller_1",
+        "target": "loop-controller_1",
+      },
+      {
+        "source": "merge_2",
+        "target": "loop-controller_1",
+      },
+      {
+        "condition": "processedCount > 1000",
+        "source": "gather_1",
+        "target": "gather_1",
+      },
+      {
+        "source": "gather_1",
+        "target": "merge_3",
+      },
+      {
+        "condition": "!(processedCount > 1000)",
+        "source": "gather_1",
+        "target": "gather_1",
+      },
+      {
+        "source": "gather_1",
+        "target": "merge_3",
+      },
+    ],
+    "id": "complexControlFlow",
+    "nodes": [
+      {
+        "config": {
+          "joinStrategy": "any",
+        },
+        "id": "merge_1",
+        "uses": "merge",
+      },
+      {
+        "config": {
+          "joinStrategy": "any",
+        },
+        "id": "loop-controller_1",
+        "params": {
+          "condition": "currentBatch && currentBatch.length > 0",
+        },
+        "uses": "loop-controller",
+      },
+      {
+        "config": {
+          "joinStrategy": "any",
+        },
+        "id": "merge_2",
+        "uses": "merge",
+      },
+      {
+        "config": {
+          "joinStrategy": "all",
+        },
+        "id": "gather_1",
+        "uses": "gather",
+      },
+      {
+        "config": {
+          "joinStrategy": "any",
+        },
+        "id": "merge_3",
+        "uses": "merge",
+      },
+    ],
+  },
+  "complexParallelFlow": {
+    "edges": [
+      {
+        "condition": "validated.valid",
+        "source": "gather_1",
+        "target": "gather_1",
+      },
+      {
+        "source": "gather_1",
+        "target": "merge_1",
+      },
+      {
+        "condition": "!(validated.valid)",
+        "source": "gather_1",
+        "target": "gather_1",
+      },
+      {
+        "source": "gather_1",
+        "target": "merge_1",
+      },
+    ],
+    "id": "complexParallelFlow",
+    "nodes": [
+      {
+        "config": {
+          "joinStrategy": "all",
+        },
+        "id": "gather_1",
+        "uses": "gather",
+      },
+      {
+        "config": {
+          "joinStrategy": "any",
+        },
+        "id": "merge_1",
+        "uses": "merge",
+      },
+    ],
+  },
   "mainFlow": {
     "edges": [
       {
@@ -29,6 +152,44 @@ exports[`Compiler > should compile all test fixtures 1`] = `
       {
         "id": "processOrders_1",
         "uses": "processOrders",
+      },
+    ],
+  },
+  "nestedControlFlow": {
+    "edges": [
+      {
+        "source": "merge_2",
+        "target": "merge_1",
+      },
+    ],
+    "id": "nestedControlFlow",
+    "nodes": [
+      {
+        "config": {
+          "joinStrategy": "any",
+        },
+        "id": "merge_1",
+        "uses": "merge",
+      },
+      {
+        "config": {
+          "joinStrategy": "any",
+        },
+        "id": "merge_2",
+        "uses": "merge",
+      },
+    ],
+  },
+  "parallelFlow": {
+    "edges": [],
+    "id": "parallelFlow",
+    "nodes": [
+      {
+        "config": {
+          "joinStrategy": "all",
+        },
+        "id": "gather_1",
+        "uses": "gather",
       },
     ],
   },
@@ -96,6 +257,115 @@ export const registry: Record<string, NodeImplementation> = {
 }
 
 export const blueprints: Record<string, WorkflowBlueprint> = {
+  'complexControlFlow': {
+  "id": "complexControlFlow",
+  "nodes": [
+    {
+      "id": "merge_1",
+      "uses": "merge",
+      "config": {
+        "joinStrategy": "any"
+      }
+    },
+    {
+      "id": "loop-controller_1",
+      "uses": "loop-controller",
+      "params": {
+        "condition": "currentBatch && currentBatch.length > 0"
+      },
+      "config": {
+        "joinStrategy": "any"
+      }
+    },
+    {
+      "id": "merge_2",
+      "uses": "merge",
+      "config": {
+        "joinStrategy": "any"
+      }
+    },
+    {
+      "id": "gather_1",
+      "uses": "gather",
+      "config": {
+        "joinStrategy": "all"
+      }
+    },
+    {
+      "id": "merge_3",
+      "uses": "merge",
+      "config": {
+        "joinStrategy": "any"
+      }
+    }
+  ],
+  "edges": [
+    {
+      "source": "merge_1",
+      "target": "loop-controller_1"
+    },
+    {
+      "source": "loop-controller_1",
+      "target": "merge_2"
+    },
+    {
+      "source": "loop-controller_1",
+      "target": "merge_2"
+    },
+    {
+      "source": "loop-controller_1",
+      "target": "loop-controller_1",
+      "action": "continue"
+    },
+    {
+      "source": "merge_2",
+      "target": "loop-controller_1"
+    },
+    {
+      "source": "gather_1",
+      "target": "gather_1",
+      "condition": "processedCount > 1000"
+    },
+    {
+      "source": "gather_1",
+      "target": "merge_3"
+    },
+    {
+      "source": "gather_1",
+      "target": "gather_1",
+      "condition": "!(processedCount > 1000)"
+    },
+    {
+      "source": "gather_1",
+      "target": "merge_3"
+    }
+  ]
+},
+  'nestedControlFlow': {
+  "id": "nestedControlFlow",
+  "nodes": [
+    {
+      "id": "merge_1",
+      "uses": "merge",
+      "config": {
+        "joinStrategy": "any"
+      }
+    },
+    {
+      "id": "merge_2",
+      "uses": "merge",
+      "config": {
+        "joinStrategy": "any"
+      }
+    }
+  ],
+  "edges": [
+    {
+      "source": "merge_2",
+      "target": "merge_1"
+    }
+  ]
+},
   'subFlow': {
   "id": "subFlow",
   "nodes": [
@@ -154,117 +424,56 @@ export const blueprints: Record<string, WorkflowBlueprint> = {
       "target": "processOrders_1"
     }
   ]
-}
-}
-"
-`;
-
-exports[`Compiler > should compile fixture with subflow 1`] = `
-{
-  "mainFlow": {
-    "edges": [],
-    "id": "mainFlow",
-    "nodes": [
-      {
-        "id": "start",
-        "uses": "start",
-      },
-    ],
-  },
-  "simpleFlow": {
-    "edges": [
-      {
-        "source": "fetchUser_1",
-        "target": "processOrders_1",
-      },
-    ],
-    "id": "simpleFlow",
-    "nodes": [
-      {
-        "id": "fetchUser_1",
-        "uses": "fetchUser",
-      },
-      {
-        "id": "processOrders_1",
-        "uses": "processOrders",
-      },
-    ],
-  },
-  "subFlow": {
-    "edges": [],
-    "id": "subFlow",
-    "nodes": [
-      {
-        "id": "start",
-        "uses": "start",
-      },
-    ],
-  },
-}
-`;
-
-exports[`Compiler > should compile fixture with subflow 2`] = `
-{
-  "fetchUser": {
-    "exportName": "fetchUser",
-    "importPath": "/home/g/m/flowcraft/packages/compiler/__tests__/fixtures/simple-flow.ts",
-  },
-  "processOrders": {
-    "exportName": "processOrders",
-    "importPath": "/home/g/m/flowcraft/packages/compiler/__tests__/fixtures/simple-flow.ts",
-  },
-}
-`;
-
-exports[`Compiler > should compile fixture with subflow 3`] = `
-"// Generated by @flowcraft/compiler
-import { fetchUser } from '__tests__/fixtures/simple-flow.ts'
-import { processOrders } from '__tests__/fixtures/simple-flow.ts'
-
-import type { NodeImplementation, WorkflowBlueprint } from 'flowcraft'
-
-export const registry: Record<string, NodeImplementation> = {
-  'fetchUser': fetchUser,
-  'processOrders': processOrders
-}
-
-export const blueprints: Record<string, WorkflowBlueprint> = {
-  'subFlow': {
-  "id": "subFlow",
+},
+  'parallelFlow': {
+  "id": "parallelFlow",
   "nodes": [
     {
-      "id": "start",
-      "uses": "start"
+      "id": "gather_1",
+      "uses": "gather",
+      "config": {
+        "joinStrategy": "all"
+      }
     }
   ],
   "edges": []
 },
-  'mainFlow': {
-  "id": "mainFlow",
+  'complexParallelFlow': {
+  "id": "complexParallelFlow",
   "nodes": [
     {
-      "id": "start",
-      "uses": "start"
-    }
-  ],
-  "edges": []
-},
-  'simpleFlow': {
-  "id": "simpleFlow",
-  "nodes": [
-    {
-      "id": "fetchUser_1",
-      "uses": "fetchUser"
+      "id": "gather_1",
+      "uses": "gather",
+      "config": {
+        "joinStrategy": "all"
+      }
     },
     {
-      "id": "processOrders_1",
-      "uses": "processOrders"
+      "id": "merge_1",
+      "uses": "merge",
+      "config": {
+        "joinStrategy": "any"
+      }
     }
   ],
   "edges": [
     {
-      "source": "fetchUser_1",
-      "target": "processOrders_1"
+      "source": "gather_1",
+      "target": "gather_1",
+      "condition": "validated.valid"
+    },
+    {
+      "source": "gather_1",
+      "target": "merge_1"
+    },
+    {
+      "source": "gather_1",
+      "target": "gather_1",
+      "condition": "!(validated.valid)"
+    },
+    {
+      "source": "gather_1",
+      "target": "merge_1"
     }
   ]
 }
