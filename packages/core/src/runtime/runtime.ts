@@ -15,6 +15,7 @@ import { JsonSerializer } from '../serializer'
 import type {
 	ContextImplementation,
 	EdgeDefinition,
+	FlowcraftEvent,
 	IEvaluator,
 	IEventBus,
 	ILogger,
@@ -460,7 +461,7 @@ export class FlowRuntime<TContext extends Record<string, any>, TDependencies ext
 
 		if (nextSteps.length === 0) {
 			workflowState.clearAwaiting(awaitingNodeId)
-			const result = await workflowState.toResult(this.serializer)
+			const result = await workflowState.toResult(this.serializer, executionId)
 			result.status = 'completed'
 			return result
 		}
@@ -469,7 +470,7 @@ export class FlowRuntime<TContext extends Record<string, any>, TDependencies ext
 		const allPredecessors = traverserForResume.getAllPredecessors()
 
 		for (const { node, edge } of nextSteps) {
-			await this.applyEdgeTransform(edge, resumeData, node, contextImpl, allPredecessors)
+			await this.applyEdgeTransform(edge, resumeData, node, contextImpl, allPredecessors, executionId)
 		}
 
 		const traverser = GraphTraverser.fromState(blueprint, workflowState)
@@ -616,8 +617,9 @@ export class FlowRuntime<TContext extends Record<string, any>, TDependencies ext
 		targetNode: NodeDefinition,
 		context: ContextImplementation<TContext>,
 		allPredecessors?: Map<string, Set<string>>,
+		executionId?: string,
 	): Promise<void> {
-		return this.logicHandler.applyEdgeTransform(edge, sourceResult, targetNode, context, allPredecessors)
+		return this.logicHandler.applyEdgeTransform(edge, sourceResult, targetNode, context, allPredecessors, executionId)
 	}
 
 	public async resolveNodeInput(
@@ -626,5 +628,73 @@ export class FlowRuntime<TContext extends Record<string, any>, TDependencies ext
 		context: ContextImplementation<TContext>,
 	): Promise<any> {
 		return this.logicHandler.resolveNodeInput(nodeId, blueprint, context)
+	}
+
+	/**
+	 * Replay a workflow execution from a pre-recorded event history.
+	 * This reconstructs the final workflow state without executing any node logic,
+	 * enabling time-travel debugging and post-mortem analysis.
+	 *
+	 * @param blueprint The workflow blueprint
+	 * @param events The recorded event history for the execution
+	 * @param executionId Optional execution ID to filter events (if events contain multiple executions)
+	 * @returns The reconstructed workflow result
+	 */
+	async replay(
+		blueprint: WorkflowBlueprint,
+		events: FlowcraftEvent[],
+		executionId?: string,
+	): Promise<WorkflowResult<TContext>> {
+		// Filter events for the specific execution if provided
+		let filteredEvents = events
+		if (executionId) {
+			filteredEvents = events.filter((event) => {
+				if ('executionId' in event.payload) {
+					return event.payload.executionId === executionId
+				}
+				return false
+			})
+		}
+
+		// Extract execution ID from events if not provided
+		if (!executionId) {
+			const workflowStartEvent = filteredEvents.find((e) => e.type === 'workflow:start')
+			if (workflowStartEvent && 'executionId' in workflowStartEvent.payload) {
+				executionId = workflowStartEvent.payload.executionId
+			} else {
+				throw new FlowcraftError('Cannot determine execution ID from events', { isFatal: true })
+			}
+		}
+
+		// Create execution context with empty initial state
+		const tempContext = this._setupExecutionContext(
+			blueprint,
+			{},
+			{
+				strict: false, // Allow cycles in replay
+			},
+		)
+
+		// Create new execution context with correct execution ID
+		const executionContext = new ExecutionContext(
+			blueprint,
+			tempContext.state,
+			tempContext.nodeRegistry,
+			executionId,
+			this,
+			tempContext.services,
+			tempContext.signal,
+			tempContext.concurrency,
+		)
+
+		// Create replay orchestrator
+		const { ReplayOrchestrator } = await import('./orchestrators/replay')
+		const replayOrchestrator = new ReplayOrchestrator(filteredEvents)
+
+		// Create a traverser (though replay doesn't use it for traversal)
+		const traverser = new GraphTraverser(blueprint)
+
+		// Run the replay
+		return await replayOrchestrator.run(executionContext, traverser)
 	}
 }

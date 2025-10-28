@@ -50,7 +50,7 @@ export type FlowcraftEvent =
   | { type: 'node:retry'; payload: { nodeId: string; attempt: number; executionId: string; blueprintId: string } }
   | { type: 'node:skipped'; payload: { nodeId: string; edge: EdgeDefinition; executionId: string; blueprintId: string } }
   | { type: 'edge:evaluate'; payload: { source: string; target: string; condition?: string; result: boolean } }
-  | { type: 'context:change'; payload: { sourceNode: string; key: string; value: any } }
+  | { type: 'context:change'; payload: { sourceNode: string; key: string; op: 'set' | 'delete'; value?: any } }
   | { type: 'batch:start'; payload: { batchId: string; scatterNodeId: string; workerNodeIds: string[] } }
   | { type: 'batch:finish'; payload: { batchId: string; gatherNodeId: string; results: any[] } }
 ```
@@ -77,7 +77,7 @@ export interface IEventBus {
 - **`node:retry`**: Emitted when a node execution is retried.
 - **`node:skipped`**: Emitted when a conditional edge is not taken.
 - **`edge:evaluate`**: Emitted when an edge condition is evaluated, showing the condition and result.
-- **`context:change`**: Emitted when data is written to the workflow context.
+- **`context:change`**: Emitted when data is written to or deleted from the workflow context.
 - **`batch:start`**: Emitted when a batch operation begins.
 - **`batch:finish`**: Emitted when a batch operation completes.
 
@@ -103,6 +103,23 @@ Resumes an awaiting workflow from its pause point.
 -   **`resumeData`** `{ output?: any; action?: string }`: Data to provide to the awaiting node.
 -   **`options?`**: Same as for `.run()`.
 -   **Returns**: `Promise<WorkflowResult<TContext>>`
+
+### `.replay(blueprint, events, executionId?)`
+
+Replays a workflow execution from a pre-recorded event history, reconstructing the final workflow state without re-executing node logic. This enables time-travel debugging and post-mortem analysis.
+
+-   **`blueprint`** [`WorkflowBlueprint`](/api/flow#workflowblueprint-interface): The workflow blueprint.
+-   **`events`** `FlowcraftEvent[]`: The recorded event history for the execution.
+-   **`executionId?`** `string`: Optional execution ID to filter events (if events contain multiple executions).
+-   **Returns**: `Promise<WorkflowResult<TContext>>`
+
+The replay system processes these event types to reconstruct state:
+- `node:finish`: Applies completed node outputs to context
+- `context:change`: Applies context modifications (including user `context.set()` and `context.delete()` calls)
+- `node:error`: Records errors in the workflow state
+- `workflow:finish`: Marks workflow completion
+
+Replay always produces a "completed" status since it reconstructs the final state without re-executing logic.
 
 ### `.executeNode(...)`
 

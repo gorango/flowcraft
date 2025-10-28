@@ -80,6 +80,71 @@ const startEvent = eventLogger.find('workflow:start')
 - **Detailed Trace**: Records node executions, context changes, and errors.
 - **In-Memory**: Fast and lightweight, ideal for unit tests or local debugging.
 
+## Workflow Replay
+
+Workflow replay enables **time-travel debugging** by reconstructing workflow state from recorded events without re-executing node logic. This is invaluable for debugging failed workflows, analyzing performance issues, or understanding complex state transitions.
+
+### How It Works
+
+When workflows run with persistent event storage, all execution events are captured. The replay system processes these events in order to reconstruct the final workflow state:
+
+- **`node:finish`**: Applies completed node outputs to context
+- **`context:change`**: Applies context modifications (including user `context.set()` calls)
+- **`node:error`**: Records errors in the workflow state
+- **`workflow:finish`**: Marks workflow completion
+
+### Usage
+
+```typescript
+import { createFlow, FlowRuntime } from 'flowcraft'
+import { PersistentEventBusAdapter, InMemoryEventStore } from 'flowcraft'
+
+// Set up persistent event storage
+const eventStore = new InMemoryEventStore()
+const eventBus = new PersistentEventBusAdapter(eventStore)
+const runtime = new FlowRuntime({ eventBus })
+
+// Create and run a workflow
+const flow = createFlow('my-workflow')
+	.node('process-data', async ({ context }) => {
+		await context.set('result', 'processed')
+		return { output: 'done' }
+	})
+
+const result = await runtime.run(flow.toBlueprint(), {}, { functionRegistry: flow.getFunctionRegistry() })
+
+// Later, replay the execution for debugging
+const executionId = result.context._executionId
+const events = await eventStore.retrieve(executionId)
+const replayResult = await runtime.replay(flow.toBlueprint(), events)
+
+// replayResult.context contains the reconstructed final state
+console.log(replayResult.context.result) // 'processed'
+```
+
+### Benefits
+
+- **Time-Travel Debugging**: Inspect the exact state of any workflow execution at any point
+- **Post-Mortem Analysis**: Reconstruct failed workflow states without re-running expensive operations
+- **Performance Analysis**: Analyze execution patterns without the overhead of re-execution
+- **Testing**: Verify complex state transitions and edge cases
+- **Pluggable Storage**: Easy to implement custom event stores (databases, message queues, etc.)
+
+### Event Storage Backends
+
+The replay system is designed to work with any event storage backend. Flowcraft provides:
+
+- **`InMemoryEventStore`**: Simple in-memory implementation for testing and development
+- **Custom Implementations**: Implement the `IEventStore` interface for databases, log streams, or message queues
+
+```typescript
+interface IEventStore {
+  store(event: FlowcraftEvent, executionId: string): Promise<void>
+  retrieve(executionId: string): Promise<FlowcraftEvent[]>
+  retrieveMultiple(executionIds: string[]): Promise<Map<string, FlowcraftEvent[]>>
+}
+```
+
 ## OpenTelemetry
 
 For [distributed](/guide/distributed-execution) tracing and observability, you can use the [`@flowcraft/opentelemetry-middleware`](https://npmjs.com/package/@flowcraft/opentelemetry-middleware) package. This middleware integrates with [OpenTelemetry](https://opentelemetry.io/) to provide end-to-end visibility into workflow executions.

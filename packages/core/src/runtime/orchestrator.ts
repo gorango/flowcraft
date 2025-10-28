@@ -73,7 +73,7 @@ export class DefaultOrchestrator implements IOrchestrator {
 
 		const isTraversalComplete = !traverser.hasMoreWork()
 		const status = context.state.getStatus(isTraversalComplete)
-		const result = await context.state.toResult(context.services.serializer)
+		const result = await context.state.toResult(context.services.serializer, context.executionId)
 		result.status = status
 		return result
 	}

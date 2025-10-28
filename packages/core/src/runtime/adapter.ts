@@ -237,7 +237,7 @@ export abstract class BaseDistributedAdapter {
 			}
 
 			for (const { node: nextNodeDef, edge } of nextNodes) {
-				await this.runtime.applyEdgeTransform(edge, result, nextNodeDef, context)
+				await this.runtime.applyEdgeTransform(edge, result, nextNodeDef, context, undefined, runId)
 				const isReady = await this.isReadyForFanIn(runId, blueprint, nextNodeDef.id)
 				if (isReady) {
 					this.logger.info(`[Adapter] Node '${nextNodeDef.id}' is ready. Enqueuing job.`)

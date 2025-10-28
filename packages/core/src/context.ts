@@ -83,9 +83,15 @@ export class TrackedAsyncContext<TContext extends Record<string, any>> implement
 	public readonly type = 'async' as const
 	private deltas: PatchOperation[] = []
 	private innerContext: IAsyncContext<TContext>
+	private eventBus?: any
+	private executionId?: string
+	private sourceNode?: string
 
-	constructor(innerContext: IAsyncContext<TContext>) {
+	constructor(innerContext: IAsyncContext<TContext>, eventBus?: any, executionId?: string, sourceNode?: string) {
 		this.innerContext = innerContext
+		this.eventBus = eventBus
+		this.executionId = executionId
+		this.sourceNode = sourceNode
 	}
 
 	async get<K extends keyof TContext>(key: K): Promise<TContext[K] | undefined>
@@ -96,7 +102,18 @@ export class TrackedAsyncContext<TContext extends Record<string, any>> implement
 	async set<K extends keyof TContext>(key: K, value: TContext[K]): Promise<void>
 	async set(key: string, value: any): Promise<void> {
 		this.deltas.push({ op: 'set', key, value })
-		return this.innerContext.set(key, value)
+		await this.innerContext.set(key, value)
+		if (this.eventBus && this.executionId) {
+			await this.eventBus.emit({
+				type: 'context:change',
+				payload: {
+					sourceNode: this.sourceNode || 'unknown',
+					key,
+					value,
+					executionId: this.executionId,
+				},
+			})
+		}
 	}
 
 	async has<K extends keyof TContext>(key: K): Promise<boolean>
@@ -107,7 +124,12 @@ export class TrackedAsyncContext<TContext extends Record<string, any>> implement
 	async delete<K extends keyof TContext>(key: K): Promise<boolean>
 	async delete(key: string): Promise<boolean> {
 		this.deltas.push({ op: 'delete', key })
-		return this.innerContext.delete(key)
+		const result = await this.innerContext.delete(key)
+		if (this.eventBus && this.executionId && result) {
+			// Note: We don't emit context:change for delete operations in replay
+			// as the replay orchestrator doesn't handle delete events yet
+		}
+		return result
 	}
 
 	toJSON(): Promise<Record<string, any>> {
