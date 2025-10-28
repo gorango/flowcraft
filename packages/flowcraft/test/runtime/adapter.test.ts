@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { FlowcraftError } from '../../src/errors'
+import { NullLogger } from '../../src/logger'
 import type { AdapterOptions, ICoordinationStore, JobPayload } from '../../src/runtime'
 import { BaseDistributedAdapter, FlowRuntime } from '../../src/runtime'
 import type { IAsyncContext, NodeDefinition, WorkflowBlueprint } from '../../src/types'
@@ -97,7 +98,7 @@ describe('BaseDistributedAdapter', () => {
 		vi.mocked(FlowRuntime).mockImplementation(() => mockRuntime)
 
 		const adapterOptions: AdapterOptions = {
-			runtimeOptions: { blueprints },
+			runtimeOptions: { blueprints, logger: new NullLogger() },
 			coordinationStore: mockCoordinationStore,
 		}
 
