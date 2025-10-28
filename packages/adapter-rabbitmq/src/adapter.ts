@@ -59,6 +59,12 @@ export class RabbitMqAdapter extends BaseDistributedAdapter {
 		this.logger.info(`[RabbitMqAdapter] Published final result for Run ID ${runId}.`)
 	}
 
+	public async registerWebhookEndpoint(_runId: string, _nodeId: string): Promise<{ url: string; event: string }> {
+		// TODO: Implement webhook endpoint registration for RabbitMQ adapter
+		// This would typically involve setting up an HTTP endpoint that publishes to RabbitMQ
+		throw new Error('registerWebhookEndpoint not implemented for RabbitMQAdapter')
+	}
+
 	protected async processJobs(handler: (job: JobPayload) => Promise<void>): Promise<void> {
 		if (this.channel) {
 			this.logger.warn('[RabbitMqAdapter] Channel and consumer are already set up.')

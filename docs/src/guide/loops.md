@@ -1,6 +1,36 @@
 # Loops
 
+For workflows that require iteration, you can use either the Fluent API's [`.loop()`](/api/flow#loop-id-options) method or write imperative loops with the compiler.
+
+## Fluent API
+
 For workflows that require iteration, the [`Flow`](/api/flow#flow-class) builder provides a [`.loop()`](/api/flow#loop-id-options) method. This allows you to execute a portion of your graph repeatedly until a condition is met.
+
+## With the Compiler
+
+When you write imperative loops in your `/** @flow */` functions, the compiler automatically generates the underlying declarative pattern for you:
+
+```typescript
+/** @flow */
+export async function counterWorkflow() {
+  let count = 0
+
+  while (count < 5) {
+    count = await incrementCounter(count)
+  }
+
+  return count
+}
+
+/** @step */
+async function incrementCounter(currentCount: number) {
+  const newCount = currentCount + 1
+  console.log(`Count is now: ${newCount}`)
+  return newCount
+}
+```
+
+This imperative code compiles to the same loop structure as the Fluent API example below.
 
 ## The `.loop()` Method
 

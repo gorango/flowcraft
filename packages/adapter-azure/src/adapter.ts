@@ -79,6 +79,12 @@ export class AzureQueueAdapter extends BaseDistributedAdapter {
 		console.log(`[AzureQueueAdapter] Published final result for Run ID ${runId}.`)
 	}
 
+	public async registerWebhookEndpoint(_runId: string, _nodeId: string): Promise<{ url: string; event: string }> {
+		// TODO: Implement webhook endpoint registration for Azure adapter
+		// This would typically involve setting up Azure Functions for webhook handling
+		throw new Error('registerWebhookEndpoint not implemented for AzureAdapter')
+	}
+
 	protected processJobs(handler: (job: JobPayload) => Promise<void>): void {
 		if (this.isPolling) {
 			console.warn('[AzureQueueAdapter] Polling is already active.')

@@ -194,6 +194,81 @@ async function reconcile() {
 }
 ```
 
+## Webhook Endpoints
+
+The Kafka adapter supports webhook endpoints for workflows using `Flow.createWebhook()`. Webhook endpoints can be registered using web frameworks or dedicated webhook services.
+
+### `registerWebhookEndpoint(runId, nodeId)`
+
+Registers a webhook endpoint for the specified workflow run and node.
+
+- **`runId`** `string`: The unique identifier for the workflow execution.
+- **`nodeId`** `string`: The ID of the webhook node.
+- **Returns**: `Promise<{ url: string; event: string }>` - The webhook URL and event name.
+
+**Example Implementation:**
+```typescript
+// In KafkaAdapter
+public async registerWebhookEndpoint(runId: string, nodeId: string): Promise<{ url: string; event: string }> {
+  const eventName = `webhook:${runId}:${nodeId}`
+  const url = `https://your-app.com/webhooks/${runId}/${nodeId}`
+
+  // Store webhook mapping in Cassandra for later retrieval
+  await this.cassandra.execute(
+    'INSERT INTO webhooks (webhook_id, event_name, url, created_at) VALUES (?, ?, ?, ?)',
+    [`${runId}:${nodeId}`, eventName, url, new Date()],
+    { prepare: true }
+  )
+
+  return { url, event: eventName }
+}
+```
+
+### Handling Webhook Requests
+
+Create an HTTP endpoint to handle webhook requests and produce messages to Kafka:
+
+```typescript
+// Express.js webhook handler
+import { Kafka } from 'kafkajs'
+
+const kafka = new Kafka({ brokers: ['localhost:9092'] })
+const producer = kafka.producer()
+
+await producer.connect()
+
+app.post('/webhooks/:runId/:nodeId', async (req, res) => {
+  const { runId, nodeId } = req.params
+  const payload = req.body
+
+  // Get webhook mapping from Cassandra
+  const result = await cassandra.execute(
+    'SELECT event_name FROM webhooks WHERE webhook_id = ?',
+    [`${runId}:${nodeId}`],
+    { prepare: true }
+  )
+
+  if (result.rows.length > 0) {
+    const eventName = result.rows[0].event_name
+
+    // Produce event to Kafka topic
+    await producer.send({
+      topic: 'flowcraft-events',
+      messages: [{
+        value: JSON.stringify({
+          event: eventName,
+          payload
+        })
+      }]
+    })
+
+    res.status(200).send('OK')
+  } else {
+    res.status(404).send('Webhook not found')
+  }
+})
+```
+
 ## Key Components
 
 - **`KafkaAdapter`**: Consumes from and produces to a Kafka topic.

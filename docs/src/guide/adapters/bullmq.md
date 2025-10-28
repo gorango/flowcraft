@@ -145,9 +145,59 @@ async function reconcile() {
 }
 ```
 
+## Webhook Endpoints
+
+The BullMQ adapter supports webhook endpoints for workflows that use `Flow.createWebhook()`. When a webhook node is executed, the adapter registers an endpoint that external systems can call to resume the workflow.
+
+### `registerWebhookEndpoint(runId, nodeId)`
+
+Registers a webhook endpoint for the specified workflow run and node.
+
+- **`runId`** `string`: The unique identifier for the workflow execution.
+- **`nodeId`** `string`: The ID of the webhook node.
+- **Returns**: `Promise<{ url: string; event: string }>` - The webhook URL and event name.
+
+**Example Implementation:**
+```typescript
+// In BullMQAdapter
+public async registerWebhookEndpoint(runId: string, nodeId: string): Promise<{ url: string; event: string }> {
+  const eventName = `webhook:${runId}:${nodeId}`
+  const url = `https://your-app.com/webhooks/${runId}/${nodeId}`
+
+  // Store webhook mapping in Redis for later retrieval
+  await this.redis.set(`webhook:${runId}:${nodeId}`, eventName)
+
+  return { url, event: eventName }
+}
+```
+
+### Handling Webhook Requests
+
+Your application should handle POST requests to webhook URLs and publish events to resume workflows:
+
+```typescript
+// Express.js webhook handler
+app.post('/webhooks/:runId/:nodeId', async (req, res) => {
+  const { runId, nodeId } = req.params
+  const payload = req.body
+
+  // Get the event name from Redis
+  const eventName = await redis.get(`webhook:${runId}:${nodeId}`)
+
+  if (eventName) {
+    // Publish event to BullMQ queue to resume workflow
+    await adapter.publishEvent(eventName, payload)
+    res.status(200).send('OK')
+  } else {
+    res.status(404).send('Webhook not found')
+  }
+})
+```
+
 ## Key Components
 
-- **`BullMQAdapter`**: The main class that connects to BullMQ and orchestrates job processing.
+- **`BullMQAdapter`**: The main adapter class that orchestrates job processing.
+- **`BullMQJobQueue`**: An `IJobQueue` implementation using BullMQ for reliable job queuing.
 - **`RedisContext`**: An `IAsyncContext` implementation that stores workflow state in a Redis Hash.
 - **`RedisCoordinationStore`**: An `ICoordinationStore` implementation for distributed locks and counters.
 - **`createBullMQReconciler`**: A factory function to create the workflow reconciliation utility.

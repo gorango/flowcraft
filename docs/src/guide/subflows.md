@@ -4,6 +4,39 @@ As workflows grow in complexity, it becomes useful to break them down into small
 
 A subflow is a standard [`WorkflowBlueprint`](/api/flow#workflowblueprint-interface) that can be executed as a single node within another (parent) workflow. This allows you to encapsulate logic, promote reuse, and keep your main workflow graphs clean and organized.
 
+## Fluent API
+
+A subflow is a standard [`WorkflowBlueprint`](/api/flow#workflowblueprint-interface) that can be executed as a single node within another (parent) workflow. This allows you to encapsulate logic, promote reuse, and keep your main workflow graphs clean and organized.
+
+## With the Compiler
+
+When you import and await another `/** @flow */` function, the compiler automatically creates a subflow relationship for you:
+
+```typescript
+// math-subflow.ts
+/** @flow */
+export async function addNumbers(a: number, b: number) {
+  const sum = await performAddition(a, b)
+  return sum
+}
+
+/** @step */
+async function performAddition(a: number, b: number) {
+  return a + b
+}
+
+// parent-workflow.ts
+import { addNumbers } from './math-subflow'
+
+/** @flow */
+export async function parentWorkflow() {
+  const result = await addNumbers(10, 20)
+  return result
+}
+```
+
+This imperative code compiles to the same subflow structure as the Fluent API example below, with `addNumbers` becoming a subflow node in the parent workflow.
+
 ## The `subflow` Node
 
 You can run a subflow by defining a node with `uses: 'subflow'`. This is a built-in node type that the [`FlowRuntime`](/api/runtime#flowruntime-class) knows how to handle.

@@ -9,6 +9,7 @@ import { BatchScatterNode } from '../nodes/batch-scatter'
 import { SleepNode } from '../nodes/sleep'
 import { SubflowNode } from '../nodes/subflow'
 import { WaitNode } from '../nodes/wait'
+import { WebhookNode } from '../nodes/webhook'
 import { sanitizeBlueprint } from '../sanitizer'
 import { JsonSerializer } from '../serializer'
 import type {
@@ -99,6 +100,7 @@ export class FlowRuntime<TContext extends Record<string, any>, TDependencies ext
 			const builtInNodes = {
 				wait: WaitNode,
 				sleep: SleepNode,
+				webhook: WebhookNode,
 				subflow: SubflowNode,
 				'batch-scatter': BatchScatterNode,
 				'batch-gather': BatchGatherNode,

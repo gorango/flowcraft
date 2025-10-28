@@ -1,6 +1,42 @@
 # Batch Processing
 
+A common workflow requirement is to perform the same operation on every item in a collection, often in parallel to save time. This is known as the **scatter-gather** pattern. You can achieve this with either the Fluent API's [`.batch()`](/api/flow#batch-tinput-toutput-taction-id-worker-options) method or using `Promise.all` with the compiler.
+
+## Fluent API
+
 A common workflow requirement is to perform the same operation on every item in a collection, often in parallel to save time. This is known as the **scatter-gather** pattern. The [`Flow`](/api/flow#flow-class) builder provides a high-level [`.batch()`](/api/flow#batch-tinput-toutput-taction-id-worker-options) method to make this easy.
+
+## With the Compiler
+
+When you use `Promise.all` in your `/** @flow */` functions, the compiler automatically generates the underlying batch/scatter-gather pattern for you:
+
+```typescript
+/** @flow */
+export async function batchWorkflow(items: number[]) {
+  // Process all items in parallel
+  const promises = items.map(item =>
+    processItem(item)
+  )
+
+  const results = await Promise.all(promises)
+
+  const sum = await sumResults(results)
+
+  return sum
+}
+
+/** @step */
+async function processItem(item: number) {
+  return item * 2
+}
+
+/** @step */
+async function sumResults(results: number[]) {
+  return results.reduce((acc, val) => acc + val, 0)
+}
+```
+
+This imperative code compiles to the same batch processing structure as the Fluent API example below.
 
 ## The `.batch()` Method
 

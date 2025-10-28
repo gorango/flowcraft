@@ -6,12 +6,14 @@
 
 Unlike heavy platforms like Temporal or Airflow, or domain-specific libraries like LangChain, Flowcraft is a foundational engine that does one thing exceptionally well: **execute a graph of functions defined as data**. It provides a flexible, type-safe API to define workflows, execute them with resilience, and scale from in-memory scripts to distributed systems without changing the core business logic.
 
+Flowcraft offers two primary ways to author workflows: the battle-tested **Fluent API** for manual graph construction and the new **Compiler** for writing imperative TypeScript code that automatically generates declarative blueprints.
+
 ## Key Features
 
 -   **Zero Dependencies**: Lightweight and dependency-free, runs in any environment.
 -   **Declarative Workflows**: Simple [serializable objects](/guide/core-concepts#workflow-blueprint) with [nodes and edges](/guide/core-concepts#nodes-edges).
 -   **Unopinionated Logic**: Nodes can be simple [functions](/guide/core-concepts#function-based-nodes) or structured [classes](/guide/core-concepts#class-based-nodes).
--   **Progressive Scalability**: Run [in-memory](/guide/programmatic) or scale to [distributed systems](/guide/distributed-execution).
+-   **Progressive Scalability**: Run [in-memory](/guide/fluent) or scale to [distributed systems](/guide/distributed-execution).
 -   **Resilient Execution**: [Retries](/guide/error-handling#retries), [fallbacks](/guide/error-handling#fallbacks), [timeouts](/guide/core-concepts#config), and [cancellation](/guide/core-concepts#cancellation).
 -   **Advanced Patterns**: Includes [batches](/guide/batches), [loops](/guide/loops), [subflows](/guide/subflows), and [HITL](/guide/hitl) constructs.
 -   **Extensibility**: Pluggable [loggers](/guide/loggers), [evaluators](/guide/evaluators), [serializers](/guide/serializers), and [middleware](/guide/middleware).

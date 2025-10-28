@@ -78,6 +78,12 @@ export class KafkaAdapter extends BaseDistributedAdapter {
 		this.logger.info(`[KafkaAdapter] Published final result for Run ID ${runId}.`)
 	}
 
+	public async registerWebhookEndpoint(_runId: string, _nodeId: string): Promise<{ url: string; event: string }> {
+		// TODO: Implement webhook endpoint registration for Kafka adapter
+		// This would typically involve setting up a REST endpoint that publishes to Kafka
+		throw new Error('registerWebhookEndpoint not implemented for KafkaAdapter')
+	}
+
 	protected async enqueueJob(job: JobPayload): Promise<void> {
 		if (!this.isRunning) {
 			throw new Error('Kafka producer is not connected. Adapter must be started.')

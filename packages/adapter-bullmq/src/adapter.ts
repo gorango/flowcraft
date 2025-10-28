@@ -52,6 +52,12 @@ export class BullMQAdapter extends BaseDistributedAdapter {
 		await this.redis.set(statusKey, JSON.stringify(result), 'EX', 3600)
 	}
 
+	public async registerWebhookEndpoint(_runId: string, _nodeId: string): Promise<{ url: string; event: string }> {
+		// TODO: Implement webhook endpoint registration for BullMQ adapter
+		// This would typically involve setting up an HTTP endpoint that can trigger the workflow
+		throw new Error('registerWebhookEndpoint not implemented for BullMQAdapter')
+	}
+
 	public async close(): Promise<void> {
 		this.logger.info('[BullMQAdapter] Closing worker and queue...')
 		await this.worker?.close()

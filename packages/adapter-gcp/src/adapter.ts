@@ -77,6 +77,12 @@ export class PubSubAdapter extends BaseDistributedAdapter {
 		this.logger.info(`[PubSubAdapter] Published final result for Run ID ${runId}.`)
 	}
 
+	public async registerWebhookEndpoint(_runId: string, _nodeId: string): Promise<{ url: string; event: string }> {
+		// TODO: Implement webhook endpoint registration for GCP adapter
+		// This would typically involve setting up Cloud Functions or Cloud Run for webhook handling
+		throw new Error('registerWebhookEndpoint not implemented for GCPAdapter')
+	}
+
 	protected async enqueueJob(job: JobPayload): Promise<void> {
 		const dataBuffer = Buffer.from(JSON.stringify(job), 'utf-8')
 		await this.pubsub.topic(this.topicName).publishMessage({ data: dataBuffer })
