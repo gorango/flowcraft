@@ -73,21 +73,13 @@ exports[`Compiler > should compile all test fixtures 1`] = `
       },
       {
         "_sourceLocation": {
-          "column": 34,
+          "column": 2,
           "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/complex-control-flow.ts",
-          "line": 33,
+          "line": 17,
         },
+        "action": "break",
         "source": "loop-controller_1",
-        "target": "generateSummary_parallel_1",
-      },
-      {
-        "_sourceLocation": {
-          "column": 34,
-          "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/complex-control-flow.ts",
-          "line": 33,
-        },
-        "source": "loop-controller_1",
-        "target": "generateReport_parallel_1",
+        "target": "join_1",
       },
       {
         "_sourceLocation": {
@@ -114,7 +106,7 @@ exports[`Compiler > should compile all test fixtures 1`] = `
           "line": 39,
         },
         "condition": "processedCount > 1000",
-        "source": "loop-controller_1",
+        "source": "start",
         "target": "sendHighVolumeNotification_1",
       },
       {
@@ -124,7 +116,7 @@ exports[`Compiler > should compile all test fixtures 1`] = `
           "line": 39,
         },
         "condition": "!(processedCount > 1000)",
-        "source": "loop-controller_1",
+        "source": "start",
         "target": "sendStandardNotification_1",
       },
     ],
@@ -165,6 +157,18 @@ exports[`Compiler > should compile all test fixtures 1`] = `
       },
       {
         "_sourceLocation": {
+          "column": 2,
+          "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/complex-control-flow.ts",
+          "line": 17,
+        },
+        "config": {
+          "joinStrategy": "any",
+        },
+        "id": "join_1",
+        "uses": "join",
+      },
+      {
+        "_sourceLocation": {
           "column": 20,
           "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/complex-control-flow.ts",
           "line": 19,
@@ -201,6 +205,10 @@ exports[`Compiler > should compile all test fixtures 1`] = `
         },
         "id": "generateReport_parallel_1",
         "uses": "generateReport",
+      },
+      {
+        "id": "start",
+        "uses": "start",
       },
       {
         "_sourceLocation": {
@@ -331,6 +339,201 @@ exports[`Compiler > should compile all test fixtures 1`] = `
       },
     ],
   },
+  "forOfLoopWithBreak": {
+    "edges": [
+      {
+        "_sourceLocation": {
+          "column": 18,
+          "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/loop-control-flow.ts",
+          "line": 42,
+        },
+        "action": "break",
+        "source": "loop-controller_1",
+        "target": "processItem_1",
+      },
+      {
+        "_sourceLocation": {
+          "column": 2,
+          "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/loop-control-flow.ts",
+          "line": 41,
+        },
+        "action": "continue",
+        "source": "loop-controller_1",
+        "target": "processItem_1",
+      },
+      {
+        "_sourceLocation": {
+          "column": 2,
+          "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/loop-control-flow.ts",
+          "line": 41,
+        },
+        "source": "processItem_1",
+        "target": "loop-controller_1",
+      },
+      {
+        "_sourceLocation": {
+          "column": 2,
+          "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/loop-control-flow.ts",
+          "line": 41,
+        },
+        "action": "break",
+        "source": "loop-controller_1",
+        "target": "join_1",
+      },
+    ],
+    "id": "forOfLoopWithBreak",
+    "nodes": [
+      {
+        "_sourceLocation": {
+          "column": 2,
+          "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/loop-control-flow.ts",
+          "line": 41,
+        },
+        "config": {
+          "joinStrategy": "any",
+        },
+        "id": "loop-controller_1",
+        "params": {
+          "condition": "true",
+        },
+        "uses": "loop-controller",
+      },
+      {
+        "_sourceLocation": {
+          "column": 2,
+          "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/loop-control-flow.ts",
+          "line": 41,
+        },
+        "config": {
+          "joinStrategy": "any",
+        },
+        "id": "join_1",
+        "uses": "join",
+      },
+      {
+        "_sourceLocation": {
+          "column": 18,
+          "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/loop-control-flow.ts",
+          "line": 42,
+        },
+        "id": "processItem_1",
+        "uses": "processItem",
+      },
+    ],
+  },
+  "forOfLoopWithContinue": {
+    "edges": [
+      {
+        "_sourceLocation": {
+          "column": 18,
+          "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/loop-control-flow.ts",
+          "line": 60,
+        },
+        "action": "break",
+        "source": "loop-controller_1",
+        "target": "processItem_1",
+      },
+      {
+        "_sourceLocation": {
+          "column": 3,
+          "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/loop-control-flow.ts",
+          "line": 66,
+        },
+        "condition": "!(result.shouldSkip)",
+        "source": "processItem_1",
+        "target": "handleItem_1",
+      },
+      {
+        "_sourceLocation": {
+          "column": 3,
+          "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/loop-control-flow.ts",
+          "line": 66,
+        },
+        "source": "processItem_1",
+        "target": "handleItem_1",
+      },
+      {
+        "_sourceLocation": {
+          "column": 2,
+          "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/loop-control-flow.ts",
+          "line": 59,
+        },
+        "action": "continue",
+        "source": "loop-controller_1",
+        "target": "processItem_1",
+      },
+      {
+        "_sourceLocation": {
+          "column": 2,
+          "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/loop-control-flow.ts",
+          "line": 59,
+        },
+        "source": "handleItem_1",
+        "target": "loop-controller_1",
+      },
+      {
+        "_sourceLocation": {
+          "column": 2,
+          "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/loop-control-flow.ts",
+          "line": 59,
+        },
+        "action": "break",
+        "source": "loop-controller_1",
+        "target": "join_1",
+      },
+    ],
+    "id": "forOfLoopWithContinue",
+    "nodes": [
+      {
+        "_sourceLocation": {
+          "column": 2,
+          "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/loop-control-flow.ts",
+          "line": 59,
+        },
+        "config": {
+          "joinStrategy": "any",
+        },
+        "id": "loop-controller_1",
+        "params": {
+          "condition": "true",
+        },
+        "uses": "loop-controller",
+      },
+      {
+        "_sourceLocation": {
+          "column": 2,
+          "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/loop-control-flow.ts",
+          "line": 59,
+        },
+        "config": {
+          "joinStrategy": "any",
+        },
+        "id": "join_1",
+        "uses": "join",
+      },
+      {
+        "_sourceLocation": {
+          "column": 18,
+          "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/loop-control-flow.ts",
+          "line": 60,
+        },
+        "id": "processItem_1",
+        "uses": "processItem",
+      },
+      {
+        "_sourceLocation": {
+          "column": 3,
+          "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/loop-control-flow.ts",
+          "line": 66,
+        },
+        "config": {
+          "joinStrategy": "any",
+        },
+        "id": "handleItem_1",
+        "uses": "handleItem",
+      },
+    ],
+  },
   "invalidAwaitFlow": {
     "edges": [],
     "id": "invalidAwaitFlow",
@@ -453,6 +656,16 @@ exports[`Compiler > should compile all test fixtures 1`] = `
         "source": "loop-controller_1",
         "target": "processItem_1",
       },
+      {
+        "_sourceLocation": {
+          "column": 2,
+          "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/complex-control-flow.ts",
+          "line": 52,
+        },
+        "action": "break",
+        "source": "loop-controller_1",
+        "target": "join_1",
+      },
     ],
     "id": "nestedControlFlow",
     "nodes": [
@@ -467,9 +680,21 @@ exports[`Compiler > should compile all test fixtures 1`] = `
         },
         "id": "loop-controller_1",
         "params": {
-          "condition": "items.length > 0",
+          "condition": "true",
         },
         "uses": "loop-controller",
+      },
+      {
+        "_sourceLocation": {
+          "column": 2,
+          "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/complex-control-flow.ts",
+          "line": 52,
+        },
+        "config": {
+          "joinStrategy": "any",
+        },
+        "id": "join_1",
+        "uses": "join",
       },
       {
         "_sourceLocation": {
@@ -780,6 +1005,192 @@ exports[`Compiler > should compile all test fixtures 1`] = `
       },
     ],
   },
+  "whileLoopWithBreak": {
+    "edges": [
+      {
+        "_sourceLocation": {
+          "column": 18,
+          "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/loop-control-flow.ts",
+          "line": 6,
+        },
+        "action": "break",
+        "source": "loop-controller_1",
+        "target": "processItem_1",
+      },
+      {
+        "_sourceLocation": {
+          "column": 2,
+          "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/loop-control-flow.ts",
+          "line": 5,
+        },
+        "action": "continue",
+        "source": "loop-controller_1",
+        "target": "processItem_1",
+      },
+      {
+        "_sourceLocation": {
+          "column": 2,
+          "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/loop-control-flow.ts",
+          "line": 5,
+        },
+        "action": "break",
+        "source": "loop-controller_1",
+        "target": "join_1",
+      },
+    ],
+    "id": "whileLoopWithBreak",
+    "nodes": [
+      {
+        "_sourceLocation": {
+          "column": 2,
+          "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/loop-control-flow.ts",
+          "line": 5,
+        },
+        "config": {
+          "joinStrategy": "any",
+        },
+        "id": "loop-controller_1",
+        "params": {
+          "condition": "count < 10",
+        },
+        "uses": "loop-controller",
+      },
+      {
+        "_sourceLocation": {
+          "column": 2,
+          "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/loop-control-flow.ts",
+          "line": 5,
+        },
+        "config": {
+          "joinStrategy": "any",
+        },
+        "id": "join_1",
+        "uses": "join",
+      },
+      {
+        "_sourceLocation": {
+          "column": 18,
+          "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/loop-control-flow.ts",
+          "line": 6,
+        },
+        "id": "processItem_1",
+        "uses": "processItem",
+      },
+    ],
+  },
+  "whileLoopWithContinue": {
+    "edges": [
+      {
+        "_sourceLocation": {
+          "column": 18,
+          "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/loop-control-flow.ts",
+          "line": 22,
+        },
+        "action": "break",
+        "source": "loop-controller_1",
+        "target": "processItem_1",
+      },
+      {
+        "_sourceLocation": {
+          "column": 3,
+          "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/loop-control-flow.ts",
+          "line": 29,
+        },
+        "condition": "!(result.shouldSkip)",
+        "source": "processItem_1",
+        "target": "handleItem_1",
+      },
+      {
+        "_sourceLocation": {
+          "column": 3,
+          "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/loop-control-flow.ts",
+          "line": 29,
+        },
+        "source": "processItem_1",
+        "target": "handleItem_1",
+      },
+      {
+        "_sourceLocation": {
+          "column": 2,
+          "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/loop-control-flow.ts",
+          "line": 21,
+        },
+        "action": "continue",
+        "source": "loop-controller_1",
+        "target": "processItem_1",
+      },
+      {
+        "_sourceLocation": {
+          "column": 2,
+          "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/loop-control-flow.ts",
+          "line": 21,
+        },
+        "source": "handleItem_1",
+        "target": "loop-controller_1",
+      },
+      {
+        "_sourceLocation": {
+          "column": 2,
+          "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/loop-control-flow.ts",
+          "line": 21,
+        },
+        "action": "break",
+        "source": "loop-controller_1",
+        "target": "join_1",
+      },
+    ],
+    "id": "whileLoopWithContinue",
+    "nodes": [
+      {
+        "_sourceLocation": {
+          "column": 2,
+          "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/loop-control-flow.ts",
+          "line": 21,
+        },
+        "config": {
+          "joinStrategy": "any",
+        },
+        "id": "loop-controller_1",
+        "params": {
+          "condition": "count < 10",
+        },
+        "uses": "loop-controller",
+      },
+      {
+        "_sourceLocation": {
+          "column": 2,
+          "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/loop-control-flow.ts",
+          "line": 21,
+        },
+        "config": {
+          "joinStrategy": "any",
+        },
+        "id": "join_1",
+        "uses": "join",
+      },
+      {
+        "_sourceLocation": {
+          "column": 18,
+          "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/loop-control-flow.ts",
+          "line": 22,
+        },
+        "id": "processItem_1",
+        "uses": "processItem",
+      },
+      {
+        "_sourceLocation": {
+          "column": 3,
+          "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/loop-control-flow.ts",
+          "line": 29,
+        },
+        "config": {
+          "joinStrategy": "any",
+        },
+        "id": "handleItem_1",
+        "uses": "handleItem",
+      },
+    ],
+  },
 }
 `;
 
@@ -841,6 +1252,10 @@ exports[`Compiler > should compile all test fixtures 2`] = `
     "exportName": "handleInvalidItems",
     "importPath": "/home/g/m/flowcraft/packages/compiler/test/fixtures/parallel-flow.ts",
   },
+  "handleItem": {
+    "exportName": "handleItem",
+    "importPath": "/home/g/m/flowcraft/packages/compiler/test/fixtures/loop-control-flow.ts",
+  },
   "handleValidationError": {
     "exportName": "handleValidationError",
     "importPath": "/home/g/m/flowcraft/packages/compiler/test/fixtures/complex-control-flow.ts",
@@ -851,7 +1266,7 @@ exports[`Compiler > should compile all test fixtures 2`] = `
   },
   "processItem": {
     "exportName": "processItem",
-    "importPath": "/home/g/m/flowcraft/packages/compiler/test/fixtures/complex-control-flow.ts",
+    "importPath": "/home/g/m/flowcraft/packages/compiler/test/fixtures/loop-control-flow.ts",
   },
   "processItems": {
     "exportName": "processItems",
@@ -910,7 +1325,7 @@ import { generateSummary } from '../test/fixtures/complex-control-flow'
 import { generateReport } from '../test/fixtures/complex-control-flow'
 import { sendHighVolumeNotification } from '../test/fixtures/complex-control-flow'
 import { sendStandardNotification } from '../test/fixtures/complex-control-flow'
-import { processItem } from '../test/fixtures/complex-control-flow'
+import { processItem } from '../test/fixtures/loop-control-flow'
 import { reviewItem } from '../test/fixtures/complex-control-flow'
 import { approveItem } from '../test/fixtures/complex-control-flow'
 import { rejectItem } from '../test/fixtures/complex-control-flow'
@@ -930,6 +1345,7 @@ import { doSomething } from '../test/fixtures/simple-if-else'
 import { doSomethingElse } from '../test/fixtures/simple-if-else'
 import { finalize } from '../test/fixtures/simple-if-else'
 import { processNumber } from '../test/fixtures/type-mismatch'
+import { handleItem } from '../test/fixtures/loop-control-flow'
 
 import type { NodeImplementation, WorkflowBlueprint } from 'flowcraft'
 
@@ -961,7 +1377,8 @@ export const registry: Record<string, NodeImplementation> = {
   'doSomething': doSomething,
   'doSomethingElse': doSomethingElse,
   'finalize': finalize,
-  'processNumber': processNumber
+  'processNumber': processNumber,
+  'handleItem': handleItem
 }
 
 export const blueprints: Record<string, WorkflowBlueprint> = {
@@ -992,6 +1409,18 @@ export const blueprints: Record<string, WorkflowBlueprint> = {
       "params": {
         "condition": "currentBatch && currentBatch.length > 0"
       },
+      "config": {
+        "joinStrategy": "any"
+      },
+      "_sourceLocation": {
+        "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/complex-control-flow.ts",
+        "line": 17,
+        "column": 2
+      }
+    },
+    {
+      "id": "join_1",
+      "uses": "join",
       "config": {
         "joinStrategy": "any"
       },
@@ -1039,6 +1468,10 @@ export const blueprints: Record<string, WorkflowBlueprint> = {
         "line": 35,
         "column": 3
       }
+    },
+    {
+      "id": "start",
+      "uses": "start"
     },
     {
       "id": "sendHighVolumeNotification_1",
@@ -1132,20 +1565,12 @@ export const blueprints: Record<string, WorkflowBlueprint> = {
     },
     {
       "source": "loop-controller_1",
-      "target": "generateSummary_parallel_1",
+      "target": "join_1",
+      "action": "break",
       "_sourceLocation": {
         "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/complex-control-flow.ts",
-        "line": 33,
-        "column": 34
-      }
-    },
-    {
-      "source": "loop-controller_1",
-      "target": "generateReport_parallel_1",
-      "_sourceLocation": {
-        "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/complex-control-flow.ts",
-        "line": 33,
-        "column": 34
+        "line": 17,
+        "column": 2
       }
     },
     {
@@ -1167,7 +1592,7 @@ export const blueprints: Record<string, WorkflowBlueprint> = {
       }
     },
     {
-      "source": "loop-controller_1",
+      "source": "start",
       "target": "sendHighVolumeNotification_1",
       "condition": "processedCount > 1000",
       "_sourceLocation": {
@@ -1177,7 +1602,7 @@ export const blueprints: Record<string, WorkflowBlueprint> = {
       }
     },
     {
-      "source": "loop-controller_1",
+      "source": "start",
       "target": "sendStandardNotification_1",
       "condition": "!(processedCount > 1000)",
       "_sourceLocation": {
@@ -1195,8 +1620,20 @@ export const blueprints: Record<string, WorkflowBlueprint> = {
       "id": "loop-controller_1",
       "uses": "loop-controller",
       "params": {
-        "condition": "items.length > 0"
+        "condition": "true"
       },
+      "config": {
+        "joinStrategy": "any"
+      },
+      "_sourceLocation": {
+        "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/complex-control-flow.ts",
+        "line": 52,
+        "column": 2
+      }
+    },
+    {
+      "id": "join_1",
+      "uses": "join",
       "config": {
         "joinStrategy": "any"
       },
@@ -1288,6 +1725,16 @@ export const blueprints: Record<string, WorkflowBlueprint> = {
       "source": "loop-controller_1",
       "target": "processItem_1",
       "action": "continue",
+      "_sourceLocation": {
+        "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/complex-control-flow.ts",
+        "line": 52,
+        "column": 2
+      }
+    },
+    {
+      "source": "loop-controller_1",
+      "target": "join_1",
+      "action": "break",
       "_sourceLocation": {
         "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/complex-control-flow.ts",
         "line": 52,
@@ -1742,6 +2189,387 @@ export const blueprints: Record<string, WorkflowBlueprint> = {
     }
   ],
   "edges": []
+},
+  'whileLoopWithBreak': {
+  "id": "whileLoopWithBreak",
+  "nodes": [
+    {
+      "id": "loop-controller_1",
+      "uses": "loop-controller",
+      "params": {
+        "condition": "count < 10"
+      },
+      "config": {
+        "joinStrategy": "any"
+      },
+      "_sourceLocation": {
+        "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/loop-control-flow.ts",
+        "line": 5,
+        "column": 2
+      }
+    },
+    {
+      "id": "join_1",
+      "uses": "join",
+      "config": {
+        "joinStrategy": "any"
+      },
+      "_sourceLocation": {
+        "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/loop-control-flow.ts",
+        "line": 5,
+        "column": 2
+      }
+    },
+    {
+      "id": "processItem_1",
+      "uses": "processItem",
+      "_sourceLocation": {
+        "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/loop-control-flow.ts",
+        "line": 6,
+        "column": 18
+      }
+    }
+  ],
+  "edges": [
+    {
+      "source": "loop-controller_1",
+      "target": "processItem_1",
+      "_sourceLocation": {
+        "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/loop-control-flow.ts",
+        "line": 6,
+        "column": 18
+      },
+      "action": "break"
+    },
+    {
+      "source": "loop-controller_1",
+      "target": "processItem_1",
+      "action": "continue",
+      "_sourceLocation": {
+        "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/loop-control-flow.ts",
+        "line": 5,
+        "column": 2
+      }
+    },
+    {
+      "source": "loop-controller_1",
+      "target": "join_1",
+      "action": "break",
+      "_sourceLocation": {
+        "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/loop-control-flow.ts",
+        "line": 5,
+        "column": 2
+      }
+    }
+  ]
+},
+  'whileLoopWithContinue': {
+  "id": "whileLoopWithContinue",
+  "nodes": [
+    {
+      "id": "loop-controller_1",
+      "uses": "loop-controller",
+      "params": {
+        "condition": "count < 10"
+      },
+      "config": {
+        "joinStrategy": "any"
+      },
+      "_sourceLocation": {
+        "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/loop-control-flow.ts",
+        "line": 21,
+        "column": 2
+      }
+    },
+    {
+      "id": "join_1",
+      "uses": "join",
+      "config": {
+        "joinStrategy": "any"
+      },
+      "_sourceLocation": {
+        "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/loop-control-flow.ts",
+        "line": 21,
+        "column": 2
+      }
+    },
+    {
+      "id": "processItem_1",
+      "uses": "processItem",
+      "_sourceLocation": {
+        "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/loop-control-flow.ts",
+        "line": 22,
+        "column": 18
+      }
+    },
+    {
+      "id": "handleItem_1",
+      "uses": "handleItem",
+      "_sourceLocation": {
+        "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/loop-control-flow.ts",
+        "line": 29,
+        "column": 3
+      },
+      "config": {
+        "joinStrategy": "any"
+      }
+    }
+  ],
+  "edges": [
+    {
+      "source": "loop-controller_1",
+      "target": "processItem_1",
+      "_sourceLocation": {
+        "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/loop-control-flow.ts",
+        "line": 22,
+        "column": 18
+      },
+      "action": "break"
+    },
+    {
+      "source": "processItem_1",
+      "target": "handleItem_1",
+      "condition": "!(result.shouldSkip)",
+      "_sourceLocation": {
+        "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/loop-control-flow.ts",
+        "line": 29,
+        "column": 3
+      }
+    },
+    {
+      "source": "processItem_1",
+      "target": "handleItem_1",
+      "_sourceLocation": {
+        "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/loop-control-flow.ts",
+        "line": 29,
+        "column": 3
+      }
+    },
+    {
+      "source": "loop-controller_1",
+      "target": "processItem_1",
+      "action": "continue",
+      "_sourceLocation": {
+        "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/loop-control-flow.ts",
+        "line": 21,
+        "column": 2
+      }
+    },
+    {
+      "source": "handleItem_1",
+      "target": "loop-controller_1",
+      "_sourceLocation": {
+        "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/loop-control-flow.ts",
+        "line": 21,
+        "column": 2
+      }
+    },
+    {
+      "source": "loop-controller_1",
+      "target": "join_1",
+      "action": "break",
+      "_sourceLocation": {
+        "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/loop-control-flow.ts",
+        "line": 21,
+        "column": 2
+      }
+    }
+  ]
+},
+  'forOfLoopWithBreak': {
+  "id": "forOfLoopWithBreak",
+  "nodes": [
+    {
+      "id": "loop-controller_1",
+      "uses": "loop-controller",
+      "params": {
+        "condition": "true"
+      },
+      "config": {
+        "joinStrategy": "any"
+      },
+      "_sourceLocation": {
+        "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/loop-control-flow.ts",
+        "line": 41,
+        "column": 2
+      }
+    },
+    {
+      "id": "join_1",
+      "uses": "join",
+      "config": {
+        "joinStrategy": "any"
+      },
+      "_sourceLocation": {
+        "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/loop-control-flow.ts",
+        "line": 41,
+        "column": 2
+      }
+    },
+    {
+      "id": "processItem_1",
+      "uses": "processItem",
+      "_sourceLocation": {
+        "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/loop-control-flow.ts",
+        "line": 42,
+        "column": 18
+      }
+    }
+  ],
+  "edges": [
+    {
+      "source": "loop-controller_1",
+      "target": "processItem_1",
+      "_sourceLocation": {
+        "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/loop-control-flow.ts",
+        "line": 42,
+        "column": 18
+      },
+      "action": "break"
+    },
+    {
+      "source": "loop-controller_1",
+      "target": "processItem_1",
+      "action": "continue",
+      "_sourceLocation": {
+        "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/loop-control-flow.ts",
+        "line": 41,
+        "column": 2
+      }
+    },
+    {
+      "source": "processItem_1",
+      "target": "loop-controller_1",
+      "_sourceLocation": {
+        "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/loop-control-flow.ts",
+        "line": 41,
+        "column": 2
+      }
+    },
+    {
+      "source": "loop-controller_1",
+      "target": "join_1",
+      "action": "break",
+      "_sourceLocation": {
+        "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/loop-control-flow.ts",
+        "line": 41,
+        "column": 2
+      }
+    }
+  ]
+},
+  'forOfLoopWithContinue': {
+  "id": "forOfLoopWithContinue",
+  "nodes": [
+    {
+      "id": "loop-controller_1",
+      "uses": "loop-controller",
+      "params": {
+        "condition": "true"
+      },
+      "config": {
+        "joinStrategy": "any"
+      },
+      "_sourceLocation": {
+        "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/loop-control-flow.ts",
+        "line": 59,
+        "column": 2
+      }
+    },
+    {
+      "id": "join_1",
+      "uses": "join",
+      "config": {
+        "joinStrategy": "any"
+      },
+      "_sourceLocation": {
+        "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/loop-control-flow.ts",
+        "line": 59,
+        "column": 2
+      }
+    },
+    {
+      "id": "processItem_1",
+      "uses": "processItem",
+      "_sourceLocation": {
+        "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/loop-control-flow.ts",
+        "line": 60,
+        "column": 18
+      }
+    },
+    {
+      "id": "handleItem_1",
+      "uses": "handleItem",
+      "_sourceLocation": {
+        "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/loop-control-flow.ts",
+        "line": 66,
+        "column": 3
+      },
+      "config": {
+        "joinStrategy": "any"
+      }
+    }
+  ],
+  "edges": [
+    {
+      "source": "loop-controller_1",
+      "target": "processItem_1",
+      "_sourceLocation": {
+        "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/loop-control-flow.ts",
+        "line": 60,
+        "column": 18
+      },
+      "action": "break"
+    },
+    {
+      "source": "processItem_1",
+      "target": "handleItem_1",
+      "condition": "!(result.shouldSkip)",
+      "_sourceLocation": {
+        "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/loop-control-flow.ts",
+        "line": 66,
+        "column": 3
+      }
+    },
+    {
+      "source": "processItem_1",
+      "target": "handleItem_1",
+      "_sourceLocation": {
+        "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/loop-control-flow.ts",
+        "line": 66,
+        "column": 3
+      }
+    },
+    {
+      "source": "loop-controller_1",
+      "target": "processItem_1",
+      "action": "continue",
+      "_sourceLocation": {
+        "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/loop-control-flow.ts",
+        "line": 59,
+        "column": 2
+      }
+    },
+    {
+      "source": "handleItem_1",
+      "target": "loop-controller_1",
+      "_sourceLocation": {
+        "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/loop-control-flow.ts",
+        "line": 59,
+        "column": 2
+      }
+    },
+    {
+      "source": "loop-controller_1",
+      "target": "join_1",
+      "action": "break",
+      "_sourceLocation": {
+        "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/loop-control-flow.ts",
+        "line": 59,
+        "column": 2
+      }
+    }
+  ]
 }
 }
 "
@@ -1761,6 +2589,34 @@ exports[`Compiler > should compile all test fixtures 4`] = `
     "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/type-mismatch.ts",
     "line": 5,
     "message": "Type error in call to 'processNumber': argument of type '{ value: string; }' is not assignable to parameter 'params' of type '{ value: number; }'",
+    "severity": "error",
+  },
+  {
+    "column": 4,
+    "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/loop-control-flow.ts",
+    "line": 10,
+    "message": "break statement can only be used inside a loop.",
+    "severity": "error",
+  },
+  {
+    "column": 4,
+    "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/loop-control-flow.ts",
+    "line": 26,
+    "message": "continue statement can only be used inside a loop.",
+    "severity": "error",
+  },
+  {
+    "column": 4,
+    "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/loop-control-flow.ts",
+    "line": 45,
+    "message": "break statement can only be used inside a loop.",
+    "severity": "error",
+  },
+  {
+    "column": 4,
+    "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/loop-control-flow.ts",
+    "line": 63,
+    "message": "continue statement can only be used inside a loop.",
     "severity": "error",
   },
 ]

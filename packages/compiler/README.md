@@ -56,7 +56,7 @@ async function myLoop(context: IAsyncContext) {
 
 ## Key Features
 
--   **Imperative DX**: Write workflows using standard `async/await`, `if/else`, `while`, `try/catch`, and `Promise.all`.
+-   **Imperative DX**: Write workflows using standard `async/await`, `if/else`, `while`, `for...of`, `break`, `continue`, `try/catch`, and `Promise.all`.
 -   **Explicit Step Declaration**: Mark durable operations with `/** @step */` or `/** @flow */` JSDoc tags to ensure only intended functions become part of your workflow graph.
 -   **Zero-Syntax**: No framework-specific keywords to learn. Orchestration is defined by native JavaScript control flow, guided by simple JSDoc markers.
 -   **Compile-Time Type Safety**: The compiler leverages the TypeScript TypeChecker to validate the data flowing between your nodes, catching type errors before you even run your code.
@@ -259,6 +259,8 @@ The compiler translates the following standard JavaScript syntax into graph stru
 | `if (condition) { ... } else { ... }` | A fork with conditional edges and a merge point with `joinStrategy: 'any'`. |
 | `while (condition) { ... }` | A `loop-controller` node with a cyclical graph structure. |
 | `for (const item of items) { ... }`| A `loop-controller` node (de-sugared into a `while` loop). |
+| `break` (inside loops) | An edge to the loop's exit point (synthetic join node). |
+| `continue` (inside loops) | An edge back to the loop controller for the next iteration. |
 | `try { ... } catch { ... }` | A fallback path. All nodes in the `try` block are configured to fallback to the first node in the `catch` block. |
 | `await Promise.all([ ... ])` | A scatter-gather pattern where parallel branches merge at a successor node with `joinStrategy: 'all'`. |
 
@@ -266,7 +268,6 @@ The compiler translates the following standard JavaScript syntax into graph stru
 
 > **Note:** To ensure predictable graph generation, some imperative features are not supported inside a flow function. Using them will result in a compile-time error.
 
--   **`break` and `continue`**: Not supported within loops. Loop exit is controlled solely by the loop's condition.
 -   **`finally`**: The `finally` block in a `try/catch/finally` statement is not supported.
 -   **Complex Assignments**: Variable assignments from `await` calls must be simple `const` or `let` declarations. Re-assigning variables from multiple branches can lead to unpredictable graphs and is disallowed.
 
@@ -294,6 +295,61 @@ export async function mainFlow() {
   await doFirstStep();
   await subFlow(); // This becomes a 'subflow' node
   await doLastStep();
+}
+```
+
+#### Loop Control Flow with `break` and `continue`
+The compiler supports standard JavaScript `break` and `continue` statements within `while` and `for...of` loops. These statements provide fine-grained control over loop execution while maintaining the durable workflow semantics.
+
+**`break` Statement:**
+Exits the loop entirely, jumping to the code that follows the loop. The compiler generates an edge from the `break` point to a synthetic join node that represents the loop's exit.
+
+**`continue` Statement:**
+Skips the rest of the current iteration and jumps to the next iteration. The compiler generates an edge from the `continue` point back to the loop controller.
+
+`./src/loop-control.ts`
+```typescript
+/** @step */
+export async function processItem(params: { item: any }) {
+  return { processed: true, shouldBreak: Math.random() > 0.8 };
+}
+
+/** @step */
+export async function handleItem(params: { item: any }) {
+  console.log('Handling item:', params.item);
+}
+
+/** @flow */
+export async function processItemsWithBreak(context: any) {
+  const items = await context.get('items');
+
+  for (const item of items) {
+    const result = await processItem({ item });
+
+    if (result.shouldBreak) {
+      break; // Exit the loop entirely
+    }
+
+    await handleItem({ item });
+  }
+
+  // Code after the loop executes after break
+  await finalizeProcessing();
+}
+
+/** @flow */
+export async function processItemsWithContinue(context: any) {
+  const items = await context.get('items');
+
+  for (const item of items) {
+    const result = await processItem({ item });
+
+    if (result.shouldSkip) {
+      continue; // Skip to next iteration
+    }
+
+    await handleItem({ item });
+  }
 }
 ```
 

@@ -1,14 +1,7 @@
-import * as ts from 'typescript'
+import type * as ts from 'typescript'
 import type { FlowAnalyzer } from '../flow-analyzer'
 
 export function handleWhileStatement(analyzer: FlowAnalyzer, node: ts.WhileStatement): string | null {
-	// Check for break/continue in the loop body
-	ts.forEachChild(node.statement, (child) => {
-		if (ts.isBreakStatement(child) || ts.isContinueStatement(child)) {
-			analyzer.addDiagnostic(child, 'error', `Break and continue statements are not supported in flow functions.`)
-		}
-	})
-
 	// Push scope for loop body
 	analyzer.state.pushScope({ variables: new Map() })
 
@@ -31,8 +24,22 @@ export function handleWhileStatement(analyzer: FlowAnalyzer, node: ts.WhileState
 			_sourceLocation: analyzer.getSourceLocation(node),
 		})
 	}
-	const _prevCursor = analyzer.state.getCursor()
 	analyzer.state.setCursor(controllerId)
+
+	// Create synthetic break target node
+	const joinExportName = 'join'
+	const joinCount = analyzer.state.incrementUsageCount(joinExportName)
+	const breakTargetId = `${joinExportName}_${joinCount}`
+	const breakTargetNode: import('flowcraft').NodeDefinition = {
+		id: breakTargetId,
+		uses: 'join',
+		config: { joinStrategy: 'any' },
+		_sourceLocation: analyzer.getSourceLocation(node),
+	}
+	analyzer.state.addNode(breakTargetNode)
+
+	// Push loop scope
+	analyzer.state.pushLoopScope({ controllerId, breakTargetId })
 
 	// Traverse the body and find first and last nodes
 	const nodesBeforeBody = analyzer.state.getNodes().length
@@ -59,10 +66,25 @@ export function handleWhileStatement(analyzer: FlowAnalyzer, node: ts.WhileState
 		})
 	}
 
+	// Pop loop scope
+	analyzer.state.popLoopScope()
+
 	// Pop scope
 	analyzer.state.popScope()
 
-	// The exit path is the current cursor (controller), next nodes will connect with break
-	analyzer.state.setCursor(controllerId)
-	return analyzer.state.getCursor()
+	// Set pending branches for nodes after the loop
+	const exitEnds = [lastInBody || controllerId, breakTargetId]
+	analyzer.state.setPendingBranches({ ends: exitEnds, joinStrategy: 'any' })
+
+	// The loop controller's break action should point to breakTargetId
+	analyzer.state.addEdge({
+		source: controllerId,
+		target: breakTargetId,
+		action: 'break',
+		_sourceLocation: analyzer.getSourceLocation(node),
+	})
+
+	// Set cursor to null since pending branches will handle connections
+	analyzer.state.setCursor(null)
+	return null
 }

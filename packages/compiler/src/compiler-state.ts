@@ -11,6 +11,7 @@ export class CompilerState {
 	private usageCounts: Map<string, number> = new Map()
 	private pendingBranches: { ends: string[]; joinStrategy: 'any' | 'all' } | null = null
 	private pendingForkEdges: { source: string; condition: string }[] = []
+	private loopScopeStack: { controllerId: string; breakTargetId: string }[] = []
 
 	constructor() {
 		// Push initial scope
@@ -133,6 +134,18 @@ export class CompilerState {
 
 	addPendingForkEdge(source: string, condition: string): void {
 		this.pendingForkEdges.push({ source, condition })
+	}
+
+	pushLoopScope(scope: { controllerId: string; breakTargetId: string }): void {
+		this.loopScopeStack.push(scope)
+	}
+
+	popLoopScope(): void {
+		this.loopScopeStack.pop()
+	}
+
+	getCurrentLoopScope(): { controllerId: string; breakTargetId: string } | undefined {
+		return this.loopScopeStack[this.loopScopeStack.length - 1]
 	}
 
 	incrementUsageCount(name: string): number {

@@ -82,9 +82,36 @@ export class FlowAnalyzer {
 			return handleIfStatement(this, node)
 		} else if (ts.isTryStatement(node)) {
 			return handleTryStatement(this, node)
-		} else if (ts.isBreakStatement(node) || ts.isContinueStatement(node)) {
-			this.addDiagnostic(node, 'error', `Break and continue statements are not supported in flow functions.`)
-			return this.state.getCursor()
+		} else if (ts.isContinueStatement(node)) {
+			const cursor = this.state.getCursor()
+			const loopScope = this.state.getCurrentLoopScope()
+			if (loopScope && cursor) {
+				this.state.addEdge({
+					source: cursor,
+					target: loopScope.controllerId,
+					_sourceLocation: this.getSourceLocation(node),
+				})
+			} else {
+				this.addDiagnostic(node, 'error', `continue statement can only be used inside a loop.`)
+			}
+			// Stop traversing this path
+			this.state.setCursor(null)
+			return null
+		} else if (ts.isBreakStatement(node)) {
+			const cursor = this.state.getCursor()
+			const loopScope = this.state.getCurrentLoopScope()
+			if (loopScope && cursor) {
+				this.state.addEdge({
+					source: cursor,
+					target: loopScope.breakTargetId,
+					_sourceLocation: this.getSourceLocation(node),
+				})
+			} else {
+				this.addDiagnostic(node, 'error', `break statement can only be used inside a loop.`)
+			}
+			// Stop traversing this path
+			this.state.setCursor(null)
+			return null
 		} else {
 			return this.state.getCursor() // Unknown type
 		}
