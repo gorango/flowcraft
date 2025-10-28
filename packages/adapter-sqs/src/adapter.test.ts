@@ -2,9 +2,10 @@ import { CreateTableCommand, DynamoDBClient } from '@aws-sdk/client-dynamodb'
 import { CreateQueueCommand, ReceiveMessageCommand, SQSClient } from '@aws-sdk/client-sqs'
 import type { StartedLocalStackContainer } from '@testcontainers/localstack'
 import { LocalstackContainer } from '@testcontainers/localstack'
-import type { ICoordinationStore, JobPayload } from 'flowcraft'
+import type { ICoordinationStore, JobPayload, PatchOperation } from 'flowcraft'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { SqsAdapter } from './adapter'
+import { DynamoDbContext } from './context'
 
 const QUEUE_NAME = 'test-flowcraft-queue'
 const CONTEXT_TABLE = 'test-context-table'
@@ -83,5 +84,47 @@ describe('SqsAdapter', () => {
 		expect(receiveResult.Messages).toHaveLength(1)
 		const receivedJob = JSON.parse(receiveResult.Messages?.[0].Body ?? '{}')
 		expect(receivedJob).toEqual(job)
+	})
+
+	it('should support delta-based persistence with patch operations', async () => {
+		const runId = 'test-delta-run'
+		const context = new DynamoDbContext(runId, {
+			client: dynamoClient,
+			tableName: CONTEXT_TABLE,
+		})
+
+		// Set initial data
+		await context.set('user', { id: 1, name: 'Alice' })
+		await context.set('count', 5)
+		await context.set('items', ['a', 'b', 'c'])
+
+		// Verify initial state
+		expect(await context.get('user')).toEqual({ id: 1, name: 'Alice' })
+		expect(await context.get('count')).toBe(5)
+		expect(await context.get('items')).toEqual(['a', 'b', 'c'])
+
+		// Apply patch operations
+		const operations: PatchOperation[] = [
+			{ op: 'set', key: 'user', value: { id: 1, name: 'Alice Updated' } },
+			{ op: 'set', key: 'count', value: 10 },
+			{ op: 'delete', key: 'items' },
+			{ op: 'set', key: 'status', value: 'completed' },
+		]
+
+		await context.patch(operations)
+
+		// Verify patched state
+		expect(await context.get('user')).toEqual({ id: 1, name: 'Alice Updated' })
+		expect(await context.get('count')).toBe(10)
+		expect(await context.get('items')).toBeUndefined()
+		expect(await context.get('status')).toBe('completed')
+
+		// Verify full state
+		const fullState = await context.toJSON()
+		expect(fullState).toEqual({
+			user: { id: 1, name: 'Alice Updated' },
+			count: 10,
+			status: 'completed',
+		})
 	})
 })

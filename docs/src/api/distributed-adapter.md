@@ -49,6 +49,18 @@ interface JobPayload {
 }
 ```
 
+## Delta-Based Persistence
+
+All distributed adapters now support **delta-based persistence** for optimal performance with large state objects. Instead of serializing and transmitting the entire workflow context after each node execution, adapters use the `patch()` method to apply only the changes (deltas) atomically.
+
+Each adapter implements `patch()` using its database's most efficient partial update mechanism:
+- **DynamoDB (SQS)**: `UpdateExpression` with `SET` and `REMOVE`
+- **Redis (BullMQ)**: `HSET` and `HDEL` for hash operations
+- **PostgreSQL (RabbitMQ)**: `jsonb_set()` and `#-` operators
+- **Azure Cosmos DB**: Native patch operations (`set`/`remove`)
+- **Google Firestore**: `update()` with `FieldValue.delete()`
+- **Apache Cassandra (Kafka)**: Read-modify-write pattern
+
 ## Built-in Adapters
 
 - **[`@flowcraft/bullmq-adapter`](https://www.npmjs.com/package/@flowcraft/bullmq-adapter)**: BullMQ and Redis.

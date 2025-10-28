@@ -1,7 +1,6 @@
 import type { DynamoDBClient } from '@aws-sdk/client-dynamodb'
-import { GetItemCommand, UpdateItemCommand } from '@aws-sdk/client-dynamodb'
-import { marshall, unmarshall } from '@aws-sdk/util-dynamodb'
-import type { IAsyncContext } from 'flowcraft'
+import { DynamoDBDocumentClient, GetCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb'
+import type { IAsyncContext, PatchOperation } from 'flowcraft'
 
 export interface DynamoDbContextOptions {
 	client: DynamoDBClient
@@ -14,53 +13,44 @@ export interface DynamoDbContextOptions {
  */
 export class DynamoDbContext implements IAsyncContext<Record<string, any>> {
 	public readonly type = 'async' as const
-	private readonly client: DynamoDBClient
+	private readonly client: DynamoDBDocumentClient
 	private readonly tableName: string
 	private readonly runId: string
 
 	constructor(runId: string, options: DynamoDbContextOptions) {
 		this.runId = runId
-		this.client = options.client
+		this.client = DynamoDBDocumentClient.from(options.client)
 		this.tableName = options.tableName
 	}
 
-	private getKey() {
-		return { runId: { S: this.runId } }
-	}
-
 	async get<K extends string>(key: K): Promise<any> {
-		const command = new GetItemCommand({
+		const command = new GetCommand({
 			TableName: this.tableName,
-			Key: this.getKey(),
+			Key: { runId: this.runId },
 			ProjectionExpression: '#k',
 			ExpressionAttributeNames: { '#k': key },
 		})
 
 		const result = await this.client.send(command)
-		if (result.Item?.[key]) {
-			return unmarshall(result.Item)[key]
-		}
-		return undefined
+		return result.Item?.[key]
 	}
 
 	async set<K extends string>(key: K, value: any): Promise<void> {
-		const command = new UpdateItemCommand({
+		const command = new UpdateCommand({
 			TableName: this.tableName,
-			Key: this.getKey(),
+			Key: { runId: this.runId },
 			UpdateExpression: 'SET #k = :v',
 			ExpressionAttributeNames: { '#k': key },
-			ExpressionAttributeValues: {
-				':v': marshall(value, { removeUndefinedValues: true }),
-			},
+			ExpressionAttributeValues: { ':v': value },
 		})
 
 		await this.client.send(command)
 	}
 
 	async has<K extends string>(key: K): Promise<boolean> {
-		const command = new GetItemCommand({
+		const command = new GetCommand({
 			TableName: this.tableName,
-			Key: this.getKey(),
+			Key: { runId: this.runId },
 			ProjectionExpression: '#k',
 			ExpressionAttributeNames: { '#k': key },
 		})
@@ -69,9 +59,9 @@ export class DynamoDbContext implements IAsyncContext<Record<string, any>> {
 	}
 
 	async delete<K extends string>(key: K): Promise<boolean> {
-		const command = new UpdateItemCommand({
+		const command = new UpdateCommand({
 			TableName: this.tableName,
-			Key: this.getKey(),
+			Key: { runId: this.runId },
 			UpdateExpression: 'REMOVE #k',
 			ExpressionAttributeNames: { '#k': key },
 			ReturnValues: 'UPDATED_OLD',
@@ -81,16 +71,59 @@ export class DynamoDbContext implements IAsyncContext<Record<string, any>> {
 	}
 
 	async toJSON(): Promise<Record<string, any>> {
-		const command = new GetItemCommand({
+		const command = new GetCommand({
 			TableName: this.tableName,
-			Key: this.getKey(),
+			Key: { runId: this.runId },
 		})
 
 		const result = await this.client.send(command)
 		if (result.Item) {
-			const { runId: _, ...contextData } = unmarshall(result.Item)
+			const { runId: _, ...contextData } = result.Item
 			return contextData
 		}
 		return {}
+	}
+
+	async patch(operations: PatchOperation[]): Promise<void> {
+		if (operations.length === 0) return
+
+		const setOperations = operations.filter((op) => op.op === 'set')
+		const deleteOperations = operations.filter((op) => op.op === 'delete')
+
+		const updateExpressions: string[] = []
+		const expressionAttributeNames: Record<string, string> = {}
+		const expressionAttributeValues: Record<string, any> = {}
+
+		// Build SET expressions
+		if (setOperations.length > 0) {
+			const setParts = setOperations.map((op, index) => {
+				const keyPlaceholder = `#k${index}`
+				const valuePlaceholder = `:v${index}`
+				expressionAttributeNames[keyPlaceholder] = op.key
+				expressionAttributeValues[valuePlaceholder] = op.value
+				return `${keyPlaceholder} = ${valuePlaceholder}`
+			})
+			updateExpressions.push(`SET ${setParts.join(', ')}`)
+		}
+
+		// Build REMOVE expressions
+		if (deleteOperations.length > 0) {
+			const removeParts = deleteOperations.map((op, index) => {
+				const keyPlaceholder = `#d${index}`
+				expressionAttributeNames[keyPlaceholder] = op.key
+				return keyPlaceholder
+			})
+			updateExpressions.push(`REMOVE ${removeParts.join(', ')}`)
+		}
+
+		const command = new UpdateCommand({
+			TableName: this.tableName,
+			Key: { runId: this.runId },
+			UpdateExpression: updateExpressions.join(' '),
+			ExpressionAttributeNames: expressionAttributeNames,
+			ExpressionAttributeValues: expressionAttributeValues,
+		})
+
+		await this.client.send(command)
 	}
 }

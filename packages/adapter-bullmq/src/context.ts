@@ -1,4 +1,4 @@
-import type { IAsyncContext } from 'flowcraft'
+import type { IAsyncContext, PatchOperation } from 'flowcraft'
 import type IORedis from 'ioredis'
 
 /**
@@ -40,5 +40,21 @@ export class RedisContext implements IAsyncContext<Record<string, any>> {
 			result[key] = JSON.parse(value)
 		}
 		return result
+	}
+
+	async patch(operations: PatchOperation[]): Promise<void> {
+		if (operations.length === 0) return
+
+		const multi = this.redis.multi()
+
+		for (const op of operations) {
+			if (op.op === 'set') {
+				multi.hset(this.stateKey, op.key, JSON.stringify(op.value))
+			} else if (op.op === 'delete') {
+				multi.hdel(this.stateKey, op.key)
+			}
+		}
+
+		await multi.exec()
 	}
 }

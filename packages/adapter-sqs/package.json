@@ -19,12 +19,14 @@
 	"dependencies": {
 		"@aws-sdk/client-dynamodb": "^3.911.0",
 		"@aws-sdk/client-sqs": "^3.911.0",
+		"@aws-sdk/lib-dynamodb": "^3.911.0",
 		"@aws-sdk/util-dynamodb": "^3.911.0",
 		"flowcraft": "^2.4.0",
 		"sqs-consumer": "^14.0.1"
 	},
 	"devDependencies": {
 		"@testcontainers/localstack": "^11.7.1",
+		"aws-sdk-client-mock": "^4.1.0",
 		"tsup": "^8.5.0",
 		"typescript": "^5.9.3",
 		"vitest": "^3.2.4"

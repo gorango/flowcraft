@@ -93,6 +93,7 @@ describe('BaseDistributedAdapter', () => {
 			has: vi.fn(),
 			delete: vi.fn(),
 			toJSON: vi.fn().mockResolvedValue({}),
+			patch: vi.fn(),
 			type: 'async',
 		}
 

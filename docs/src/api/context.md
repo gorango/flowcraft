@@ -35,6 +35,11 @@ interface IAsyncContext<TContext extends Record<string, any> = Record<string, an
 	has: <K extends keyof TContext>(key: K) => Promise<boolean>
 	delete: <K extends keyof TContext>(key: K) => Promise<boolean>
 	toJSON: () => Promise<Record<string, any>>
+	/**
+	 * Applies a batch of patch operations atomically for efficient delta-based
+	 * persistence enabling performance improvements for large state objects.
+	 */
+	patch: (operations: PatchOperation[]) => Promise<void>
 }
 ```
 

@@ -5,11 +5,12 @@ import { KafkaContainer } from '@testcontainers/kafka'
 import type { StartedRedisContainer } from '@testcontainers/redis'
 import { RedisContainer } from '@testcontainers/redis'
 import { Client as CassandraClient } from 'cassandra-driver'
-import type { JobPayload } from 'flowcraft'
+import type { JobPayload, PatchOperation } from 'flowcraft'
 import Redis from 'ioredis'
 import { Kafka } from 'kafkajs'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { KafkaAdapter } from './adapter'
+import { CassandraContext } from './context'
 import { RedisCoordinationStore } from './store'
 
 const TOPIC_NAME = 'flowcraft-test-topic'
@@ -29,7 +30,7 @@ describe('KafkaAdapter - Testcontainers Integration', () => {
 
 	beforeAll(async () => {
 		;[kafkaContainer, cassandraContainer, redisContainer] = await Promise.all([
-			new KafkaContainer('confluentinc/cp-kafka:7.4.0').withExposedPorts(9093).withKraft().start(),
+			new KafkaContainer('confluentinc/cp-kafka:7.9.4').withExposedPorts(9093).withKraft().start(),
 			new CassandraContainer('cassandra:latest').start(),
 			new RedisContainer('redis:latest').start(),
 		])
@@ -63,7 +64,7 @@ describe('KafkaAdapter - Testcontainers Integration', () => {
 			waitForLeaders: true,
 		})
 		await admin.disconnect()
-	}, 90000)
+	}, 60000)
 
 	afterAll(async () => {
 		await Promise.all([kafkaContainer.stop(), cassandraContainer.stop(), redisContainer.stop()])
@@ -113,5 +114,48 @@ describe('KafkaAdapter - Testcontainers Integration', () => {
 
 		await consumer.disconnect()
 		await (adapter as any).producer.disconnect()
+	})
+
+	it('should support delta-based persistence with patch operations', async () => {
+		const runId = 'test-delta-run'
+		const context = new CassandraContext(runId, {
+			client: cassandraClient,
+			keyspace: KEYSPACE,
+			tableName: CONTEXT_TABLE,
+		})
+
+		// Set initial data
+		await context.set('user', { id: 1, name: 'Alice' })
+		await context.set('count', 5)
+		await context.set('items', ['a', 'b', 'c'])
+
+		// Verify initial state
+		expect(await context.get('user')).toEqual({ id: 1, name: 'Alice' })
+		expect(await context.get('count')).toBe(5)
+		expect(await context.get('items')).toEqual(['a', 'b', 'c'])
+
+		// Apply patch operations
+		const operations: PatchOperation[] = [
+			{ op: 'set', key: 'user', value: { id: 1, name: 'Alice Updated' } },
+			{ op: 'set', key: 'count', value: 10 },
+			{ op: 'delete', key: 'items' },
+			{ op: 'set', key: 'status', value: 'completed' },
+		]
+
+		await context.patch(operations)
+
+		// Verify patched state
+		expect(await context.get('user')).toEqual({ id: 1, name: 'Alice Updated' })
+		expect(await context.get('count')).toBe(10)
+		expect(await context.get('items')).toBeUndefined()
+		expect(await context.get('status')).toBe('completed')
+
+		// Verify full state
+		const fullState = await context.toJSON()
+		expect(fullState).toEqual({
+			user: { id: 1, name: 'Alice Updated' },
+			count: 10,
+			status: 'completed',
+		})
 	})
 })

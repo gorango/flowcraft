@@ -1,6 +1,6 @@
 import type { Firestore } from '@google-cloud/firestore'
 import { FieldValue } from '@google-cloud/firestore'
-import type { IAsyncContext } from 'flowcraft'
+import type { IAsyncContext, PatchOperation } from 'flowcraft'
 
 export interface FirestoreContextOptions {
 	client: Firestore
@@ -47,5 +47,21 @@ export class FirestoreContext implements IAsyncContext<Record<string, any>> {
 	async toJSON(): Promise<Record<string, any>> {
 		const doc = await this.docRef.get()
 		return doc.exists ? doc.data() || {} : {}
+	}
+
+	async patch(operations: PatchOperation[]): Promise<void> {
+		if (operations.length === 0) return
+
+		const updateData: Record<string, any> = {}
+
+		for (const op of operations) {
+			if (op.op === 'set') {
+				updateData[op.key] = op.value
+			} else if (op.op === 'delete') {
+				updateData[op.key] = FieldValue.delete()
+			}
+		}
+
+		await this.docRef.update(updateData)
 	}
 }

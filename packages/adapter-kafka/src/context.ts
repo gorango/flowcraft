@@ -1,5 +1,5 @@
 import type { Client as CassandraClient } from 'cassandra-driver'
-import type { IAsyncContext } from 'flowcraft'
+import type { IAsyncContext, PatchOperation } from 'flowcraft'
 
 export interface CassandraContextOptions {
 	client: CassandraClient
@@ -68,5 +68,22 @@ export class CassandraContext implements IAsyncContext<Record<string, any>> {
 
 	async toJSON(): Promise<Record<string, any>> {
 		return this.readContext()
+	}
+
+	async patch(operations: PatchOperation[]): Promise<void> {
+		if (operations.length === 0) return
+
+		// Cassandra requires read-modify-write for partial updates
+		const context = await this.readContext()
+
+		for (const op of operations) {
+			if (op.op === 'set') {
+				context[op.key] = op.value
+			} else if (op.op === 'delete') {
+				delete context[op.key]
+			}
+		}
+
+		await this.writeContext(context)
 	}
 }

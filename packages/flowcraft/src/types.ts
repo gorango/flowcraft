@@ -159,7 +159,16 @@ export interface IAsyncContext<TContext extends Record<string, any> = Record<str
 	delete<K extends keyof TContext>(key: K): Promise<boolean>
 	delete(key: string): Promise<boolean>
 	toJSON: () => Promise<Record<string, any>>
+
+	/**
+	 * Applies a batch of patch operations atomically.
+	 * More efficient than individual set/delete calls for bulk updates.
+	 */
+	patch(operations: PatchOperation[]): Promise<void>
 }
+
+/** Represents a single patch operation for delta-based state updates. */
+export type PatchOperation = { op: 'set'; key: string; value: any } | { op: 'delete'; key: string }
 
 // =================================================================================
 // Runtime & Extensibility Interfaces
