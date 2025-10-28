@@ -29,6 +29,9 @@ interface ICoordinationStore {
 	// Sets a key only if it does not already exist.
 	setIfNotExist: (key: string, value: string, ttlSeconds: number) => Promise<boolean>
 
+	// Extends the TTL of an existing key. Used for heartbeat mechanism in long-running jobs.
+	extendTTL: (key: string, ttlSeconds: number) => Promise<boolean>
+
 	// Deletes a key.
 	delete: (key: string) => Promise<void>
 

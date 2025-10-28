@@ -24,6 +24,11 @@ export class RedisCoordinationStore implements ICoordinationStore {
 		await this.redis.del(key)
 	}
 
+	async extendTTL(key: string, ttlSeconds: number): Promise<boolean> {
+		const result = await this.redis.expire(key, ttlSeconds)
+		return result === 1
+	}
+
 	async get(key: string): Promise<string | undefined> {
 		return (await this.redis.get(key)) ?? undefined
 	}

@@ -84,6 +84,30 @@ export class DynamoDbCoordinationStore implements ICoordinationStore {
 		await this.client.send(command)
 	}
 
+	async extendTTL(key: string, ttlSeconds: number): Promise<boolean> {
+		try {
+			const command = new UpdateItemCommand({
+				TableName: this.tableName,
+				Key: { coordinationKey: { S: key } },
+				UpdateExpression: 'SET #ttl = :ttl',
+				ExpressionAttributeNames: {
+					'#ttl': 'ttl',
+				},
+				ExpressionAttributeValues: {
+					':ttl': { N: this.getTtl(ttlSeconds).toString() },
+				},
+				ConditionExpression: 'attribute_exists(coordinationKey)',
+			})
+			await this.client.send(command)
+			return true
+		} catch (error: any) {
+			if (error.name === 'ConditionalCheckFailedException') {
+				return false // key doesn't exist
+			}
+			throw error
+		}
+	}
+
 	async get(key: string): Promise<string | undefined> {
 		const command = new GetItemCommand({
 			TableName: this.tableName,
