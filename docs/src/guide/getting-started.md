@@ -12,7 +12,7 @@ npm install flowcraft
 
 ## Your First Workflow
 
-Let's create a simple workflow with two steps: one node to provide a starting number, and a second node to double it, using Flowcraft's strongly-typed context system.
+Let's create a simple workflow with three steps: one node to provide a starting number, a sleep node to pause for 1 second, and a final node to double the number, demonstrating Flowcraft's durable timers and strongly-typed context system.
 
 ```typescript
 import { createFlow, FlowRuntime } from 'flowcraft'
@@ -29,8 +29,10 @@ async function doubleNode({ input }: NodeContext) {
 // 2. Define the workflow structure
 const flow = createFlow('simple-workflow')
 	.node('start', startNode)
+	.sleep('pause', { duration: 1000 }) // Sleep for 1 second
 	.node('double', doubleNode)
-	.edge('start', 'double')
+	.edge('start', 'pause')
+	.edge('pause', 'double')
 
 // 3. Initialize the runtime
 const runtime = new FlowRuntime()

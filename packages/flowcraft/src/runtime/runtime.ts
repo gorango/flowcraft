@@ -6,6 +6,7 @@ import { PropertyEvaluator } from '../evaluator'
 import { NullLogger } from '../logger'
 import { BatchGatherNode } from '../nodes/batch-gather'
 import { BatchScatterNode } from '../nodes/batch-scatter'
+import { SleepNode } from '../nodes/sleep'
 import { SubflowNode } from '../nodes/subflow'
 import { WaitNode } from '../nodes/wait'
 import { sanitizeBlueprint } from '../sanitizer'
@@ -90,6 +91,7 @@ export class FlowRuntime<TContext extends Record<string, any>, TDependencies ext
 			}
 			const builtInNodes = {
 				wait: WaitNode,
+				sleep: SleepNode,
 				subflow: SubflowNode,
 				'batch-scatter': BatchScatterNode,
 				'batch-gather': BatchGatherNode,
