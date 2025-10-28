@@ -172,7 +172,7 @@ interface WorkflowBlueprint {
   id: string;
   nodes: NodeDefinition[];
   edges: EdgeDefinition[];
-  metadata?: Record<string, any>;
+  metadata?: WorkflowBlueprintMetadata;
 }
 ```
 

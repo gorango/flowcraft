@@ -18,12 +18,21 @@ export interface SourceLocation {
 // Blueprint Interfaces (The Declarative Definition)
 // =================================================================================
 
+/** Metadata associated with a workflow blueprint. */
+export interface WorkflowBlueprintMetadata {
+	/** Optional version identifier for the blueprint. Used in distributed systems to ensure version compatibility. */
+	version?: string
+	/** Entry points for cycles in the workflow graph. */
+	cycleEntryPoints?: string[]
+	[key: string]: any
+}
+
 /** The central, serializable representation of a workflow. */
 export interface WorkflowBlueprint {
 	id: string
 	nodes: NodeDefinition[]
 	edges: EdgeDefinition[]
-	metadata?: Record<string, any>
+	metadata?: WorkflowBlueprintMetadata
 }
 
 /** Defines a single step in the workflow. */

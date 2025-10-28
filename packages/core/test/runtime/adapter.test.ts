@@ -15,6 +15,10 @@ const _mockRuntime = {
 vi.mock('../../src/runtime/runtime.ts', () => {
 	const FlowRuntime = vi.fn(
 		class FakeFlowRuntime {
+			options: any
+			executeNode: any
+			determineNextNodes: any
+			applyEdgeTransform: any
 			constructor(options: any) {
 				this.options = options
 				this.executeNode = vi.fn()
@@ -92,7 +96,10 @@ describe('BaseDistributedAdapter', () => {
 		}
 
 		mockContext = {
-			get: vi.fn(),
+			get: vi.fn().mockImplementation(async (key: string) => {
+				if (key === 'blueprintVersion') return null // Default to null for unversioned blueprints
+				return undefined
+			}),
 			set: vi.fn(),
 			has: vi.fn(),
 			delete: vi.fn(),
@@ -107,7 +114,7 @@ describe('BaseDistributedAdapter', () => {
 		}
 
 		adapter = new MockAdapter(adapterOptions)
-		runtime = adapter.runtime
+		runtime = (adapter as any).runtime
 		adapter.createContext.mockReturnValue(mockContext)
 
 		adapter.start()
@@ -706,6 +713,99 @@ describe('BaseDistributedAdapter', () => {
 				blueprintId: 'linear',
 				nodeId: 'B',
 			})
+		})
+	})
+
+	describe('Version Checking', () => {
+		it('should reject jobs when blueprint version does not match stored version', async () => {
+			const versionedBlueprint: WorkflowBlueprint = {
+				id: 'versioned',
+				metadata: { version: '2.0' },
+				nodes: [{ id: 'A', uses: 'test' }],
+				edges: [],
+			}
+			if (runtime.options.blueprints) {
+				runtime.options.blueprints.versioned = versionedBlueprint
+			}
+
+			const job: JobPayload = {
+				runId: 'run1',
+				blueprintId: 'versioned',
+				nodeId: 'A',
+			}
+
+			// Mock context to return a different version
+			vi.mocked(mockContext.has).mockResolvedValue(true)
+			vi.mocked(mockContext.get).mockImplementation(async (key: string) => {
+				if (key === 'blueprintVersion') return '1.0'
+				return undefined
+			})
+
+			await jobHandler(job)
+
+			// Should not execute the node or enqueue anything
+			expect(runtime.executeNode).not.toHaveBeenCalled()
+			expect(adapter.enqueueJob).not.toHaveBeenCalled()
+			expect(adapter.publishFinalResult).not.toHaveBeenCalled()
+		})
+
+		it('should accept jobs when blueprint version matches stored version', async () => {
+			const versionedBlueprint: WorkflowBlueprint = {
+				id: 'versioned',
+				metadata: { version: '1.0' },
+				nodes: [{ id: 'A', uses: 'test' }],
+				edges: [],
+			}
+			if (runtime.options.blueprints) {
+				runtime.options.blueprints.versioned = versionedBlueprint
+			}
+
+			const job: JobPayload = {
+				runId: 'run1',
+				blueprintId: 'versioned',
+				nodeId: 'A',
+			}
+
+			vi.mocked(mockContext.has).mockResolvedValue(true)
+			vi.mocked(mockContext.get).mockImplementation(async (key: string) => {
+				if (key === 'blueprintVersion') return '1.0'
+				return undefined
+			})
+			vi.mocked(runtime.executeNode).mockResolvedValue({ output: 'success' })
+			vi.mocked(runtime.determineNextNodes).mockResolvedValue([])
+
+			await jobHandler(job)
+
+			expect(runtime.executeNode).toHaveBeenCalled()
+		})
+
+		it('should accept jobs when both stored and current versions are null', async () => {
+			const unversionedBlueprint: WorkflowBlueprint = {
+				id: 'unversioned',
+				nodes: [{ id: 'A', uses: 'test' }],
+				edges: [],
+			}
+			if (runtime.options.blueprints) {
+				runtime.options.blueprints.unversioned = unversionedBlueprint
+			}
+
+			const job: JobPayload = {
+				runId: 'run1',
+				blueprintId: 'unversioned',
+				nodeId: 'A',
+			}
+
+			vi.mocked(mockContext.has).mockResolvedValue(true)
+			vi.mocked(mockContext.get).mockImplementation(async (key: string) => {
+				if (key === 'blueprintVersion') return null
+				return undefined
+			})
+			vi.mocked(runtime.executeNode).mockResolvedValue({ output: 'success' })
+			vi.mocked(runtime.determineNextNodes).mockResolvedValue([])
+
+			await jobHandler(job)
+
+			expect(runtime.executeNode).toHaveBeenCalled()
 		})
 	})
 })

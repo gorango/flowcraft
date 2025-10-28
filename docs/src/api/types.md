@@ -4,6 +4,22 @@ This page provides a reference for the core interfaces and types used throughout
 
 ## Blueprint Interfaces
 
+### `WorkflowBlueprintMetadata`
+
+Metadata associated with a workflow blueprint.
+
+```typescript
+interface WorkflowBlueprintMetadata {
+  version?: string
+  cycleEntryPoints?: string[]
+  [key: string]: any
+}
+```
+
+- `version`: Optional version identifier for the blueprint. Used in distributed systems to ensure version compatibility.
+- `cycleEntryPoints`: Entry points for cycles in the workflow graph.
+- `[key: string]`: Additional custom metadata.
+
 ### `WorkflowBlueprint`
 
 The central, serializable representation of a workflow. This is the declarative definition that can be stored as JSON or YAML.
@@ -13,14 +29,14 @@ interface WorkflowBlueprint {
   id: string
   nodes: NodeDefinition[]
   edges: EdgeDefinition[]
-  metadata?: Record<string, any>
+  metadata?: WorkflowBlueprintMetadata
 }
 ```
 
 - `id`: Unique identifier for the workflow.
 - `nodes`: Array of node definitions.
 - `edges`: Array of edge definitions connecting the nodes.
-- `metadata`: Optional additional data.
+- `metadata`: Optional metadata including version information for distributed execution.
 
 ### `NodeDefinition`
 
