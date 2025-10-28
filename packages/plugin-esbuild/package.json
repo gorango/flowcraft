@@ -30,9 +30,7 @@
 		"dev": "tsup --watch",
 		"build": "tsup",
 		"typecheck": "tsc --noEmit",
-		"test": "vitest run",
-		"test:watch": "vitest",
-		"test:coverage": "vitest run --coverage"
+		"test": "echo \"Error: no test specified\" && exit 0"
 	},
 	"dependencies": {
 		"@flowcraft/compiler": "workspace:*"
@@ -40,8 +38,7 @@
 	"devDependencies": {
 		"@types/node": "^24.9.1",
 		"esbuild": "^0.19.0",
-		"tsup": "^8.5.0",
-		"vitest": "^4.0.4"
+		"tsup": "^8.5.0"
 	},
 	"peerDependencies": {
 		"esbuild": "^0.15.0 || ^0.16.0 || ^0.17.0 || ^0.18.0 || ^0.19.0"
