@@ -1,4 +1,6 @@
-# Defining Workflows
+# Fluent API
+
+This guide covers the Fluent API for programmatically building a workflow graph. For an alternative imperative approach, see the [Flowcraft Compiler Guide](/guide/compiler/).
 
 Workflows can be defined programmatically using the fluent [`Flow`](/api/flow#flow-class) builder API or declaratively using JSON, YAML, or in a database, before converting them to a [`WorkflowBlueprint`](/api/flow#workflowblueprint-interface) for execution.
 

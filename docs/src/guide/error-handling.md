@@ -148,3 +148,53 @@ When a subflow fails, the error is wrapped in a `FlowcraftError` that includes d
 - The stack trace from the subflow's execution
 
 This ensures that failures in nested workflows are traceable back to their source, making it easier to diagnose issues in complex workflow hierarchies.
+
+## Source-Mapped Runtime Errors
+
+Flowcraft provides a utility to translate runtime errors that reference blueprint node IDs into user-friendly errors that point to the original TypeScript source code. This helps developers quickly identify where in their code a workflow error originated.
+
+### `createErrorMapper`
+
+The `createErrorMapper` function creates an error mapping utility that enhances runtime errors with source location information from the compiled manifest.
+
+#### Usage
+
+```typescript
+import { createErrorMapper } from 'flowcraft'
+import { blueprints } from './dist/flowcraft.manifest.js'
+
+const mapError = createErrorMapper(blueprints)
+
+try {
+  await runtime.run(blueprint, ...)
+} catch (e) {
+  // Enhance the error with source location
+  throw mapError(e)
+}
+```
+
+#### How It Works
+
+1. **Pre-processing**: The mapper builds a lookup table from the compiled manifest, mapping node IDs to their source locations (`file`, `line`, `column`).
+
+2. **Error Enhancement**: When an error occurs, the mapper:
+   - Checks if the error is a `FlowcraftError` with a `nodeId` property
+   - Falls back to extracting node IDs from error messages using regex patterns
+   - Looks up the source location for the identified node
+   - Returns a new error with the source location prepended to the original message
+
+3. **Fallback**: If no node ID can be identified or no source location is found, the original error is returned unchanged.
+
+#### Example Output
+
+**Before** (runtime error):
+```
+FlowcraftError: Node execution failed: database connection timeout
+```
+
+**After** (source-mapped error):
+```
+Error: Workflow error at /app/src/workflows/user-flow.ts:42:8. Original error: Node execution failed: database connection timeout
+```
+
+This allows developers to quickly navigate to the exact line in their TypeScript source code where the workflow logic that caused the error is defined.

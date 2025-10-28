@@ -131,4 +131,57 @@ console.log(result.issues)
 // ]
 ```
 
+## Compile-Time Type Safety
+
+When using the Flowcraft Compiler, you get additional static analysis through TypeScript's type checker. The compiler validates data flow between nodes at compile time, catching type mismatches before runtime.
+
+### Type Validation
+
+The compiler uses TypeScript's TypeChecker to ensure that:
+
+- Step function parameters match the expected types
+- Return values from steps are compatible with subsequent usage
+- Context keys are accessed with correct types
+
+```typescript
+/** @flow */
+export async function typeSafeWorkflow(input: string) {
+  const parsed = await parseData(input) // Expects string, returns ParsedData
+
+  const validated = await validateData(parsed) // Expects ParsedData, returns ValidatedData
+
+  return validated
+}
+
+/** @step */
+async function parseData(data: string): Promise<ParsedData> {
+  // Implementation
+}
+
+/** @step */
+async function validateData(data: ParsedData): Promise<ValidatedData> {
+  // Implementation
+}
+```
+
+If you try to pass incompatible types, the compiler will report a type error:
+
+```typescript
+/** @flow */
+export async function invalidWorkflow() {
+  const result = await parseData("input")
+
+  const validated = await validateData("invalid") // ❌ Type error: expected ParsedData, got string
+
+  return validated
+}
+```
+
+### Benefits
+
+- **Early Error Detection**: Catch type mismatches during compilation, not at runtime
+- **IDE Support**: Full IntelliSense and autocomplete for workflow development
+- **Refactoring Safety**: TypeScript's refactoring tools work seamlessly with compiled workflows
+- **Documentation**: Types serve as living documentation for your workflow interfaces
+
 Using these analysis tools as part of your development or CI/CD process can significantly improve the reliability of your workflows.

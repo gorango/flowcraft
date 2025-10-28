@@ -62,6 +62,41 @@ it('should correctly execute step-by-step', async () => {
 - **Interactive Tools**: Build debugging or visualization tools
 - **Performance Analysis**: Measure execution time per step
 
+## Source-Mapped Runtime Errors
+
+When using the Flowcraft Compiler, runtime errors can be automatically mapped back to your original TypeScript source code, providing exact file locations (file:line:column) for workflow errors instead of generic blueprint node IDs.
+
+### Using the Error Mapper
+
+The compiler embeds source location metadata in the blueprint. Use the `createErrorMapper` utility to enhance runtime errors:
+
+```typescript
+import { createErrorMapper } from 'flowcraft'
+import manifest from './generated/manifest.ts'
+
+const runtime = new FlowRuntime()
+const errorMapper = createErrorMapper(manifest)
+
+// Wrap your runtime.run call
+try {
+  const result = await runtime.run(blueprint, initialContext)
+} catch (error) {
+  // Map the error to source location
+  const mappedError = errorMapper.mapError(error)
+
+  console.error('Workflow failed:', mappedError.message)
+  console.error('Location:', mappedError.stack?.[0]) // Shows file:line:column
+
+  throw mappedError
+}
+```
+
+### Benefits
+
+- **Precise Debugging**: Get exact source locations instead of "node-123 failed"
+- **Better DX**: Jump directly to the problematic code in your IDE
+- **Production Ready**: Enhanced error reporting for monitoring and logging
+
 ## Conclusion
 
-Use `createStepper` to interactively debug and test your workflows step by step. For automated testing, see [Unit & Integration Testing](/guide/testing).
+Use `createStepper` for interactive debugging and `createErrorMapper` for source-mapped errors when using the compiler. For automated testing, see [Unit & Integration Testing](/guide/testing).

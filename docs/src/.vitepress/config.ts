@@ -77,13 +77,20 @@ export default defineConfig({
 					],
 				},
 				{
-					text: 'Building Workflows',
+					text: 'Authoring Workflows',
 					collapsed: false,
 					items: [
-						{ text: 'Programmatic Flows', link: '/guide/programmatic' },
+						{ text: 'Fluent (Builder)', link: '/guide/fluent' },
+						{ text: 'Declarative (JSON)', link: '/guide/declarative' },
 						{
-							text: 'Declarative Flows',
-							link: '/guide/declarative',
+							text: 'Imperative (Compiler)',
+							link: '/guide/compiler/',
+							collapsed: true,
+							items: [
+								{ text: 'Configuration', link: '/guide/compiler/configuration' },
+								{ text: 'Authoring Guide', link: '/guide/compiler/authoring-guide' },
+								{ text: 'Build Tool Integration', link: '/guide/compiler/build-tools' },
+							],
 						},
 					],
 				},
@@ -112,7 +119,7 @@ export default defineConfig({
 				},
 				{
 					text: 'Validation',
-					collapsed: false,
+					collapsed: true,
 					items: [
 						{ text: 'Testing', link: '/guide/testing' },
 						{ text: 'Debugging', link: '/guide/debugging' },
@@ -190,6 +197,7 @@ export default defineConfig({
 					text: 'Tooling',
 					collapsed: false,
 					items: [
+						{ text: 'Compiler', link: '/api/compiler' },
 						{ text: 'Analysis', link: '/api/analysis' },
 						{ text: 'Linter', link: '/api/linter' },
 						{ text: 'Sanitizer', link: '/api/sanitizer' },
