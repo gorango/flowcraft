@@ -22,24 +22,21 @@ export async function loadConfig(root: string = process.cwd()): Promise<Flowcraf
 	}
 
 	if (!configPath) {
-		return {} // No config file found
+		return {}
 	}
 
 	try {
 		if (isTs) {
-			// Transpile TypeScript config in memory
 			const tsContent = fs.readFileSync(configPath, 'utf-8')
 			const { code } = transformSync(tsContent, {
 				loader: 'ts',
 				format: 'esm',
 			})
 
-			// Use a data URI to import the transpiled code without writing to disk
 			const dataUri = `data:text/javascript;base64,${Buffer.from(code).toString('base64')}`
 			const module = await import(dataUri)
 			return module.default || {}
 		} else {
-			// Directly import JavaScript config
 			const module = await import(configPath)
 			return module.default || {}
 		}

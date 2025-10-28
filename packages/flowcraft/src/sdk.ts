@@ -17,7 +17,7 @@ export interface Webhook<T = any> {
  */
 export function sleep(_duration: number | string): Promise<void> {
 	console.warn(`'sleep' should only be used inside a compiled @flow function.`)
-	return new Promise(() => {}) // Intentionally never resolves
+	return new Promise(() => { }) // intentionally never resolves
 }
 
 /**
@@ -26,7 +26,7 @@ export function sleep(_duration: number | string): Promise<void> {
  */
 export function waitForEvent<T = any>(_eventName: string): Promise<T> {
 	console.warn(`'waitForEvent' should only be used inside a compiled @flow function.`)
-	return new Promise(() => {}) // Intentionally never resolves
+	return new Promise(() => { }) // intentionally never resolves
 }
 
 /**
@@ -35,5 +35,5 @@ export function waitForEvent<T = any>(_eventName: string): Promise<T> {
  */
 export function createWebhook<T = any>(): Promise<Webhook<T>> {
 	console.warn(`'createWebhook' should only be used inside a compiled @flow function.`)
-	return new Promise(() => {}) // Intentionally never resolves
+	return new Promise(() => { }) // intentionally never resolves
 }

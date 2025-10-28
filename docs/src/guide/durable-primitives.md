@@ -12,9 +12,9 @@ Durable primitives provide a high-level API for common long-running workflow pat
 
 These primitives are designed to work with the Flowcraft compiler, which automatically transforms them into the appropriate runtime nodes.
 
-## Flow.sleep()
+## `sleep()`
 
-The `Flow.sleep()` primitive pauses workflow execution for a specified duration and automatically resumes when the timer expires.
+The `sleep()` primitive pauses workflow execution for a specified duration and automatically resumes when the timer expires.
 
 ### Basic Usage
 
@@ -39,7 +39,7 @@ When running flows in-memory, the `FlowRuntime`'s internal scheduler must be sta
 
 ### Compiler Transformation
 
-The compiler transforms `await Flow.sleep('5m')` into a `sleep` node:
+The compiler transforms `await sleep('5m')` into a `sleep` node:
 
 ```typescript
 // Generated blueprint
@@ -54,9 +54,9 @@ The compiler transforms `await Flow.sleep('5m')` into a `sleep` node:
 }
 ```
 
-## Flow.waitForEvent()
+## `waitForEvent()`
 
-The `Flow.waitForEvent()` primitive pauses workflow execution until an external event is received. This enables event-driven workflows that respond to external signals, user interactions, or system notifications.
+The `waitForEvent()` primitive pauses workflow execution until an external event is received. This enables event-driven workflows that respond to external signals, user interactions, or system notifications.
 
 ### Basic Usage
 
@@ -104,7 +104,7 @@ export async function multiEventWorkflow() {
 
 ### Compiler Transformation
 
-The compiler transforms `await Flow.waitForEvent('event_name')` into a `wait` node:
+The compiler transforms `await waitForEvent('event_name')` into a `wait` node:
 
 ```typescript
 // Generated blueprint
@@ -140,9 +140,9 @@ if (result.status === 'awaiting') {
 }
 ```
 
-## Flow.createWebhook()
+## `createWebhook()`
 
-The `Flow.createWebhook()` primitive creates a webhook endpoint that external systems can call. The workflow pauses until the webhook is invoked, then resumes with the request data.
+The `createWebhook()` primitive creates a webhook endpoint that external systems can call. The workflow pauses until the webhook is invoked, then resumes with the request data.
 
 ### Basic Usage
 
@@ -206,7 +206,7 @@ export async function advancedWebhook() {
 The compiler transforms webhook creation and usage into multiple nodes:
 
 ```typescript
-// await Flow.createWebhook() becomes:
+// await createWebhook() becomes:
 {
   id: 'webhook_1',
   uses: 'webhook'

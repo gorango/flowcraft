@@ -12,7 +12,7 @@ import type { SourceLocation, WorkflowBlueprint } from './types'
 export function createErrorMapper(manifestBlueprints: Record<string, WorkflowBlueprint>) {
 	const locationMap = new Map<string, SourceLocation>()
 
-	// Pre-process the manifest to build a quick lookup map
+	// build a quick lookup map
 	for (const blueprint of Object.values(manifestBlueprints)) {
 		for (const node of blueprint.nodes) {
 			if (node._sourceLocation) {
@@ -21,7 +21,6 @@ export function createErrorMapper(manifestBlueprints: Record<string, WorkflowBlu
 		}
 		for (const edge of blueprint.edges) {
 			if (edge._sourceLocation) {
-				// Use a compound key for edges: source-target
 				const edgeKey = `${edge.source}-${edge.target}`
 				locationMap.set(edgeKey, edge._sourceLocation)
 			}
@@ -29,7 +28,6 @@ export function createErrorMapper(manifestBlueprints: Record<string, WorkflowBlu
 	}
 
 	return function mapError(error: Error): Error {
-		// Check if it's a FlowcraftError with a nodeId
 		if (error instanceof FlowcraftError && error.nodeId) {
 			const location = locationMap.get(error.nodeId)
 			if (location) {
@@ -39,7 +37,7 @@ export function createErrorMapper(manifestBlueprints: Record<string, WorkflowBlu
 			}
 		}
 
-		// Fallback: try to extract nodeId from error message using regex
+		// try to extract nodeId from error message
 		const nodeIdMatch = error.message.match(/nodeId[:\s]+([^\s,]+)/i)
 		if (nodeIdMatch) {
 			const nodeId = nodeIdMatch[1]
@@ -51,7 +49,6 @@ export function createErrorMapper(manifestBlueprints: Record<string, WorkflowBlu
 			}
 		}
 
-		// Return original error if no mapping found
 		return error
 	}
 }

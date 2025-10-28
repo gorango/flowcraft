@@ -47,7 +47,7 @@ export class WorkflowState<TContext extends Record<string, any>> {
 		this.errors.push({
 			...flowcraftError,
 			timestamp: new Date().toISOString(),
-			originalError: error, // Legacy compatibility
+			originalError: error, // legacy compatibility
 		})
 	}
 

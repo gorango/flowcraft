@@ -4,24 +4,19 @@ import { loadConfig } from './config-loader'
 import { compileProject } from './index'
 import type { FlowcraftConfig } from './types'
 
-export interface CompileFlowsOptions extends FlowcraftConfig {}
+export interface CompileFlowsOptions extends FlowcraftConfig { }
 
-// This is the generic, reusable function
 export async function buildFlows(pluginOptions: CompileFlowsOptions = {}) {
 	const projectRoot = process.cwd()
 
-	// 1. Load config from flowcraft.config.js/ts
 	const loadedConfig = await loadConfig(projectRoot)
 
-	// 2. Define defaults
 	const defaults: FlowcraftConfig = {
 		entryPoints: [path.resolve(projectRoot, 'src/index.ts')],
 		tsConfigPath: path.resolve(projectRoot, 'tsconfig.json'),
 		manifestPath: path.resolve(projectRoot, 'dist/flowcraft.manifest.js'),
 	}
 
-	// 3. Merge configurations with the correct priority:
-	//    Defaults < Config File < Plugin Options
 	const finalConfig = {
 		...defaults,
 		...loadedConfig,
@@ -50,9 +45,7 @@ export async function buildFlows(pluginOptions: CompileFlowsOptions = {}) {
 		console.log(`✅ Flowcraft compilation successful! Manifest: ${path.relative(projectRoot, manifestPath)}`)
 	} catch (error) {
 		console.error('❌ An unexpected error occurred during Flowcraft compilation:')
-		// Don't log the whole error object unless verbose logging is on
 		console.error(error instanceof Error ? error.message : String(error))
-		// Re-throw to fail the build process
 		throw error
 	}
 }

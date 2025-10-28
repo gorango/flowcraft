@@ -110,7 +110,6 @@ export class FlowBuilder<
 
 		this.batchDefinitions.push({ id, scatterId, gatherId })
 
-		// register worker implementation under a unique key.
 		let workerUsesKey: string
 		if (isNodeClass(worker)) {
 			workerUsesKey =
@@ -121,23 +120,20 @@ export class FlowBuilder<
 			this.functionRegistry.set(workerUsesKey, worker as unknown as NodeFunction)
 		}
 
-		// scatter node: takes an array and dynamically schedules worker nodes
 		this.blueprint.nodes?.push({
 			id: scatterId,
-			uses: 'batch-scatter', // built-in
+			uses: 'batch-scatter',
 			inputs: inputKey as string,
 			params: { workerUsesKey, outputKey: outputKey as string, gatherNodeId: gatherId, chunkSize: options.chunkSize },
 		})
 
-		// gather node: waits for all workers to finish and collects the results
 		this.blueprint.nodes?.push({
 			id: gatherId,
-			uses: 'batch-gather', // built-in
+			uses: 'batch-gather',
 			params: { outputKey, gatherNodeId: gatherId },
-			config: { joinStrategy: 'all' }, // important: must wait for all scattered jobs
+			config: { joinStrategy: 'all' },
 		})
 
-		// edge to connect scatter and gather nodes, orchestrator will manage dynamic workers
 		this.edge(scatterId, gatherId)
 
 		return this as unknown as FlowBuilder<TContext & { [K in TOutputKey]: TWorkerOutput[] }, TDependencies>
@@ -201,19 +197,18 @@ export class FlowBuilder<
 
 		this.loopDefinitions.push({ id, startNodeId, endNodeId, condition })
 
-		// controller node: evaluates the loop condition
 		this.blueprint.nodes?.push({
 			id: controllerId,
-			uses: 'loop-controller', // built-in
+			uses: 'loop-controller',
 			params: { condition },
-			config: { joinStrategy: 'any' }, // to allow re-execution on each loop iteration
+			config: { joinStrategy: 'any' },
 		})
 
 		this.edge(endNodeId, controllerId)
 
 		this.edge(controllerId, startNodeId, {
 			action: 'continue',
-			transform: `context.${endNodeId}`, // pass the end node's value to the start node
+			transform: `context.${endNodeId}`,
 		})
 
 		return this
@@ -343,7 +338,7 @@ export class FlowBuilder<
 			}
 		}
 
-		// replace scatter/gather pairs with a single representative "worker" node
+		// replace scatter/gather pairs with a single representative worker node
 		const scatterNodes = blueprint.nodes.filter((n) => n.uses === 'batch-scatter')
 		for (const scatterNode of scatterNodes) {
 			const gatherNodeId = scatterNode.params?.gatherNodeId

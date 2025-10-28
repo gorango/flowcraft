@@ -1,4 +1,4 @@
-import type { EdgeDefinition, NodeDefinition, WorkflowBlueprint } from 'flowcraft'
+import type { WorkflowBlueprint } from 'flowcraft'
 
 export interface FileAnalysis {
 	filePath: string
@@ -19,19 +19,6 @@ export interface CompilationDiagnostic {
 	column: number
 	message: string
 	severity: 'error' | 'warning' | 'info'
-}
-
-// Keep interface for backward compatibility if needed
-export interface CompilerStateInterface {
-	cursor: string | null
-	nodes: NodeDefinition[]
-	edges: EdgeDefinition[]
-	scopes: Scope[]
-	pendingEdges: PendingEdge[]
-	fallbackScope: string | null
-	usageCounts: Map<string, number>
-	pendingBranches: { ends: string[]; joinStrategy: string } | null
-	pendingForkEdges: { source: string; condition: string }[]
 }
 
 export interface VariableInfo {

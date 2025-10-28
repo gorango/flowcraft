@@ -1,5 +1,5 @@
 import type { NodeDefinition, WorkflowBlueprint } from 'flowcraft'
-import * as ts from 'typescript'
+import ts from 'typescript'
 import type { Compiler } from './compiler'
 import { CompilerState } from './compiler-state'
 import { handleAwaitExpression } from './visitors/handle-await-expression'
@@ -30,7 +30,6 @@ export class FlowAnalyzer {
 		if (this.functionNode.body) {
 			this.traverse(this.functionNode.body)
 		}
-		// If no nodes, add a start node
 		if (this.state.getNodes().length === 0) {
 			const startNode: NodeDefinition = {
 				id: 'start',
@@ -61,7 +60,7 @@ export class FlowAnalyzer {
 
 	private visit(node: ts.Node): string | null {
 		if (ts.isExpressionStatement(node)) {
-			// Check for durable primitive calls without await
+			// check durable primitive calls without await
 			if (ts.isCallExpression(node.expression)) {
 				const primitiveCall = this.isDurablePrimitiveCall(node.expression)
 				if (primitiveCall) {
@@ -73,10 +72,8 @@ export class FlowAnalyzer {
 					return this.state.getCursor()
 				}
 			}
-			// Handle expression statements by visiting their expression
 			return this.visit(node.expression)
 		} else if (ts.isVariableStatement(node)) {
-			// Handle variable statements by visiting their declarations
 			for (const declaration of node.declarationList.declarations) {
 				if (declaration.initializer) {
 					this.visit(declaration.initializer)
@@ -106,7 +103,6 @@ export class FlowAnalyzer {
 			} else {
 				this.addDiagnostic(node, 'error', `continue statement can only be used inside a loop.`)
 			}
-			// Stop traversing this path
 			this.state.setCursor(null)
 			return null
 		} else if (ts.isBreakStatement(node)) {
@@ -121,11 +117,10 @@ export class FlowAnalyzer {
 			} else {
 				this.addDiagnostic(node, 'error', `break statement can only be used inside a loop.`)
 			}
-			// Stop traversing this path
 			this.state.setCursor(null)
 			return null
 		} else {
-			return this.state.getCursor() // Unknown type
+			return this.state.getCursor()
 		}
 	}
 
@@ -154,16 +149,13 @@ export class FlowAnalyzer {
 			return null
 		}
 
-		// Get the original symbol (in case of aliases)
 		const originalSymbol = symbol.flags & ts.SymbolFlags.Alias ? this.typeChecker.getAliasedSymbol(symbol) : symbol
 
-		// Find the declaration
 		const declarations = originalSymbol.getDeclarations()
 		if (!declarations || declarations.length === 0) {
 			return null
 		}
 
-		// Check if it's imported from 'flowcraft/sdk'
 		for (const declaration of declarations) {
 			if (ts.isImportSpecifier(declaration)) {
 				const importDeclaration = declaration.parent.parent.parent
@@ -192,38 +184,29 @@ export class FlowAnalyzer {
 	}
 
 	checkFunctionCallTypes(callExpr: ts.CallExpression): void {
-		// Get the type of the function being called
 		const funcType = this.typeChecker.getTypeAtLocation(callExpr.expression)
 		if (!funcType) return
 
-		// Get the call signatures
 		const signatures = this.typeChecker.getSignaturesOfType(funcType, ts.SignatureKind.Call)
 		if (signatures.length === 0) return
 
-		// Use the first signature (most common case)
 		const signature = signatures[0]
 		const parameters = signature.getParameters()
 		const args = callExpr.arguments
 
-		// Check each argument against its corresponding parameter
 		for (let i = 0; i < Math.min(parameters.length, args.length); i++) {
 			const param = parameters[i]
 			const arg = args[i]
 
-			// Get the expected parameter type
 			if (!param.valueDeclaration) continue
 			const paramType = this.typeChecker.getTypeOfSymbolAtLocation(param, param.valueDeclaration)
 			if (!paramType) continue
 
-			// Get the actual argument type
 			const argType = this.typeChecker.getTypeAtLocation(arg)
 			if (!argType) continue
 
-			// Check if the argument type is assignable to the parameter type
 			const isAssignable = this.typeChecker.isTypeAssignableTo(argType, paramType)
-
 			if (!isAssignable) {
-				// Add a diagnostic for type mismatch
 				const paramName = param.getName()
 				const argTypeStr = this.typeChecker.typeToString(argType)
 				const paramTypeStr = this.typeChecker.typeToString(paramType)
@@ -239,7 +222,6 @@ export class FlowAnalyzer {
 	}
 
 	isPromiseAllCall(node: ts.CallExpression): boolean {
-		// Check if it's Promise.all([...])
 		if (ts.isPropertyAccessExpression(node.expression)) {
 			const propAccess = node.expression
 			const objectText = propAccess.expression.getText()

@@ -1,6 +1,6 @@
 import * as path from 'node:path'
 import type { WorkflowBlueprint } from 'flowcraft'
-import * as ts from 'typescript'
+import ts from 'typescript'
 import { FlowAnalyzer } from './flow-analyzer'
 import type { CompilationOutput, FileAnalysis } from './types'
 
@@ -17,10 +17,8 @@ export class Compiler {
 	}
 
 	compileProject(_entryFilePaths: string[]): CompilationOutput {
-		// Discovery Pass
 		this.discoveryPass()
 
-		// Analysis Pass
 		const blueprints: Record<string, WorkflowBlueprint> = {}
 		const registry: Record<string, { importPath: string; exportName: string }> = {}
 		const diagnostics: import('./types').CompilationDiagnostic[] = []
@@ -37,7 +35,6 @@ export class Compiler {
 			}
 		}
 
-		// Generation Pass
 		const manifestSource = this.generateManifest(blueprints, registry)
 
 		return { blueprints, registry, diagnostics, manifestSource }
@@ -51,7 +48,6 @@ export class Compiler {
 
 			ts.forEachChild(sourceFile, (node) => {
 				if (ts.isExportDeclaration(node)) {
-					// Handle export { ... }
 					if (node.exportClause && ts.isNamedExports(node.exportClause)) {
 						node.exportClause.elements.forEach((element) => {
 							const symbol = this.typeChecker.getSymbolAtLocation(element.name)

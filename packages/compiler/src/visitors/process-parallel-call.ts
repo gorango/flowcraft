@@ -1,9 +1,8 @@
 import type { NodeDefinition } from 'flowcraft'
-import * as ts from 'typescript'
+import ts from 'typescript'
 import type { FlowAnalyzer } from '../flow-analyzer'
 
 export function processParallelCall(analyzer: FlowAnalyzer, callNode: ts.CallExpression): string | null {
-	// Process a single call expression within Promise.all
 	const symbol = analyzer.typeChecker.getSymbolAtLocation(callNode.expression)
 	if (symbol) {
 		let originalSymbol = symbol
@@ -18,7 +17,7 @@ export function processParallelCall(analyzer: FlowAnalyzer, callNode: ts.CallExp
 				const exportName = originalSymbol.name
 				const exportInfo = fileAnalysis.exports.get(exportName)
 				if (exportInfo) {
-					// This is an exported function (from another file or this file)
+					// this is exported function (from another file or this one)
 					const count = analyzer.state.incrementUsageCount(exportName)
 
 					let nodeDef: NodeDefinition
@@ -43,7 +42,7 @@ export function processParallelCall(analyzer: FlowAnalyzer, callNode: ts.CallExp
 					analyzer.state.addNode(nodeDef)
 					return nodeDef.id
 				} else if (ts.isFunctionDeclaration(decl) || ts.isFunctionExpression(decl) || ts.isArrowFunction(decl)) {
-					// This is a local function declaration in the same file, treat as step
+					// this is a local function declaration in the same file
 					const count = analyzer.state.incrementUsageCount(exportName)
 
 					const nodeDef: NodeDefinition = {

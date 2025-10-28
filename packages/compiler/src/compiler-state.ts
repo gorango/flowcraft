@@ -1,5 +1,5 @@
 import type { EdgeDefinition, NodeDefinition } from 'flowcraft'
-import * as ts from 'typescript'
+import ts from 'typescript'
 import type { Scope, VariableInfo } from './types'
 
 export class CompilerState {
@@ -14,7 +14,6 @@ export class CompilerState {
 	private loopScopeStack: { controllerId: string; breakTargetId: string }[] = []
 
 	constructor() {
-		// Push initial scope
 		this.scopes.push({ variables: new Map() })
 	}
 
@@ -103,7 +102,6 @@ export class CompilerState {
 				target: nodeDef.id,
 				_sourceLocation: this.getSourceLocation(node, sourceFile),
 			}
-			// If source is a loop-controller, add break action
 			const sourceNode = this.nodes.find((n) => n.id === this.cursor)
 			if (sourceNode && sourceNode.uses === 'loop-controller') {
 				edge.action = 'break'
@@ -112,7 +110,6 @@ export class CompilerState {
 		}
 		this.cursor = nodeDef.id
 
-		// Map variable to node output if it's a VariableDeclaration
 		const parent = node.parent
 		if (ts.isVariableDeclaration(parent) && parent.name && ts.isIdentifier(parent.name)) {
 			const varName = parent.name.text
@@ -161,7 +158,6 @@ export class CompilerState {
 	}
 
 	getVariableInScope(varName: string): VariableInfo | undefined {
-		// Search from the current scope outwards
 		for (let i = this.scopes.length - 1; i >= 0; i--) {
 			const variable = this.scopes[i].variables.get(varName)
 			if (variable) {

@@ -86,7 +86,7 @@ export class SubflowNode extends BaseNode {
 				const value = subflowFinalContext[`_outputs.${subKey}`] ?? subflowFinalContext[subKey]
 				await context.context.set(parentKey as any, value)
 			}
-			return { output: subflowFinalContext } // Return the whole context if mapping is used
+			return { output: subflowFinalContext }
 		}
 
 		const subAnalysis = analyzeBlueprint(subBlueprint)

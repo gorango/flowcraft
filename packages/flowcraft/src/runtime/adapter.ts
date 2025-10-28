@@ -149,7 +149,7 @@ export abstract class BaseDistributedAdapter {
 		}
 		const workerState = {
 			getContext: () => context,
-			markFallbackExecuted: () => {},
+			markFallbackExecuted: () => { },
 			addError: (nodeId: string, error: Error) => {
 				this.logger.error(`[Adapter] Error in node ${nodeId}:`, error)
 			},
@@ -246,7 +246,7 @@ export abstract class BaseDistributedAdapter {
 			const lockKey = `flowcraft:joinlock:${runId}:${targetNodeId}`
 			const isLocked = await this.store.setIfNotExist(lockKey, 'locked', 3600)
 			if (!isLocked) {
-				// Check if it's cancelled
+				// check if cancelled
 				const cancelKey = `flowcraft:fanin:cancel:${runId}:${targetNodeId}`
 				const isCancelled = !(await this.store.setIfNotExist(cancelKey, 'cancelled', 3600))
 				if (isCancelled) {
@@ -255,7 +255,7 @@ export abstract class BaseDistributedAdapter {
 					)
 					throw new Error(`Node '${targetNodeId}' failed due to cancelled predecessor in run '${runId}'`)
 				}
-				return false // Already locked by another predecessor
+				return false // already locked by another predecessor
 			}
 			return true
 		} else {
@@ -299,7 +299,6 @@ export abstract class BaseDistributedAdapter {
 		}
 
 		const state = await context.toJSON()
-		// filter out internal keys
 		const completedNodes = new Set<string>()
 		for (const key of Object.keys(state)) {
 			if (key.startsWith('_outputs.')) {

@@ -1,5 +1,5 @@
 import type { NodeDefinition } from 'flowcraft'
-import * as ts from 'typescript'
+import ts from 'typescript'
 import type { FlowAnalyzer } from '../flow-analyzer'
 
 export function handleAwaitCall(analyzer: FlowAnalyzer, callee: ts.CallExpression, node: ts.AwaitExpression): void {
@@ -17,7 +17,6 @@ export function handleAwaitCall(analyzer: FlowAnalyzer, callee: ts.CallExpressio
 				const exportName = originalSymbol.name
 				const exportInfo = fileAnalysis.exports.get(exportName)
 				if (exportInfo) {
-					// This is an exported function
 					let nodeDef: NodeDefinition
 					const count = analyzer.state.incrementUsageCount(exportName)
 					if (exportInfo.type === 'step') {
@@ -43,11 +42,10 @@ export function handleAwaitCall(analyzer: FlowAnalyzer, callee: ts.CallExpressio
 							nodeDef.config = { fallback }
 						}
 					} else {
-						return // Unknown type
+						return // unknown type
 					}
 					analyzer.state.addNodeAndWire(nodeDef, node, analyzer.sourceFile, analyzer.typeChecker)
 				} else {
-					// Function is not a durable step or flow
 					analyzer.addDiagnostic(
 						node,
 						'error',
