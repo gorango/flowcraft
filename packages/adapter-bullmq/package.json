@@ -17,14 +17,14 @@
 		"typecheck": "tsc --noEmit"
 	},
 	"dependencies": {
-		"bullmq": "^5.61.0",
+		"bullmq": "^5.62.0",
 		"flowcraft": "^2.4.0",
-		"ioredis": "^5.8.1"
+		"ioredis": "^5.8.2"
 	},
 	"devDependencies": {
-		"@testcontainers/redis": "^11.7.1",
+		"@testcontainers/redis": "^11.7.2",
 		"tsup": "^8.5.0",
 		"typescript": "^5.9.3",
-		"vitest": "^3.2.4"
+		"vitest": "^4.0.4"
 	}
 }

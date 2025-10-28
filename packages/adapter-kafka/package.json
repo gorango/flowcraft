@@ -19,15 +19,15 @@
 	"dependencies": {
 		"cassandra-driver": "^4.8.0",
 		"flowcraft": "^2.4.0",
-		"ioredis": "^5.8.1",
+		"ioredis": "^5.8.2",
 		"kafkajs": "^2.2.4"
 	},
 	"devDependencies": {
-		"@testcontainers/cassandra": "^11.7.1",
-		"@testcontainers/kafka": "^11.7.1",
-		"@testcontainers/redis": "^11.7.1",
+		"@testcontainers/cassandra": "^11.7.2",
+		"@testcontainers/kafka": "^11.7.2",
+		"@testcontainers/redis": "^11.7.2",
 		"tsup": "^8.5.0",
 		"typescript": "^5.9.3",
-		"vitest": "^3.2.4"
+		"vitest": "^4.0.4"
 	}
 }

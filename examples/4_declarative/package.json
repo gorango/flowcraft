@@ -10,11 +10,11 @@
 	},
 	"dependencies": {
 		"dotenv": "^17.2.3",
-		"flowcraft": "workspace:*",
-		"openai": "^6.3.0"
+		"flowcraft": "^2.4.0",
+		"openai": "^6.7.0"
 	},
 	"devDependencies": {
-		"@types/node": "^24.8.1",
+		"@types/node": "^24.9.2",
 		"typescript": "^5.9.3"
 	}
 }

@@ -36,8 +36,8 @@
 		"@flowcraft/compiler": "workspace:*"
 	},
 	"devDependencies": {
-		"@types/node": "^24.9.1",
-		"astro": "^4.0.0",
+		"@types/node": "^24.9.2",
+		"astro": "^5.15.2",
 		"tsup": "^8.5.0"
 	},
 	"peerDependencies": {

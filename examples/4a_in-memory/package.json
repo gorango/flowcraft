@@ -7,10 +7,10 @@
 	},
 	"dependencies": {
 		"@flowcraft/example-declarative-shared-logic": "workspace:*",
-		"flowcraft": "workspace:*"
+		"flowcraft": "^2.4.0"
 	},
 	"devDependencies": {
-		"@types/node": "^24.8.0",
+		"@types/node": "^24.9.2",
 		"tsx": "^4.20.6",
 		"typescript": "^5.9.3"
 	}

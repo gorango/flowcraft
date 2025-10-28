@@ -34,8 +34,7 @@ async function resolveInputs(
 			if (await context.has(prefixedKey)) {
 				value = await context.get(prefixedKey)
 				keyFound = true
-			}
-			else if (await context.has(directKey)) {
+			} else if (await context.has(directKey)) {
 				value = await context.get(directKey)
 				keyFound = true
 			}

@@ -1,5 +1,5 @@
 {
-	"$schema": "https://biomejs.dev/schemas/2.2.6/schema.json",
+	"$schema": "https://biomejs.dev/schemas/2.3.2/schema.json",
 	"vcs": {
 		"enabled": true,
 		"clientKind": "git",
@@ -11,8 +11,7 @@
 	"formatter": {
 		"enabled": true,
 		"indentStyle": "tab",
-		"lineWidth": 120,
-		"includes": ["packages/**/*", "examples/*", "!docs"]
+		"lineWidth": 120
 	},
 	"linter": {
 		"enabled": true,
@@ -24,8 +23,7 @@
 			"style": {
 				"noNonNullAssertion": "warn"
 			}
-		},
-		"includes": ["packages/**/*", "examples/*", "!docs"]
+		}
 	},
 	"javascript": {
 		"formatter": {

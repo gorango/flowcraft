@@ -36,10 +36,10 @@
 		"@opentelemetry/api": "^1.8.0"
 	},
 	"devDependencies": {
-		"@opentelemetry/sdk-trace-base": "^2.1.0",
-		"@types/node": "^24.8.0",
+		"@opentelemetry/sdk-trace-base": "^2.2.0",
+		"@types/node": "^24.9.2",
 		"tsup": "^8.5.0",
 		"typescript": "^5.9.3",
-		"vitest": "^3.2.4"
+		"vitest": "^4.0.4"
 	}
 }
