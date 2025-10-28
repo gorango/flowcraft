@@ -68,7 +68,7 @@ async function main() {
 		switch (finalStatus.status) {
 			case 'completed':
 				console.log(`✅ Workflow Run ID: ${runId} COMPLETED.`)
-				console.log('Final Output:', finalStatus.payload?.context?.moderation_result)
+				console.log('Final Output:', finalStatus.payload?.context?.final_output)
 				break
 			case 'cancelled':
 				console.warn(`🛑 Workflow Run ID: ${runId} was successfully CANCELLED.`)

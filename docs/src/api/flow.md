@@ -55,6 +55,15 @@ Creates a wait node that pauses workflow execution for external input.
 -   **`options?`** `Omit<NodeDefinition, 'id' | 'uses'>`: Optional configuration for the wait node.
 -   **Returns**: `this` (for chaining).
 
+### `.sleep(id, options)`
+
+Creates a sleep node that pauses workflow execution for a specified duration.
+
+-   **`id`** `string`: A unique identifier for the sleep node.
+-   **`options`** `{ duration: number }`:
+    -   `duration`: The duration to sleep in milliseconds.
+-   **Returns**: `this` (for chaining).
+
 ### `.loop(id, options)`
 
 Creates an iterative loop in the workflow graph.

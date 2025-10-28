@@ -104,7 +104,7 @@
 		"Geist Mono", ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol",
 		"Noto Color Emoji";
 	--vp-font-family-mono:
-		"DepartureMono", ui-monospace, "Menlo", "Monaco", "Consolas", "Liberation Mono", "Courier New", monospace;
+		ui-monospace, "Menlo", "Monaco", "Consolas", "Liberation Mono", "Courier New", monospace;
 }
 
 body {
@@ -112,17 +112,9 @@ body {
 }
 
 header,
-aside,
-.aside,
-.title,
 .tagline,
-h1,
-h2,
-h3,
-h4,
-h5,
-h6 {
-	font-family: var(--vp-font-family-mono);
+h1 {
+	font-family: "DepartureMono";
 }
 
 .VPHero {
@@ -157,7 +149,7 @@ h6 {
 }
 .VPSidebar {
 	.VPLink .text {
-		font-size: 13px;
+		font-size: 14px;
 		line-height: 1.5;
 	}
 }

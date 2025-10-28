@@ -1,7 +1,9 @@
 import { analyzeBlueprint } from '../analysis'
+import { ConsoleLogger } from '../logger'
 import { JsonSerializer } from '../serializer'
 import type {
 	IAsyncContext,
+	ILogger,
 	ISerializer,
 	NodeResult,
 	RuntimeOptions,
@@ -46,19 +48,21 @@ export abstract class BaseDistributedAdapter {
 	protected readonly runtime: FlowRuntime<any, any>
 	protected readonly store: ICoordinationStore
 	protected readonly serializer: ISerializer
+	protected readonly logger: ILogger
 
 	constructor(options: AdapterOptions) {
 		this.runtime = new FlowRuntime(options.runtimeOptions)
 		this.store = options.coordinationStore
 		this.serializer = options.runtimeOptions.serializer || new JsonSerializer()
-		console.log('[Adapter] BaseDistributedAdapter initialized.')
+		this.logger = options.runtimeOptions.logger || new ConsoleLogger()
+		this.logger.info('[Adapter] BaseDistributedAdapter initialized.')
 	}
 
 	/**
 	 * Starts the worker, which begins listening for and processing jobs from the queue.
 	 */
 	public start(): void {
-		console.log('[Adapter] Starting worker...')
+		this.logger.info('[Adapter] Starting worker...')
 		this.processJobs(this.handleJob.bind(this))
 	}
 
@@ -113,7 +117,7 @@ export abstract class BaseDistributedAdapter {
 		const blueprint = this.runtime.options.blueprints?.[blueprintId]
 		if (!blueprint) {
 			const reason = `Blueprint with ID '${blueprintId}' not found in the worker's runtime registry.`
-			console.error(`[Adapter] FATAL: ${reason}`)
+			this.logger.error(`[Adapter] FATAL: ${reason}`)
 			await this.publishFinalResult(runId, { status: 'failed', reason })
 			return
 		}
@@ -132,7 +136,7 @@ export abstract class BaseDistributedAdapter {
 			getContext: () => context,
 			markFallbackExecuted: () => {},
 			addError: (nodeId: string, error: Error) => {
-				console.error(`[Adapter] Error in node ${nodeId}:`, error)
+				this.logger.error(`[Adapter] Error in node ${nodeId}:`, error)
 			},
 		} as any
 
@@ -144,13 +148,17 @@ export abstract class BaseDistributedAdapter {
 			const isTerminalNode = analysis.terminalNodeIds.includes(nodeId)
 
 			if (isTerminalNode) {
-				const completedNodes = new Set(
-					Object.keys(await context.toJSON()).filter((k) => blueprint.nodes.some((n) => n.id === k)),
-				)
+				const allContextKeys = Object.keys(await context.toJSON())
+				const completedNodes = new Set<string>()
+				for (const key of allContextKeys) {
+					if (key.startsWith('_outputs.')) {
+						completedNodes.add(key.substring('_outputs.'.length))
+					}
+				}
 				const allTerminalNodesCompleted = analysis.terminalNodeIds.every((terminalId) => completedNodes.has(terminalId))
 
 				if (allTerminalNodesCompleted) {
-					console.log(`[Adapter] All terminal nodes completed for Run ID: ${runId}. Declaring workflow complete.`)
+					this.logger.info(`[Adapter] All terminal nodes completed for Run ID: ${runId}. Declaring workflow complete.`)
 					const finalContext = await context.toJSON()
 					const finalResult: WorkflowResult = {
 						context: finalContext,
@@ -163,7 +171,7 @@ export abstract class BaseDistributedAdapter {
 					})
 					return
 				} else {
-					console.log(
+					this.logger.info(
 						`[Adapter] Terminal node '${nodeId}' completed for Run ID '${runId}', but other terminal nodes are still running.`,
 					)
 				}
@@ -173,7 +181,7 @@ export abstract class BaseDistributedAdapter {
 
 			// stop if a branch terminates but it wasn't a terminal node
 			if (nextNodes.length === 0 && !isTerminalNode) {
-				console.log(
+				this.logger.info(
 					`[Adapter] Non-terminal node '${nodeId}' reached end of branch for Run ID '${runId}'. This branch will now terminate.`,
 				)
 				return
@@ -183,15 +191,15 @@ export abstract class BaseDistributedAdapter {
 				await this.runtime.applyEdgeTransform(edge, result, nextNodeDef, context)
 				const isReady = await this.isReadyForFanIn(runId, blueprint, nextNodeDef.id)
 				if (isReady) {
-					console.log(`[Adapter] Node '${nextNodeDef.id}' is ready. Enqueuing job.`)
+					this.logger.info(`[Adapter] Node '${nextNodeDef.id}' is ready. Enqueuing job.`)
 					await this.enqueueJob({ runId, blueprintId, nodeId: nextNodeDef.id })
 				} else {
-					console.log(`[Adapter] Node '${nextNodeDef.id}' is waiting for other predecessors to complete.`)
+					this.logger.info(`[Adapter] Node '${nextNodeDef.id}' is waiting for other predecessors to complete.`)
 				}
 			}
 		} catch (error: any) {
 			const reason = error.message || 'Unknown execution error'
-			console.error(`[Adapter] FATAL: Job for node '${nodeId}' failed for Run ID '${runId}': ${reason}`)
+			this.logger.error(`[Adapter] FATAL: Job for node '${nodeId}' failed for Run ID '${runId}': ${reason}`)
 			await this.publishFinalResult(runId, { status: 'failed', reason })
 			await this.writePoisonPillForSuccessors(runId, blueprint, nodeId)
 		}
@@ -213,9 +221,9 @@ export abstract class BaseDistributedAdapter {
 		}
 
 		const poisonKey = `flowcraft:fanin:poison:${runId}:${targetNodeId}`
-		const isPoisoned = !(await this.store.setIfNotExist(poisonKey, 'poisoned', 3600))
+		const isPoisoned = await this.store.get(poisonKey)
 		if (isPoisoned) {
-			console.log(`[Adapter] Node '${targetNodeId}' is poisoned due to failed predecessor. Failing immediately.`)
+			this.logger.info(`[Adapter] Node '${targetNodeId}' is poisoned due to failed predecessor. Failing immediately.`)
 			throw new Error(`Node '${targetNodeId}' failed due to poisoned predecessor in run '${runId}'`)
 		}
 
@@ -227,7 +235,9 @@ export abstract class BaseDistributedAdapter {
 				const cancelKey = `flowcraft:fanin:cancel:${runId}:${targetNodeId}`
 				const isCancelled = !(await this.store.setIfNotExist(cancelKey, 'cancelled', 3600))
 				if (isCancelled) {
-					console.log(`[Adapter] Node '${targetNodeId}' is cancelled due to failed predecessor. Failing immediately.`)
+					this.logger.info(
+						`[Adapter] Node '${targetNodeId}' is cancelled due to failed predecessor. Failing immediately.`,
+					)
 					throw new Error(`Node '${targetNodeId}' failed due to cancelled predecessor in run '${runId}'`)
 				}
 				return false // Already locked by another predecessor
@@ -275,7 +285,12 @@ export abstract class BaseDistributedAdapter {
 
 		const state = await context.toJSON()
 		// filter out internal keys
-		const completedNodes = new Set(Object.keys(state).filter((k) => blueprint.nodes.some((n) => n.id === k)))
+		const completedNodes = new Set<string>()
+		for (const key of Object.keys(state)) {
+			if (key.startsWith('_outputs.')) {
+				completedNodes.add(key.substring('_outputs.'.length))
+			}
+		}
 
 		const frontier = this.calculateResumedFrontier(blueprint, completedNodes)
 
@@ -283,6 +298,13 @@ export abstract class BaseDistributedAdapter {
 		for (const nodeId of frontier) {
 			const nodeDef = blueprint.nodes.find((n) => n.id === nodeId)
 			const joinStrategy = nodeDef?.config?.joinStrategy || 'all'
+
+			const poisonKey = `flowcraft:fanin:poison:${runId}:${nodeId}`
+			const isPoisoned = await this.store.get(poisonKey)
+			if (isPoisoned) {
+				this.logger.info(`[Adapter] Reconciling: Node '${nodeId}' is poisoned, skipping.`, { runId })
+				continue
+			}
 
 			let shouldEnqueue = false
 
@@ -292,7 +314,7 @@ export abstract class BaseDistributedAdapter {
 				if (await this.store.setIfNotExist(lockKey, 'locked-by-reconcile', 3600)) {
 					shouldEnqueue = true
 				} else {
-					console.log(`[Adapter] Reconciling: Node '${nodeId}' is an 'any' join and is already locked.`, { runId })
+					this.logger.info(`[Adapter] Reconciling: Node '${nodeId}' is an 'any' join and is already locked.`, { runId })
 				}
 			} else {
 				// 'all' joins and single-predecessor nodes use a temporary lock
@@ -300,12 +322,12 @@ export abstract class BaseDistributedAdapter {
 				if (await this.store.setIfNotExist(lockKey, 'locked', 120)) {
 					shouldEnqueue = true
 				} else {
-					console.log(`[Adapter] Reconciling: Node '${nodeId}' is already locked.`, { runId })
+					this.logger.info(`[Adapter] Reconciling: Node '${nodeId}' is already locked.`, { runId })
 				}
 			}
 
 			if (shouldEnqueue) {
-				console.log(`[Adapter] Reconciling: Enqueuing ready job for node '${nodeId}'`, { runId })
+				this.logger.info(`[Adapter] Reconciling: Enqueuing ready job for node '${nodeId}'`, { runId })
 				await this.enqueueJob({ runId, blueprintId: blueprint.id, nodeId })
 				enqueuedNodes.add(nodeId)
 			}
@@ -369,13 +391,13 @@ export abstract class BaseDistributedAdapter {
 				if (joinStrategy === 'all') {
 					const poisonKey = `flowcraft:fanin:poison:${runId}:${successor.id}`
 					await this.store.setIfNotExist(poisonKey, 'poisoned', 3600)
-					console.log(
+					this.logger.info(
 						`[Adapter] Wrote poison pill for 'all' join node '${successor.id}' due to failed predecessor '${failedNodeId}'`,
 					)
 				} else if (joinStrategy === 'any') {
 					const cancelKey = `flowcraft:fanin:cancel:${runId}:${successor.id}`
 					await this.store.setIfNotExist(cancelKey, 'cancelled', 3600)
-					console.log(
+					this.logger.info(
 						`[Adapter] Wrote cancellation pill for 'any' join node '${successor.id}' due to failed predecessor '${failedNodeId}'`,
 					)
 				}

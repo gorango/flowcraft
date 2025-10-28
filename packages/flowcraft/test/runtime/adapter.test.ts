@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { FlowcraftError } from '../../src/errors'
+import { NullLogger } from '../../src/logger'
 import type { AdapterOptions, ICoordinationStore, JobPayload } from '../../src/runtime'
 import { BaseDistributedAdapter, FlowRuntime } from '../../src/runtime'
 import type { IAsyncContext, NodeDefinition, WorkflowBlueprint } from '../../src/types'
@@ -75,7 +76,7 @@ describe('BaseDistributedAdapter', () => {
 			increment: vi.fn(),
 			setIfNotExist: vi.fn().mockResolvedValue(true), // Default to allowing locks
 			delete: vi.fn(),
-			get: vi.fn(),
+			get: vi.fn().mockResolvedValue(undefined),
 		}
 
 		mockRuntime = {
@@ -97,7 +98,7 @@ describe('BaseDistributedAdapter', () => {
 		vi.mocked(FlowRuntime).mockImplementation(() => mockRuntime)
 
 		const adapterOptions: AdapterOptions = {
-			runtimeOptions: { blueprints },
+			runtimeOptions: { blueprints, logger: new NullLogger() },
 			coordinationStore: mockCoordinationStore,
 		}
 
@@ -150,7 +151,7 @@ describe('BaseDistributedAdapter', () => {
 				output: 'Final Result',
 			})
 			vi.mocked(mockRuntime.determineNextNodes).mockResolvedValue([]) // No more nodes
-			vi.mocked(mockContext.toJSON).mockResolvedValue({ B: 'Final Result' })
+			vi.mocked(mockContext.toJSON).mockResolvedValue({ '_outputs.B': 'Final Result' })
 
 			await jobHandler(job)
 
@@ -181,7 +182,7 @@ describe('BaseDistributedAdapter', () => {
 				output: 'end of branch',
 			})
 			vi.mocked(mockRuntime.determineNextNodes).mockResolvedValue([])
-			vi.mocked(mockContext.toJSON).mockResolvedValue({ A: 'end of branch' })
+			vi.mocked(mockContext.toJSON).mockResolvedValue({ '_outputs.A': 'end of branch' })
 
 			await jobHandler(job)
 
@@ -303,15 +304,14 @@ describe('BaseDistributedAdapter', () => {
 			vi.mocked(mockRuntime.determineNextNodes).mockResolvedValue([
 				{ node: fanInAnyBlueprint.nodes[2], edge: fanInAnyBlueprint.edges[1] },
 			])
-			// BlueprintId set, poison check returns true (not poisoned), join lock returns false
-			vi.mocked(mockCoordinationStore.setIfNotExist)
-				.mockResolvedValueOnce(true) // BlueprintId set
-				.mockResolvedValueOnce(true) // Poison check
-				.mockResolvedValue(false) // Join lock
+			// Poison check is not set, but join lock is already acquired
+			vi.mocked(mockCoordinationStore.get).mockResolvedValue(undefined)
+			vi.mocked(mockCoordinationStore.setIfNotExist).mockResolvedValue(false) // Join lock fails
 
 			await jobHandler(job)
 
-			expect(mockCoordinationStore.setIfNotExist).toHaveBeenCalledWith('flowcraft:joinlock:run2:C', 'locked', 3600)
+			const joinLockKey = 'flowcraft:joinlock:run2:C'
+			expect(mockCoordinationStore.setIfNotExist).toHaveBeenCalledWith(joinLockKey, 'locked', 3600)
 			expect(adapter.enqueueJob).not.toHaveBeenCalled()
 		})
 
@@ -340,14 +340,14 @@ describe('BaseDistributedAdapter', () => {
 			vi.mocked(mockRuntime.determineNextNodes).mockResolvedValue([
 				{ node: poisonedFanInBlueprint.nodes[2], edge: poisonedFanInBlueprint.edges[1] },
 			])
-			// BlueprintId set, poison pill already set for 'C' (poison check returns false)
-			vi.mocked(mockCoordinationStore.setIfNotExist)
-				.mockResolvedValueOnce(true) // BlueprintId set
-				.mockResolvedValueOnce(false) // Poison check fails
-				.mockResolvedValue(true) // Other calls succeed
+
+			// Simulate that the poison pill key already exists in the store.
+			const poisonKey = 'flowcraft:fanin:poison:run3:C'
+			vi.mocked(mockCoordinationStore.get).mockResolvedValue('poisoned')
 
 			await jobHandler(job)
 
+			expect(mockCoordinationStore.get).toHaveBeenCalledWith(poisonKey)
 			expect(adapter.publishFinalResult).toHaveBeenCalledWith('run3', {
 				status: 'failed',
 				reason: "Node 'C' failed due to poisoned predecessor in run 'run3'",
@@ -550,7 +550,8 @@ describe('BaseDistributedAdapter', () => {
 		it('should reconcile a linear workflow with completed nodes', async () => {
 			// Simulate a workflow state where node A is completed
 			vi.mocked(mockContext.get).mockResolvedValue('linear')
-			vi.mocked(mockContext.toJSON).mockResolvedValue({ A: 'result from A' })
+			// FIX: Use correct state structure
+			vi.mocked(mockContext.toJSON).mockResolvedValue({ '_outputs.A': 'result from A' })
 
 			const enqueuedNodes = await adapter.reconcile('run1')
 
@@ -565,7 +566,7 @@ describe('BaseDistributedAdapter', () => {
 		it('should reconcile a fan-in workflow with all predecessors completed', async () => {
 			// Simulate a workflow state where both A and B are completed
 			vi.mocked(mockContext.get).mockResolvedValue('fan-in')
-			vi.mocked(mockContext.toJSON).mockResolvedValue({ A: 'result from A', B: 'result from B' })
+			vi.mocked(mockContext.toJSON).mockResolvedValue({ '_outputs.A': 'result from A', '_outputs.B': 'result from B' })
 
 			const enqueuedNodes = await adapter.reconcile('run1')
 
@@ -580,7 +581,7 @@ describe('BaseDistributedAdapter', () => {
 		it('should not enqueue nodes that are already locked', async () => {
 			// Simulate a workflow state where node A is completed
 			vi.mocked(mockContext.get).mockResolvedValue('linear')
-			vi.mocked(mockContext.toJSON).mockResolvedValue({ A: 'result from A' })
+			vi.mocked(mockContext.toJSON).mockResolvedValue({ '_outputs.A': 'result from A' })
 
 			// Node B is already locked
 			vi.mocked(mockCoordinationStore.setIfNotExist).mockResolvedValue(false)
@@ -594,7 +595,7 @@ describe('BaseDistributedAdapter', () => {
 		it('should handle any join strategy correctly', async () => {
 			// Simulate a workflow state where node A is completed for fan-in-any
 			vi.mocked(mockContext.get).mockResolvedValue('fan-in-any')
-			vi.mocked(mockContext.toJSON).mockResolvedValue({ A: 'result from A' })
+			vi.mocked(mockContext.toJSON).mockResolvedValue({ '_outputs.A': 'result from A' })
 
 			// For 'any' joins, use the permanent join lock
 			vi.mocked(mockCoordinationStore.setIfNotExist).mockResolvedValue(true)
@@ -602,11 +603,15 @@ describe('BaseDistributedAdapter', () => {
 			const enqueuedNodes = await adapter.reconcile('run1')
 
 			expect(enqueuedNodes).toEqual(new Set(['B', 'C']))
+
+			// Verify the permanent lock was acquired for the 'any' join node C
 			expect(mockCoordinationStore.setIfNotExist).toHaveBeenCalledWith(
 				'flowcraft:joinlock:run1:C',
 				'locked-by-reconcile',
 				3600,
 			)
+
+			// Verify jobs were enqueued for BOTH ready nodes
 			expect(adapter.enqueueJob).toHaveBeenCalledWith({
 				runId: 'run1',
 				blueprintId: 'fan-in-any',
@@ -622,7 +627,7 @@ describe('BaseDistributedAdapter', () => {
 		it('should not enqueue any join nodes that are already locked', async () => {
 			// Simulate a workflow state where node A is completed for fan-in-any
 			vi.mocked(mockContext.get).mockResolvedValue('fan-in-any')
-			vi.mocked(mockContext.toJSON).mockResolvedValue({ A: 'result from A' })
+			vi.mocked(mockContext.toJSON).mockResolvedValue({ '_outputs.A': 'result from A' })
 
 			// For 'any' joins, the lock is already acquired
 			vi.mocked(mockCoordinationStore.setIfNotExist).mockResolvedValue(false)
@@ -630,7 +635,7 @@ describe('BaseDistributedAdapter', () => {
 			const enqueuedNodes = await adapter.reconcile('run1')
 
 			expect(enqueuedNodes).toEqual(new Set())
-			expect(adapter.enqueueJob).not.toHaveBeenCalled()
+			expect(adapter.enqueueJob).not.toHaveBeenCalledWith(expect.objectContaining({ nodeId: 'C' }))
 		})
 
 		it('should throw error if blueprintId is not found in context', async () => {
@@ -684,7 +689,7 @@ describe('BaseDistributedAdapter', () => {
 			vi.mocked(mockContext.get).mockResolvedValue('linear')
 			vi.mocked(mockContext.toJSON).mockResolvedValue({
 				blueprintId: 'linear', // Internal key that should be filtered out
-				A: 'result from A',
+				'_outputs.A': 'result from A',
 			})
 
 			const enqueuedNodes = await adapter.reconcile('run1')

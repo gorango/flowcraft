@@ -388,4 +388,38 @@ describe('Built-In Nodes', () => {
 			expect(result.context['_outputs.output']).toBe('main_complete')
 		})
 	})
+
+	describe('SleepNode', () => {
+		it('should mark workflow as awaiting with timer details', async () => {
+			const flow = createFlow('sleep-test')
+			flow.node('start', async () => ({ output: 'start' }))
+			flow.sleep('sleep', { duration: 1000 })
+			flow.node('end', async () => ({ output: 'end' }))
+			flow.edge('start', 'sleep')
+			flow.edge('sleep', 'end')
+
+			const runtime = new FlowRuntime({})
+			const result = await runtime.run(flow.toBlueprint(), {}, { functionRegistry: flow.getFunctionRegistry() })
+
+			expect(result.status).toBe('awaiting')
+			expect(result.context._awaitingNodeIds).toContain('sleep')
+			expect(result.context._awaitingDetails.sleep.reason).toBe('timer')
+			expect(result.context._awaitingDetails.sleep.wakeUpAt).toBeDefined()
+		})
+
+		it('should throw error for invalid duration', async () => {
+			const flow = createFlow('invalid-sleep-test')
+			flow.node('start', async () => ({ output: 'start' }))
+			flow.sleep('sleep', { duration: -100 })
+			flow.node('end', async () => ({ output: 'end' }))
+			flow.edge('start', 'sleep')
+			flow.edge('sleep', 'end')
+
+			const runtime = new FlowRuntime({})
+			const result = await runtime.run(flow.toBlueprint(), {}, { functionRegistry: flow.getFunctionRegistry() })
+
+			expect(result.status).toBe('failed')
+			expect(result.errors?.[0]?.message).toContain('execution failed')
+		})
+	})
 })

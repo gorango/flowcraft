@@ -144,6 +144,27 @@ export class Flow<
 	}
 
 	/**
+	 * Creates a sleep node that pauses workflow execution for a specified duration.
+	 * @param id A unique identifier for the sleep node.
+	 * @param options Configuration for the sleep duration.
+	 */
+	sleep(
+		id: string,
+		options: {
+			/** The duration to sleep in milliseconds. */
+			duration: number
+		},
+	): this {
+		const nodeDef: NodeDefinition = {
+			id,
+			uses: 'sleep',
+			params: { duration: options.duration },
+		}
+		this.blueprint.nodes?.push(nodeDef)
+		return this
+	}
+
+	/**
 	 * Creates a wait node that pauses workflow execution for external input.
 	 * @param id A unique identifier for the wait node.
 	 * @param options Optional configuration for the wait node.

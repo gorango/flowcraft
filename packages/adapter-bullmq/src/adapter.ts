@@ -1,3 +1,4 @@
+import type { Job } from 'bullmq'
 import { Queue, Worker } from 'bullmq'
 import type { AdapterOptions, JobPayload } from 'flowcraft'
 import { BaseDistributedAdapter } from 'flowcraft'
@@ -22,7 +23,7 @@ export class BullMQAdapter extends BaseDistributedAdapter {
 		this.redis = options.connection
 		this.queueName = options.queueName || 'flowcraft-queue'
 		this.queue = new Queue(this.queueName, { connection: this.redis })
-		console.log(`[BullMQAdapter] Connected to queue '${this.queueName}'.`)
+		this.logger.info(`[BullMQAdapter] Connected to queue '${this.queueName}'.`)
 	}
 
 	protected createContext(runId: string) {
@@ -32,14 +33,14 @@ export class BullMQAdapter extends BaseDistributedAdapter {
 	protected processJobs(handler: (job: JobPayload) => Promise<void>): void {
 		this.worker = new Worker(
 			this.queueName,
-			async (job) => {
-				console.log(`[BullMQAdapter] ==> Picked up job ID: ${job.id}, Name: ${job.name}`)
+			async (job: Job) => {
+				this.logger.info(`[BullMQAdapter] ==> Picked up job ID: ${job.id}, Name: ${job.name}`)
 				await handler(job.data as JobPayload)
 			},
 			{ connection: this.redis, concurrency: 5 },
 		)
 
-		console.log(`[BullMQAdapter] Worker listening for jobs on queue: "${this.queueName}"`)
+		this.logger.info(`[BullMQAdapter] Worker listening for jobs on queue: "${this.queueName}"`)
 	}
 
 	protected async enqueueJob(job: JobPayload): Promise<void> {
@@ -52,7 +53,7 @@ export class BullMQAdapter extends BaseDistributedAdapter {
 	}
 
 	public async close(): Promise<void> {
-		console.log('[BullMQAdapter] Closing worker and queue...')
+		this.logger.info('[BullMQAdapter] Closing worker and queue...')
 		await this.worker?.close()
 		await this.queue.close()
 	}

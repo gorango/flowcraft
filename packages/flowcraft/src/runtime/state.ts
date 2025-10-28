@@ -9,6 +9,7 @@ export class WorkflowState<TContext extends Record<string, any>> {
 	private context: IAsyncContext<TContext>
 	private _isAwaiting = false
 	private _awaitingNodeIds = new Set<string>()
+	private _awaitingDetails = new Map<string, any>()
 
 	constructor(initialData: Partial<TContext>) {
 		this.context = new AsyncContextView(new SyncContext<TContext>(initialData))
@@ -20,6 +21,9 @@ export class WorkflowState<TContext extends Record<string, any>> {
 					this._awaitingNodeIds.add(id)
 				}
 			}
+		}
+		if ((initialData as any)._awaitingDetails) {
+			this._awaitingDetails = new Map(Object.entries((initialData as any)._awaitingDetails))
 		}
 		for (const key of Object.keys(initialData)) {
 			if (key.startsWith('_outputs.')) {
@@ -71,11 +75,14 @@ export class WorkflowState<TContext extends Record<string, any>> {
 		return this.anyFallbackExecuted
 	}
 
-	markAsAwaiting(nodeId: string): void {
+	markAsAwaiting(nodeId: string, details?: any): void {
 		this._isAwaiting = true
 		this._awaitingNodeIds.add(nodeId)
-		const awaitingArray = Array.from(this._awaitingNodeIds)
-		this.context.set('_awaitingNodeIds' as any, awaitingArray)
+		if (details) {
+			this._awaitingDetails.set(nodeId, details)
+		}
+		this.context.set('_awaitingNodeIds' as any, Array.from(this._awaitingNodeIds))
+		this.context.set('_awaitingDetails' as any, Object.fromEntries(this._awaitingDetails))
 	}
 
 	isAwaiting(): boolean {
@@ -86,18 +93,26 @@ export class WorkflowState<TContext extends Record<string, any>> {
 		return Array.from(this._awaitingNodeIds)
 	}
 
+	getAwaitingDetails(nodeId: string): any {
+		return this._awaitingDetails.get(nodeId)
+	}
+
 	clearAwaiting(nodeId?: string): void {
 		if (nodeId) {
 			this._awaitingNodeIds.delete(nodeId)
+			this._awaitingDetails.delete(nodeId)
 		} else {
 			this._awaitingNodeIds.clear()
+			this._awaitingDetails.clear()
 		}
 		this._isAwaiting = this._awaitingNodeIds.size > 0
-		const awaitingArray = Array.from(this._awaitingNodeIds)
-		if (awaitingArray.length > 0) {
-			this.context.set('_awaitingNodeIds' as any, awaitingArray)
+
+		if (this._awaitingNodeIds.size > 0) {
+			this.context.set('_awaitingNodeIds' as any, Array.from(this._awaitingNodeIds))
+			this.context.set('_awaitingDetails' as any, Object.fromEntries(this._awaitingDetails))
 		} else {
 			this.context.delete('_awaitingNodeIds' as any)
+			this.context.delete('_awaitingDetails' as any)
 		}
 	}
 
@@ -113,6 +128,7 @@ export class WorkflowState<TContext extends Record<string, any>> {
 		const contextJSON = (await this.context.toJSON()) as TContext
 		if (!this._isAwaiting && (contextJSON as any)._awaitingNodeIds) {
 			delete (contextJSON as any)._awaitingNodeIds
+			delete (contextJSON as any)._awaitingDetails
 		}
 		return {
 			context: contextJSON,

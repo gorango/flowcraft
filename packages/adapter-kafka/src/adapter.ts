@@ -75,7 +75,7 @@ export class KafkaAdapter extends BaseDistributedAdapter {
 		await this.cassandra.execute(query, [runId, result.status, JSON.stringify(result)], {
 			prepare: true,
 		})
-		console.log(`[KafkaAdapter] Published final result for Run ID ${runId}.`)
+		this.logger.info(`[KafkaAdapter] Published final result for Run ID ${runId}.`)
 	}
 
 	protected async enqueueJob(job: JobPayload): Promise<void> {
@@ -95,7 +95,7 @@ export class KafkaAdapter extends BaseDistributedAdapter {
 
 	protected async processJobs(handler: (job: JobPayload) => Promise<void>): Promise<void> {
 		if (this.isRunning) {
-			console.warn('[KafkaAdapter] Consumer is already running.')
+			this.logger.warn('[KafkaAdapter] Consumer is already running.')
 			return
 		}
 
@@ -108,7 +108,7 @@ export class KafkaAdapter extends BaseDistributedAdapter {
 			})
 			this.isRunning = true
 
-			console.log(`[KafkaAdapter] Worker (Group: ${this.groupId}) listening on topic: "${this.topicName}"`)
+			this.logger.info(`[KafkaAdapter] Worker (Group: ${this.groupId}) listening on topic: "${this.topicName}"`)
 
 			await this.consumer.run({
 				partitionsConsumedConcurrently: 1,
@@ -116,25 +116,27 @@ export class KafkaAdapter extends BaseDistributedAdapter {
 					if (message.value) {
 						try {
 							const job = JSON.parse(message.value.toString()) as JobPayload
-							console.log(`[KafkaAdapter] ==> [P${partition}] Picked up job for Node: ${job.nodeId}, Run: ${job.runId}`)
+							this.logger.info(
+								`[KafkaAdapter] ==> [P${partition}] Picked up job for Node: ${job.nodeId}, Run: ${job.runId}`,
+							)
 							await handler(job)
 							// kafka handles offsets automatically on success
-						} catch (err) {
-							console.error(`[KafkaAdapter] Error processing message on topic ${topic}:`, err)
+						} catch (error) {
+							this.logger.error(`[KafkaAdapter] Error processing message on topic ${topic}:`, { error })
 							// throwing - kafka will not commit the offset and the message will be re-consumed based on policy
-							throw err
+							throw error
 						}
 					}
 				},
 			})
 		} catch (error) {
-			console.error('[KafkaAdapter] Failed to start Kafka producer/consumer:', error)
+			this.logger.error('[KafkaAdapter] Failed to start Kafka producer/consumer:', { error })
 			this.isRunning = false
 		}
 	}
 
 	public async stop(): Promise<void> {
-		console.log('[KafkaAdapter] Stopping Kafka producer and consumer.')
+		this.logger.info('[KafkaAdapter] Stopping Kafka producer and consumer.')
 		await this.consumer.disconnect()
 		await this.producer.disconnect()
 		this.isRunning = false

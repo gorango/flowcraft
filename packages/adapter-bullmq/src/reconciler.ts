@@ -1,3 +1,4 @@
+import type { ILogger } from 'flowcraft'
 import type { Redis } from 'ioredis'
 import type { BullMQAdapter } from './adapter'
 
@@ -12,6 +13,8 @@ export interface BullMQReconcilerOptions {
 	keyPrefix?: string
 	/** The maximum number of keys to fetch in each SCAN batch. */
 	scanCount?: number
+	/** Logger for reconciliation events. */
+	logger?: ILogger
 }
 
 export interface ReconciliationStats {
@@ -28,7 +31,14 @@ export interface ReconciliationStats {
  * @returns An object with a `run` method to execute the reconciliation cycle.
  */
 export function createBullMQReconciler(options: BullMQReconcilerOptions) {
-	const { adapter, redis, stalledThresholdSeconds, keyPrefix = 'workflow:state:', scanCount = 100 } = options
+	const {
+		adapter,
+		redis,
+		stalledThresholdSeconds,
+		keyPrefix = 'workflow:state:',
+		scanCount = 100,
+		logger = (adapter as any).logger,
+	} = options
 
 	return {
 		async run(): Promise<ReconciliationStats> {
@@ -39,12 +49,12 @@ export function createBullMQReconciler(options: BullMQReconcilerOptions) {
 				failedRuns: 0,
 			}
 
-			const stream = redis.scanStream({
-				match: `${keyPrefix}*`,
-				count: scanCount,
-			})
+			let cursor = 0
+			do {
+				const result = await redis.scan(cursor, 'MATCH', `${keyPrefix}*`, 'COUNT', scanCount)
+				cursor = Number(result[0])
+				const keys = result[1]
 
-			for await (const keys of stream) {
 				for (const key of keys) {
 					stats.scannedKeys++
 					const runId = key.replace(keyPrefix, '')
@@ -56,15 +66,15 @@ export function createBullMQReconciler(options: BullMQReconcilerOptions) {
 							const enqueued = await (adapter as any).reconcile(runId)
 							if (enqueued.size > 0) {
 								stats.reconciledRuns++
-								console.log(`[Reconciler] Resumed run ${runId}, enqueued nodes: ${[...enqueued].join(', ')}`)
+								logger.info(`[Reconciler] Resumed run ${runId}, enqueued nodes: ${[...enqueued].join(', ')}`)
 							}
 						} catch (error) {
 							stats.failedRuns++
-							console.error(`[Reconciler] Failed to reconcile run ${runId}:`, error)
+							logger.error(`[Reconciler] Failed to reconcile run ${runId}:`, error)
 						}
 					}
 				}
-			}
+			} while (cursor !== 0)
 			return stats
 		},
 	}

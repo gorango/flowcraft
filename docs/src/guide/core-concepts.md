@@ -281,7 +281,60 @@ Workflows can have the following statuses:
 - **`failed`**: Execution failed with errors.
 - **`stalled`**: Execution cannot proceed due to unresolved dependencies.
 - **`cancelled`**: Execution was cancelled via `AbortSignal`.
-- **`awaiting`**: Execution is paused at a wait node, waiting for external input.
+- **`awaiting`**: Execution is paused at a wait or sleep node, waiting for external input or a timer.
+
+## Pausing and Resuming Workflows
+
+Flowcraft supports workflows that can pause execution and resume later, enabling durable timers and human-in-the-loop interactions.
+
+### Wait Nodes
+
+Wait nodes pause execution until external input is provided. Use the `.wait()` method to create pause points for approvals, reviews, or other external decisions.
+
+```typescript
+const flow = createFlow('approval-workflow')
+  .node('prepare', () => ({ output: { item: 'document.pdf' } }))
+  .wait('approval')
+  .node('process', async ({ input }) => {
+    if (input?.approved) {
+      return { output: 'Document approved and processed' }
+    }
+    return { output: 'Document rejected' }
+  })
+  .edge('prepare', 'approval')
+  .edge('approval', 'process')
+```
+
+### Sleep Nodes
+
+Sleep nodes pause execution for a specified duration. Use the `.sleep()` method to create durable timers that automatically resume after the timeout.
+
+```typescript
+const flow = createFlow('delayed-workflow')
+  .node('start', () => ({ output: 'Starting delayed task' }))
+  .sleep('delay', { duration: 5000 }) // Sleep for 5 seconds
+  .node('finish', () => ({ output: 'Task completed after delay' }))
+  .edge('start', 'delay')
+  .edge('delay', 'finish')
+```
+
+### Resuming Workflows
+
+Paused workflows can be resumed using the `runtime.resume()` method:
+
+```typescript
+// Run until awaiting
+const result = await runtime.run(blueprint, {}, { functionRegistry })
+if (result.status === 'awaiting') {
+  // Resume wait node with input
+  const finalResult = await runtime.resume(
+    blueprint,
+    result.serializedContext,
+    { output: { approved: true } },
+    'approval' // optional: specify which node to resume
+  )
+}
+```
 
 ### Best Practices
 
@@ -307,26 +360,3 @@ For most use cases, you can pass options directly to the `FlowRuntime` construct
 -   **Resolution**: Retrieve services by token, with automatic dependency injection.
 
 For usage examples, see the [Container API docs](/api/container#usage-example).
-
-<!-- ## Human-in-the-Loop (HITL) Orchestration
-
-Flowcraft supports human-in-the-loop workflows, allowing workflows to pause at defined points and await external input before resuming. This is essential for interactive processes like approvals or manual interventions.
-
-### Key Features
-
-- **Wait Nodes**: Use the `.wait()` method in the `Flow` builder to create pause points.
-- **Multiple Concurrent Waits**: Support for multiple wait nodes running in parallel, each tracked separately in the workflow state.
-- **Awaiting Status**: Workflows in a paused state have a status of `'awaiting'`.
-- **Resume Functionality**: Use the `runtime.resume()` method with an optional `nodeId` parameter to specify which waiting node to resume.
-- **State Persistence**: Awaiting state is preserved in the serialized context for durability.
-
-### Workflow Statuses
-
-Workflows can have the following statuses:
-- **`completed`**: Execution finished successfully.
-- **`failed`**: Execution failed with errors.
-- **`stalled`**: Execution cannot proceed due to unresolved dependencies.
-- **`cancelled`**: Execution was cancelled.
-- **`awaiting`**: Execution is paused at a wait node, waiting for external input.
-
-For more details, see [Defining Workflows](/guide/defining-workflows) and the [Runtime API](/api/runtime). -->

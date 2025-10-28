@@ -6,6 +6,7 @@ import { PropertyEvaluator } from '../evaluator'
 import { NullLogger } from '../logger'
 import { BatchGatherNode } from '../nodes/batch-gather'
 import { BatchScatterNode } from '../nodes/batch-scatter'
+import { SleepNode } from '../nodes/sleep'
 import { SubflowNode } from '../nodes/subflow'
 import { WaitNode } from '../nodes/wait'
 import { sanitizeBlueprint } from '../sanitizer'
@@ -30,6 +31,7 @@ import type {
 import { ExecutionContext } from './execution-context'
 import { NodeExecutorFactory } from './node-executor-factory'
 import { DefaultOrchestrator } from './orchestrator'
+import { WorkflowScheduler } from './scheduler'
 import { WorkflowState } from './state'
 import { GraphTraverser } from './traverser'
 import type { IOrchestrator, IRuntime } from './types'
@@ -52,6 +54,11 @@ export class FlowRuntime<TContext extends Record<string, any>, TDependencies ext
 	public options: RuntimeOptions<TDependencies>
 	private readonly logicHandler: WorkflowLogicHandler
 	private readonly executorFactory: NodeExecutorFactory
+	public scheduler: WorkflowScheduler
+
+	getBlueprint(id: string): WorkflowBlueprint | undefined {
+		return this.blueprints[id]
+	}
 
 	constructor(container: DIContainer, options?: RuntimeOptions<TDependencies>)
 	constructor(options: RuntimeOptions<TDependencies>)
@@ -71,6 +78,7 @@ export class FlowRuntime<TContext extends Record<string, any>, TDependencies ext
 			this.dependencies = this.container.resolve<TDependencies>(ServiceTokens.Dependencies)
 			this.options = legacyOptions || ({} as RuntimeOptions<TDependencies>)
 			this.orchestrator = this.container.resolve<IOrchestrator>(ServiceTokens.Orchestrator)
+			this.scheduler = new WorkflowScheduler(this)
 		} else {
 			const options = containerOrOptions
 			this.logger = options.logger || new NullLogger()
@@ -90,6 +98,7 @@ export class FlowRuntime<TContext extends Record<string, any>, TDependencies ext
 			}
 			const builtInNodes = {
 				wait: WaitNode,
+				sleep: SleepNode,
 				subflow: SubflowNode,
 				'batch-scatter': BatchScatterNode,
 				'batch-gather': BatchGatherNode,
@@ -97,6 +106,7 @@ export class FlowRuntime<TContext extends Record<string, any>, TDependencies ext
 			}
 			this.registry = new Map(Object.entries({ ...builtInNodes, ...(options.registry || {}) }))
 			this.blueprints = options.blueprints || {}
+			this.scheduler = new WorkflowScheduler(this)
 			this.dependencies = options.dependencies || ({} as TDependencies)
 			this.options = options
 			this.container = null as any
@@ -221,6 +231,23 @@ export class FlowRuntime<TContext extends Record<string, any>, TDependencies ext
 					errors: result.errors,
 				},
 			})
+
+			if (result.status === 'awaiting') {
+				const awaitingNodeIds = executionContext.state.getAwaitingNodeIds()
+				for (const nodeId of awaitingNodeIds) {
+					const details = executionContext.state.getAwaitingDetails(nodeId)
+					if (details?.reason === 'timer') {
+						this.scheduler.registerAwaitingWorkflow(
+							executionContext.executionId,
+							executionContext.blueprint.id,
+							result.serializedContext,
+							nodeId,
+							details.wakeUpAt,
+						)
+					}
+				}
+			}
+
 			return result
 		} catch (error) {
 			const duration = Date.now() - startTime
@@ -276,6 +303,14 @@ export class FlowRuntime<TContext extends Record<string, any>, TDependencies ext
 			})
 			throw error
 		}
+	}
+
+	startScheduler(): void {
+		this.scheduler.start()
+	}
+
+	stopScheduler(): void {
+		this.scheduler.stop()
 	}
 
 	private _setupResumedExecutionContext(

@@ -68,4 +68,82 @@ describe('FlowRuntime', () => {
 		const result = await runtime.run(blueprint, {}, { signal: controller.signal })
 		expect(result.status).toBe('cancelled')
 	})
+
+	describe('Scheduler Integration', () => {
+		it('should start and stop scheduler', () => {
+			const runtime = new FlowRuntime({})
+			runtime.startScheduler()
+			expect(runtime.scheduler).toBeDefined()
+			runtime.stopScheduler()
+		})
+
+		it('should register awaiting workflow with timer', async () => {
+			const runtime = new FlowRuntime({
+				blueprints: {
+					'sleep-workflow': {
+						id: 'sleep-workflow',
+						nodes: [
+							{ id: 'start', uses: 'test', params: {} },
+							{ id: 'sleep', uses: 'sleep', params: { duration: 100 } },
+						],
+						edges: [{ source: 'start', target: 'sleep' }],
+					},
+				},
+			})
+
+			const mockNode = vi.fn().mockResolvedValue({ output: 'done' })
+			runtime.registry.set('test', mockNode)
+
+			const blueprint = runtime.getBlueprint('sleep-workflow')
+			if (!blueprint) throw new Error('Blueprint not found')
+			const result = await runtime.run(blueprint)
+			expect(result.status).toBe('awaiting')
+
+			// Check that scheduler registered the workflow
+			const active = runtime.scheduler.getActiveWorkflows()
+			expect(active.length).toBe(1)
+			expect(active[0].blueprintId).toBe('sleep-workflow')
+			expect(active[0].awaitingNodeId).toBe('sleep')
+		})
+
+		it('should resume expired timer workflow', async () => {
+			const runtime = new FlowRuntime({
+				blueprints: {
+					'sleep-workflow': {
+						id: 'sleep-workflow',
+						nodes: [
+							{ id: 'start', uses: 'test', params: {} },
+							{ id: 'sleep', uses: 'sleep', params: { duration: 1 } }, // 1ms
+							{ id: 'end', uses: 'test', params: {} },
+						],
+						edges: [
+							{ source: 'start', target: 'sleep' },
+							{ source: 'sleep', target: 'end' },
+						],
+					},
+				},
+			})
+
+			const mockNode = vi.fn().mockResolvedValue({ output: 'done' })
+			runtime.registry.set('test', mockNode)
+
+			// Run workflow, it should await
+			const blueprint = runtime.getBlueprint('sleep-workflow')
+			if (!blueprint) throw new Error('Blueprint not found')
+			const result1 = await runtime.run(blueprint)
+			expect(result1.status).toBe('awaiting')
+
+			// Start scheduler
+			runtime.startScheduler()
+
+			// Wait for scheduler to check (default 1s interval, so wait 1.1s)
+			await new Promise((resolve) => setTimeout(resolve, 1100))
+
+			// The workflow should have resumed and completed
+			const active = runtime.scheduler.getActiveWorkflows()
+			expect(active.length).toBe(0) // Should be completed
+
+			runtime.stopScheduler()
+		})
+	})
 })

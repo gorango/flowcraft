@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { UnsafeEvaluator } from '../src/evaluator'
 import { createFlow } from '../src/flow'
 import { FlowRuntime } from '../src/runtime'
-import { InMemoryEventLogger } from '../src/testing'
+
 import type { FlowcraftEvent, IEventBus, Middleware, NodeResult } from '../src/types'
 
 // A mock event bus for testing observability
@@ -184,12 +184,8 @@ describe('Flowcraft Runtime - Integration Tests', () => {
 				// This edge is for the successful case, which won't be taken.
 				.edge('failingNode', 'endNode')
 
-			const eventLogger = new InMemoryEventLogger()
-			const runtime = new FlowRuntime({
-				eventBus: eventLogger,
-			})
+			const runtime = new FlowRuntime({})
 			const result = await runtime.run(flow.toBlueprint(), {}, { functionRegistry: flow.getFunctionRegistry() })
-			eventLogger.printLog('Workflow Execution Trace')
 
 			expect(result.status).toBe('completed')
 			expect(failingNodeImpl).toHaveBeenCalledTimes(3)

@@ -142,6 +142,9 @@ importers:
         specifier: ^6.3.0
         version: 6.4.0(ws@8.18.3)(zod@3.25.76)
     devDependencies:
+      '@types/node':
+        specifier: ^24.8.1
+        version: 24.8.1
       typescript:
         specifier: ^5.9.3
         version: 5.9.3
@@ -233,8 +236,8 @@ importers:
         specifier: ^12.27.0
         version: 12.28.1
       flowcraft:
-        specifier: ^2.2.0
-        version: 2.2.0
+        specifier: ^2.4.0
+        version: 2.4.0
       ioredis:
         specifier: ^5.8.1
         version: 5.8.1
@@ -264,8 +267,8 @@ importers:
         specifier: ^5.61.0
         version: 5.61.0
       flowcraft:
-        specifier: ^2.2.0
-        version: 2.2.0
+        specifier: ^2.4.0
+        version: 2.4.0
       ioredis:
         specifier: ^5.8.1
         version: 5.8.1
@@ -292,8 +295,8 @@ importers:
         specifier: ^5.2.0
         version: 5.2.0
       flowcraft:
-        specifier: ^2.2.0
-        version: 2.2.0
+        specifier: ^2.4.0
+        version: 2.4.0
       ioredis:
         specifier: ^5.8.1
         version: 5.8.1
@@ -323,8 +326,8 @@ importers:
         specifier: ^4.8.0
         version: 4.8.0
       flowcraft:
-        specifier: ^2.2.0
-        version: 2.2.0
+        specifier: ^2.4.0
+        version: 2.4.0
       ioredis:
         specifier: ^5.8.1
         version: 5.8.1
@@ -357,8 +360,8 @@ importers:
         specifier: ^0.10.9
         version: 0.10.9
       flowcraft:
-        specifier: ^2.2.0
-        version: 2.2.0
+        specifier: ^2.4.0
+        version: 2.4.0
       ioredis:
         specifier: ^5.8.1
         version: 5.8.1
@@ -403,8 +406,8 @@ importers:
         specifier: ^3.911.0
         version: 3.911.0(@aws-sdk/client-dynamodb@3.911.0)
       flowcraft:
-        specifier: ^2.2.0
-        version: 2.2.0
+        specifier: ^2.4.0
+        version: 2.4.0
       sqs-consumer:
         specifier: ^14.0.1
         version: 14.0.1(@aws-sdk/client-sqs@3.911.0)
@@ -5419,6 +5422,9 @@ packages:
 
   flowcraft@2.2.0:
     resolution: {integrity: sha512-UsrDJVrA2ONfrOulv0vsDbgHsdXWbaHfNTEtjclf1CagqRe/bWNHQINyyOCLYDvljuXjtR8q+T8Gn0jmHyl11w==}
+
+  flowcraft@2.4.0:
+    resolution: {integrity: sha512-/WRNpl+UcSHfhEkAGnoTVlZTFs2/TZoYVSZre1Y7e7ZxuwveHRU6RbnVTPPzgjHGDjy9LOr4pni1G1kyiPCqwQ==}
 
   focus-trap@7.6.5:
     resolution: {integrity: sha512-7Ke1jyybbbPZyZXFxEftUtxFGLMpE2n6A+z//m4CRDlj0hW+o3iYSmh8nFlYMurOiJVDmJRilUQtJr08KfIxlg==}
@@ -14470,6 +14476,8 @@ snapshots:
   flattie@1.1.1: {}
 
   flowcraft@2.2.0: {}
+
+  flowcraft@2.4.0: {}
 
   focus-trap@7.6.5:
     dependencies:

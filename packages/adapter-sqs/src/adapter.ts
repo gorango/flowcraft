@@ -34,7 +34,7 @@ export class SqsAdapter extends BaseDistributedAdapter {
 		this.queueUrl = options.queueUrl
 		this.contextTableName = options.contextTableName
 		this.statusTableName = options.statusTableName
-		console.log(`[SqsAdapter] Initialized for queue: ${this.queueUrl}`)
+		this.logger.info(`[SqsAdapter] Initialized for queue: ${this.queueUrl}`)
 	}
 
 	protected createContext(runId: string): DynamoDbContext {
@@ -66,7 +66,7 @@ export class SqsAdapter extends BaseDistributedAdapter {
 			})
 			await this.dynamo.send(touchCommand)
 		} catch (error) {
-			console.error(`[SqsAdapter] Failed to update lastUpdated timestamp for Run ID ${_runId}`, error)
+			this.logger.error(`[SqsAdapter] Failed to update lastUpdated timestamp for Run ID ${_runId}`, { error })
 		}
 	}
 
@@ -90,41 +90,41 @@ export class SqsAdapter extends BaseDistributedAdapter {
 		})
 		// Also update 'lastUpdated' when publishing the final result
 		await store.set('finalStatus', { ...result, lastUpdated: Math.floor(Date.now() / 1000) })
-		console.log(`[SqsAdapter] Published final result for Run ID ${runId}.`)
+		this.logger.info(`[SqsAdapter] Published final result for Run ID ${runId}.`)
 	}
 
 	protected processJobs(handler: (job: JobPayload) => Promise<void>): void {
 		if (this.consumer) {
-			console.warn('[SqsAdapter] Consumer is already active.')
+			this.logger.warn('[SqsAdapter] Consumer is already active.')
 			return
 		}
-		console.log('[SqsAdapter] Worker starting to poll for jobs...')
+		this.logger.info('[SqsAdapter] Worker starting to poll for jobs...')
 		this.consumer = Consumer.create({
 			queueUrl: this.queueUrl,
 			sqs: this.sqs,
 			handleMessage: async (message: Message) => {
 				try {
 					const job = JSON.parse(message.Body || '{}') as JobPayload
-					console.log(`[SqsAdapter] ==> Picked up job for Node: ${job.nodeId}, Run: ${job.runId}`)
+					this.logger.info(`[SqsAdapter] ==> Picked up job for Node: ${job.nodeId}, Run: ${job.runId}`)
 					await handler(job)
 					return message
-				} catch (err: unknown) {
-					console.error('[SqsAdapter] Error processing message body:', err)
-					throw err // Let sqs-consumer handle retries or dead letter queue
+				} catch (error: unknown) {
+					this.logger.error('[SqsAdapter] Error processing message body:', { error })
+					throw error // Let sqs-consumer handle retries or dead letter queue
 				}
 			},
 		})
 		this.consumer.on('error', (err: Error) => {
-			console.error('[SqsAdapter] Consumer error:', err)
+			this.logger.error('[SqsAdapter] Consumer error:', err)
 		})
 		this.consumer.on('processing_error', (err: Error) => {
-			console.error('[SqsAdapter] Processing error:', err)
+			this.logger.error('[SqsAdapter] Processing error:', err)
 		})
 		this.consumer.start()
 	}
 
 	public stop(): void {
-		console.log('[SqsAdapter] Stopping worker polling.')
+		this.logger.info('[SqsAdapter] Stopping worker polling.')
 		if (this.consumer) {
 			this.consumer.stop()
 			this.consumer = undefined

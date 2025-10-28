@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { createFlow } from '../../src/flow'
 import { SubflowNode } from '../../src/nodes/subflow'
 import { FlowRuntime } from '../../src/runtime/runtime'
-import { InMemoryEventLogger, runWithTrace } from '../../src/testing'
+import { runWithTrace } from '../../src/testing'
 
 describe('Human-in-the-Loop (HITL)', () => {
 	it('should pause workflow at wait node', async () => {
@@ -46,7 +46,6 @@ describe('Human-in-the-Loop (HITL)', () => {
 	})
 
 	it('should handle multiple sequential wait nodes', async () => {
-		const eventLogger = new InMemoryEventLogger()
 		const flow = createFlow<{ input: number }>('multi-wait-workflow')
 			.node(
 				'start',
@@ -71,30 +70,25 @@ describe('Human-in-the-Loop (HITL)', () => {
 		const blueprint = flow.toBlueprint()
 		const runtime = new FlowRuntime({
 			registry: Object.fromEntries(flow.getFunctionRegistry()),
-			eventBus: eventLogger,
 		})
 
 		// First run: should pause at wait1
 		const result1 = await runtime.run(blueprint, { input: 42 })
-		eventLogger.printLog('Workflow Execution Trace')
 		expect(result1.status).toBe('awaiting')
 		expect(result1.context._awaitingNodeIds).toEqual(['wait1'])
 
 		// Resume: should pause at wait2
 		const result2 = await runtime.resume(blueprint, result1.serializedContext, { output: { value: 42 } }, 'wait1')
-		eventLogger.printLog('Workflow Execution Trace')
 		expect(result2.status).toBe('awaiting')
 		expect(result2.context._awaitingNodeIds).toEqual(['wait2'])
 
 		// Resume again: should complete
 		const result3 = await runtime.resume(blueprint, result2.serializedContext, { output: { value: 42 } }, 'wait2')
-		eventLogger.printLog('Workflow Execution Trace')
 		expect(result3.status).toBe('completed')
 		expect(result3.context['_outputs.end'].final).toBe(52)
 	})
 
 	it('should handle nested subflow with wait node', async () => {
-		const eventLogger = new InMemoryEventLogger()
 		const subflow = createFlow<{ input: number }>('sub-approval-workflow')
 			.node(
 				'sub-start',
@@ -136,7 +130,6 @@ describe('Human-in-the-Loop (HITL)', () => {
 
 		const blueprint = mainFlow.toBlueprint()
 		const runtime = new FlowRuntime({
-			eventBus: eventLogger,
 			registry: {
 				...Object.fromEntries(mainFlow.getFunctionRegistry()),
 				...Object.fromEntries(subflow.getFunctionRegistry()),
@@ -146,19 +139,16 @@ describe('Human-in-the-Loop (HITL)', () => {
 
 		// First run: should pause at sub-wait
 		const result1 = await runtime.run(blueprint, { input: 42 })
-		eventLogger.printLog('Subflow Execution Trace')
 		expect(result1.status).toBe('awaiting')
 		expect(result1.context._awaitingNodeIds).toEqual(['subflow'])
 
 		// Resume: should complete the subflow and continue to main-end
 		const result2 = await runtime.resume(blueprint, result1.serializedContext, { output: { value: 42 } }, 'subflow')
-		eventLogger.printLog('Main Flow Execution Trace')
 		expect(result2.status).toBe('completed')
 		expect(result2.context['_outputs.main-end'].final).toBe(57) // 42 + 5 + 10
 	})
 
 	it('should handle multiple concurrent wait nodes', async () => {
-		const eventLogger = new InMemoryEventLogger()
 		const flow = createFlow<{ input: number }>('concurrent-wait-workflow')
 			.node(
 				'start',
@@ -200,24 +190,20 @@ describe('Human-in-the-Loop (HITL)', () => {
 		const blueprint = flow.toBlueprint()
 		const runtime = new FlowRuntime({
 			registry: Object.fromEntries(flow.getFunctionRegistry()),
-			eventBus: eventLogger,
 		})
 
 		// First run: should pause at both wait1 and wait2
 		const result1 = await runtime.run(blueprint, { input: 42 })
-		eventLogger.printLog('Initial Workflow Execution Trace')
 		expect(result1.status).toBe('awaiting')
 		expect(result1.context._awaitingNodeIds).toEqual(['wait1', 'wait2'])
 
 		// Resume wait1: should still be awaiting wait2
 		const result2 = await runtime.resume(blueprint, result1.serializedContext, { output: { value: 42 } }, 'wait1')
-		eventLogger.printLog('After Resuming wait1')
 		expect(result2.status).toBe('awaiting')
 		expect(result2.context._awaitingNodeIds).toEqual(['wait2'])
 
 		// Resume wait2: should complete the workflow
 		const result3 = await runtime.resume(blueprint, result2.serializedContext, { output: { value: 42 } }, 'wait2')
-		eventLogger.printLog('After Resuming wait2')
 		expect(result3.status).toBe('completed')
 		expect(result3.context['_outputs.gather'].combined).toBe('Results: Branch 1: 42, Branch 2: 42')
 	})

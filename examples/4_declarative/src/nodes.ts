@@ -25,18 +25,28 @@ async function resolveInputs(
 		const sourceKeys = Array.isArray(sourceKeyOrKeys) ? sourceKeyOrKeys : [sourceKeyOrKeys]
 		let valueFound = false
 		for (const sourceKey of sourceKeys) {
-			if (await context.has(sourceKey)) {
-				const value = await context.get(sourceKey)
-				// Ensure we don't pass 'undefined' if the key exists but has no value
-				if (value !== undefined) {
-					resolved[templateKey] = value
-					valueFound = true
-					break // Found a value, no need to check other keys for this template variable
-				}
+			const prefixedKey = `_outputs.${sourceKey}`
+			const directKey = sourceKey
+
+			let value: any
+			let keyFound = false
+
+			if (await context.has(prefixedKey)) {
+				value = await context.get(prefixedKey)
+				keyFound = true
+			}
+			else if (await context.has(directKey)) {
+				value = await context.get(directKey)
+				keyFound = true
+			}
+
+			if (keyFound && value !== undefined) {
+				resolved[templateKey] = value
+				valueFound = true
+				break
 			}
 		}
 		if (!valueFound) {
-			// If an input isn't found (e.g., from an untaken branch), use an empty string.
 			resolved[templateKey] = ''
 		}
 	}

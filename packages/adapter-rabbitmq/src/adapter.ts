@@ -56,12 +56,12 @@ export class RabbitMqAdapter extends BaseDistributedAdapter {
       ON CONFLICT (run_id) DO UPDATE SET status = $2, status_data = $3, updated_at = NOW();
     `
 		await this.pg.query(query, [runId, result.status, result])
-		console.log(`[RabbitMqAdapter] Published final result for Run ID ${runId}.`)
+		this.logger.info(`[RabbitMqAdapter] Published final result for Run ID ${runId}.`)
 	}
 
 	protected async processJobs(handler: (job: JobPayload) => Promise<void>): Promise<void> {
 		if (this.channel) {
-			console.warn('[RabbitMqAdapter] Channel and consumer are already set up.')
+			this.logger.warn('[RabbitMqAdapter] Channel and consumer are already set up.')
 			return
 		}
 
@@ -70,30 +70,30 @@ export class RabbitMqAdapter extends BaseDistributedAdapter {
 			await this.channel.assertQueue(this.queueName, { durable: true })
 			await this.channel.prefetch(1)
 
-			console.log(`[RabbitMqAdapter] Worker listening for jobs on queue: "${this.queueName}"`)
+			this.logger.info(`[RabbitMqAdapter] Worker listening for jobs on queue: "${this.queueName}"`)
 
 			await this.channel.consume(this.queueName, async (msg: ConsumeMessage | null) => {
 				// Add a guard to ensure the channel hasn't been closed by a concurrent stop() call
 				if (msg !== null && this.channel) {
 					try {
 						const job = JSON.parse(msg.content.toString('utf-8')) as JobPayload
-						console.log(`[RabbitMqAdapter] ==> Picked up job for Node: ${job.nodeId}, Run: ${job.runId}`)
+						this.logger.info(`[RabbitMqAdapter] ==> Picked up job for Node: ${job.nodeId}, Run: ${job.runId}`)
 						await handler(job)
 						this.channel.ack(msg)
-					} catch (err) {
-						console.error('[RabbitMqAdapter] Error processing message, nacking:', err)
+					} catch (error) {
+						this.logger.error('[RabbitMqAdapter] Error processing message, nacking:', { error })
 						this.channel.nack(msg, false, false)
 					}
 				}
 			})
 		} catch (error) {
-			console.error('[RabbitMqAdapter] Failed to set up RabbitMQ consumer:', error)
+			this.logger.error('[RabbitMqAdapter] Failed to set up RabbitMQ consumer:', { error })
 		}
 	}
 
 	public async stop(): Promise<void> {
 		if (this.channel) {
-			console.log('[RabbitMqAdapter] Closing RabbitMQ channel.')
+			this.logger.info('[RabbitMqAdapter] Closing RabbitMQ channel.')
 			await this.channel.close()
 			this.channel = undefined
 		}
