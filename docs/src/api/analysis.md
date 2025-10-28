@@ -35,3 +35,11 @@ Generates Mermaid diagram syntax from a [`WorkflowBlueprint`](/api/flow#workflow
 
 -   **`blueprint`** [`WorkflowBlueprint`](/api/flow#workflowblueprint-interface): The blueprint to visualize.
 -   **Returns**: `string` - The Mermaid syntax for the flowchart.
+
+## `generateMermaidForRun(blueprint, events)`
+
+Generates Mermaid diagram syntax from a [`WorkflowBlueprint`](/api/flow#workflowblueprint-interface) with execution history highlighting. This provides visual diagnostics for debugging and monitoring workflow runs.
+
+-   **`blueprint`** [`WorkflowBlueprint`](/api/flow#workflowblueprint-interface): The blueprint to visualize.
+-   **`events`** [`FlowcraftEvent[]`](/api/types#flowcraftevent): Array of events from the workflow execution.
+-   **Returns**: `string` - The Mermaid syntax for the flowchart with execution path styling.

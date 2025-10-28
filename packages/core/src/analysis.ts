@@ -1,4 +1,4 @@
-import type { WorkflowBlueprint } from './types'
+import type { FlowcraftEvent, WorkflowBlueprint } from './types'
 
 /**
  * A list of cycles found in the graph. Each cycle is an array of node IDs.
@@ -108,7 +108,6 @@ export function generateMermaid(blueprint: WorkflowBlueprint): string {
 	let mermaid = 'flowchart TD\n'
 
 	for (const node of blueprint.nodes) {
-		// Using backticks and characters like <br/> for newlines in Mermaid labels
 		const paramsString = node.params ? `<br/>params: ${JSON.stringify(node.params)}` : ''
 		const nodeLabel = `${node.id}${paramsString}`
 		mermaid += `    ${node.id}["${nodeLabel}"]\n`
@@ -133,6 +132,91 @@ export function generateMermaid(blueprint: WorkflowBlueprint): string {
 		} else {
 			mermaid += `    ${edge.source} --> ${edge.target}\n`
 		}
+	}
+
+	return mermaid
+}
+
+/**
+ * Generates Mermaid diagram syntax from a WorkflowBlueprint with execution history styling
+ * @param blueprint The WorkflowBlueprint object containing nodes and edges
+ * @param events Array of FlowcraftEvent objects from the workflow execution
+ * @returns Mermaid syntax string for the flowchart with execution path highlighting
+ */
+export function generateMermaidForRun(blueprint: WorkflowBlueprint, events: FlowcraftEvent[]): string {
+	if (!blueprint || !blueprint.nodes || blueprint.nodes.length === 0) {
+		return 'flowchart TD\n    empty[Empty Blueprint]'
+	}
+
+	let mermaid = 'flowchart TD\n'
+
+	const successfulNodes = new Set<string>()
+	const failedNodes = new Set<string>()
+	const takenEdges = new Set<string>()
+
+	for (const event of events) {
+		switch (event.type) {
+			case 'node:finish':
+				successfulNodes.add(event.payload.nodeId)
+				break
+			case 'node:error':
+				failedNodes.add(event.payload.nodeId)
+				break
+			case 'edge:evaluate':
+				if (event.payload.result) {
+					const edgeKey = `${event.payload.source}->${event.payload.target}`
+					takenEdges.add(edgeKey)
+				}
+				break
+		}
+	}
+
+	for (const node of blueprint.nodes) {
+		const paramsString = node.params ? `<br/>params: ${JSON.stringify(node.params)}` : ''
+		const nodeLabel = `${node.id}${paramsString}`
+		mermaid += `    ${node.id}["${nodeLabel}"]\n`
+	}
+
+	for (const node of blueprint.nodes) {
+		if (successfulNodes.has(node.id)) {
+			mermaid += `    style ${node.id} fill:#d4edda,stroke:#c3e6cb\n`
+		} else if (failedNodes.has(node.id)) {
+			mermaid += `    style ${node.id} fill:#f8d7da,stroke:#f5c6cb\n`
+		}
+	}
+
+	let edgeIndex = 0
+	for (const edge of blueprint.edges || []) {
+		const labelParts: string[] = []
+
+		if (edge.action) {
+			labelParts.push(edge.action)
+		}
+		if (edge.condition) {
+			labelParts.push(edge.condition)
+		}
+		if (edge.transform) {
+			labelParts.push(edge.transform)
+		}
+
+		const edgeKey = `${edge.source}->${edge.target}`
+		const isTaken = takenEdges.has(edgeKey)
+
+		let edgeLine: string
+		if (labelParts.length > 0) {
+			const edgeLabel = labelParts.join(' | ')
+			edgeLine = `    ${edge.source} -- "${edgeLabel}" --> ${edge.target}\n`
+		} else {
+			edgeLine = `    ${edge.source} --> ${edge.target}\n`
+		}
+
+		mermaid += edgeLine
+
+		if (isTaken) {
+			mermaid += `    linkStyle ${edgeIndex} stroke:#007bff,stroke-width:3px\n`
+		}
+
+		edgeIndex++
 	}
 
 	return mermaid
