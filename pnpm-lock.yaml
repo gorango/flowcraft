@@ -296,7 +296,7 @@ importers:
         version: 5.2.0
       flowcraft:
         specifier: workspace:*
-        version: link:../flowcraft
+        version: link:../core
       ioredis:
         specifier: ^5.8.2
         version: 5.8.2
@@ -462,7 +462,7 @@ importers:
         specifier: ^4.0.4
         version: 4.0.4(@types/debug@4.1.12)(@types/node@24.9.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.44.0)(tsx@4.20.6)(yaml@2.8.1)
 
-  packages/flowcraft:
+  packages/core:
     devDependencies:
       '@types/node':
         specifier: ^24.9.2
