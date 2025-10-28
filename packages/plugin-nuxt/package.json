@@ -1,0 +1,50 @@
+{
+	"name": "@flowcraft/nuxt-module",
+	"type": "commonjs",
+	"version": "1.0.0",
+	"description": "Nuxt module for Flowcraft compiler integration",
+	"license": "MIT",
+	"homepage": "https://flowcraft.js.org",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/gorango/flowcraft.git"
+	},
+	"bugs": "https://github.com/gorango/flowcraft/issues",
+	"keywords": [
+		"flowcraft",
+		"nuxt",
+		"nuxtjs",
+		"module",
+		"build",
+		"workflow"
+	],
+	"exports": {
+		".": {
+			"require": "./dist/index.js",
+			"types": "./dist/index.d.ts"
+		}
+	},
+	"types": "./dist/index.d.ts",
+	"files": [
+		"dist"
+	],
+	"scripts": {
+		"dev": "tsup --watch",
+		"build": "tsup",
+		"typecheck": "tsc --noEmit",
+		"test": "echo \"Error: no test specified\" && exit 0"
+	},
+	"dependencies": {
+		"@flowcraft/vite-plugin": "workspace:*"
+	},
+	"devDependencies": {
+		"@flowcraft/compiler": "workspace:*",
+		"@nuxt/kit": "^3.15.0",
+		"@types/node": "^24.9.1",
+		"tsup": "^8.5.0"
+	},
+	"peerDependencies": {
+		"@nuxt/kit": "^3.0.0",
+		"nuxt": "^3.0.0"
+	}
+}

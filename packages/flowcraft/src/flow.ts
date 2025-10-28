@@ -20,7 +20,7 @@ function _hashFunction(fn: NodeFunction<any, any, any, any, any> | NodeClass<any
 /**
  * A fluent API for programmatically constructing a WorkflowBlueprint.
  */
-export class Flow<
+export class FlowBuilder<
 	TContext extends Record<string, any> = Record<string, any>,
 	TDependencies extends Record<string, any> = Record<string, any>,
 > {
@@ -103,14 +103,13 @@ export class Flow<
 			/** The number of items to process in each chunk to limit memory usage. */
 			chunkSize?: number
 		},
-	): Flow<TContext & { [K in TOutputKey]: TWorkerOutput[] }, TDependencies> {
+	): FlowBuilder<TContext & { [K in TOutputKey]: TWorkerOutput[] }, TDependencies> {
 		const { inputKey, outputKey } = options
 		const scatterId = `${id}_scatter`
 		const gatherId = `${id}_gather`
 
 		this.batchDefinitions.push({ id, scatterId, gatherId })
 
-		// register worker implementation under a unique key.
 		let workerUsesKey: string
 		if (isNodeClass(worker)) {
 			workerUsesKey =
@@ -121,26 +120,23 @@ export class Flow<
 			this.functionRegistry.set(workerUsesKey, worker as unknown as NodeFunction)
 		}
 
-		// scatter node: takes an array and dynamically schedules worker nodes
 		this.blueprint.nodes?.push({
 			id: scatterId,
-			uses: 'batch-scatter', // built-in
+			uses: 'batch-scatter',
 			inputs: inputKey as string,
 			params: { workerUsesKey, outputKey: outputKey as string, gatherNodeId: gatherId, chunkSize: options.chunkSize },
 		})
 
-		// gather node: waits for all workers to finish and collects the results
 		this.blueprint.nodes?.push({
 			id: gatherId,
-			uses: 'batch-gather', // built-in
+			uses: 'batch-gather',
 			params: { outputKey, gatherNodeId: gatherId },
-			config: { joinStrategy: 'all' }, // important: must wait for all scattered jobs
+			config: { joinStrategy: 'all' },
 		})
 
-		// edge to connect scatter and gather nodes, orchestrator will manage dynamic workers
 		this.edge(scatterId, gatherId)
 
-		return this as unknown as Flow<TContext & { [K in TOutputKey]: TWorkerOutput[] }, TDependencies>
+		return this as unknown as FlowBuilder<TContext & { [K in TOutputKey]: TWorkerOutput[] }, TDependencies>
 	}
 
 	/**
@@ -201,19 +197,18 @@ export class Flow<
 
 		this.loopDefinitions.push({ id, startNodeId, endNodeId, condition })
 
-		// controller node: evaluates the loop condition
 		this.blueprint.nodes?.push({
 			id: controllerId,
-			uses: 'loop-controller', // built-in
+			uses: 'loop-controller',
 			params: { condition },
-			config: { joinStrategy: 'any' }, // to allow re-execution on each loop iteration
+			config: { joinStrategy: 'any' },
 		})
 
 		this.edge(endNodeId, controllerId)
 
 		this.edge(controllerId, startNodeId, {
 			action: 'continue',
-			transform: `context.${endNodeId}`, // pass the end node's value to the start node
+			transform: `context.${endNodeId}`,
 		})
 
 		return this
@@ -343,7 +338,7 @@ export class Flow<
 			}
 		}
 
-		// replace scatter/gather pairs with a single representative "worker" node
+		// replace scatter/gather pairs with a single representative worker node
 		const scatterNodes = blueprint.nodes.filter((n) => n.uses === 'batch-scatter')
 		for (const scatterNode of scatterNodes) {
 			const gatherNodeId = scatterNode.params?.gatherNodeId
@@ -409,6 +404,6 @@ export class Flow<
 export function createFlow<
 	TContext extends Record<string, any> = Record<string, any>,
 	TDependencies extends Record<string, any> = Record<string, any>,
->(id: string): Flow<TContext, TDependencies> {
-	return new Flow(id)
+>(id: string): FlowBuilder<TContext, TDependencies> {
+	return new FlowBuilder(id)
 }

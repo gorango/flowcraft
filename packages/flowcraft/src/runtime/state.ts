@@ -47,7 +47,7 @@ export class WorkflowState<TContext extends Record<string, any>> {
 		this.errors.push({
 			...flowcraftError,
 			timestamp: new Date().toISOString(),
-			originalError: error, // Legacy compatibility
+			originalError: error, // legacy compatibility
 		})
 	}
 
@@ -75,14 +75,14 @@ export class WorkflowState<TContext extends Record<string, any>> {
 		return this.anyFallbackExecuted
 	}
 
-	markAsAwaiting(nodeId: string, details?: any): void {
+	async markAsAwaiting(nodeId: string, details?: any): Promise<void> {
 		this._isAwaiting = true
 		this._awaitingNodeIds.add(nodeId)
 		if (details) {
 			this._awaitingDetails.set(nodeId, details)
 		}
-		this.context.set('_awaitingNodeIds' as any, Array.from(this._awaitingNodeIds))
-		this.context.set('_awaitingDetails' as any, Object.fromEntries(this._awaitingDetails))
+		await this.context.set('_awaitingNodeIds' as any, Array.from(this._awaitingNodeIds))
+		await this.context.set('_awaitingDetails' as any, Object.fromEntries(this._awaitingDetails))
 	}
 
 	isAwaiting(): boolean {

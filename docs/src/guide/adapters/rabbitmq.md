@@ -186,6 +186,72 @@ async function reconcile() {
 }
 ```
 
+## Webhook Endpoints
+
+The RabbitMQ adapter supports webhook endpoints for workflows using `Flow.createWebhook()`. Webhook endpoints can be registered using web frameworks like Express.js or dedicated webhook services.
+
+### `registerWebhookEndpoint(runId, nodeId)`
+
+Registers a webhook endpoint for the specified workflow run and node.
+
+- **`runId`** `string`: The unique identifier for the workflow execution.
+- **`nodeId`** `string`: The ID of the webhook node.
+- **Returns**: `Promise<{ url: string; event: string }>` - The webhook URL and event name.
+
+**Example Implementation:**
+```typescript
+// In RabbitMqAdapter
+public async registerWebhookEndpoint(runId: string, nodeId: string): Promise<{ url: string; event: string }> {
+  const eventName = `webhook:${runId}:${nodeId}`
+  const url = `https://your-app.com/webhooks/${runId}/${nodeId}`
+
+  // Store webhook mapping in PostgreSQL for later retrieval
+  await this.postgres.query(
+    'INSERT INTO webhooks (webhook_id, event_name, url, created_at) VALUES ($1, $2, $3, $4)',
+    [`${runId}:${nodeId}`, eventName, url, new Date()]
+  )
+
+  return { url, event: eventName }
+}
+```
+
+### Handling Webhook Requests
+
+Create an HTTP endpoint to handle webhook requests and publish messages to RabbitMQ:
+
+```typescript
+// Express.js webhook handler
+import amqp from 'amqplib'
+
+const connection = await amqp.connect('amqp://localhost')
+const channel = await connection.createChannel()
+
+app.post('/webhooks/:runId/:nodeId', async (req, res) => {
+  const { runId, nodeId } = req.params
+  const payload = req.body
+
+  // Get webhook mapping from PostgreSQL
+  const result = await postgres.query(
+    'SELECT event_name FROM webhooks WHERE webhook_id = $1',
+    [`${runId}:${nodeId}`]
+  )
+
+  if (result.rows.length > 0) {
+    const eventName = result.rows[0].event_name
+
+    // Publish event to RabbitMQ exchange
+    await channel.publish('flowcraft-events', '', Buffer.from(JSON.stringify({
+      event: eventName,
+      payload
+    })))
+
+    res.status(200).send('OK')
+  } else {
+    res.status(404).send('Webhook not found')
+  }
+})
+```
+
 ## Key Components
 
 - **`RabbitMqAdapter`**: Consumes from a RabbitMQ queue and orchestrates job execution.

@@ -51,7 +51,14 @@ export abstract class BaseDistributedAdapter {
 	protected readonly logger: ILogger
 
 	constructor(options: AdapterOptions) {
-		this.runtime = new FlowRuntime(options.runtimeOptions)
+		const runtimeOptions = {
+			...options.runtimeOptions,
+			dependencies: {
+				...options.runtimeOptions.dependencies,
+				adapter: this,
+			} as any,
+		}
+		this.runtime = new FlowRuntime(runtimeOptions)
 		this.store = options.coordinationStore
 		this.serializer = options.runtimeOptions.serializer || new JsonSerializer()
 		this.logger = options.runtimeOptions.logger || new ConsoleLogger()
@@ -99,6 +106,14 @@ export abstract class BaseDistributedAdapter {
 	): Promise<void>
 
 	/**
+	 * Registers a webhook endpoint for a specific node in a workflow run.
+	 * @param runId The unique ID of the workflow run.
+	 * @param nodeId The ID of the node that will wait for the webhook.
+	 * @returns The URL and event name for the webhook.
+	 */
+	public abstract registerWebhookEndpoint(runId: string, nodeId: string): Promise<{ url: string; event: string }>
+
+	/**
 	 * Hook called at the start of job processing. Subclasses can override this
 	 * to perform additional setup (e.g., timestamp tracking for reconciliation).
 	 */
@@ -134,7 +149,7 @@ export abstract class BaseDistributedAdapter {
 		}
 		const workerState = {
 			getContext: () => context,
-			markFallbackExecuted: () => {},
+			markFallbackExecuted: () => { },
 			addError: (nodeId: string, error: Error) => {
 				this.logger.error(`[Adapter] Error in node ${nodeId}:`, error)
 			},
@@ -231,7 +246,7 @@ export abstract class BaseDistributedAdapter {
 			const lockKey = `flowcraft:joinlock:${runId}:${targetNodeId}`
 			const isLocked = await this.store.setIfNotExist(lockKey, 'locked', 3600)
 			if (!isLocked) {
-				// Check if it's cancelled
+				// check if cancelled
 				const cancelKey = `flowcraft:fanin:cancel:${runId}:${targetNodeId}`
 				const isCancelled = !(await this.store.setIfNotExist(cancelKey, 'cancelled', 3600))
 				if (isCancelled) {
@@ -240,7 +255,7 @@ export abstract class BaseDistributedAdapter {
 					)
 					throw new Error(`Node '${targetNodeId}' failed due to cancelled predecessor in run '${runId}'`)
 				}
-				return false // Already locked by another predecessor
+				return false // already locked by another predecessor
 			}
 			return true
 		} else {
@@ -284,7 +299,6 @@ export abstract class BaseDistributedAdapter {
 		}
 
 		const state = await context.toJSON()
-		// filter out internal keys
 		const completedNodes = new Set<string>()
 		for (const key of Object.keys(state)) {
 			if (key.startsWith('_outputs.')) {

@@ -4,6 +4,17 @@ import type { ExecutionContext } from './runtime/execution-context'
 import type { WorkflowState } from './runtime/state'
 
 // =================================================================================
+// Common Types
+// =================================================================================
+
+/** Source location information for debugging and visualization. */
+export interface SourceLocation {
+	file: string
+	line: number
+	column: number
+}
+
+// =================================================================================
 // Blueprint Interfaces (The Declarative Definition)
 // =================================================================================
 
@@ -26,6 +37,8 @@ export interface NodeDefinition {
 	inputs?: string | Record<string, string>
 	/** Configuration for retries, timeouts, etc. */
 	config?: NodeConfig
+	/** Source location for debugging and visualization. */
+	_sourceLocation?: SourceLocation
 }
 
 /** Defines the connection and data flow between two nodes. */
@@ -38,6 +51,8 @@ export interface EdgeDefinition {
 	condition?: string
 	/** A string expression to transform the data before passing it to the target node. */
 	transform?: string
+	/** Source location for debugging and visualization. */
+	_sourceLocation?: SourceLocation
 }
 
 /** Configuration for a node's resiliency and behavior. */

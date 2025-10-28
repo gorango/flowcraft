@@ -63,3 +63,30 @@ run()
 This workflow can be visualized and run in the demo below:
 
 <DemoGettingStarted />
+
+## Compiler Alternative
+
+For a more imperative approach, you can write the same workflow using the Flowcraft Compiler:
+
+```typescript
+/** @flow */
+export async function simpleWorkflow(value: number) {
+  const startResult = await startNode(value)
+  const finalResult = await doubleNode(startResult)
+  return finalResult
+}
+
+/** @step */
+async function startNode(value: number) {
+  return value
+}
+
+/** @step */
+async function doubleNode(input: number) {
+  return input * 2
+}
+```
+
+This imperative code compiles to the same declarative blueprint as the Fluent API example above. The compiler provides an imperative developer experience while maintaining declarative runtime benefits.
+
+[Learn more in the Compiler Guide >](/guide/compiler/)

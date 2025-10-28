@@ -190,6 +190,74 @@ async function reconcile() {
 }
 ```
 
+## Webhook Endpoints
+
+The GCP adapter supports webhook endpoints for workflows using `Flow.createWebhook()`. Webhook endpoints can be registered using Cloud Functions, Cloud Run, or API Gateway.
+
+### `registerWebhookEndpoint(runId, nodeId)`
+
+Registers a webhook endpoint for the specified workflow run and node.
+
+- **`runId`** `string`: The unique identifier for the workflow execution.
+- **`nodeId`** `string`: The ID of the webhook node.
+- **Returns**: `Promise<{ url: string; event: string }>` - The webhook URL and event name.
+
+**Example Implementation:**
+```typescript
+// In PubSubAdapter
+public async registerWebhookEndpoint(runId: string, nodeId: string): Promise<{ url: string; event: string }> {
+  const eventName = `webhook:${runId}:${nodeId}`
+  // Use Cloud Functions URL or custom domain
+  const url = `https://your-region-your-project.cloudfunctions.net/webhook/${runId}/${nodeId}`
+
+  // Store webhook mapping in Firestore for later retrieval
+  await this.firestore.collection('webhooks').doc(`${runId}:${nodeId}`).set({
+    eventName,
+    url,
+    createdAt: new Date()
+  })
+
+  return { url, event: eventName }
+}
+```
+
+### Handling Webhook Requests with Cloud Functions
+
+Create a Cloud Function to handle webhook requests and publish messages to Pub/Sub:
+
+```typescript
+// Cloud Function
+import { PubSub } from '@google-cloud/pubsub'
+import { Firestore } from '@google-cloud/firestore'
+
+const pubsub = new PubSub()
+const firestore = new Firestore()
+
+export async function webhookHandler(req: any, res: any) {
+  const { runId, nodeId } = req.params
+  const payload = req.body
+
+  // Get webhook mapping from Firestore
+  const webhookDoc = await firestore.collection('webhooks').doc(`${runId}:${nodeId}`).get()
+
+  if (webhookDoc.exists) {
+    const webhookData = webhookDoc.data()
+
+    // Publish event to Pub/Sub topic
+    await pubsub.topic('flowcraft-events').publishMessage({
+      data: Buffer.from(JSON.stringify({
+        event: webhookData.eventName,
+        payload
+      }))
+    })
+
+    res.status(200).send('OK')
+  } else {
+    res.status(404).send('Webhook not found')
+  }
+}
+```
+
 ## Key Components
 
 - **`PubSubAdapter`**: Orchestrates job processing from a Pub/Sub subscription.

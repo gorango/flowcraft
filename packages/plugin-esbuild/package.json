@@ -1,0 +1,46 @@
+{
+	"name": "@flowcraft/esbuild-plugin",
+	"type": "module",
+	"version": "1.0.0",
+	"description": "esbuild plugin for Flowcraft compiler integration",
+	"license": "MIT",
+	"homepage": "https://flowcraft.js.org",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/gorango/flowcraft.git"
+	},
+	"bugs": "https://github.com/gorango/flowcraft/issues",
+	"keywords": [
+		"flowcraft",
+		"esbuild",
+		"plugin",
+		"build",
+		"workflow"
+	],
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"import": "./dist/index.js"
+		}
+	},
+	"files": [
+		"dist"
+	],
+	"scripts": {
+		"dev": "tsup --watch",
+		"build": "tsup",
+		"typecheck": "tsc --noEmit",
+		"test": "echo \"Error: no test specified\" && exit 0"
+	},
+	"dependencies": {
+		"@flowcraft/compiler": "workspace:*"
+	},
+	"devDependencies": {
+		"@types/node": "^24.9.1",
+		"esbuild": "^0.19.0",
+		"tsup": "^8.5.0"
+	},
+	"peerDependencies": {
+		"esbuild": "^0.15.0 || ^0.16.0 || ^0.17.0 || ^0.18.0 || ^0.19.0"
+	}
+}
