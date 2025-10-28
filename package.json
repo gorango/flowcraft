@@ -3,14 +3,9 @@
 	"type": "module",
 	"private": true,
 	"packageManager": "pnpm@10.18.3",
-	"main": "index.js",
 	"scripts": {
 		"lint": "biome check",
-		"build": "turbo build",
-		"test": "turbo test",
-		"typecheck": "turbo typecheck",
 		"coverage": "pnpm --filter flowcraft test:coverage",
-		"changelog": "npx changelogithub --output CHANGELOG.md && git add CHANGELOG.md && git commit -m \"update changelog\"",
 		"changeset": "changeset"
 	},
 	"devDependencies": {
