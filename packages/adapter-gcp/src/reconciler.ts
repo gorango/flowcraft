@@ -1,4 +1,5 @@
 import type { Firestore } from '@google-cloud/firestore'
+import type { ILogger } from 'flowcraft'
 import type { PubSubAdapter } from './adapter'
 
 export interface GcpReconcilerOptions {
@@ -10,6 +11,8 @@ export interface GcpReconcilerOptions {
 	statusCollectionName: string
 	/** The time in seconds a workflow must be idle to be considered stalled. */
 	stalledThresholdSeconds: number
+	/** Logger for reconciliation events. */
+	logger?: ILogger
 }
 
 export interface ReconciliationStats {
@@ -23,7 +26,13 @@ export interface ReconciliationStats {
  * It queries Firestore for stalled runs and attempts to resume them.
  */
 export function createGcpReconciler(options: GcpReconcilerOptions) {
-	const { adapter, firestoreClient, statusCollectionName, stalledThresholdSeconds } = options
+	const {
+		adapter,
+		firestoreClient,
+		statusCollectionName,
+		stalledThresholdSeconds,
+		logger = (adapter as any).logger,
+	} = options
 
 	return {
 		async run(): Promise<ReconciliationStats> {
@@ -52,11 +61,11 @@ export function createGcpReconciler(options: GcpReconcilerOptions) {
 					const enqueued = await (adapter as any).reconcile(runId)
 					if (enqueued.size > 0) {
 						stats.reconciledRuns++
-						console.log(`[Reconciler] Resumed run ${runId}, enqueued nodes: ${[...enqueued].join(', ')}`)
+						logger.info(`[Reconciler] Resumed run ${runId}, enqueued nodes: ${[...enqueued].join(', ')}`)
 					}
 				} catch (error) {
 					stats.failedRuns++
-					console.error(`[Reconciler] Failed to reconcile run ${runId}:`, error)
+					logger.error(`[Reconciler] Failed to reconcile run ${runId}:`, error)
 				}
 			}
 			return stats

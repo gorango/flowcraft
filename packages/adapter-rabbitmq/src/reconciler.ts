@@ -1,3 +1,4 @@
+import type { ILogger } from 'flowcraft'
 import type { Client as PgClient } from 'pg'
 import type { RabbitMqAdapter } from './adapter'
 
@@ -10,6 +11,8 @@ export interface RabbitMqReconcilerOptions {
 	statusTableName: string
 	/** The time in seconds a workflow must be idle to be considered stalled. */
 	stalledThresholdSeconds: number
+	/** Logger for reconciliation events. */
+	logger?: ILogger
 }
 
 export interface ReconciliationStats {
@@ -23,7 +26,7 @@ export interface ReconciliationStats {
  * It queries PostgreSQL for stalled runs and attempts to resume them.
  */
 export function createRabbitMqReconciler(options: RabbitMqReconcilerOptions) {
-	const { adapter, pgClient, statusTableName, stalledThresholdSeconds } = options
+	const { adapter, pgClient, statusTableName, stalledThresholdSeconds, logger = (adapter as any).logger } = options
 
 	return {
 		async run(): Promise<ReconciliationStats> {
@@ -52,11 +55,11 @@ export function createRabbitMqReconciler(options: RabbitMqReconcilerOptions) {
 					const enqueued = await (adapter as any).reconcile(runId)
 					if (enqueued.size > 0) {
 						stats.reconciledRuns++
-						console.log(`[Reconciler] Resumed run ${runId}, enqueued nodes: ${[...enqueued].join(', ')}`)
+						logger.info(`[Reconciler] Resumed run ${runId}, enqueued nodes: ${[...enqueued].join(', ')}`)
 					}
 				} catch (error) {
 					stats.failedRuns++
-					console.error(`[Reconciler] Failed to reconcile run ${runId}:`, error)
+					logger.error(`[Reconciler] Failed to reconcile run ${runId}:`, error)
 				}
 			}
 			return stats

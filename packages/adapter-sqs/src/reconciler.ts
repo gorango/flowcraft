@@ -1,6 +1,7 @@
 import type { DynamoDBClient } from '@aws-sdk/client-dynamodb'
 import { ScanCommand } from '@aws-sdk/client-dynamodb'
 import { unmarshall } from '@aws-sdk/util-dynamodb'
+import type { ILogger } from 'flowcraft'
 import type { SqsAdapter } from './adapter'
 
 export interface SqsReconcilerOptions {
@@ -12,6 +13,8 @@ export interface SqsReconcilerOptions {
 	statusTableName: string
 	/** The time in seconds a workflow must be idle to be considered stalled. */
 	stalledThresholdSeconds: number
+	/** Logger for reconciliation events. */
+	logger?: ILogger
 }
 
 // Re-using the same stats interface
@@ -27,7 +30,13 @@ export interface ReconciliationStats {
  * It queries a DynamoDB status table for stalled runs and attempts to resume them.
  */
 export function createSqsReconciler(options: SqsReconcilerOptions) {
-	const { adapter, dynamoDbClient, statusTableName, stalledThresholdSeconds } = options
+	const {
+		adapter,
+		dynamoDbClient,
+		statusTableName,
+		stalledThresholdSeconds,
+		logger = (adapter as any).logger,
+	} = options
 
 	return {
 		async run(): Promise<ReconciliationStats> {
@@ -69,11 +78,11 @@ export function createSqsReconciler(options: SqsReconcilerOptions) {
 					const enqueued = await (adapter as any).reconcile(runId)
 					if (enqueued.size > 0) {
 						stats.reconciledRuns++
-						console.log(`[Reconciler] Resumed run ${runId}, enqueued nodes: ${[...enqueued].join(', ')}`)
+						logger.info(`[Reconciler] Resumed run ${runId}, enqueued nodes: ${[...enqueued].join(', ')}`)
 					}
 				} catch (error) {
 					stats.failedRuns++
-					console.error(`[Reconciler] Failed to reconcile run ${runId}:`, error)
+					logger.error(`[Reconciler] Failed to reconcile run ${runId}:`, error)
 				}
 			}
 			return stats

@@ -1,3 +1,4 @@
+import type { ILogger } from 'flowcraft'
 import type { Redis } from 'ioredis'
 import type { BullMQAdapter } from './adapter'
 
@@ -12,6 +13,8 @@ export interface BullMQReconcilerOptions {
 	keyPrefix?: string
 	/** The maximum number of keys to fetch in each SCAN batch. */
 	scanCount?: number
+	/** Logger for reconciliation events. */
+	logger?: ILogger
 }
 
 export interface ReconciliationStats {
@@ -28,7 +31,14 @@ export interface ReconciliationStats {
  * @returns An object with a `run` method to execute the reconciliation cycle.
  */
 export function createBullMQReconciler(options: BullMQReconcilerOptions) {
-	const { adapter, redis, stalledThresholdSeconds, keyPrefix = 'workflow:state:', scanCount = 100 } = options
+	const {
+		adapter,
+		redis,
+		stalledThresholdSeconds,
+		keyPrefix = 'workflow:state:',
+		scanCount = 100,
+		logger = (adapter as any).logger,
+	} = options
 
 	return {
 		async run(): Promise<ReconciliationStats> {
@@ -56,11 +66,11 @@ export function createBullMQReconciler(options: BullMQReconcilerOptions) {
 							const enqueued = await (adapter as any).reconcile(runId)
 							if (enqueued.size > 0) {
 								stats.reconciledRuns++
-								console.log(`[Reconciler] Resumed run ${runId}, enqueued nodes: ${[...enqueued].join(', ')}`)
+								logger.info(`[Reconciler] Resumed run ${runId}, enqueued nodes: ${[...enqueued].join(', ')}`)
 							}
 						} catch (error) {
 							stats.failedRuns++
-							console.error(`[Reconciler] Failed to reconcile run ${runId}:`, error)
+							logger.error(`[Reconciler] Failed to reconcile run ${runId}:`, error)
 						}
 					}
 				}

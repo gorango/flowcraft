@@ -38,7 +38,7 @@ export class PubSubAdapter extends BaseDistributedAdapter {
 		this.subscriptionName = options.subscriptionName
 		this.contextCollectionName = options.contextCollectionName
 		this.statusCollectionName = options.statusCollectionName
-		console.log(`[PubSubAdapter] Initialized for topic: ${this.topicName}`)
+		this.logger.info(`[PubSubAdapter] Initialized for topic: ${this.topicName}`)
 	}
 
 	protected createContext(runId: string): FirestoreContext {
@@ -60,7 +60,7 @@ export class PubSubAdapter extends BaseDistributedAdapter {
 				{ merge: true },
 			)
 		} catch (error) {
-			console.error(`[PubSubAdapter] Failed to update lastUpdated timestamp for Run ID ${_runId}`, error)
+			this.logger.error(`[PubSubAdapter] Failed to update lastUpdated timestamp for Run ID ${_runId}`, { error })
 		}
 	}
 
@@ -74,7 +74,7 @@ export class PubSubAdapter extends BaseDistributedAdapter {
 			status: result.status,
 			lastUpdated: FieldValue.serverTimestamp(),
 		})
-		console.log(`[PubSubAdapter] Published final result for Run ID ${runId}.`)
+		this.logger.info(`[PubSubAdapter] Published final result for Run ID ${runId}.`)
 	}
 
 	protected async enqueueJob(job: JobPayload): Promise<void> {
@@ -84,7 +84,7 @@ export class PubSubAdapter extends BaseDistributedAdapter {
 
 	protected processJobs(handler: (job: JobPayload) => Promise<void>): void {
 		if (this.subscription) {
-			console.warn('[PubSubAdapter] Subscription listener is already active.')
+			this.logger.warn('[PubSubAdapter] Subscription listener is already active.')
 			return
 		}
 
@@ -93,26 +93,26 @@ export class PubSubAdapter extends BaseDistributedAdapter {
 		const messageHandler = async (message: any) => {
 			try {
 				const job = JSON.parse(message.data.toString('utf-8')) as JobPayload
-				console.log(`[PubSubAdapter] ==> Picked up job for Node: ${job.nodeId}, Run: ${job.runId}`)
+				this.logger.info(`[PubSubAdapter] ==> Picked up job for Node: ${job.nodeId}, Run: ${job.runId}`)
 				await handler(job)
 				message.ack() // acknowledge the message so it's not redelivered
-			} catch (err) {
-				console.error('[PubSubAdapter] Error processing message, nacking:', err)
+			} catch (error) {
+				this.logger.error('[PubSubAdapter] Error processing message, nacking:', { error })
 				message.nack() // nack the message so Pub/Sub can redeliver it later
 			}
 		}
 
 		this.subscription.on('message', messageHandler)
 		this.subscription.on('error', (error) => {
-			console.error('[PubSubAdapter] Received error from Pub/Sub subscription:', error)
+			this.logger.error('[PubSubAdapter] Received error from Pub/Sub subscription:', error)
 		})
 
-		console.log(`[PubSubAdapter] Worker listening for jobs on subscription: "${this.subscriptionName}"`)
+		this.logger.info(`[PubSubAdapter] Worker listening for jobs on subscription: "${this.subscriptionName}"`)
 	}
 
 	public async stop(): Promise<void> {
 		if (this.subscription) {
-			console.log('[PubSubAdapter] Stopping worker listener.')
+			this.logger.info('[PubSubAdapter] Stopping worker listener.')
 			await this.subscription.close()
 			this.subscription = undefined
 		}
