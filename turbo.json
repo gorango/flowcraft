@@ -2,7 +2,9 @@
 	"$schema": "https://turbo.build/schema.json",
 	"tasks": {
 		"lint": {},
-		"typecheck": {},
+		"typecheck": {
+			"cache": false
+		},
 		"build": {
 			"dependsOn": ["^build"],
 			"outputs": ["dist/**", "lib/**", "types/**", ".output/**"],
