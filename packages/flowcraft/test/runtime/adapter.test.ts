@@ -21,6 +21,7 @@ class MockAdapter extends BaseDistributedAdapter {
 	processJobs = vi.fn()
 	enqueueJob = vi.fn()
 	publishFinalResult = vi.fn()
+	registerWebhookEndpoint = vi.fn()
 }
 
 describe('BaseDistributedAdapter', () => {

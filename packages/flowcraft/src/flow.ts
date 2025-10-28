@@ -20,7 +20,7 @@ function _hashFunction(fn: NodeFunction<any, any, any, any, any> | NodeClass<any
 /**
  * A fluent API for programmatically constructing a WorkflowBlueprint.
  */
-export class Flow<
+export class FlowBuilder<
 	TContext extends Record<string, any> = Record<string, any>,
 	TDependencies extends Record<string, any> = Record<string, any>,
 > {
@@ -103,7 +103,7 @@ export class Flow<
 			/** The number of items to process in each chunk to limit memory usage. */
 			chunkSize?: number
 		},
-	): Flow<TContext & { [K in TOutputKey]: TWorkerOutput[] }, TDependencies> {
+	): FlowBuilder<TContext & { [K in TOutputKey]: TWorkerOutput[] }, TDependencies> {
 		const { inputKey, outputKey } = options
 		const scatterId = `${id}_scatter`
 		const gatherId = `${id}_gather`
@@ -140,7 +140,7 @@ export class Flow<
 		// edge to connect scatter and gather nodes, orchestrator will manage dynamic workers
 		this.edge(scatterId, gatherId)
 
-		return this as unknown as Flow<TContext & { [K in TOutputKey]: TWorkerOutput[] }, TDependencies>
+		return this as unknown as FlowBuilder<TContext & { [K in TOutputKey]: TWorkerOutput[] }, TDependencies>
 	}
 
 	/**
@@ -409,6 +409,6 @@ export class Flow<
 export function createFlow<
 	TContext extends Record<string, any> = Record<string, any>,
 	TDependencies extends Record<string, any> = Record<string, any>,
->(id: string): Flow<TContext, TDependencies> {
-	return new Flow(id)
+>(id: string): FlowBuilder<TContext, TDependencies> {
+	return new FlowBuilder(id)
 }

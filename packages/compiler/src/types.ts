@@ -34,8 +34,14 @@ export interface CompilerStateInterface {
 	pendingForkEdges: { source: string; condition: string }[]
 }
 
+export interface VariableInfo {
+	nodeId: string
+	type: import('typescript').Type
+	variableType?: 'webhook' | 'normal'
+}
+
 export interface Scope {
-	variables: Map<string, { nodeId: string; type: import('typescript').Type }>
+	variables: Map<string, VariableInfo>
 }
 
 export interface PendingEdge {

@@ -216,6 +216,74 @@ async function reconcile() {
 }
 ```
 
+## Webhook Endpoints
+
+The SQS adapter supports webhook endpoints for workflows using `Flow.createWebhook()`. Webhook endpoints can be registered using AWS API Gateway, Lambda, or other HTTP services.
+
+### `registerWebhookEndpoint(runId, nodeId)`
+
+Registers a webhook endpoint for the specified workflow run and node.
+
+- **`runId`** `string`: The unique identifier for the workflow execution.
+- **`nodeId`** `string`: The ID of the webhook node.
+- **Returns**: `Promise<{ url: string; event: string }>` - The webhook URL and event name.
+
+**Example Implementation:**
+```typescript
+// In SqsAdapter
+public async registerWebhookEndpoint(runId: string, nodeId: string): Promise<{ url: string; event: string }> {
+  const eventName = `webhook:${runId}:${nodeId}`
+  // Use API Gateway URL or custom domain
+  const url = `https://your-api-gateway.com/webhooks/${runId}/${nodeId}`
+
+  // Store webhook mapping in DynamoDB for later retrieval
+  await this.dynamoDb.putItem({
+    TableName: this.webhookTableName,
+    Item: {
+      webhookId: `${runId}:${nodeId}`,
+      eventName,
+      url,
+      createdAt: new Date().toISOString()
+    }
+  })
+
+  return { url, event: eventName }
+}
+```
+
+### Handling Webhook Requests with Lambda
+
+Create a Lambda function to handle webhook requests and send messages to SQS:
+
+```typescript
+// Lambda handler
+export async function handler(event: any) {
+  const { runId, nodeId } = event.pathParameters
+  const payload = JSON.parse(event.body)
+
+  // Get webhook mapping from DynamoDB
+  const webhookData = await dynamoDb.getItem({
+    TableName: 'flowcraft-webhooks',
+    Key: { webhookId: `${runId}:${nodeId}` }
+  })
+
+  if (webhookData.Item) {
+    // Send event to SQS queue
+    await sqs.sendMessage({
+      QueueUrl: process.env.SQS_QUEUE_URL!,
+      MessageBody: JSON.stringify({
+        event: webhookData.Item.eventName,
+        payload
+      })
+    })
+
+    return { statusCode: 200, body: 'OK' }
+  }
+
+  return { statusCode: 404, body: 'Webhook not found' }
+}
+```
+
 ## Key Components
 
 - **`SqsAdapter`**: The main class that polls SQS and orchestrates job execution.

@@ -1,5 +1,7 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { createFlow } from '../../src/flow'
+import { SleepNode } from '../../src/nodes/sleep'
+import { WebhookNode } from '../../src/nodes/webhook'
 import { FlowRuntime } from '../../src/runtime'
 import { createStepper } from '../../src/testing'
 
@@ -251,5 +253,64 @@ describe('createStepper', () => {
 		const result = await stepper.next()
 		expect(result?.status).toBe('completed')
 		expect((await stepper.state.getContext().toJSON())['_outputs.end']).toBe('end')
+	})
+
+	it('should handle durable primitives', async () => {
+		// Test sleep node
+		const runtime = new FlowRuntime({})
+		const flow = createFlow('durable-test').node('sleep', SleepNode, { params: { duration: '5m' } })
+
+		const stepper = await createStepper(runtime, flow.toBlueprint(), flow.getFunctionRegistry(), {})
+		const sleepResult = await stepper.next()
+		expect(sleepResult?.status).toBe('awaiting')
+		expect(stepper.isDone()).toBe(false)
+	})
+
+	it('should handle waitForEvent node', async () => {
+		const runtime = new FlowRuntime({})
+		const flow = createFlow('wait-test').wait('wait', { params: { eventName: 'test_event' } })
+
+		const stepper = await createStepper(runtime, flow.toBlueprint(), flow.getFunctionRegistry(), {})
+		const waitResult = await stepper.next()
+		expect(waitResult?.status).toBe('awaiting')
+		expect(stepper.isDone()).toBe(false)
+	})
+
+	it('should handle webhook node', async () => {
+		const mockAdapter = {
+			registerWebhookEndpoint: vi.fn().mockResolvedValue({
+				url: 'https://example.com/webhook/123',
+				event: 'webhook:123',
+			}),
+		}
+
+		const runtime = new FlowRuntime({
+			dependencies: { adapter: mockAdapter },
+		})
+
+		const flow = createFlow('webhook-test').node('webhook', WebhookNode)
+
+		const stepper = await createStepper(runtime, flow.toBlueprint(), flow.getFunctionRegistry(), {})
+		const webhookResult = await stepper.next()
+
+		// Webhook node should complete (not await) and call registerWebhookEndpoint
+		expect(webhookResult?.status).toBe('completed')
+		expect(mockAdapter.registerWebhookEndpoint).toHaveBeenCalledWith(
+			expect.any(String), // runId
+			'webhook', // nodeId
+		)
+		expect(stepper.isDone()).toBe(true)
+	})
+
+	it('should handle webhook.request wait node', async () => {
+		const runtime = new FlowRuntime({})
+		const flow = createFlow('webhook-wait-test').wait('wait_webhook', {
+			params: { eventName: 'webhook:webhook_1' },
+		})
+
+		const stepper = await createStepper(runtime, flow.toBlueprint(), flow.getFunctionRegistry(), {})
+		const waitWebhookResult = await stepper.next()
+		expect(waitWebhookResult?.status).toBe('awaiting')
+		expect(stepper.isDone()).toBe(false)
 	})
 })

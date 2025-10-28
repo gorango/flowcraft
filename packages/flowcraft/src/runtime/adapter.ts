@@ -51,7 +51,14 @@ export abstract class BaseDistributedAdapter {
 	protected readonly logger: ILogger
 
 	constructor(options: AdapterOptions) {
-		this.runtime = new FlowRuntime(options.runtimeOptions)
+		const runtimeOptions = {
+			...options.runtimeOptions,
+			dependencies: {
+				...options.runtimeOptions.dependencies,
+				adapter: this,
+			} as any,
+		}
+		this.runtime = new FlowRuntime(runtimeOptions)
 		this.store = options.coordinationStore
 		this.serializer = options.runtimeOptions.serializer || new JsonSerializer()
 		this.logger = options.runtimeOptions.logger || new ConsoleLogger()
@@ -97,6 +104,14 @@ export abstract class BaseDistributedAdapter {
 			reason?: string
 		},
 	): Promise<void>
+
+	/**
+	 * Registers a webhook endpoint for a specific node in a workflow run.
+	 * @param runId The unique ID of the workflow run.
+	 * @param nodeId The ID of the node that will wait for the webhook.
+	 * @returns The URL and event name for the webhook.
+	 */
+	public abstract registerWebhookEndpoint(runId: string, nodeId: string): Promise<{ url: string; event: string }>
 
 	/**
 	 * Hook called at the start of job processing. Subclasses can override this

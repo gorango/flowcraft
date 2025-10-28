@@ -60,7 +60,7 @@ export class SubflowNode extends BaseNode {
 		const subflowResult = await runtime.runtime.orchestrator.run(subflowExecContext, subflowTraverser)
 
 		if (subflowResult.status === 'awaiting') {
-			workflowState.markAsAwaiting(this.nodeId ?? '')
+			await workflowState.markAsAwaiting(this.nodeId ?? '')
 			const subflowStateKey = `_subflowState.${this.nodeId}`
 			await context.context.set(subflowStateKey as any, subflowResult.serializedContext)
 			return { output: undefined }

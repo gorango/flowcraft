@@ -101,6 +101,7 @@ export default defineConfig({
 						{ text: 'Batches', link: '/guide/batches' },
 						{ text: 'Loops', link: '/guide/loops' },
 						{ text: 'Pausing', link: '/guide/pausing' },
+						{ text: 'Durable Primitives', link: '/guide/durable-primitives' },
 						{ text: 'Human-in-the-Loop', link: '/guide/hitl' },
 						{ text: 'Subflows', link: '/guide/subflows' },
 					],

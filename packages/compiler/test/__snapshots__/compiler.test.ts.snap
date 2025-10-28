@@ -339,6 +339,21 @@ exports[`Compiler > should compile all test fixtures 1`] = `
       },
     ],
   },
+  "durablePrimitivesFlow": {
+    "edges": [],
+    "id": "durablePrimitivesFlow",
+    "nodes": [
+      {
+        "_sourceLocation": {
+          "column": 1,
+          "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/durable-primitives.ts",
+          "line": 4,
+        },
+        "id": "start",
+        "uses": "start",
+      },
+    ],
+  },
   "forOfLoopWithBreak": {
     "edges": [
       {
@@ -1742,6 +1757,21 @@ export const blueprints: Record<string, WorkflowBlueprint> = {
       }
     }
   ]
+},
+  'durablePrimitivesFlow': {
+  "id": "durablePrimitivesFlow",
+  "nodes": [
+    {
+      "id": "start",
+      "uses": "start",
+      "_sourceLocation": {
+        "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/durable-primitives.ts",
+        "line": 4,
+        "column": 1
+      }
+    }
+  ],
+  "edges": []
 },
   'invalidAwaitFlow': {
   "id": "invalidAwaitFlow",

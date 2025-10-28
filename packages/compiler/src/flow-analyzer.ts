@@ -61,6 +61,18 @@ export class FlowAnalyzer {
 
 	private visit(node: ts.Node): string | null {
 		if (ts.isExpressionStatement(node)) {
+			// Check for durable primitive calls without await
+			if (ts.isCallExpression(node.expression)) {
+				const primitiveCall = this.isDurablePrimitiveCall(node.expression)
+				if (primitiveCall) {
+					this.addDiagnostic(
+						node,
+						'warning',
+						`Durable primitive '${primitiveCall.primitiveName}' was called without 'await'. This will not pause the workflow and is likely an error.`,
+					)
+					return this.state.getCursor()
+				}
+			}
 			// Handle expression statements by visiting their expression
 			return this.visit(node.expression)
 		} else if (ts.isVariableStatement(node)) {
@@ -126,6 +138,48 @@ export class FlowAnalyzer {
 			message,
 			severity,
 		})
+	}
+
+	/**
+	 * Checks if a call expression is calling a durable primitive from 'flowcraft/sdk'
+	 */
+	private isDurablePrimitiveCall(callExpression: ts.CallExpression): { primitiveName: string } | null {
+		const callee = callExpression.expression
+		if (!ts.isIdentifier(callee)) {
+			return null
+		}
+
+		const symbol = this.typeChecker.getSymbolAtLocation(callee)
+		if (!symbol) {
+			return null
+		}
+
+		// Get the original symbol (in case of aliases)
+		const originalSymbol = symbol.flags & ts.SymbolFlags.Alias ? this.typeChecker.getAliasedSymbol(symbol) : symbol
+
+		// Find the declaration
+		const declarations = originalSymbol.getDeclarations()
+		if (!declarations || declarations.length === 0) {
+			return null
+		}
+
+		// Check if it's imported from 'flowcraft/sdk'
+		for (const declaration of declarations) {
+			if (ts.isImportSpecifier(declaration)) {
+				const importDeclaration = declaration.parent.parent.parent
+				if (ts.isImportDeclaration(importDeclaration) && ts.isStringLiteral(importDeclaration.moduleSpecifier)) {
+					const moduleSpecifier = importDeclaration.moduleSpecifier.text
+					if (moduleSpecifier === 'flowcraft/sdk' || moduleSpecifier === '../../../flowcraft/dist/sdk') {
+						const primitiveName = declaration.name.text
+						if (['sleep', 'waitForEvent', 'createWebhook'].includes(primitiveName)) {
+							return { primitiveName }
+						}
+					}
+				}
+			}
+		}
+
+		return null
 	}
 
 	getSourceLocation(node: ts.Node): import('flowcraft').SourceLocation {

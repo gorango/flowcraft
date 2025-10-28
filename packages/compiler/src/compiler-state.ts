@@ -1,6 +1,6 @@
 import type { EdgeDefinition, NodeDefinition } from 'flowcraft'
 import * as ts from 'typescript'
-import type { Scope } from './types'
+import type { Scope, VariableInfo } from './types'
 
 export class CompilerState {
 	private cursor: string | null = null
@@ -117,9 +117,11 @@ export class CompilerState {
 		if (ts.isVariableDeclaration(parent) && parent.name && ts.isIdentifier(parent.name)) {
 			const varName = parent.name.text
 			const returnType = typeChecker.getTypeAtLocation(node)
+			const variableType = nodeDef.uses === 'webhook' ? 'webhook' : 'normal'
 			this.scopes[this.scopes.length - 1].variables.set(varName, {
 				nodeId: nodeDef.id,
 				type: returnType,
+				variableType,
 			})
 		}
 	}
@@ -156,6 +158,17 @@ export class CompilerState {
 
 	setUsageCounts(counts: Map<string, number>): void {
 		this.usageCounts = new Map(counts)
+	}
+
+	getVariableInScope(varName: string): VariableInfo | undefined {
+		// Search from the current scope outwards
+		for (let i = this.scopes.length - 1; i >= 0; i--) {
+			const variable = this.scopes[i].variables.get(varName)
+			if (variable) {
+				return variable
+			}
+		}
+		return undefined
 	}
 
 	private getSourceLocation(node: ts.Node, sourceFile: ts.SourceFile): import('flowcraft').SourceLocation {

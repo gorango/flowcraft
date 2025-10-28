@@ -1,4 +1,5 @@
 import { complexControlFlow, nestedControlFlow } from './complex-control-flow'
+import { durablePrimitivesFlow } from './durable-primitives'
 import { invalidAwaitFlow } from './invalid-await'
 import { mainFlow } from './main-flow'
 import { complexParallelFlow, parallelFlow } from './parallel-flow'
@@ -20,3 +21,4 @@ complexControlFlow(null)
 nestedControlFlow(null)
 typeMismatchFlow(null)
 invalidAwaitFlow(null)
+durablePrimitivesFlow(null)

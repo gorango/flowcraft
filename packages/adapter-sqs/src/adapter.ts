@@ -93,6 +93,12 @@ export class SqsAdapter extends BaseDistributedAdapter {
 		this.logger.info(`[SqsAdapter] Published final result for Run ID ${runId}.`)
 	}
 
+	public async registerWebhookEndpoint(_runId: string, _nodeId: string): Promise<{ url: string; event: string }> {
+		// TODO: Implement webhook endpoint registration for SQS adapter
+		// This would typically involve setting up an API Gateway + Lambda that forwards to SQS
+		throw new Error('registerWebhookEndpoint not implemented for SQSAdapter')
+	}
+
 	protected processJobs(handler: (job: JobPayload) => Promise<void>): void {
 		if (this.consumer) {
 			this.logger.warn('[SqsAdapter] Consumer is already active.')

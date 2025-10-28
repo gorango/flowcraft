@@ -206,6 +206,77 @@ async function reconcile() {
 }
 ```
 
+## Webhook Endpoints
+
+The Azure adapter supports webhook endpoints for workflows using `Flow.createWebhook()`. Webhook endpoints can be registered using Azure Functions or API Management.
+
+### `registerWebhookEndpoint(runId, nodeId)`
+
+Registers a webhook endpoint for the specified workflow run and node.
+
+- **`runId`** `string`: The unique identifier for the workflow execution.
+- **`nodeId`** `string`: The ID of the webhook node.
+- **Returns**: `Promise<{ url: string; event: string }>` - The webhook URL and event name.
+
+**Example Implementation:**
+```typescript
+// In AzureQueueAdapter
+public async registerWebhookEndpoint(runId: string, nodeId: string): Promise<{ url: string; event: string }> {
+  const eventName = `webhook:${runId}:${nodeId}`
+  // Use Azure Functions URL or custom domain
+  const url = `https://your-function-app.azurewebsites.net/api/webhook/${runId}/${nodeId}`
+
+  // Store webhook mapping in Cosmos DB for later retrieval
+  await this.cosmosDb.items.create({
+    id: `${runId}:${nodeId}`,
+    eventName,
+    url,
+    createdAt: new Date().toISOString()
+  })
+
+  return { url, event: eventName }
+}
+```
+
+### Handling Webhook Requests with Azure Functions
+
+Create an Azure Function to handle webhook requests and send messages to Azure Queue:
+
+```typescript
+// Azure Function (TypeScript)
+import { QueueClient } from '@azure/storage-queue'
+import { CosmosClient } from '@azure/cosmos'
+
+const queueClient = QueueClient.fromConnectionString(process.env.AZURE_STORAGE_CONNECTION_STRING!, 'flowcraft-events')
+const cosmosClient = new CosmosClient(process.env.COSMOS_CONNECTION_STRING!)
+const database = cosmosClient.database('flowcraft')
+const container = database.container('webhooks')
+
+export async function webhookHandler(context: any, req: any): Promise<void> {
+  const { runId, nodeId } = context.bindingData
+  const payload = req.body
+
+  // Get webhook mapping from Cosmos DB
+  const { resources: webhooks } = await container.items
+    .query(`SELECT * FROM c WHERE c.id = '${runId}:${nodeId}'`)
+    .fetchAll()
+
+  if (webhooks.length > 0) {
+    const webhookData = webhooks[0]
+
+    // Send event to Azure Queue
+    await queueClient.sendMessage(JSON.stringify({
+      event: webhookData.eventName,
+      payload
+    }))
+
+    context.res = { status: 200, body: 'OK' }
+  } else {
+    context.res = { status: 404, body: 'Webhook not found' }
+  }
+}
+```
+
 ## Key Components
 
 - **`AzureQueueAdapter`**: Orchestrates job processing from Azure Queues.

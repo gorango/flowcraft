@@ -2,12 +2,94 @@
 
 The [`Flow`](/api/flow#flow-class) class and `createFlow` function provide a fluent, type-safe API for programmatically building a [`WorkflowBlueprint`](/api/flow#workflowblueprint-interface).
 
+The `sleep`, `waitForEvent`, and `createWebhook` functions provide durable primitives for use within compiler-transformed workflows.
+
 ## `createFlow(id)`
 
 Creates and returns a new [`Flow`](/api/flow#flow-class) builder instance.
 
 -   **`id`** `string`: A unique identifier for the workflow.
 -   **Returns**: `Flow<TContext, TDependencies>`
+
+## Durable Primitives
+
+The `sleep`, `waitForEvent`, and `createWebhook` functions provide durable primitives that can be used within `@flow`-tagged functions. These primitives are automatically transformed by the compiler into appropriate runtime nodes.
+
+### `sleep(duration)`
+
+Pauses workflow execution for a specified duration and automatically resumes when the timer expires.
+
+-   **`duration`** `number | string`: The duration to sleep. Can be a number (milliseconds) or a string with units (e.g., `'5m'`, `'2h'`, `'30s'`).
+-   **Returns**: `Promise<void>`
+
+**Example:**
+```typescript
+import { sleep } from 'flowcraft/sdk'
+
+/** @flow */
+export async function delayedWorkflow() {
+  await sleep('5m') // Sleep for 5 minutes
+  return { status: 'completed' }
+}
+```
+
+### `waitForEvent<T>(eventName)`
+
+Pauses workflow execution until an external event is received.
+
+-   **`eventName`** `string`: The name of the event to wait for.
+-   **Returns**: `Promise<T>` - Resolves with the event data when received.
+
+**Example:**
+```typescript
+import { waitForEvent } from 'flowcraft/sdk'
+
+/** @flow */
+export async function eventWorkflow() {
+  const eventData = await waitForEvent<{ userId: string }>('user_action')
+  return { userId: eventData.userId }
+}
+```
+
+### `createWebhook<T>()`
+
+Creates a webhook endpoint and returns an object that can be used to wait for webhook calls.
+
+-   **Returns**: `Promise<Webhook<T>>` - Resolves to a webhook object.
+
+**Webhook Interface:**
+```typescript
+interface Webhook<T> {
+  url: string        // The public URL to POST to
+  event: string      // Unique event name for routing
+  request: Promise<{ // Resolves when webhook is called
+    json(): Promise<T>
+    text(): Promise<string>
+    headers: Record<string, string>
+  }>
+}
+```
+
+**Example:**
+```typescript
+import { createWebhook } from 'flowcraft/sdk'
+
+/** @flow */
+export async function webhookWorkflow() {
+  const webhook = await createWebhook<{ data: string }>()
+
+  // Send webhook.url to external service
+  console.log('Webhook URL:', webhook.url)
+
+  // Wait for webhook call
+  const request = await webhook.request
+  const payload = await request.json()
+
+  return { payload }
+}
+```
+
+**Note:** These functions should only be used within `@flow`-tagged functions. They are automatically transformed by the compiler and will show warnings if used outside this context.
 
 ## `Flow` Class
 
