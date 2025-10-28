@@ -6,7 +6,7 @@ export async function typeMismatchFlow(_context: any) {
 	return result
 }
 
-// Helper function that expects a number
-async function processNumber(params: { value: number }) {
+/** @step */
+export async function processNumber(params: { value: number }) {
 	return params.value * 2
 }

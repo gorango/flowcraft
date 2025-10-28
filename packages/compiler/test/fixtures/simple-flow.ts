@@ -4,10 +4,12 @@ export async function simpleFlow(_context: any) {
 	await processOrders({ orders: [] })
 }
 
+/** @step */
 export async function fetchUser({ id }: { id: number }) {
 	return { id, name: 'John' }
 }
 
+/** @step */
 export async function processOrders({ orders }: { orders: any[] }) {
 	console.log(orders)
 }

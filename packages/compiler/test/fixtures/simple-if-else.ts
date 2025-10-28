@@ -11,15 +11,17 @@ export async function simpleIfElseFlow(context: any) {
 	await finalize()
 }
 
-// Helper functions
-async function doSomething() {
+/** @step */
+export async function doSomething() {
 	return { result: 'something' }
 }
 
-async function doSomethingElse() {
+/** @step */
+export async function doSomethingElse() {
 	return { result: 'something else' }
 }
 
-async function finalize() {
+/** @step */
+export async function finalize() {
 	return { final: true }
 }

@@ -28,6 +28,21 @@ The compiler lets you write the same logic using a standard `while` loop. The to
 
 **Compiler Input (Imperative):**
 ```typescript
+/** @step */
+async function getInitialPage() {
+  return { page: 1 };
+}
+
+/** @step */
+async function fetchPage(params: { page: number }) {
+  return { items: [/* ... */] };
+}
+
+/** @step */
+async function processItems(params: { items: any[] }) {
+  // Process items...
+}
+
 /** @flow */
 async function myLoop(context: IAsyncContext) {
   let page = await getInitialPage();
@@ -42,7 +57,8 @@ async function myLoop(context: IAsyncContext) {
 ## Key Features
 
 -   **Imperative DX**: Write workflows using standard `async/await`, `if/else`, `while`, `try/catch`, and `Promise.all`.
--   **Zero-Syntax**: No framework-specific keywords to learn. Orchestration is defined by native JavaScript control flow, guided by a single `/** @flow */` marker.
+-   **Explicit Step Declaration**: Mark durable operations with `/** @step */` or `/** @flow */` JSDoc tags to ensure only intended functions become part of your workflow graph.
+-   **Zero-Syntax**: No framework-specific keywords to learn. Orchestration is defined by native JavaScript control flow, guided by simple JSDoc markers.
 -   **Compile-Time Type Safety**: The compiler leverages the TypeScript TypeChecker to validate the data flowing between your nodes, catching type errors before you even run your code.
 -   **Composable by Default**: Create subflows simply by importing and `await`-ing another function marked with `/** @flow */`.
 -   **Full Tooling Integration**: The generated blueprints include source location metadata, enabling visualization tools to link a graph node directly back to your source code.
@@ -69,21 +85,24 @@ Using the compiler is a simple, four-step process that fits into any standard bu
 
 ### Step 1: Write Your Workflow and Step Functions
 
-Create your step functions as regular exported `async` functions. Then, create a main workflow function that orchestrates them. Mark the orchestrator with the `/** @flow */` JSDoc comment.
+Create your step functions as regular exported `async` functions, marking each with the `/** @step */` JSDoc comment. Then, create a main workflow function that orchestrates them. Mark the orchestrator with the `/** @flow */` JSDoc comment.
 
 `./src/steps.ts`
 ```typescript
 // These are our atomic "step" functions
+/** @step */
 export async function createCart(params: { userId: string }) {
   console.log(`Creating cart for user ${params.userId}...`);
   return { cartId: 'cart-123' };
 }
 
+/** @step */
 export async function addItems(params: { cartId: string; items: string[] }) {
   console.log(`Adding items to cart ${params.cartId}...`);
   return { success: true };
 }
 
+/** @step */
 export async function processPayment(params: { cartId: string; token: string }) {
   console.log(`Processing payment for cart ${params.cartId}...`);
   return { transactionId: 'txn-xyz' };
@@ -228,7 +247,7 @@ To make the magic possible, you must follow a few simple rules when writing your
 Any `async` function that you want the compiler to transform into a blueprint **must** have the `/** @flow */` JSDoc tag. This is how the compiler discovers your flows.
 
 #### 2. Step Functions
-Any `async` function that is `await`-ed from within a flow function is considered a "step." The compiler automatically adds it to the registry.
+Any `async` function that is `await`-ed from within a flow function must be explicitly marked as a "step" with the `/** @step */` JSDoc tag. Only functions marked with `/** @step */` or `/** @flow */` are considered durable operations that can be part of a workflow graph. Attempting to await a regular `async` function will result in a compile-time error.
 
 #### 3. Supported JavaScript Syntax
 
@@ -260,6 +279,16 @@ Creating a subflow is completely natural. Simply define another flow with `/** @
 ```typescript
 import { subFlow } from './sub-flow';
 
+/** @step */
+export async function doFirstStep() {
+  return { result: 'first' };
+}
+
+/** @step */
+export async function doLastStep() {
+  return { result: 'last' };
+}
+
 /** @flow */
 export async function mainFlow() {
   await doFirstStep();
@@ -275,6 +304,7 @@ The compiler analyzes your code with the full power of the TypeScript engine. If
 
 `./src/steps.ts`
 ```typescript
+/** @step */
 export async function processData(params: { value: number }) {
   return params.value * 2;
 }```

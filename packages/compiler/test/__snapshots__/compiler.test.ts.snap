@@ -78,7 +78,7 @@ exports[`Compiler > should compile all test fixtures 1`] = `
           "line": 33,
         },
         "source": "loop-controller_1",
-        "target": "generateSummary_1",
+        "target": "generateSummary_parallel_1",
       },
       {
         "_sourceLocation": {
@@ -87,7 +87,7 @@ exports[`Compiler > should compile all test fixtures 1`] = `
           "line": 33,
         },
         "source": "loop-controller_1",
-        "target": "generateReport_1",
+        "target": "generateReport_parallel_1",
       },
       {
         "_sourceLocation": {
@@ -95,7 +95,7 @@ exports[`Compiler > should compile all test fixtures 1`] = `
           "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/complex-control-flow.ts",
           "line": 40,
         },
-        "source": "generateSummary_1",
+        "source": "generateSummary_parallel_1",
         "target": "sendHighVolumeNotification_1",
       },
       {
@@ -104,7 +104,7 @@ exports[`Compiler > should compile all test fixtures 1`] = `
           "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/complex-control-flow.ts",
           "line": 40,
         },
-        "source": "generateReport_1",
+        "source": "generateReport_parallel_1",
         "target": "sendHighVolumeNotification_1",
       },
       {
@@ -190,7 +190,7 @@ exports[`Compiler > should compile all test fixtures 1`] = `
           "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/complex-control-flow.ts",
           "line": 34,
         },
-        "id": "generateSummary_1",
+        "id": "generateSummary_parallel_1",
         "uses": "generateSummary",
       },
       {
@@ -199,7 +199,7 @@ exports[`Compiler > should compile all test fixtures 1`] = `
           "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/complex-control-flow.ts",
           "line": 35,
         },
-        "id": "generateReport_1",
+        "id": "generateReport_parallel_1",
         "uses": "generateReport",
       },
       {
@@ -233,7 +233,7 @@ exports[`Compiler > should compile all test fixtures 1`] = `
           "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/parallel-flow.ts",
           "line": 30,
         },
-        "source": "processItems_1",
+        "source": "processItems_parallel_1",
         "target": "saveValidItems_1",
       },
       {
@@ -242,7 +242,7 @@ exports[`Compiler > should compile all test fixtures 1`] = `
           "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/parallel-flow.ts",
           "line": 30,
         },
-        "source": "validateItems_1",
+        "source": "validateItems_parallel_1",
         "target": "saveValidItems_1",
       },
       {
@@ -251,7 +251,7 @@ exports[`Compiler > should compile all test fixtures 1`] = `
           "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/parallel-flow.ts",
           "line": 30,
         },
-        "source": "enrichItems_1",
+        "source": "enrichItems_parallel_1",
         "target": "saveValidItems_1",
       },
       {
@@ -283,7 +283,7 @@ exports[`Compiler > should compile all test fixtures 1`] = `
           "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/parallel-flow.ts",
           "line": 23,
         },
-        "id": "processItems_1",
+        "id": "processItems_parallel_1",
         "uses": "processItems",
       },
       {
@@ -292,7 +292,7 @@ exports[`Compiler > should compile all test fixtures 1`] = `
           "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/parallel-flow.ts",
           "line": 24,
         },
-        "id": "validateItems_1",
+        "id": "validateItems_parallel_1",
         "uses": "validateItems",
       },
       {
@@ -301,7 +301,7 @@ exports[`Compiler > should compile all test fixtures 1`] = `
           "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/parallel-flow.ts",
           "line": 25,
         },
-        "id": "enrichItems_1",
+        "id": "enrichItems_parallel_1",
         "uses": "enrichItems",
       },
       {
@@ -328,6 +328,21 @@ exports[`Compiler > should compile all test fixtures 1`] = `
         },
         "id": "handleInvalidItems_1",
         "uses": "handleInvalidItems",
+      },
+    ],
+  },
+  "invalidAwaitFlow": {
+    "edges": [],
+    "id": "invalidAwaitFlow",
+    "nodes": [
+      {
+        "_sourceLocation": {
+          "column": 1,
+          "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/invalid-await.ts",
+          "line": 2,
+        },
+        "id": "start",
+        "uses": "start",
       },
     ],
   },
@@ -502,7 +517,7 @@ exports[`Compiler > should compile all test fixtures 1`] = `
           "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/parallel-flow.ts",
           "line": 13,
         },
-        "source": "fetchProfile_1",
+        "source": "fetchProfile_parallel_1",
         "target": "aggregateData_1",
       },
       {
@@ -511,7 +526,7 @@ exports[`Compiler > should compile all test fixtures 1`] = `
           "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/parallel-flow.ts",
           "line": 13,
         },
-        "source": "fetchOrders_1",
+        "source": "fetchOrders_parallel_1",
         "target": "aggregateData_1",
       },
       {
@@ -520,7 +535,7 @@ exports[`Compiler > should compile all test fixtures 1`] = `
           "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/parallel-flow.ts",
           "line": 13,
         },
-        "source": "fetchActivity_1",
+        "source": "fetchActivity_parallel_1",
         "target": "aggregateData_1",
       },
     ],
@@ -532,7 +547,7 @@ exports[`Compiler > should compile all test fixtures 1`] = `
           "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/parallel-flow.ts",
           "line": 7,
         },
-        "id": "fetchProfile_1",
+        "id": "fetchProfile_parallel_1",
         "uses": "fetchProfile",
       },
       {
@@ -541,7 +556,7 @@ exports[`Compiler > should compile all test fixtures 1`] = `
           "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/parallel-flow.ts",
           "line": 8,
         },
-        "id": "fetchOrders_1",
+        "id": "fetchOrders_parallel_1",
         "uses": "fetchOrders",
       },
       {
@@ -550,7 +565,7 @@ exports[`Compiler > should compile all test fixtures 1`] = `
           "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/parallel-flow.ts",
           "line": 9,
         },
-        "id": "fetchActivity_1",
+        "id": "fetchActivity_parallel_1",
         "uses": "fetchActivity",
       },
       {
@@ -688,7 +703,7 @@ exports[`Compiler > should compile all test fixtures 1`] = `
           "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/simple-parallel.ts",
           "line": 9,
         },
-        "source": "fetchProfile_1",
+        "source": "fetchProfile_parallel_1",
         "target": "aggregateData_1",
       },
       {
@@ -697,7 +712,7 @@ exports[`Compiler > should compile all test fixtures 1`] = `
           "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/simple-parallel.ts",
           "line": 9,
         },
-        "source": "fetchOrders_1",
+        "source": "fetchOrders_parallel_1",
         "target": "aggregateData_1",
       },
     ],
@@ -709,7 +724,7 @@ exports[`Compiler > should compile all test fixtures 1`] = `
           "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/simple-parallel.ts",
           "line": 6,
         },
-        "id": "fetchProfile_1",
+        "id": "fetchProfile_parallel_1",
         "uses": "fetchProfile",
       },
       {
@@ -718,7 +733,7 @@ exports[`Compiler > should compile all test fixtures 1`] = `
           "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/simple-parallel.ts",
           "line": 6,
         },
-        "id": "fetchOrders_1",
+        "id": "fetchOrders_parallel_1",
         "uses": "fetchOrders",
       },
       {
@@ -1008,7 +1023,7 @@ export const blueprints: Record<string, WorkflowBlueprint> = {
       }
     },
     {
-      "id": "generateSummary_1",
+      "id": "generateSummary_parallel_1",
       "uses": "generateSummary",
       "_sourceLocation": {
         "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/complex-control-flow.ts",
@@ -1017,7 +1032,7 @@ export const blueprints: Record<string, WorkflowBlueprint> = {
       }
     },
     {
-      "id": "generateReport_1",
+      "id": "generateReport_parallel_1",
       "uses": "generateReport",
       "_sourceLocation": {
         "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/complex-control-flow.ts",
@@ -1117,7 +1132,7 @@ export const blueprints: Record<string, WorkflowBlueprint> = {
     },
     {
       "source": "loop-controller_1",
-      "target": "generateSummary_1",
+      "target": "generateSummary_parallel_1",
       "_sourceLocation": {
         "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/complex-control-flow.ts",
         "line": 33,
@@ -1126,7 +1141,7 @@ export const blueprints: Record<string, WorkflowBlueprint> = {
     },
     {
       "source": "loop-controller_1",
-      "target": "generateReport_1",
+      "target": "generateReport_parallel_1",
       "_sourceLocation": {
         "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/complex-control-flow.ts",
         "line": 33,
@@ -1134,7 +1149,7 @@ export const blueprints: Record<string, WorkflowBlueprint> = {
       }
     },
     {
-      "source": "generateSummary_1",
+      "source": "generateSummary_parallel_1",
       "target": "sendHighVolumeNotification_1",
       "_sourceLocation": {
         "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/complex-control-flow.ts",
@@ -1143,7 +1158,7 @@ export const blueprints: Record<string, WorkflowBlueprint> = {
       }
     },
     {
-      "source": "generateReport_1",
+      "source": "generateReport_parallel_1",
       "target": "sendHighVolumeNotification_1",
       "_sourceLocation": {
         "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/complex-control-flow.ts",
@@ -1281,6 +1296,21 @@ export const blueprints: Record<string, WorkflowBlueprint> = {
     }
   ]
 },
+  'invalidAwaitFlow': {
+  "id": "invalidAwaitFlow",
+  "nodes": [
+    {
+      "id": "start",
+      "uses": "start",
+      "_sourceLocation": {
+        "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/invalid-await.ts",
+        "line": 2,
+        "column": 1
+      }
+    }
+  ],
+  "edges": []
+},
   'subFlow': {
   "id": "subFlow",
   "nodes": [
@@ -1355,7 +1385,7 @@ export const blueprints: Record<string, WorkflowBlueprint> = {
   "id": "parallelFlow",
   "nodes": [
     {
-      "id": "fetchProfile_1",
+      "id": "fetchProfile_parallel_1",
       "uses": "fetchProfile",
       "_sourceLocation": {
         "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/parallel-flow.ts",
@@ -1364,7 +1394,7 @@ export const blueprints: Record<string, WorkflowBlueprint> = {
       }
     },
     {
-      "id": "fetchOrders_1",
+      "id": "fetchOrders_parallel_1",
       "uses": "fetchOrders",
       "_sourceLocation": {
         "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/parallel-flow.ts",
@@ -1373,7 +1403,7 @@ export const blueprints: Record<string, WorkflowBlueprint> = {
       }
     },
     {
-      "id": "fetchActivity_1",
+      "id": "fetchActivity_parallel_1",
       "uses": "fetchActivity",
       "_sourceLocation": {
         "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/parallel-flow.ts",
@@ -1396,7 +1426,7 @@ export const blueprints: Record<string, WorkflowBlueprint> = {
   ],
   "edges": [
     {
-      "source": "fetchProfile_1",
+      "source": "fetchProfile_parallel_1",
       "target": "aggregateData_1",
       "_sourceLocation": {
         "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/parallel-flow.ts",
@@ -1405,7 +1435,7 @@ export const blueprints: Record<string, WorkflowBlueprint> = {
       }
     },
     {
-      "source": "fetchOrders_1",
+      "source": "fetchOrders_parallel_1",
       "target": "aggregateData_1",
       "_sourceLocation": {
         "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/parallel-flow.ts",
@@ -1414,7 +1444,7 @@ export const blueprints: Record<string, WorkflowBlueprint> = {
       }
     },
     {
-      "source": "fetchActivity_1",
+      "source": "fetchActivity_parallel_1",
       "target": "aggregateData_1",
       "_sourceLocation": {
         "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/parallel-flow.ts",
@@ -1428,7 +1458,7 @@ export const blueprints: Record<string, WorkflowBlueprint> = {
   "id": "complexParallelFlow",
   "nodes": [
     {
-      "id": "processItems_1",
+      "id": "processItems_parallel_1",
       "uses": "processItems",
       "_sourceLocation": {
         "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/parallel-flow.ts",
@@ -1437,7 +1467,7 @@ export const blueprints: Record<string, WorkflowBlueprint> = {
       }
     },
     {
-      "id": "validateItems_1",
+      "id": "validateItems_parallel_1",
       "uses": "validateItems",
       "_sourceLocation": {
         "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/parallel-flow.ts",
@@ -1446,7 +1476,7 @@ export const blueprints: Record<string, WorkflowBlueprint> = {
       }
     },
     {
-      "id": "enrichItems_1",
+      "id": "enrichItems_parallel_1",
       "uses": "enrichItems",
       "_sourceLocation": {
         "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/parallel-flow.ts",
@@ -1482,7 +1512,7 @@ export const blueprints: Record<string, WorkflowBlueprint> = {
   ],
   "edges": [
     {
-      "source": "processItems_1",
+      "source": "processItems_parallel_1",
       "target": "saveValidItems_1",
       "_sourceLocation": {
         "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/parallel-flow.ts",
@@ -1491,7 +1521,7 @@ export const blueprints: Record<string, WorkflowBlueprint> = {
       }
     },
     {
-      "source": "validateItems_1",
+      "source": "validateItems_parallel_1",
       "target": "saveValidItems_1",
       "_sourceLocation": {
         "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/parallel-flow.ts",
@@ -1500,7 +1530,7 @@ export const blueprints: Record<string, WorkflowBlueprint> = {
       }
     },
     {
-      "source": "enrichItems_1",
+      "source": "enrichItems_parallel_1",
       "target": "saveValidItems_1",
       "_sourceLocation": {
         "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/parallel-flow.ts",
@@ -1647,7 +1677,7 @@ export const blueprints: Record<string, WorkflowBlueprint> = {
   "id": "simpleParallelFlow",
   "nodes": [
     {
-      "id": "fetchProfile_1",
+      "id": "fetchProfile_parallel_1",
       "uses": "fetchProfile",
       "_sourceLocation": {
         "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/simple-parallel.ts",
@@ -1656,7 +1686,7 @@ export const blueprints: Record<string, WorkflowBlueprint> = {
       }
     },
     {
-      "id": "fetchOrders_1",
+      "id": "fetchOrders_parallel_1",
       "uses": "fetchOrders",
       "_sourceLocation": {
         "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/simple-parallel.ts",
@@ -1679,7 +1709,7 @@ export const blueprints: Record<string, WorkflowBlueprint> = {
   ],
   "edges": [
     {
-      "source": "fetchProfile_1",
+      "source": "fetchProfile_parallel_1",
       "target": "aggregateData_1",
       "_sourceLocation": {
         "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/simple-parallel.ts",
@@ -1688,7 +1718,7 @@ export const blueprints: Record<string, WorkflowBlueprint> = {
       }
     },
     {
-      "source": "fetchOrders_1",
+      "source": "fetchOrders_parallel_1",
       "target": "aggregateData_1",
       "_sourceLocation": {
         "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/simple-parallel.ts",
@@ -1719,6 +1749,13 @@ export const blueprints: Record<string, WorkflowBlueprint> = {
 
 exports[`Compiler > should compile all test fixtures 4`] = `
 [
+  {
+    "column": 2,
+    "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/invalid-await.ts",
+    "line": 3,
+    "message": "The function 'helperFunction' is being awaited but is not a durable step or flow. To make it a durable operation, add a \`/** @step */\` JSDoc tag to its definition.",
+    "severity": "error",
+  },
   {
     "column": 37,
     "file": "/home/g/m/flowcraft/packages/compiler/test/fixtures/type-mismatch.ts",

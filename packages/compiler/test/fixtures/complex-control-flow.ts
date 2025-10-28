@@ -70,63 +70,77 @@ export async function nestedControlFlow(context: any) {
 	return await finalizeProcessing({ items })
 }
 
-// Helper functions
-async function validateData(params: { data: any }) {
+/** @step */
+export async function validateData(params: { data: any }) {
 	return { isValid: true, data: params.data }
 }
 
-async function handleValidationError(params: { error: any }) {
+/** @step */
+export async function handleValidationError(params: { error: any }) {
 	return { handled: true, error: params.error }
 }
 
-async function processBatch(params: { batch: any[] }) {
+/** @step */
+export async function processBatch(params: { batch: any[] }) {
 	return { processed: params.batch.length }
 }
 
-async function handleBatchError(params: { error: any; batch: any[] }) {
+/** @step */
+export async function handleBatchError(params: { error: any; batch: any[] }) {
 	return { errorHandled: true, batch: params.batch }
 }
 
-async function generateSummary(params: { processedCount: number }) {
+/** @step */
+export async function generateSummary(params: { processedCount: number }) {
 	return { total: params.processedCount, summary: 'complete' }
 }
 
-async function generateReport(params: { data: any; processedCount: number }) {
+/** @step */
+export async function generateReport(params: { data: any; processedCount: number }) {
 	return { report: 'generated', ...params }
 }
 
-async function sendHighVolumeNotification(params: { summary: any; report: any }) {
+/** @step */
+export async function sendHighVolumeNotification(params: { summary: any; report: any }) {
 	return { notification: 'high_volume_sent', ...params }
 }
 
-async function sendStandardNotification(params: { summary: any }) {
+/** @step */
+export async function sendStandardNotification(params: { summary: any }) {
 	return { notification: 'standard_sent', ...params }
 }
 
-async function processItem(params: { item: any }) {
+/** @step */
+export async function processItem(params: { item: any }) {
 	return { ...params.item, processed: true, needsReview: Math.random() > 0.5 }
 }
 
-async function reviewItem(params: { item: any }) {
+/** @step */
+export async function reviewItem(params: { item: any }) {
 	return { ...params.item, reviewed: true, approved: Math.random() > 0.3 }
 }
 
-async function approveItem(params: { item: any }) {
+/** @step */
+export async function approveItem(params: { item: any }) {
 	return { ...params.item, approved: true }
 }
 
-async function rejectItem(params: { item: any }) {
+/** @step */
+export async function rejectItem(params: { item: any }) {
 	return { ...params.item, rejected: true }
 }
 
-async function autoApproveItem(params: { item: any }) {
+/** @step */
+export async function autoApproveItem(params: { item: any }) {
 	return { ...params.item, autoApproved: true }
 }
 
-async function flagItemForManualReview(params: { item: any }) {
+/** @step */
+export async function flagItemForManualReview(params: { item: any }) {
 	return { ...params.item, flagged: true }
 }
 
-async function finalizeProcessing(params: { items: any[] }) {
+/** @step */
+export async function finalizeProcessing(params: { items: any[] }) {
 	return { completed: true, itemCount: params.items.length }
 }

@@ -46,21 +46,13 @@ export function handleAwaitCall(analyzer: FlowAnalyzer, callee: ts.CallExpressio
 						return // Unknown type
 					}
 					analyzer.state.addNodeAndWire(nodeDef, node, analyzer.sourceFile, analyzer.typeChecker)
-				} else if (ts.isFunctionDeclaration(decl) || ts.isFunctionExpression(decl) || ts.isArrowFunction(decl)) {
-					// This is a local function declaration in the same file, treat as step
-					const count = analyzer.state.incrementUsageCount(exportName)
-
-					const nodeDef: NodeDefinition = {
-						id: `${exportName}_${count}`,
-						uses: exportName,
-						_sourceLocation: analyzer.getSourceLocation(node),
-					}
-					const fallback = analyzer.state.getFallbackScope()
-					if (fallback) {
-						nodeDef.config = { fallback }
-					}
-					analyzer.registry[exportName] = { importPath: filePath, exportName }
-					analyzer.state.addNodeAndWire(nodeDef, node, analyzer.sourceFile, analyzer.typeChecker)
+				} else {
+					// Function is not a durable step or flow
+					analyzer.addDiagnostic(
+						node,
+						'error',
+						`The function '${exportName}' is being awaited but is not a durable step or flow. To make it a durable operation, add a \`/** @step */\` JSDoc tag to its definition.`,
+					)
 				}
 			}
 		}

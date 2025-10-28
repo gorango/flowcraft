@@ -36,43 +36,52 @@ export async function complexParallelFlow(context: any) {
 	return await finalizeResults({ processed, validated, enriched })
 }
 
-// Helper functions that would be defined elsewhere
-async function fetchProfile(params: { userId: any }) {
+/** @step */
+export async function fetchProfile(params: { userId: any }) {
 	return { name: 'User', id: params.userId }
 }
 
-async function fetchOrders(params: { userId: any }) {
+/** @step */
+export async function fetchOrders(params: { userId: any }) {
 	return { orders: [], userId: params.userId }
 }
 
-async function fetchActivity(params: { userId: any }) {
+/** @step */
+export async function fetchActivity(params: { userId: any }) {
 	return { activity: [], userId: params.userId }
 }
 
-async function aggregateData(params: { profile: any; orders: any; activity: any }) {
+/** @step */
+export async function aggregateData(params: { profile: any; orders: any; activity: any }) {
 	return { combined: true, ...params }
 }
 
-async function processItems(params: { items: any[] }) {
+/** @step */
+export async function processItems(params: { items: any[] }) {
 	return params.items.map((item) => ({ ...item, processed: true }))
 }
 
-async function validateItems(_params: { items: any[] }) {
+/** @step */
+export async function validateItems(_params: { items: any[] }) {
 	return { valid: true, errors: [] }
 }
 
-async function enrichItems(params: { items: any[] }) {
+/** @step */
+export async function enrichItems(params: { items: any[] }) {
 	return params.items.map((item) => ({ ...item, enriched: true }))
 }
 
-async function saveValidItems(params: { items: any[] }) {
+/** @step */
+export async function saveValidItems(params: { items: any[] }) {
 	return { saved: params.items.length }
 }
 
-async function handleInvalidItems(params: { errors: any[] }) {
+/** @step */
+export async function handleInvalidItems(params: { errors: any[] }) {
 	return { handled: params.errors.length }
 }
 
-async function finalizeResults(params: any) {
+/** @step */
+export async function finalizeResults(params: any) {
 	return { final: true, ...params }
 }

@@ -10,15 +10,17 @@ export async function simpleParallelFlow(context: any) {
 	return result
 }
 
-// Helper functions
-async function fetchProfile(params: { userId: any }) {
+/** @step */
+export async function fetchProfile(params: { userId: any }) {
 	return { name: 'User', id: params.userId }
 }
 
-async function fetchOrders(params: { userId: any }) {
+/** @step */
+export async function fetchOrders(params: { userId: any }) {
 	return { orders: [], userId: params.userId }
 }
 
-async function aggregateData(params: { profile: any; orders: any }) {
+/** @step */
+export async function aggregateData(params: { profile: any; orders: any }) {
 	return { combined: true, ...params }
 }

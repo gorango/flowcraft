@@ -64,8 +64,12 @@ export class Compiler {
 									const decl = originalSymbol.valueDeclaration
 									const jsDocTags = ts.getJSDocTags(decl)
 									const hasFlowTag = jsDocTags.some((tag) => tag.tagName.text === 'flow')
-									const type: 'flow' | 'step' = hasFlowTag ? 'flow' : 'step'
-									exports.set(element.name.text, { type, node: decl })
+									const hasStepTag = jsDocTags.some((tag) => tag.tagName.text === 'step')
+									if (hasFlowTag) {
+										exports.set(element.name.text, { type: 'flow', node: decl })
+									} else if (hasStepTag) {
+										exports.set(element.name.text, { type: 'step', node: decl })
+									}
 								}
 							}
 						})
@@ -78,8 +82,12 @@ export class Compiler {
 				) {
 					const jsDocTags = ts.getJSDocTags(node)
 					const hasFlowTag = jsDocTags.some((tag) => tag.tagName.text === 'flow')
-					const type: 'flow' | 'step' = hasFlowTag ? 'flow' : 'step'
-					exports.set(node.name.text, { type, node })
+					const hasStepTag = jsDocTags.some((tag) => tag.tagName.text === 'step')
+					if (hasFlowTag) {
+						exports.set(node.name.text, { type: 'flow', node })
+					} else if (hasStepTag) {
+						exports.set(node.name.text, { type: 'step', node })
+					}
 				}
 			})
 
