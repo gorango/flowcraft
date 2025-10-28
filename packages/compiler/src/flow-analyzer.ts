@@ -161,7 +161,7 @@ export class FlowAnalyzer {
 				const importDeclaration = declaration.parent.parent.parent
 				if (ts.isImportDeclaration(importDeclaration) && ts.isStringLiteral(importDeclaration.moduleSpecifier)) {
 					const moduleSpecifier = importDeclaration.moduleSpecifier.text
-					if (moduleSpecifier === 'flowcraft/sdk' || moduleSpecifier === '../../../flowcraft/dist/sdk') {
+					if (moduleSpecifier === 'flowcraft/sdk') {
 						const primitiveName = declaration.name.text
 						if (['sleep', 'waitForEvent', 'createWebhook'].includes(primitiveName)) {
 							return { primitiveName }

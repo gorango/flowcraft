@@ -1,4 +1,4 @@
-import { createWebhook, sleep, waitForEvent } from '../../../flowcraft/dist/sdk'
+import { createWebhook, sleep, waitForEvent } from 'flowcraft/sdk'
 
 /** @flow */
 export async function durablePrimitivesFlow(_context: any) {
