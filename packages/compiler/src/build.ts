@@ -1,19 +1,34 @@
 import fs from 'node:fs/promises'
 import path from 'node:path'
+import { loadConfig } from './config-loader'
 import { compileProject } from './index'
+import type { FlowcraftConfig } from './types'
 
-export interface CompileFlowsOptions {
-	entryPoints?: string[]
-	tsConfigPath?: string
-	manifestPath?: string
-}
+export interface CompileFlowsOptions extends FlowcraftConfig {}
 
 // This is the generic, reusable function
-export async function buildFlows(options: CompileFlowsOptions = {}) {
+export async function buildFlows(pluginOptions: CompileFlowsOptions = {}) {
 	const projectRoot = process.cwd()
-	const entryPoints = options.entryPoints ?? [path.resolve(projectRoot, 'src/index.ts')]
-	const tsConfigPath = options.tsConfigPath ?? path.resolve(projectRoot, 'tsconfig.json')
-	const manifestPath = options.manifestPath ?? path.resolve(projectRoot, 'dist/flowcraft.manifest.js')
+
+	// 1. Load config from flowcraft.config.js/ts
+	const loadedConfig = await loadConfig(projectRoot)
+
+	// 2. Define defaults
+	const defaults: FlowcraftConfig = {
+		entryPoints: [path.resolve(projectRoot, 'src/index.ts')],
+		tsConfigPath: path.resolve(projectRoot, 'tsconfig.json'),
+		manifestPath: path.resolve(projectRoot, 'dist/flowcraft.manifest.js'),
+	}
+
+	// 3. Merge configurations with the correct priority:
+	//    Defaults < Config File < Plugin Options
+	const finalConfig = {
+		...defaults,
+		...loadedConfig,
+		...pluginOptions,
+	} as Required<FlowcraftConfig>
+
+	const { entryPoints, tsConfigPath, manifestPath } = finalConfig
 
 	console.log('Compiling Flowcraft workflows...')
 

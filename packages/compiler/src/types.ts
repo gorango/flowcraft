@@ -43,3 +43,21 @@ export interface PendingEdge {
 	condition?: string
 	action?: string
 }
+
+export interface FlowcraftConfig {
+	/**
+	 * An array of entry point files for the compiler.
+	 * @default ['src/index.ts']
+	 */
+	entryPoints?: string[]
+	/**
+	 * Path to the tsconfig.json file.
+	 * @default './tsconfig.json'
+	 */
+	tsConfigPath?: string
+	/**
+	 * The output path for the generated manifest file.
+	 * @default 'dist/flowcraft.manifest.js'
+	 */
+	manifestPath?: string
+}

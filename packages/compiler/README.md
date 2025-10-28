@@ -79,6 +79,26 @@ npm install flowcraft
 npm install --save-dev typescript
 ```
 
+## Configuration (`flowcraft.config.ts`)
+
+For project-wide settings, you can create a `flowcraft.config.ts` or `flowcraft.config.js` file in your project root. This is the recommended way to configure the compiler for CLI usage or to share settings across different integrations.
+
+Options provided to build-tool plugins (e.g., in `vite.config.ts`) will always override the settings in this file.
+
+**Example `flowcraft.config.ts`:**
+
+```typescript
+import type { FlowcraftConfig } from '@flowcraft/compiler/types';
+
+const config: FlowcraftConfig = {
+  entryPoints: ['./src/workflows/index.ts'],
+  manifestPath: './src/generated/flowcraft.manifest.js',
+  tsConfigPath: './tsconfig.workflows.json',
+};
+
+export default config;
+```
+
 ## Usage
 
 Using the compiler is a simple, four-step process that fits into any standard build system.
