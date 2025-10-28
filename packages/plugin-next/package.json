@@ -1,0 +1,49 @@
+{
+	"name": "@flowcraft/next-plugin",
+	"type": "commonjs",
+	"version": "1.0.0",
+	"description": "Next.js plugin for Flowcraft compiler integration",
+	"license": "MIT",
+	"homepage": "https://flowcraft.js.org",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/gorango/flowcraft.git"
+	},
+	"bugs": "https://github.com/gorango/flowcraft/issues",
+	"keywords": [
+		"flowcraft",
+		"nextjs",
+		"next",
+		"plugin",
+		"build",
+		"workflow"
+	],
+	"exports": {
+		".": {
+			"require": "./dist/index.js",
+			"types": "./dist/index.d.ts"
+		}
+	},
+	"files": [
+		"dist"
+	],
+	"scripts": {
+		"dev": "tsup --watch",
+		"build": "tsup",
+		"typecheck": "tsc --noEmit",
+		"test": "vitest run",
+		"test:watch": "vitest",
+		"test:coverage": "vitest run --coverage"
+	},
+	"dependencies": {
+		"@flowcraft/compiler": "workspace:*"
+	},
+	"devDependencies": {
+		"@types/node": "^24.9.1",
+		"tsup": "^8.5.0",
+		"vitest": "^4.0.4"
+	},
+	"peerDependencies": {
+		"next": "^13.0.0 || ^14.0.0 || ^15.0.0"
+	}
+}

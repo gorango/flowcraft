@@ -259,6 +259,176 @@ async function main() {
 main();
 ```
 
+## Usage with Vite
+
+1.  **Install dependencies:**
+    ```bash
+    npm install flowcraft
+    npm install --save-dev @flowcraft/compiler @flowcraft/vite-plugin typescript
+    ```
+
+2.  **Update `vite.config.ts`:**
+    ```typescript
+    import { defineConfig } from 'vite';
+    import flowcraftCompiler from '@flowcraft/vite-plugin';
+
+    export default defineConfig({
+      plugins: [
+        // ...your other plugins
+        flowcraftCompiler({
+          // Optional: customize entry points if needed
+          // entryPoints: ['src/main-workflow.ts']
+        }),
+      ],
+    });
+    ```
+3.  **Run your dev server:**
+    ```bash
+    npm run dev
+    ```
+    Your Flowcraft manifest will now be automatically generated and kept in sync as you code.
+
+## Usage with Next.js
+
+1.  **Install dependencies:**
+    ```bash
+    npm install flowcraft
+    npm install --save-dev @flowcraft/compiler @flowcraft/next-plugin typescript
+    ```
+
+2.  **Update `next.config.js`:**
+    ```javascript
+    const { withFlowcraft } = require('@flowcraft/next-plugin');
+
+    module.exports = withFlowcraft({
+      // ... your Next.js config
+    });
+    ```
+
+3.  **Build your project:**
+    ```bash
+    npm run build
+    ```
+    Your Flowcraft manifest will be generated automatically during the production build.
+
+## Usage with Nuxt
+
+1.  **Install dependencies:**
+    ```bash
+    npm install flowcraft
+    npm install --save-dev @flowcraft/compiler @flowcraft/nuxt-module typescript
+    ```
+
+2.  **Update `nuxt.config.ts`:**
+    ```typescript
+    export default defineNuxtConfig({
+      modules: ['@flowcraft/nuxt-module'],
+      flowcraft: {
+        // Optional: customize compiler options
+        // srcDir: './flows',
+        // outDir: './.flowcraft'
+      }
+    })
+    ```
+
+3.  **Run your dev server:**
+    ```bash
+    npm run dev
+    ```
+    Your Flowcraft manifest will be automatically generated and kept in sync during development and production builds.
+
+## Usage with Astro
+
+1.  **Install dependencies:**
+    ```bash
+    npm install flowcraft
+    npm install --save-dev @flowcraft/compiler @flowcraft/astro-integration typescript
+    ```
+
+2.  **Update `astro.config.mjs`:**
+    ```javascript
+    import { defineConfig } from 'astro/config'
+    import flowcraftIntegration from '@flowcraft/astro-integration'
+
+    export default defineConfig({
+      integrations: [
+        flowcraftIntegration({
+          // Optional: customize compiler options
+          // srcDir: './flows',
+          // outDir: './.flowcraft'
+        })
+      ]
+    })
+    ```
+
+3.  **Build your project:**
+    ```bash
+    npm run build
+    ```
+    Your Flowcraft manifest will be generated automatically during the production build.
+
+## Usage with esbuild
+
+1.  **Install dependencies:**
+    ```bash
+    npm install flowcraft
+    npm install --save-dev @flowcraft/compiler @flowcraft/esbuild-plugin typescript
+    ```
+
+2.  **Update your esbuild config:**
+    ```javascript
+    import { build } from 'esbuild'
+    import flowcraftPlugin from '@flowcraft/esbuild-plugin'
+
+    await build({
+      entryPoints: ['src/index.ts'],
+      outfile: 'dist/index.js',
+      plugins: [
+        flowcraftPlugin({
+          // Optional: customize compiler options
+          // srcDir: './flows',
+          // outDir: './.flowcraft'
+        })
+      ],
+      // ... other options
+    })
+    ```
+
+3.  **Build your project:**
+    ```bash
+    npm run build
+    ```
+    Your Flowcraft manifest will be generated automatically during the build.
+
+## Usage with `tsup`
+
+1.  **Install dependencies:**
+    ```bash
+    npm install flowcraft
+    npm install --save-dev @flowcraft/compiler typescript
+    ```
+
+2.  **Update `tsup.config.ts`:**
+    ```typescript
+    import { defineConfig } from 'tsup';
+    import { buildFlows } from '@flowcraft/compiler';
+
+    export default defineConfig({
+      entry: ['src/index.ts'],
+      // ... your other tsup options
+
+      async onSuccess() {
+        // This hook runs after tsup completes its build
+        await buildFlows();
+      },
+    });
+    ```
+3.  **Build your project:**
+    ```bash
+    npm run build
+    ```
+    The Flowcraft manifest will be generated automatically as the final step of your build.
+
 ## Authoring Flows: The Rules
 
 To make the magic possible, you must follow a few simple rules when writing your flow functions.
