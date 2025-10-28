@@ -113,6 +113,9 @@ describe('ClassNodeExecutor', () => {
 	it('should execute class nodes successfully', async () => {
 		// Simplified test without extending BaseNode due to type complexity
 		const mockImplementation = class {
+			prep: any
+			exec: any
+			post: any
 			constructor(_params: any, _nodeId: string) {
 				this.prep = vi.fn().mockResolvedValue(null)
 				this.exec = vi.fn().mockResolvedValue({ output: 'success' })
@@ -144,6 +147,9 @@ describe('ClassNodeExecutor', () => {
 	it('should handle retries on failure', async () => {
 		let attempts = 0
 		const mockImplementation = class {
+			prep: any
+			exec: any
+			post: any
 			constructor(_params: any, _nodeId: string) {
 				this.prep = vi.fn().mockResolvedValue(null)
 				this.exec = vi.fn().mockImplementation(() => {
@@ -179,6 +185,10 @@ describe('ClassNodeExecutor', () => {
 
 	it('should execute fallback on error', async () => {
 		const mockImplementation = class {
+			prep: any
+			exec: any
+			fallback: any
+			post: any
 			constructor(_params: any, _nodeId: string) {
 				this.prep = vi.fn().mockResolvedValue(null)
 				this.exec = vi.fn().mockRejectedValue(new Error('Fail'))
@@ -215,6 +225,9 @@ describe('ClassNodeExecutor', () => {
 		const controller = new AbortController()
 		controller.abort()
 		const mockImplementation = class {
+			prep: any
+			exec: any
+			post: any
 			constructor(_params: any, _nodeId: string) {
 				this.prep = vi.fn().mockResolvedValue(null)
 				this.exec = vi.fn().mockResolvedValue({ output: 'success' })

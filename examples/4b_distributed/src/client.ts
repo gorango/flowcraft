@@ -46,7 +46,11 @@ async function main() {
 	const analysis = analyzeBlueprint(blueprint)
 	const startNodeIds = analysis.startNodeIds
 
-	const initialContextData = useCase.initialContext
+	const initialContextData = {
+		...useCase.initialContext,
+		blueprintId: useCase.entryWorkflowId,
+		blueprintVersion: blueprint.metadata?.version || null,
+	}
 
 	const stateKey = `workflow:state:${runId}`
 	for (const [key, value] of Object.entries(initialContextData)) {

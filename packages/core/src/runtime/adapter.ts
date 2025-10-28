@@ -142,10 +142,19 @@ export abstract class BaseDistributedAdapter {
 
 		const context = this.createContext(runId)
 
-		// persist the blueprintId for the reconcile method to find later
+		const storedVersion = await context.get('blueprintVersion' as any)
+		const currentVersion = blueprint.metadata?.version || null
+		if (storedVersion !== currentVersion) {
+			const reason = `Blueprint version mismatch: stored version '${storedVersion}', current version '${currentVersion}'. Rejecting job to prevent state corruption.`
+			this.logger.warn(`[Adapter] Version mismatch for run ${runId}, node ${nodeId}: ${reason}`)
+			return
+		}
+
+		// persist the blueprintId and version for the reconcile method to find later
 		const hasBlueprintId = await context.has('blueprintId' as any)
 		if (!hasBlueprintId) {
 			await context.set('blueprintId' as any, blueprintId)
+			await context.set('blueprintVersion' as any, blueprint.metadata?.version || null)
 			// also store in coordination store as fallback
 			const blueprintKey = `flowcraft:blueprint:${runId}`
 			await this.store.setIfNotExist(blueprintKey, blueprintId, 3600)
@@ -321,6 +330,9 @@ export abstract class BaseDistributedAdapter {
 			}
 		}
 		const blueprint = this.runtime.options.blueprints?.[blueprintId]
+		if (blueprint && !(await context.has('blueprintVersion' as any))) {
+			await context.set('blueprintVersion' as any, blueprint.metadata?.version || null)
+		}
 		if (!blueprint) {
 			throw new Error(`Cannot reconcile runId '${runId}': Blueprint with ID '${blueprintId}' not found.`)
 		}

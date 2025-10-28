@@ -139,3 +139,64 @@ This robust error handling ensures that distributed workflows maintain consisten
 The `reconcile` method in `BaseDistributedAdapter` is used to resume a workflow run by inspecting the persisted context, determining the next executable nodes, and enqueuing jobs for them. To increase resilience, the adapter stores the `blueprintId` in both the context and the coordination store as a fallback. If the `blueprintId` is missing from the context during reconciliation, it will be retrieved from the coordination store, preventing failures due to lost context data.
 
 This mechanism ensures that workflow runs can be reliably resumed even if parts of the distributed state are temporarily unavailable or corrupted.
+
+## Workflow Versioning
+
+In distributed systems, it's crucial to ensure that workers processing jobs are compatible with the blueprint version they were designed for. Flowcraft provides built-in workflow versioning to prevent state corruption during rolling deployments.
+
+### Version Field in Metadata
+
+Blueprints can include an optional `version` field in their metadata:
+
+```typescript
+const blueprint: WorkflowBlueprint = {
+  id: 'my-workflow',
+  metadata: {
+    version: '1.2.0'
+  },
+  nodes: [...],
+  edges: [...]
+}
+```
+
+### Version Compatibility Checking
+
+When a workflow run is initiated, the blueprint version is stored in the distributed context. Each worker checks this version before processing jobs:
+
+- **Matching versions**: Jobs are processed normally
+- **Mismatched versions**: Jobs are rejected, allowing correctly-versioned workers to pick them up
+- **Unversioned blueprints**: Work seamlessly with existing deployments
+
+This ensures zero-downtime deployments where old and new versions of workflows can coexist safely in the same distributed system.
+
+### Example: Safe Rolling Deployment
+
+```typescript
+// Version 1.0.0 blueprint
+const v1Blueprint: WorkflowBlueprint = {
+  id: 'payment-processor',
+  metadata: { version: '1.0.0' },
+  nodes: [
+    { id: 'validate', uses: 'validate-payment' },
+    { id: 'process', uses: 'process-payment-v1' }
+  ],
+  edges: [{ source: 'validate', target: 'process' }]
+}
+
+// Version 2.0.0 blueprint with new logic
+const v2Blueprint: WorkflowBlueprint = {
+  id: 'payment-processor',
+  metadata: { version: '2.0.0' },
+  nodes: [
+    { id: 'validate', uses: 'validate-payment' },
+    { id: 'process', uses: 'process-payment-v2' },
+    { id: 'audit', uses: 'audit-payment' }
+  ],
+  edges: [
+    { source: 'validate', target: 'process' },
+    { source: 'process', target: 'audit' }
+  ]
+}
+```
+
+During deployment, workflows started with v1.0.0 will only be processed by v1.0.0 workers, while new workflows can use v2.0.0. This prevents state corruption and ensures reliable operation during updates.
