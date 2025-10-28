@@ -55,8 +55,6 @@ export class PersistentEventBusAdapter implements IEventBus {
 		let executionId = 'unknown'
 		if ('executionId' in event.payload) {
 			executionId = event.payload.executionId as string
-		} else if ('blueprintId' in event.payload && 'executionId' in event.payload) {
-			executionId = event.payload.executionId as string
 		}
 
 		await this.store.store(event, executionId)
@@ -77,7 +75,7 @@ export class InMemoryEventStore implements IEventStore {
 		if (!this.events.has(executionId)) {
 			this.events.set(executionId, [])
 		}
-		this.events.get(executionId)!.push(event)
+		this.events.get(executionId)?.push(event)
 	}
 
 	async retrieve(executionId: string): Promise<FlowcraftEvent[]> {

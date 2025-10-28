@@ -1,5 +1,5 @@
 import type { FlowcraftEvent, WorkflowResult } from '../../types'
-import { ExecutionContext } from '../execution-context'
+import type { ExecutionContext } from '../execution-context'
 import type { GraphTraverser } from '../traverser'
 import type { IOrchestrator } from '../types'
 
@@ -13,7 +13,7 @@ import type { IOrchestrator } from '../types'
 export class ReplayOrchestrator implements IOrchestrator {
 	constructor(private events: FlowcraftEvent[]) {}
 
-	async run(context: ExecutionContext<any, any>, traverser: GraphTraverser): Promise<WorkflowResult<any>> {
+	async run(context: ExecutionContext<any, any>, _traverser: GraphTraverser): Promise<WorkflowResult<any>> {
 		// Filter events for this specific execution
 		const executionEvents = this.events.filter((event) => {
 			if ('executionId' in event.payload) {
@@ -51,7 +51,11 @@ export class ReplayOrchestrator implements IOrchestrator {
 
 			case 'context:change':
 				// Apply the recorded context change
-				await context.state.getContext().set(payload.key, payload.value)
+				if (payload.op === 'set') {
+					await context.state.getContext().set(payload.key, payload.value)
+				} else if (payload.op === 'delete') {
+					await context.state.getContext().delete(payload.key)
+				}
 				break
 
 			case 'node:error':
@@ -89,7 +93,7 @@ export class ReplayOrchestrator implements IOrchestrator {
 
 			case 'batch:finish':
 				// Apply batch results
-				for (const result of payload.results) {
+				for (const _result of payload.results) {
 					// This assumes batch results are stored with node IDs
 					// May need adjustment based on actual batch implementation
 				}

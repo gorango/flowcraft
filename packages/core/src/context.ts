@@ -109,6 +109,7 @@ export class TrackedAsyncContext<TContext extends Record<string, any>> implement
 				payload: {
 					sourceNode: this.sourceNode || 'unknown',
 					key,
+					op: 'set',
 					value,
 					executionId: this.executionId,
 				},
@@ -126,8 +127,15 @@ export class TrackedAsyncContext<TContext extends Record<string, any>> implement
 		this.deltas.push({ op: 'delete', key })
 		const result = await this.innerContext.delete(key)
 		if (this.eventBus && this.executionId && result) {
-			// Note: We don't emit context:change for delete operations in replay
-			// as the replay orchestrator doesn't handle delete events yet
+			await this.eventBus.emit({
+				type: 'context:change',
+				payload: {
+					sourceNode: this.sourceNode || 'unknown',
+					key,
+					op: 'delete',
+					executionId: this.executionId,
+				},
+			})
 		}
 		return result
 	}

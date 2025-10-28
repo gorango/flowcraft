@@ -248,7 +248,10 @@ export type FlowcraftEvent =
 			payload: { nodeId: string; edge: EdgeDefinition; executionId: string; blueprintId: string }
 	  }
 	| { type: 'edge:evaluate'; payload: { source: string; target: string; condition?: string; result: boolean } }
-	| { type: 'context:change'; payload: { sourceNode: string; key: string; value: any; executionId: string } }
+	| {
+			type: 'context:change'
+			payload: { sourceNode: string; key: string; op: 'set' | 'delete'; value?: any; executionId: string }
+	  }
 	| {
 			type: 'batch:start'
 			payload: { batchId: string; scatterNodeId: string; workerNodeIds: string[] }

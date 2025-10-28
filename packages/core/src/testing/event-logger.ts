@@ -86,9 +86,13 @@ export class InMemoryEventLogger implements IEventBus {
 					console.log(`  - Condition: ${payload.condition || 'N/A'} | Result: ${payload.result}`)
 					break
 				case 'context:change':
-					console.log(
-						`  - Node "${payload.sourceNode}" wrote to context -> Key: "${payload.key}" | Value: ${JSON.stringify(payload.value)}`,
-					)
+					if (payload.op === 'set') {
+						console.log(
+							`  - Node "${payload.sourceNode}" wrote to context -> Key: "${payload.key}" | Value: ${JSON.stringify(payload.value)}`,
+						)
+					} else if (payload.op === 'delete') {
+						console.log(`  - Node "${payload.sourceNode}" deleted from context -> Key: "${payload.key}"`)
+					}
 					break
 				case 'node:finish':
 					console.log(`  - Node: "${payload.nodeId}" | Result: ${JSON.stringify(payload.result)}`)

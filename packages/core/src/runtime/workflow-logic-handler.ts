@@ -123,7 +123,13 @@ export class WorkflowLogicHandler {
 		await asyncContext.set(inputKey as any, finalInput)
 		await this.eventBus.emit({
 			type: 'context:change',
-			payload: { sourceNode: edge.source, key: inputKey, value: finalInput, executionId: executionId || 'unknown' },
+			payload: {
+				sourceNode: edge.source,
+				key: inputKey,
+				op: 'set',
+				value: finalInput,
+				executionId: executionId || 'unknown',
+			},
 		})
 		if (!hasExplicitInputs) {
 			targetNode.inputs = inputKey

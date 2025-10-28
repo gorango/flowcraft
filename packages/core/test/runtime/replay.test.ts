@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
+import { InMemoryEventStore, PersistentEventBusAdapter } from '../../src/adapters/persistent-event-bus'
 import { createFlow } from '../../src/flow'
 import { FlowRuntime } from '../../src/runtime/runtime'
-import { InMemoryEventStore, PersistentEventBusAdapter } from '../../src/adapters/persistent-event-bus'
 import { InMemoryEventLogger } from '../../src/testing/event-logger'
 
 describe('Workflow Replay', () => {
@@ -9,7 +9,7 @@ describe('Workflow Replay', () => {
 		// Create a simple workflow
 		const flow = createFlow('test-flow')
 			.node('start', async () => ({ output: 'hello' }))
-			.node('process', async ({ input }) => ({ output: input + ' world' }))
+			.node('process', async ({ input }) => ({ output: `${input} world` }))
 			.edge('start', 'process')
 
 		const blueprint = flow.toBlueprint()
@@ -92,6 +92,39 @@ describe('Workflow Replay', () => {
 
 		// Replay should reconstruct the state up to the error
 		expect(replayResult.status).toBe('completed') // Replay always shows as completed
+	})
+
+	it('should replay workflow with context set and delete operations', async () => {
+		const flow = createFlow('delete-flow').node('modify-context', async ({ context }) => {
+			await context.set('temp', 'temporary value')
+			await context.set('permanent', 'kept value')
+			await context.delete('temp') // Delete the temporary value
+			return { output: 'done' }
+		})
+
+		const blueprint = flow.toBlueprint()
+		const registry = flow.getFunctionRegistry()
+
+		// Run with logging
+		const eventStore = new InMemoryEventStore()
+		const eventBus = new PersistentEventBusAdapter(eventStore)
+		const runtime = new FlowRuntime({ eventBus })
+
+		const result = await runtime.run(blueprint, {}, { functionRegistry: registry })
+
+		// Verify original execution
+		expect(result.context.permanent).toBe('kept value')
+		expect(result.context.temp).toBeUndefined()
+
+		// Get events and replay
+		const executionId = result.context._executionId as string
+		const events = await eventStore.retrieve(executionId)
+		const replayResult = await runtime.replay(blueprint, events, executionId)
+
+		// Verify replay reconstructed the state correctly
+		expect(replayResult.context.permanent).toBe('kept value')
+		expect(replayResult.context.temp).toBeUndefined()
+		expect(replayResult.context).toEqual(result.context)
 	})
 
 	it('should work with InMemoryEventLogger for testing', async () => {
