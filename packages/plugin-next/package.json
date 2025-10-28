@@ -37,7 +37,7 @@
 		"@flowcraft/compiler": "workspace:*"
 	},
 	"devDependencies": {
-		"@types/node": "^24.9.1",
+		"@types/node": "^24.9.2",
 		"tsup": "^8.5.0"
 	},
 	"peerDependencies": {

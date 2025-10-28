@@ -14,16 +14,19 @@ vi.mock('@google-cloud/firestore', () => {
 	const mockCollection = vi.fn().mockReturnValue({
 		doc: mockDoc,
 	})
-	const mockFirestore = vi.fn().mockImplementation(() => ({
-		collection: mockCollection,
-	}))
-	mockFirestore.FieldValue = {
+	const mockFirestore = vi.fn().mockImplementation(
+		class {
+			collection = mockCollection
+		} as any,
+	)
+	const FieldValue = {
 		delete: vi.fn(),
 	}
+	;(mockFirestore as any).FieldValue = FieldValue
 
 	return {
 		Firestore: mockFirestore,
-		FieldValue: mockFirestore.FieldValue,
+		FieldValue,
 	}
 })
 

@@ -112,11 +112,13 @@ describe('FunctionNodeExecutor', () => {
 describe('ClassNodeExecutor', () => {
 	it('should execute class nodes successfully', async () => {
 		// Simplified test without extending BaseNode due to type complexity
-		const mockImplementation = vi.fn().mockImplementation(() => ({
-			prep: vi.fn().mockResolvedValue(null),
-			exec: vi.fn().mockResolvedValue({ output: 'success' }),
-			post: vi.fn().mockResolvedValue({ output: 'success' }),
-		}))
+		const mockImplementation = class {
+			constructor(_params: any, _nodeId: string) {
+				this.prep = vi.fn().mockResolvedValue(null)
+				this.exec = vi.fn().mockResolvedValue({ output: 'success' })
+				this.post = vi.fn().mockResolvedValue({ output: 'success' })
+			}
+		}
 		const executor = new ClassNodeExecutor(mockImplementation as any, 1, {
 			emit: vi.fn(),
 		})
@@ -141,15 +143,17 @@ describe('ClassNodeExecutor', () => {
 
 	it('should handle retries on failure', async () => {
 		let attempts = 0
-		const mockImplementation = vi.fn().mockImplementation(() => ({
-			prep: vi.fn().mockResolvedValue(null),
-			exec: vi.fn().mockImplementation(() => {
-				attempts++
-				if (attempts < 2) throw new Error('Fail')
-				return { output: 'success' }
-			}),
-			post: vi.fn().mockResolvedValue({ output: 'success' }),
-		}))
+		const mockImplementation = class {
+			constructor(_params: any, _nodeId: string) {
+				this.prep = vi.fn().mockResolvedValue(null)
+				this.exec = vi.fn().mockImplementation(() => {
+					attempts++
+					if (attempts < 2) throw new Error('Fail')
+					return { output: 'success' }
+				})
+				this.post = vi.fn().mockResolvedValue({ output: 'success' })
+			}
+		}
 		const executor = new ClassNodeExecutor(mockImplementation as any, 2, {
 			emit: vi.fn(),
 		})
@@ -174,12 +178,14 @@ describe('ClassNodeExecutor', () => {
 	})
 
 	it('should execute fallback on error', async () => {
-		const mockImplementation = vi.fn().mockImplementation(() => ({
-			prep: vi.fn().mockResolvedValue(null),
-			exec: vi.fn().mockRejectedValue(new Error('Fail')),
-			fallback: vi.fn().mockResolvedValue({ output: 'fallback' }),
-			post: vi.fn().mockResolvedValue({ output: 'fallback', _fallbackExecuted: true }),
-		}))
+		const mockImplementation = class {
+			constructor(_params: any, _nodeId: string) {
+				this.prep = vi.fn().mockResolvedValue(null)
+				this.exec = vi.fn().mockRejectedValue(new Error('Fail'))
+				this.fallback = vi.fn().mockResolvedValue({ output: 'fallback' })
+				this.post = vi.fn().mockResolvedValue({ output: 'fallback', _fallbackExecuted: true })
+			}
+		}
 		const executor = new ClassNodeExecutor(mockImplementation as any, 1, {
 			emit: vi.fn(),
 		})
@@ -208,11 +214,13 @@ describe('ClassNodeExecutor', () => {
 	it('should throw on abort signal', async () => {
 		const controller = new AbortController()
 		controller.abort()
-		const mockImplementation = vi.fn().mockImplementation(() => ({
-			prep: vi.fn().mockResolvedValue(null),
-			exec: vi.fn().mockResolvedValue({ output: 'success' }),
-			post: vi.fn().mockResolvedValue({ output: 'success' }),
-		}))
+		const mockImplementation = class {
+			constructor(_params: any, _nodeId: string) {
+				this.prep = vi.fn().mockResolvedValue(null)
+				this.exec = vi.fn().mockResolvedValue({ output: 'success' })
+				this.post = vi.fn().mockResolvedValue({ output: 'success' })
+			}
+		}
 		const executor = new ClassNodeExecutor(mockImplementation as any, 1, {
 			emit: vi.fn(),
 		})

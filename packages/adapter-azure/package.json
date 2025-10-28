@@ -17,17 +17,17 @@
 		"typecheck": "tsc --noEmit"
 	},
 	"dependencies": {
-		"@azure/cosmos": "^4.6.0",
-		"@azure/storage-queue": "^12.27.0",
+		"@azure/cosmos": "^4.7.0",
+		"@azure/storage-queue": "^12.28.1",
 		"flowcraft": "^2.4.0",
-		"ioredis": "^5.8.1"
+		"ioredis": "^5.8.2"
 	},
 	"devDependencies": {
-		"@testcontainers/azurite": "^11.7.1",
-		"@testcontainers/redis": "^11.7.1",
-		"testcontainers": "^11.7.1",
+		"@testcontainers/azurite": "^11.7.2",
+		"@testcontainers/redis": "^11.7.2",
+		"testcontainers": "^11.7.2",
 		"tsup": "^8.5.0",
 		"typescript": "^5.9.3",
-		"vitest": "^3.2.4"
+		"vitest": "^4.0.4"
 	}
 }

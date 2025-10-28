@@ -6,7 +6,7 @@
 		"typecheck": "tsc --noEmit"
 	},
 	"dependencies": {
-		"flowcraft": "workspace:*"
+		"flowcraft": "^2.4.0"
 	},
 	"devDependencies": {
 		"tsx": "^4.20.6",

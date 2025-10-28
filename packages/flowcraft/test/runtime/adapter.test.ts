@@ -2,19 +2,29 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { FlowcraftError } from '../../src/errors'
 import { NullLogger } from '../../src/logger'
 import type { AdapterOptions, ICoordinationStore, JobPayload } from '../../src/runtime'
-import { BaseDistributedAdapter, FlowRuntime } from '../../src/runtime'
+import { BaseDistributedAdapter } from '../../src/runtime'
 import type { IAsyncContext, NodeDefinition, WorkflowBlueprint } from '../../src/types'
 
-const mockRuntime = {
+const _mockRuntime = {
 	executeNode: vi.fn(),
 	determineNextNodes: vi.fn(),
 	applyEdgeTransform: vi.fn(),
 	options: { blueprints: {} as Record<string, any> },
 }
 
-vi.mock('../../src/runtime/runtime.ts', () => ({
-	FlowRuntime: vi.fn().mockImplementation(() => mockRuntime),
-}))
+vi.mock('../../src/runtime/runtime.ts', () => {
+	const FlowRuntime = vi.fn(
+		class FakeFlowRuntime {
+			constructor(options: any) {
+				this.options = options
+				this.executeNode = vi.fn()
+				this.determineNextNodes = vi.fn()
+				this.applyEdgeTransform = vi.fn()
+			}
+		},
+	)
+	return { FlowRuntime }
+})
 
 class MockAdapter extends BaseDistributedAdapter {
 	createContext = vi.fn()
@@ -26,10 +36,10 @@ class MockAdapter extends BaseDistributedAdapter {
 
 describe('BaseDistributedAdapter', () => {
 	let mockCoordinationStore: ICoordinationStore
-	let mockRuntime: FlowRuntime<any, any>
 	let mockContext: IAsyncContext<Record<string, any>>
 	let adapter: MockAdapter
 	let jobHandler: (job: JobPayload) => Promise<void>
+	let runtime: any
 
 	const linearBlueprint: WorkflowBlueprint = {
 		id: 'linear',
@@ -80,13 +90,6 @@ describe('BaseDistributedAdapter', () => {
 			get: vi.fn().mockResolvedValue(undefined),
 		}
 
-		mockRuntime = {
-			executeNode: vi.fn(),
-			determineNextNodes: vi.fn(),
-			applyEdgeTransform: vi.fn(),
-			options: { blueprints },
-		} as any
-
 		mockContext = {
 			get: vi.fn(),
 			set: vi.fn(),
@@ -97,14 +100,13 @@ describe('BaseDistributedAdapter', () => {
 			type: 'async',
 		}
 
-		vi.mocked(FlowRuntime).mockImplementation(() => mockRuntime)
-
 		const adapterOptions: AdapterOptions = {
 			runtimeOptions: { blueprints, logger: new NullLogger() },
 			coordinationStore: mockCoordinationStore,
 		}
 
 		adapter = new MockAdapter(adapterOptions)
+		runtime = adapter.runtime
 		adapter.createContext.mockReturnValue(mockContext)
 
 		adapter.start()
@@ -125,14 +127,14 @@ describe('BaseDistributedAdapter', () => {
 			const nodeB: NodeDefinition = { id: 'B', uses: 'output' }
 			const edgeAB = { source: 'A', target: 'B' }
 
-			vi.mocked(mockRuntime.executeNode).mockResolvedValue({
+			vi.mocked(runtime.executeNode).mockResolvedValue({
 				output: 'Result from A',
 			})
-			vi.mocked(mockRuntime.determineNextNodes).mockResolvedValue([{ node: nodeB, edge: edgeAB }])
+			vi.mocked(runtime.determineNextNodes).mockResolvedValue([{ node: nodeB, edge: edgeAB }])
 
 			await jobHandler(job)
 
-			expect(mockRuntime.executeNode).toHaveBeenCalledWith(linearBlueprint, 'A', expect.any(Object))
+			expect(runtime.executeNode).toHaveBeenCalledWith(linearBlueprint, 'A', expect.any(Object))
 			expect(mockContext.set).toHaveBeenCalledWith('_outputs.A', 'Result from A')
 			expect(adapter.enqueueJob).toHaveBeenCalledWith({
 				runId: 'run1',
@@ -149,15 +151,15 @@ describe('BaseDistributedAdapter', () => {
 				nodeId: 'B',
 			}
 
-			vi.mocked(mockRuntime.executeNode).mockResolvedValue({
+			vi.mocked(runtime.executeNode).mockResolvedValue({
 				output: 'Final Result',
 			})
-			vi.mocked(mockRuntime.determineNextNodes).mockResolvedValue([]) // No more nodes
+			vi.mocked(runtime.determineNextNodes).mockResolvedValue([]) // No more nodes
 			vi.mocked(mockContext.toJSON).mockResolvedValue({ '_outputs.B': 'Final Result' })
 
 			await jobHandler(job)
 
-			expect(mockRuntime.executeNode).toHaveBeenCalledWith(linearBlueprint, 'B', expect.any(Object))
+			expect(runtime.executeNode).toHaveBeenCalledWith(linearBlueprint, 'B', expect.any(Object))
 			expect(mockContext.set).toHaveBeenCalledWith('_outputs.B', 'Final Result')
 			expect(adapter.enqueueJob).not.toHaveBeenCalled()
 			expect(adapter.publishFinalResult).toHaveBeenCalledWith(
@@ -175,15 +177,15 @@ describe('BaseDistributedAdapter', () => {
 				nodes: [{ id: 'A', uses: 'test' }],
 				edges: [],
 			}
-			if (mockRuntime.options.blueprints) {
-				vi.mocked(mockRuntime.options.blueprints).t = terminalNonOutputBlueprint
+			if (runtime.options.blueprints) {
+				runtime.options.blueprints.t = terminalNonOutputBlueprint
 			}
 			const job: JobPayload = { runId: 'run1', blueprintId: 't', nodeId: 'A' }
 
-			vi.mocked(mockRuntime.executeNode).mockResolvedValue({
+			vi.mocked(runtime.executeNode).mockResolvedValue({
 				output: 'end of branch',
 			})
-			vi.mocked(mockRuntime.determineNextNodes).mockResolvedValue([])
+			vi.mocked(runtime.determineNextNodes).mockResolvedValue([])
 			vi.mocked(mockContext.toJSON).mockResolvedValue({ '_outputs.A': 'end of branch' })
 
 			await jobHandler(job)
@@ -212,15 +214,15 @@ describe('BaseDistributedAdapter', () => {
 					{ source: 'A', target: 'C' },
 				],
 			}
-			if (mockRuntime.options.blueprints) {
-				vi.mocked(mockRuntime.options.blueprints)['multi-terminal'] = multipleTerminalBlueprint
+			if (runtime.options.blueprints) {
+				runtime.options.blueprints['multi-terminal'] = multipleTerminalBlueprint
 			}
 			const job: JobPayload = { runId: 'run1', blueprintId: 'multi-terminal', nodeId: 'B' }
 
-			vi.mocked(mockRuntime.executeNode).mockResolvedValue({
+			vi.mocked(runtime.executeNode).mockResolvedValue({
 				output: 'result from B',
 			})
-			vi.mocked(mockRuntime.determineNextNodes).mockResolvedValue([])
+			vi.mocked(runtime.determineNextNodes).mockResolvedValue([])
 
 			await jobHandler(job)
 
@@ -236,8 +238,8 @@ describe('BaseDistributedAdapter', () => {
 				blueprintId: 'fan-in',
 				nodeId: 'A',
 			}
-			vi.mocked(mockRuntime.executeNode).mockResolvedValue({ output: 'from A' })
-			vi.mocked(mockRuntime.determineNextNodes).mockResolvedValue([
+			vi.mocked(runtime.executeNode).mockResolvedValue({ output: 'from A' })
+			vi.mocked(runtime.determineNextNodes).mockResolvedValue([
 				{ node: fanInBlueprint.nodes[2], edge: fanInBlueprint.edges[0] },
 			])
 			// First predecessor arrives, counter is now 1
@@ -255,8 +257,8 @@ describe('BaseDistributedAdapter', () => {
 				blueprintId: 'fan-in',
 				nodeId: 'B',
 			}
-			vi.mocked(mockRuntime.executeNode).mockResolvedValue({ output: 'from B' })
-			vi.mocked(mockRuntime.determineNextNodes).mockResolvedValue([
+			vi.mocked(runtime.executeNode).mockResolvedValue({ output: 'from B' })
+			vi.mocked(runtime.determineNextNodes).mockResolvedValue([
 				{ node: fanInBlueprint.nodes[2], edge: fanInBlueprint.edges[1] },
 			])
 			// Second predecessor arrives, counter is now 2 (which matches predecessor count)
@@ -279,8 +281,8 @@ describe('BaseDistributedAdapter', () => {
 				blueprintId: 'fan-in-any',
 				nodeId: 'A',
 			}
-			vi.mocked(mockRuntime.executeNode).mockResolvedValue({ output: 'from A' })
-			vi.mocked(mockRuntime.determineNextNodes).mockResolvedValue([
+			vi.mocked(runtime.executeNode).mockResolvedValue({ output: 'from A' })
+			vi.mocked(runtime.determineNextNodes).mockResolvedValue([
 				{ node: fanInAnyBlueprint.nodes[2], edge: fanInAnyBlueprint.edges[0] },
 			])
 			// First predecessor successfully acquires the lock
@@ -302,8 +304,8 @@ describe('BaseDistributedAdapter', () => {
 				blueprintId: 'fan-in-any',
 				nodeId: 'B',
 			}
-			vi.mocked(mockRuntime.executeNode).mockResolvedValue({ output: 'from B' })
-			vi.mocked(mockRuntime.determineNextNodes).mockResolvedValue([
+			vi.mocked(runtime.executeNode).mockResolvedValue({ output: 'from B' })
+			vi.mocked(runtime.determineNextNodes).mockResolvedValue([
 				{ node: fanInAnyBlueprint.nodes[2], edge: fanInAnyBlueprint.edges[1] },
 			])
 			// Poison check is not set, but join lock is already acquired
@@ -330,16 +332,16 @@ describe('BaseDistributedAdapter', () => {
 					{ source: 'B', target: 'C' },
 				],
 			}
-			if (mockRuntime.options.blueprints) {
-				vi.mocked(mockRuntime.options.blueprints)['poisoned-fan-in'] = poisonedFanInBlueprint
+			if (runtime.options.blueprints) {
+				runtime.options.blueprints['poisoned-fan-in'] = poisonedFanInBlueprint
 			}
 			const job: JobPayload = {
 				runId: 'run3',
 				blueprintId: 'poisoned-fan-in',
 				nodeId: 'B',
 			}
-			vi.mocked(mockRuntime.executeNode).mockResolvedValue({ output: 'from B' })
-			vi.mocked(mockRuntime.determineNextNodes).mockResolvedValue([
+			vi.mocked(runtime.executeNode).mockResolvedValue({ output: 'from B' })
+			vi.mocked(runtime.determineNextNodes).mockResolvedValue([
 				{ node: poisonedFanInBlueprint.nodes[2], edge: poisonedFanInBlueprint.edges[1] },
 			])
 
@@ -365,7 +367,7 @@ describe('BaseDistributedAdapter', () => {
 				nodeId: 'A',
 			}
 			const executionError = new Error('Node failed spectacularly')
-			vi.mocked(mockRuntime.executeNode).mockRejectedValue(executionError)
+			vi.mocked(runtime.executeNode).mockRejectedValue(executionError)
 
 			await jobHandler(job)
 
@@ -385,7 +387,7 @@ describe('BaseDistributedAdapter', () => {
 
 			await jobHandler(job)
 
-			expect(mockRuntime.executeNode).not.toHaveBeenCalled()
+			expect(runtime.executeNode).not.toHaveBeenCalled()
 			expect(adapter.publishFinalResult).toHaveBeenCalledWith('run1', {
 				status: 'failed',
 				reason: "Blueprint with ID 'non-existent' not found in the worker's runtime registry.",
@@ -405,8 +407,8 @@ describe('BaseDistributedAdapter', () => {
 					{ source: 'B', target: 'C' },
 				],
 			}
-			if (mockRuntime.options.blueprints) {
-				vi.mocked(mockRuntime.options.blueprints)['fan-in-failure'] = fanInWithFailureBlueprint
+			if (runtime.options.blueprints) {
+				runtime.options.blueprints['fan-in-failure'] = fanInWithFailureBlueprint
 			}
 			const job: JobPayload = {
 				runId: 'run1',
@@ -414,7 +416,7 @@ describe('BaseDistributedAdapter', () => {
 				nodeId: 'A',
 			}
 			const executionError = new Error('Node A failed')
-			vi.mocked(mockRuntime.executeNode).mockRejectedValue(executionError)
+			vi.mocked(runtime.executeNode).mockRejectedValue(executionError)
 
 			await jobHandler(job)
 
@@ -437,7 +439,7 @@ describe('BaseDistributedAdapter', () => {
 				nodeId: 'A',
 			}
 			const executionError = new Error('Node A failed')
-			vi.mocked(mockRuntime.executeNode).mockRejectedValue(executionError)
+			vi.mocked(runtime.executeNode).mockRejectedValue(executionError)
 
 			await jobHandler(job)
 
@@ -459,8 +461,8 @@ describe('BaseDistributedAdapter', () => {
 				nodes: [{ id: 'sub-node', uses: 'test' }],
 				edges: [],
 			}
-			if (mockRuntime.options.blueprints) {
-				vi.mocked(mockRuntime.options.blueprints)['subflow-blueprint'] = subflowBlueprint
+			if (runtime.options.blueprints) {
+				runtime.options.blueprints['subflow-blueprint'] = subflowBlueprint
 			}
 
 			const job: JobPayload = {
@@ -481,7 +483,7 @@ describe('BaseDistributedAdapter', () => {
 				},
 			)
 
-			vi.mocked(mockRuntime.executeNode).mockRejectedValue(enhancedError)
+			vi.mocked(runtime.executeNode).mockRejectedValue(enhancedError)
 
 			await jobHandler(job)
 
@@ -515,10 +517,10 @@ describe('BaseDistributedAdapter', () => {
 			// First execution - blueprintId should not exist yet
 			vi.mocked(mockContext.has).mockResolvedValue(false)
 
-			vi.mocked(mockRuntime.executeNode).mockResolvedValue({
+			vi.mocked(runtime.executeNode).mockResolvedValue({
 				output: 'Result from A',
 			})
-			vi.mocked(mockRuntime.determineNextNodes).mockResolvedValue([
+			vi.mocked(runtime.determineNextNodes).mockResolvedValue([
 				{ node: linearBlueprint.nodes[1], edge: linearBlueprint.edges[0] },
 			])
 
@@ -538,10 +540,10 @@ describe('BaseDistributedAdapter', () => {
 			// Subsequent execution - blueprintId should already exist
 			vi.mocked(mockContext.has).mockResolvedValue(true)
 
-			vi.mocked(mockRuntime.executeNode).mockResolvedValue({
+			vi.mocked(runtime.executeNode).mockResolvedValue({
 				output: 'Final Result',
 			})
-			vi.mocked(mockRuntime.determineNextNodes).mockResolvedValue([])
+			vi.mocked(runtime.determineNextNodes).mockResolvedValue([])
 
 			await jobHandler(job)
 
@@ -668,8 +670,8 @@ describe('BaseDistributedAdapter', () => {
 				],
 				edges: [{ source: 'start', target: 'output' }],
 			}
-			if (mockRuntime.options.blueprints) {
-				vi.mocked(mockRuntime.options.blueprints)['start-node'] = startNodeBlueprint
+			if (runtime.options.blueprints) {
+				runtime.options.blueprints['start-node'] = startNodeBlueprint
 			}
 
 			// No nodes completed yet, so start node should be enqueued
