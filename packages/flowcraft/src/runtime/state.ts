@@ -1,4 +1,4 @@
-import { AsyncContextView, Context as SyncContext } from '../context'
+import { AsyncContextView, Context as SyncContext, TrackedAsyncContext } from '../context'
 import { FlowcraftError } from '../errors'
 import type { IAsyncContext, ISerializer, WorkflowError, WorkflowResult } from '../types'
 
@@ -12,7 +12,7 @@ export class WorkflowState<TContext extends Record<string, any>> {
 	private _awaitingDetails = new Map<string, any>()
 
 	constructor(initialData: Partial<TContext>) {
-		this.context = new AsyncContextView(new SyncContext<TContext>(initialData))
+		this.context = new TrackedAsyncContext(new AsyncContextView(new SyncContext<TContext>(initialData)))
 		if ((initialData as any)._awaitingNodeIds) {
 			this._isAwaiting = true
 			const awaitingIds = (initialData as any)._awaitingNodeIds

@@ -105,6 +105,9 @@ Flowcraft provides two strongly-typed context interfaces:
 
 Nodes always interact with an [`IAsyncContext<TContext>`](/api/context#iasynccontext-interface) view, ensuring your business logic remains consistent and type-safe whether you run locally or distributed.
 
+**Performance Optimization:**
+For distributed workflows with large state objects, Flowcraft uses [**delta-based persistence**](/guide/distributed-execution#delta-based-persistence) to dramatically improve performance. Instead of serializing the entire context after each node, only the changes are persisted atomically, reducing payload sizes by 80-95% and lowering database costs.
+
 **Type Safety Benefits:**
 - Define your context shape upfront with TypeScript interfaces
 - Get compile-time validation for context key access

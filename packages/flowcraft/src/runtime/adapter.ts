@@ -1,4 +1,5 @@
 import { analyzeBlueprint } from '../analysis'
+import { TrackedAsyncContext } from '../context'
 import { ConsoleLogger } from '../logger'
 import { JsonSerializer } from '../serializer'
 import type {
@@ -149,7 +150,7 @@ export abstract class BaseDistributedAdapter {
 		}
 		const workerState = {
 			getContext: () => context,
-			markFallbackExecuted: () => { },
+			markFallbackExecuted: () => {},
 			addError: (nodeId: string, error: Error) => {
 				this.logger.error(`[Adapter] Error in node ${nodeId}:`, error)
 			},
@@ -158,6 +159,14 @@ export abstract class BaseDistributedAdapter {
 		try {
 			const result: NodeResult<any, any> = await this.runtime.executeNode(blueprint, nodeId, workerState)
 			await context.set(`_outputs.${nodeId}` as any, result.output)
+
+			if (context instanceof TrackedAsyncContext) {
+				const deltas = context.getDeltas()
+				if (deltas.length > 0) {
+					await context.patch(deltas)
+					context.clearDeltas()
+				}
+			}
 
 			const analysis = analyzeBlueprint(blueprint)
 			const isTerminalNode = analysis.terminalNodeIds.includes(nodeId)

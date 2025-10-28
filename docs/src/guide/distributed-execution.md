@@ -23,6 +23,17 @@ The [`BaseDistributedAdapter`](/api/distributed-adapter#basedistributedadapter-a
 -   **`IAsyncContext`**: The asynchronous context interface used to manage state remotely.
 -   **`JobPayload`**: The data structure for a job placed on the queue.
 
+## Delta-Based Persistence
+
+Distributed workflows with large state objects benefit from **delta-based persistence**, where only context changes (deltas) are persisted instead of the entire state after each node execution. This optimization provides:
+
+- **80-95% reduction** in payload size and network traffic
+- **Lower database costs** through targeted updates (WCUs, DTUs, etc.)
+- **Improved concurrency** with smaller atomic operations
+- **Better scalability** for workflows with complex, evolving state
+
+The runtime automatically tracks changes via `TrackedAsyncContext` and applies them atomically using each adapter's optimized `patch()` implementation.
+
 ## Example: Using BullMQ
 
 Flowcraft provides an [official adapter](/guide/adapters/bullmq) for [BullMQ](https://bullmq.io/), which uses Redis for both the queue and state management.

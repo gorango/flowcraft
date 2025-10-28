@@ -1,4 +1,4 @@
-import type { IAsyncContext } from 'flowcraft'
+import type { IAsyncContext, PatchOperation } from 'flowcraft'
 import type { Client as PgClient } from 'pg'
 
 export interface PostgresContextOptions {
@@ -59,5 +59,33 @@ export class PostgresContext implements IAsyncContext<Record<string, any>> {
 
 	async toJSON(): Promise<Record<string, any>> {
 		return this.readContext()
+	}
+
+	async patch(operations: PatchOperation[]): Promise<void> {
+		if (operations.length === 0) return
+
+		const setOperations = operations.filter((op) => op.op === 'set')
+		const deleteOperations = operations.filter((op) => op.op === 'delete')
+
+		// Build nested JSONB operations
+		let expr = 'context_data'
+		const values: any[] = [this.runId]
+
+		for (const op of setOperations) {
+			values.push(JSON.stringify(op.value))
+			expr = `jsonb_set(${expr}, '{${op.key}}', $${values.length})`
+		}
+
+		for (const op of deleteOperations) {
+			expr = `(${expr} - '${op.key}')`
+		}
+
+		const query = `
+      UPDATE ${this.tableName}
+      SET context_data = ${expr}
+      WHERE run_id = $1
+    `
+
+		await this.pg.query(query, values)
 	}
 }

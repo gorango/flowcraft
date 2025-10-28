@@ -1,4 +1,4 @@
-import type { IAsyncContext, ISyncContext } from './types'
+import type { IAsyncContext, ISyncContext, PatchOperation } from './types'
 
 /**
  * A default, high-performance, in-memory implementation of ISyncContext using a Map.
@@ -68,5 +68,71 @@ export class AsyncContextView<TContext extends Record<string, any>> implements I
 
 	toJSON(): Promise<Record<string, any>> {
 		return Promise.resolve(this.syncContext.toJSON())
+	}
+
+	async patch(_operations: PatchOperation[]): Promise<void> {
+		throw new Error('Patch operations not supported by AsyncContextView')
+	}
+}
+
+/**
+ * A proxy wrapper that tracks changes to an async context for delta-based persistence.
+ * Records all mutations (set/delete operations) to enable efficient partial updates.
+ */
+export class TrackedAsyncContext<TContext extends Record<string, any>> implements IAsyncContext<TContext> {
+	public readonly type = 'async' as const
+	private deltas: PatchOperation[] = []
+	private innerContext: IAsyncContext<TContext>
+
+	constructor(innerContext: IAsyncContext<TContext>) {
+		this.innerContext = innerContext
+	}
+
+	async get<K extends keyof TContext>(key: K): Promise<TContext[K] | undefined>
+	async get(key: string): Promise<any | undefined> {
+		return this.innerContext.get(key)
+	}
+
+	async set<K extends keyof TContext>(key: K, value: TContext[K]): Promise<void>
+	async set(key: string, value: any): Promise<void> {
+		this.deltas.push({ op: 'set', key, value })
+		return this.innerContext.set(key, value)
+	}
+
+	async has<K extends keyof TContext>(key: K): Promise<boolean>
+	async has(key: string): Promise<boolean> {
+		return this.innerContext.has(key)
+	}
+
+	async delete<K extends keyof TContext>(key: K): Promise<boolean>
+	async delete(key: string): Promise<boolean> {
+		this.deltas.push({ op: 'delete', key })
+		return this.innerContext.delete(key)
+	}
+
+	toJSON(): Promise<Record<string, any>> {
+		return this.innerContext.toJSON()
+	}
+
+	async patch(operations: PatchOperation[]): Promise<void> {
+		if (this.innerContext.patch) {
+			return this.innerContext.patch(operations)
+		}
+
+		for (const op of operations) {
+			if (op.op === 'set') {
+				await this.innerContext.set(op.key, op.value)
+			} else if (op.op === 'delete') {
+				await this.innerContext.delete(op.key)
+			}
+		}
+	}
+
+	getDeltas(): PatchOperation[] {
+		return [...this.deltas]
+	}
+
+	clearDeltas(): void {
+		this.deltas = []
 	}
 }

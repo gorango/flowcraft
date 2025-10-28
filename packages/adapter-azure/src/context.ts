@@ -1,5 +1,5 @@
 import type { Container, CosmosClient } from '@azure/cosmos'
-import type { IAsyncContext } from 'flowcraft'
+import type { IAsyncContext, PatchOperation } from 'flowcraft'
 
 export interface CosmosDbContextOptions {
 	client: CosmosClient
@@ -73,5 +73,27 @@ export class CosmosDbContext implements IAsyncContext<Record<string, any>> {
 			return contextData
 		}
 		return {}
+	}
+
+	async patch(operations: PatchOperation[]): Promise<void> {
+		if (operations.length === 0) return
+
+		const patchOps = operations.map((op) => {
+			if (op.op === 'set') {
+				return {
+					op: 'set' as const,
+					path: `/${op.key}`,
+					value: op.value,
+				}
+			} else {
+				// Must be 'delete' since PatchOperation only has 'set' | 'delete'
+				return {
+					op: 'remove' as const,
+					path: `/${op.key}`,
+				}
+			}
+		})
+
+		await this.container.item(this.runId, this.runId).patch(patchOps)
 	}
 }
