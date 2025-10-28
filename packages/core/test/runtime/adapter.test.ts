@@ -86,6 +86,7 @@ describe('BaseDistributedAdapter', () => {
 		mockCoordinationStore = {
 			increment: vi.fn(),
 			setIfNotExist: vi.fn().mockResolvedValue(true), // Default to allowing locks
+			extendTTL: vi.fn().mockResolvedValue(true),
 			delete: vi.fn(),
 			get: vi.fn().mockResolvedValue(undefined),
 		}

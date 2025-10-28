@@ -22,6 +22,8 @@ export interface ICoordinationStore {
 	increment: (key: string, ttlSeconds: number) => Promise<number>
 	/** Sets a key only if it does not already exist. Ideal for 'any' joins (locking). */
 	setIfNotExist: (key: string, value: string, ttlSeconds: number) => Promise<boolean>
+	/** Extends the TTL of an existing key. Used for heartbeat mechanism in long-running jobs. */
+	extendTTL: (key: string, ttlSeconds: number) => Promise<boolean>
 	/** Deletes a key. Used for cleanup. */
 	delete: (key: string) => Promise<void>
 	/** Gets the value of a key. */
@@ -148,15 +150,27 @@ export abstract class BaseDistributedAdapter {
 			const blueprintKey = `flowcraft:blueprint:${runId}`
 			await this.store.setIfNotExist(blueprintKey, blueprintId, 3600)
 		}
-		const workerState = {
-			getContext: () => context,
-			markFallbackExecuted: () => {},
-			addError: (nodeId: string, error: Error) => {
-				this.logger.error(`[Adapter] Error in node ${nodeId}:`, error)
-			},
-		} as any
+
+		// heartbeat to extend TTLs of coordination keys for long-running jobs
+		const joinLockKey = `flowcraft:joinlock:${runId}:${nodeId}`
+		const fanInKey = `flowcraft:fanin:${runId}:${nodeId}`
+		const blueprintKey = `flowcraft:blueprint:${runId}`
+		const heartbeatInterval = setInterval(async () => {
+			await this.store.extendTTL(joinLockKey, 3600)
+			await this.store.extendTTL(fanInKey, 3600)
+			await this.store.extendTTL(blueprintKey, 3600)
+			this.logger.debug(`[Adapter] Extended TTLs for run ${runId}, node ${nodeId}`)
+		}, 1800000) // 30 minutes
 
 		try {
+			const workerState = {
+				getContext: () => context,
+				markFallbackExecuted: () => {},
+				addError: (nodeId: string, error: Error) => {
+					this.logger.error(`[Adapter] Error in node ${nodeId}:`, error)
+				},
+			} as any
+
 			const result: NodeResult<any, any> = await this.runtime.executeNode(blueprint, nodeId, workerState)
 			await context.set(`_outputs.${nodeId}` as any, result.output)
 
@@ -193,6 +207,7 @@ export abstract class BaseDistributedAdapter {
 						status: 'completed',
 						payload: finalResult,
 					})
+					clearInterval(heartbeatInterval)
 					return
 				} else {
 					this.logger.info(
@@ -208,6 +223,7 @@ export abstract class BaseDistributedAdapter {
 				this.logger.info(
 					`[Adapter] Non-terminal node '${nodeId}' reached end of branch for Run ID '${runId}'. This branch will now terminate.`,
 				)
+				clearInterval(heartbeatInterval)
 				return
 			}
 
@@ -226,6 +242,8 @@ export abstract class BaseDistributedAdapter {
 			this.logger.error(`[Adapter] FATAL: Job for node '${nodeId}' failed for Run ID '${runId}': ${reason}`)
 			await this.publishFinalResult(runId, { status: 'failed', reason })
 			await this.writePoisonPillForSuccessors(runId, blueprint, nodeId)
+		} finally {
+			clearInterval(heartbeatInterval)
 		}
 	}
 
