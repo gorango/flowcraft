@@ -126,6 +126,28 @@ const flow = createFlow('delayed-notification')
 const result = await runtime.run(flow.toBlueprint(), {}, { functionRegistry })
 ```
 
+### Automatic Resumption
+
+For in-memory workflows, Flowcraft provides an automatic scheduler that monitors awaiting workflows and resumes them when timers expire:
+
+```typescript
+const runtime = new FlowRuntime()
+
+// Start the scheduler to automatically resume expired timers
+runtime.startScheduler()
+
+// Run a workflow with sleep nodes
+const result = await runtime.run(blueprint, {}, { functionRegistry })
+
+// The scheduler will automatically resume the workflow when the timer expires
+// No manual intervention required for timer-based pauses
+
+// Stop the scheduler when done
+runtime.stopScheduler()
+```
+
+The scheduler checks for expired timers every second by default, ensuring timely resumption of time-based workflows.
+
 ### Retry with Backoff
 
 ```typescript
@@ -224,3 +246,4 @@ try {
 5. **Timeout Management**: Combine sleep nodes with wait nodes for escalation patterns
 6. **Concurrent Waits**: Use multiple wait nodes for parallel approvals
 7. **State Validation**: Validate resume data before processing
+8. **Start Scheduler**: For in-memory workflows with timers, call `runtime.startScheduler()` to enable automatic resumption

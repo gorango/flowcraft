@@ -93,6 +93,10 @@ export class WorkflowState<TContext extends Record<string, any>> {
 		return Array.from(this._awaitingNodeIds)
 	}
 
+	getAwaitingDetails(nodeId: string): any {
+		return this._awaitingDetails.get(nodeId)
+	}
+
 	clearAwaiting(nodeId?: string): void {
 		if (nodeId) {
 			this._awaitingNodeIds.delete(nodeId)
