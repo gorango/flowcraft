@@ -8,7 +8,8 @@ import type { IOrchestrator } from './types'
 export class DefaultOrchestrator implements IOrchestrator {
 	async run(context: ExecutionContext<any, any>, traverser: GraphTraverser): Promise<WorkflowResult<any>> {
 		const hardwareConcurrency = globalThis.navigator?.hardwareConcurrency || 4
-		const maxConcurrency = context.concurrency ?? Math.min(hardwareConcurrency, 10)
+		const maxConcurrency =
+			context.concurrency != null && context.concurrency > 0 ? context.concurrency : Math.min(hardwareConcurrency, 10)
 
 		try {
 			context.signal?.throwIfAborted()
