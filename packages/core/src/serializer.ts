@@ -21,7 +21,12 @@ export class JsonSerializer implements ISerializer {
 				}
 			}
 		}
-		return JSON.stringify(data)
+		try {
+			return JSON.stringify(data)
+		} catch {
+			console.warn('[Flowcraft] Warning: Circular reference detected in context. Using safe serialization.')
+			return JSON.stringify({ _circularReference: true, message: 'Context contains circular references' })
+		}
 	}
 
 	deserialize(text: string): Record<string, any> {
