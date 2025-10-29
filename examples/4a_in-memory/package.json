@@ -8,7 +8,7 @@
 	},
 	"dependencies": {
 		"@flowcraft/example-declarative-shared-logic": "workspace:*",
-		"flowcraft": "^2.6.0"
+		"flowcraft": "^2.6.1"
 	},
 	"devDependencies": {
 		"@types/node": "^24.9.2",
