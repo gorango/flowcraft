@@ -34,7 +34,12 @@ export class ReplayOrchestrator implements IOrchestrator {
 		}
 
 		// Return the final reconstructed state
-		const result = await context.state.toResult(context.services.serializer, context.executionId)
+		// Only include executionId if there were events to replay
+		const includeExecutionId = executionEvents.length > 0
+		const result = await context.state.toResult(
+			context.services.serializer,
+			includeExecutionId ? context.executionId : undefined,
+		)
 		result.status = 'completed' // Replayed executions are always "completed"
 		return result
 	}
