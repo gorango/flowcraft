@@ -148,4 +148,207 @@ describe('Workflow Replay', () => {
 		expect(replayResult.status).toBe('completed')
 		expect(replayResult.context).toEqual(result.context)
 	})
+
+	it('should handle workflow stall events', async () => {
+		const flow = createFlow('stall-flow')
+			.node('start', async () => ({ output: 'start' }))
+			.node('sleep', async ({ dependencies }) => {
+				await dependencies.workflowState.markAsAwaiting('sleep', {
+					reason: 'timer',
+					wakeUpAt: new Date(Date.now() + 1000).toISOString(),
+				})
+				return { output: 'sleeping' }
+			})
+			.edge('start', 'sleep')
+
+		const blueprint = flow.toBlueprint()
+		const registry = flow.getFunctionRegistry()
+
+		const eventStore = new InMemoryEventStore()
+		const eventBus = new PersistentEventBusAdapter(eventStore)
+		const runtime = new FlowRuntime({ eventBus })
+
+		const result = await runtime.run(blueprint, {}, { functionRegistry: registry })
+		const executionId = result.context._executionId as string
+
+		const events = await eventStore.retrieve(executionId)
+		const replayResult = await runtime.replay(blueprint, events, executionId)
+
+		// Replay reconstructs final state, so it shows completed even if original was awaiting
+		expect(replayResult.status).toBe('completed')
+		// Check that the outputs are reconstructed correctly
+		expect(replayResult.context._outputs).toEqual(result.context._outputs)
+	})
+
+	it('should handle batch operations in replay', async () => {
+		const flow = createFlow('batch-flow').batch(
+			'process-batch',
+			async ({ input }) => ({ output: (input as string).toUpperCase() }),
+			{
+				inputKey: 'items',
+				outputKey: 'results',
+			},
+		)
+
+		const blueprint = flow.toBlueprint()
+		const registry = flow.getFunctionRegistry()
+
+		const eventStore = new InMemoryEventStore()
+		const eventBus = new PersistentEventBusAdapter(eventStore)
+		const runtime = new FlowRuntime({ eventBus })
+
+		const result = await runtime.run(blueprint, { items: ['hello', 'world'] }, { functionRegistry: registry })
+		const executionId = result.context._executionId as string
+
+		const events = await eventStore.retrieve(executionId)
+		const replayResult = await runtime.replay(blueprint, events, executionId)
+
+		expect(replayResult.status).toBe('completed')
+		// Replay reconstructs final state from events, so check key outputs
+		expect(replayResult.context.results).toEqual(['HELLO', 'WORLD'])
+		expect(replayResult.context._outputs).toEqual(result.context._outputs)
+	})
+
+	it('should handle node fallback events', async () => {
+		// Create a flow with a primary node that fails and a fallback node
+		const flow = createFlow('fallback-flow')
+			.node('unreliable', async () => {
+				throw new Error('Primary failed')
+			})
+			.node('fallback-handler', async () => {
+				return { output: 'fallback result' }
+			})
+
+		// Manually configure fallback in the blueprint
+		const blueprint = flow.toBlueprint()
+		const unreliableNode = blueprint.nodes.find((n) => n.id === 'unreliable')
+		if (unreliableNode) {
+			unreliableNode.config = { ...unreliableNode.config, fallback: 'fallback-handler' }
+		}
+
+		const registry = flow.getFunctionRegistry()
+
+		const eventStore = new InMemoryEventStore()
+		const eventBus = new PersistentEventBusAdapter(eventStore)
+		const runtime = new FlowRuntime({ eventBus })
+
+		const result = await runtime.run(blueprint, {}, { functionRegistry: registry })
+		const executionId = result.context._executionId as string
+
+		const events = await eventStore.retrieve(executionId)
+		const replayResult = await runtime.replay(blueprint, events, executionId)
+
+		expect(replayResult.status).toBe('completed')
+		expect(replayResult.context).toHaveProperty('_outputs.unreliable', 'fallback result')
+	})
+
+	it('should handle node retry events', async () => {
+		let attempts = 0
+		const flow = createFlow('retry-flow').node(
+			'flaky',
+			async () => {
+				attempts++
+				if (attempts < 2) {
+					throw new Error('Temporary failure')
+				}
+				return { output: 'success' }
+			},
+			{
+				config: { maxRetries: 2 },
+			},
+		)
+
+		const blueprint = flow.toBlueprint()
+		const registry = flow.getFunctionRegistry()
+
+		const eventStore = new InMemoryEventStore()
+		const eventBus = new PersistentEventBusAdapter(eventStore)
+		const runtime = new FlowRuntime({ eventBus })
+
+		const result = await runtime.run(blueprint, {}, { functionRegistry: registry })
+		const executionId = result.context._executionId as string
+
+		const events = await eventStore.retrieve(executionId)
+		const replayResult = await runtime.replay(blueprint, events, executionId)
+
+		expect(replayResult.status).toBe('completed')
+		expect(replayResult.context).toEqual(result.context)
+	})
+
+	it('should handle conditional edges', async () => {
+		const flow = createFlow('conditional-flow')
+			.node('check', async () => ({ output: true }))
+			.node('true-path', async () => ({ output: 'taken' }))
+			.node('false-path', async () => ({ output: 'not taken' }))
+			.edge('check', 'true-path', { condition: 'output === true' })
+			.edge('check', 'false-path', { condition: 'output === false' })
+
+		const blueprint = flow.toBlueprint()
+		const registry = flow.getFunctionRegistry()
+
+		const eventStore = new InMemoryEventStore()
+		const eventBus = new PersistentEventBusAdapter(eventStore)
+		const runtime = new FlowRuntime({ eventBus })
+
+		const result = await runtime.run(blueprint, {}, { functionRegistry: registry })
+		const executionId = result.context._executionId as string
+
+		const events = await eventStore.retrieve(executionId)
+		const replayResult = await runtime.replay(blueprint, events, executionId)
+
+		expect(replayResult.status).toBe('completed')
+		expect(replayResult.context).toEqual(result.context)
+	})
+
+	it('should handle events without executionId', async () => {
+		const flow = createFlow('filter-test').node('simple', async () => ({ output: 'test' }))
+
+		const blueprint = flow.toBlueprint()
+		const registry = flow.getFunctionRegistry()
+
+		const eventStore = new InMemoryEventStore()
+		const eventBus = new PersistentEventBusAdapter(eventStore)
+		const runtime = new FlowRuntime({ eventBus })
+
+		const result = await runtime.run(blueprint, {}, { functionRegistry: registry })
+		const executionId = result.context._executionId as string
+
+		const events = await eventStore.retrieve(executionId)
+		// Add an event with different executionId to test the filter
+		events.push({
+			type: 'workflow:start',
+			payload: { blueprintId: 'other', executionId: 'different-execution-id' },
+		})
+
+		const replayResult = await runtime.replay(blueprint, events, executionId)
+
+		expect(replayResult.status).toBe('completed')
+		expect(replayResult.context).toEqual(result.context)
+	})
+
+	it('should handle unknown event types', async () => {
+		const flow = createFlow('unknown-event-flow').node('simple', async () => ({ output: 'test' }))
+
+		const blueprint = flow.toBlueprint()
+		const registry = flow.getFunctionRegistry()
+
+		const eventStore = new InMemoryEventStore()
+		const eventBus = new PersistentEventBusAdapter(eventStore)
+		const runtime = new FlowRuntime({ eventBus })
+
+		const result = await runtime.run(blueprint, {}, { functionRegistry: registry })
+		const executionId = result.context._executionId as string
+
+		const events = await eventStore.retrieve(executionId)
+		// Add an unknown event type
+		events.push({
+			type: 'unknown:event' as any,
+			payload: { executionId, someData: 'test' } as any,
+		})
+
+		const replayResult = await runtime.replay(blueprint, events, executionId)
+
+		expect(replayResult.status).toBe('completed')
+		expect(replayResult.context).toEqual(result.context)
+	})
 })

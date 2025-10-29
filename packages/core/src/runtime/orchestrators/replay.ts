@@ -25,9 +25,12 @@ export class ReplayOrchestrator implements IOrchestrator {
 		// Sort events by timestamp if available, otherwise assume they're in order
 		// For now, assume events are already in chronological order
 
+		// Track fallback relationships: fallbackNodeId -> originalNodeId
+		const fallbackMap = new Map<string, string>()
+
 		// Replay each event to reconstruct state
 		for (const event of executionEvents) {
-			await this.applyEvent(event, context)
+			await this.applyEvent(event, context, fallbackMap)
 		}
 
 		// Return the final reconstructed state
@@ -36,7 +39,11 @@ export class ReplayOrchestrator implements IOrchestrator {
 		return result
 	}
 
-	private async applyEvent(event: FlowcraftEvent, context: ExecutionContext<any, any>): Promise<void> {
+	private async applyEvent(
+		event: FlowcraftEvent,
+		context: ExecutionContext<any, any>,
+		fallbackMap: Map<string, string>,
+	): Promise<void> {
 		const { type, payload } = event
 
 		switch (type) {
@@ -44,10 +51,18 @@ export class ReplayOrchestrator implements IOrchestrator {
 				// Node start doesn't change state directly, just marks intent
 				break
 
-			case 'node:finish':
-				// Apply the recorded node output to the workflow state
-				await context.state.addCompletedNode(payload.nodeId, payload.result.output)
+			case 'node:finish': {
+				// Check if this node was executed as a fallback
+				const originalNodeId = fallbackMap.get(payload.nodeId)
+				if (originalNodeId) {
+					// This was a fallback execution - apply the result to the original node
+					await context.state.addCompletedNode(originalNodeId, payload.result.output)
+				} else {
+					// Normal node completion
+					await context.state.addCompletedNode(payload.nodeId, payload.result.output)
+				}
 				break
+			}
 
 			case 'context:change':
 				// Apply the recorded context change
@@ -64,7 +79,8 @@ export class ReplayOrchestrator implements IOrchestrator {
 				break
 
 			case 'node:fallback':
-				// Mark that fallback was executed
+				// Record the fallback relationship and mark that fallback was executed
+				fallbackMap.set(payload.fallback, payload.nodeId)
 				context.state.markFallbackExecuted()
 				break
 
