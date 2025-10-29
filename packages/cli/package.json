@@ -1,0 +1,44 @@
+{
+	"name": "@flowcraft/cli",
+	"type": "module",
+	"version": "0.1.0",
+	"description": "Command-line interface for Flowcraft workflow observability and debugging",
+	"bin": {
+		"flowcraft": "./dist/index.js"
+	},
+	"main": "dist/index.js",
+	"module": "dist/index.mjs",
+	"types": "dist/index.d.ts",
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"import": "./dist/index.mjs",
+			"require": "./dist/index.js"
+		}
+	},
+	"files": [
+		"dist",
+		"README.md"
+	],
+	"scripts": {
+		"build": "tsup",
+		"dev": "tsup --watch",
+		"typecheck": "tsc --noEmit",
+		"test": "vitest run"
+	},
+	"dependencies": {
+		"@flowcraft/postgres-history": "workspace:*",
+		"@flowcraft/sqlite-history": "workspace:*",
+		"chalk": "^5.6.2",
+		"commander": "^14.0.2",
+		"flowcraft": "workspace:*",
+		"ora": "^9.0.0",
+		"table": "^6.9.0"
+	},
+	"devDependencies": {
+		"@types/node": "^24.9.2",
+		"tsup": "^8.5.0",
+		"typescript": "^5.9.3",
+		"vitest": "^4.0.4"
+	}
+}

@@ -156,96 +156,268 @@ For persistent event storage in production environments, Flowcraft provides dedi
 
 The `@flowcraft/sqlite-history` package provides SQLite-based event storage, ideal for development, testing, and small-scale production deployments.
 
-```typescript
-import { PersistentEventBusAdapter } from 'flowcraft'
-import { SQLiteEventStore } from '@flowcraft/sqlite-history'
+#### Installation
 
-const eventStore = new SQLiteEventStore({
-  databasePath: './workflow-events.db'
-})
-const eventBus = new PersistentEventBusAdapter(eventStore)
-const runtime = new FlowRuntime({ eventBus })
+```bash
+npm install @flowcraft/sqlite-history
 ```
+
+#### Usage
+
+```typescript
+import { SqliteHistoryAdapter } from '@flowcraft/sqlite-history'
+import { PersistentEventBusAdapter } from 'flowcraft'
+
+// Create SQLite event store
+const eventStore = new SqliteHistoryAdapter({
+  databasePath: './workflow-events.db',
+  walMode: true, // Enable WAL mode for better concurrent access
+})
+
+// Create persistent event bus
+const eventBus = new PersistentEventBusAdapter(eventStore)
+
+// Use with Flowcraft runtime
+const runtime = new FlowRuntime({ eventBus })
+
+// Events are automatically stored and can be retrieved later
+const events = await eventStore.retrieve(executionId)
+```
+
+#### Configuration
+
+- `databasePath`: Path to SQLite database file. Use `:memory:` for in-memory storage.
+- `walMode`: Enable WAL mode for better concurrent read/write access (default: true).
+
+#### Features
+
+- **Efficient Storage**: SQLite provides fast, reliable event storage
+- **Concurrent Access**: WAL mode enables concurrent reads and writes
+- **Query Capabilities**: Retrieve events by execution ID or multiple executions
+- **Statistics**: Get insights into stored events and executions
 
 ### PostgreSQL History Adapter
 
 The `@flowcraft/postgres-history` package provides PostgreSQL-based event storage for enterprise-scale deployments requiring high availability and performance.
 
-```typescript
-import { PersistentEventBusAdapter } from 'flowcraft'
-import { PostgresEventStore } from '@flowcraft/postgres-history'
+#### Installation
 
-const eventStore = new PostgresEventStore({
-  connectionString: process.env.DATABASE_URL,
-  tableName: 'workflow_events' // optional, defaults to 'flowcraft_events'
-})
-const eventBus = new PersistentEventBusAdapter(eventStore)
-const runtime = new FlowRuntime({ eventBus })
+```bash
+npm install @flowcraft/postgres-history
 ```
+
+#### Usage
+
+```typescript
+import { PostgresHistoryAdapter } from '@flowcraft/postgres-history'
+import { PersistentEventBusAdapter } from 'flowcraft'
+
+// Create PostgreSQL event store
+const eventStore = new PostgresHistoryAdapter({
+  host: 'localhost',
+  port: 5432,
+  database: 'flowcraft',
+  user: 'flowcraft',
+  password: 'password',
+  tableName: 'workflow_events', // optional, defaults to 'flowcraft_events'
+})
+
+// Create persistent event bus
+const eventBus = new PersistentEventBusAdapter(eventStore)
+
+// Use with Flowcraft runtime
+const runtime = new FlowRuntime({ eventBus })
+
+// Events are automatically stored and can be retrieved later
+const events = await eventStore.retrieve(executionId)
+```
+
+#### Configuration
+
+All standard `pg.PoolConfig` options are supported:
+
+- `host`, `port`, `database`, `user`, `password`: Database connection details
+- `tableName`: Custom table name (default: 'flowcraft_events')
+- `autoCreateTables`: Automatically create tables and indexes (default: true)
+
+#### Features
+
+- **Scalable Storage**: PostgreSQL handles high-volume event storage
+- **Concurrent Access**: Full support for concurrent reads and writes
+- **Advanced Querying**: Leverage PostgreSQL's JSONB for complex event queries
+- **Connection Pooling**: Efficient connection management with pg.Pool
+- **Statistics**: Get insights into stored events and executions
 
 Both adapters automatically create the necessary database schema on first use and support efficient querying by execution ID.
 
 ## CLI Tool
 
-The `@flowcraft/cli` package provides a command-line interface for inspecting workflow executions stored in history adapters.
+The `@flowcraft/cli` package provides a command-line interface for workflow observability and debugging.
 
 ### Installation
 
 ```bash
 npm install -g @flowcraft/cli
-# or
-pnpm add -g @flowcraft/cli
 ```
 
-### Usage
+### Inspect Workflow Executions
+
+Inspect a completed workflow execution to see its timeline, node executions, and final state:
 
 ```bash
-flowcraft inspect <run-id> [options]
+# Inspect using SQLite history
+flowcraft inspect <run-id> --database ./workflow-events.db
+
+# Inspect using PostgreSQL history
+flowcraft inspect <run-id> \
+  --host localhost \
+  --port 5432 \
+  --user flowcraft \
+  --password password \
+  --dbname flowcraft
+
+# Output in JSON format
+flowcraft inspect <run-id> --database ./events.db --json
 ```
+
+### Example Output
+
+```
+🚀 Workflow Execution Summary
+──────────────────────────────────────────────────
+Run ID: run_abc123
+Blueprint: order-processing-workflow
+Status: Completed
+
+📊 Execution Statistics
+──────────────────────────────
+Total Events: 24
+Nodes Started: 5
+Nodes Completed: 5
+Nodes Failed: 0
+
+⏱️  Node Execution Timeline
+────────────────────────────────────────
+┌─────────────┬───────────┬──────────┐
+│ Node ID     │ Status    │ Duration │
+├─────────────┼───────────┼──────────┤
+│ validate    │ Completed │ ~        │
+│ process     │ Completed │ ~        │
+│ ship        │ Completed │ ~        │
+│ notify      │ Completed │ ~        │
+│ complete    │ Completed │ ~        │
+└─────────────┴───────────┴──────────┘
+
+📋 Final Context
+────────────────────
+orderId: ORD-2024-001
+status: shipped
+trackingNumber: 1Z999AA1234567890
+customerEmail: customer@example.com
+```
+
+### Commands
+
+#### `flowcraft inspect <run-id>`
+
+Inspect a workflow execution and display detailed information including:
+
+- **Execution Summary**: Run ID, blueprint, status, and error counts
+- **Statistics**: Total events, node execution counts
+- **Node Timeline**: Execution status and timing for each node
+- **Final Context**: Key-value pairs from the workflow's final state
+
+##### Options
+
+- `--database <path>`: Path to SQLite database file
+- `--host <host>`: PostgreSQL host
+- `--port <port>`: PostgreSQL port (default: 5432)
+- `--user <user>`: PostgreSQL username
+- `--password <password>`: PostgreSQL password
+- `--dbname <dbname>`: PostgreSQL database name
+- `--table <table>`: History table name (default: 'flowcraft_events')
+- `--json`: Output raw event data in JSON format
 
 ### Configuration
 
-The CLI supports multiple configuration methods:
+The CLI connects to your history backend to retrieve workflow events. You can configure the connection in several ways (in order of precedence):
 
-1. **Command-line arguments**:
-   ```bash
-   flowcraft inspect run_abc123 --store sqlite --database-path ./events.db
-   ```
+#### 1. Command Line Options
 
-2. **Environment variables**:
-   ```bash
-   FLOWCRAFT_STORE=sqlite FLOWCRAFT_DATABASE_PATH=./events.db flowcraft inspect run_abc123
-   ```
-
-3. **Configuration file** (`.flowcraftrc.json` or `flowcraft.config.json`):
-   ```json
-   {
-     "store": "sqlite",
-     "databasePath": "./events.db"
-   }
-   ```
-
-### Supported Stores
-
-- **SQLite**: `--store sqlite --database-path <path>`
-- **PostgreSQL**: `--store postgres --connection-string <url>`
-
-### Output Formats
-
-- **Human-readable** (default): Formatted output with colors and structure
-- **JSON**: `--json` flag for machine-readable output
-
-### Example
-
+##### SQLite Backend
 ```bash
-# Inspect a run with SQLite storage
-flowcraft inspect run_abc123 --store sqlite --database-path ./workflow-events.db
-
-# Inspect with PostgreSQL and JSON output
-flowcraft inspect run_xyz789 --store postgres --connection-string $DATABASE_URL --json
+flowcraft inspect <run-id> --database ./workflow-events.db
 ```
 
-The CLI reconstructs the complete workflow execution state from stored events, providing detailed information about node executions, context changes, and any errors that occurred.
+##### PostgreSQL Backend
+```bash
+flowcraft inspect <run-id> \
+  --host localhost \
+  --port 5432 \
+  --user flowcraft \
+  --password password \
+  --dbname flowcraft \
+  --table workflow_events
+```
+
+#### 2. Environment Variables
+
+##### SQLite
+```bash
+export FLOWCRAFT_HISTORY_TYPE=sqlite
+export FLOWCRAFT_SQLITE_PATH=./workflow-events.db
+```
+
+##### PostgreSQL
+```bash
+export FLOWCRAFT_HISTORY_TYPE=postgres
+export FLOWCRAFT_POSTGRES_HOST=localhost
+export FLOWCRAFT_POSTGRES_PORT=5432
+export FLOWCRAFT_POSTGRES_USER=flowcraft
+export FLOWCRAFT_POSTGRES_PASSWORD=password
+export FLOWCRAFT_POSTGRES_DB=flowcraft
+export FLOWCRAFT_POSTGRES_TABLE=workflow_events  # optional
+```
+
+#### 3. Configuration File
+
+Create a `.flowcraft.json` file in your project directory or `~/.flowcraft/config.json`:
+
+##### SQLite Configuration
+```json
+{
+  "history": {
+    "type": "sqlite",
+    "sqlite": {
+      "databasePath": "./workflow-events.db"
+    }
+  }
+}
+```
+
+##### PostgreSQL Configuration
+```json
+{
+  "history": {
+    "type": "postgres",
+    "postgres": {
+      "host": "localhost",
+      "port": 5432,
+      "user": "flowcraft",
+      "password": "password",
+      "database": "flowcraft",
+      "tableName": "workflow_events"
+    }
+  }
+}
+```
+
+### Roadmap
+
+- `flowcraft list`: List recent workflow executions
+- `flowcraft reconcile <run-id>`: Manually trigger reconciliation for stuck workflows
+- `flowcraft inspect --web`: Launch web UI for richer visualization
+- `flowcraft compare <run-id-1> <run-id-2>`: Compare two workflow executions
 
 ## OpenTelemetry
 
