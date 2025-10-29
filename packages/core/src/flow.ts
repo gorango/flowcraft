@@ -147,8 +147,8 @@ export class FlowBuilder<
 	sleep(
 		id: string,
 		options: {
-			/** The duration to sleep in milliseconds. */
-			duration: number
+			/** The duration to sleep in milliseconds or a string like '5s', '1m', '2h', '1d'. */
+			duration: number | string
 		},
 	): this {
 		const nodeDef: NodeDefinition = {

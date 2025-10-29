@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { createFlow } from '../src/flow'
 import { BaseNode } from '../src/node'
-import type { NodeFunction } from '../src/types'
+import type { NodeContext, NodeFunction } from '../src/types'
 
 describe('Flow Builder', () => {
 	describe('Blueprint Construction', () => {
@@ -165,8 +165,8 @@ describe('Flow Builder', () => {
 		it('should support batch operations with class-based workers', () => {
 			const flow = createFlow('test')
 			class BatchWorker extends BaseNode {
-				async exec() {
-					return { result: 'processed' }
+				async exec(_prepResult: any, _context: NodeContext) {
+					return { output: 'processed' }
 				}
 			}
 			flow.batch('batch1', BatchWorker, { inputKey: 'items', outputKey: 'results' })
