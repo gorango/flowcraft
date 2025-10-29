@@ -1,8 +1,7 @@
 {
 	"name": "@flowcraft/compiler",
 	"type": "module",
-	"private": true,
-	"version": "0.0.0",
+	"version": "1.0.0-alpha.0",
 	"description": "A compiler for transforming imperative TypeScript into declarative Flowcraft workflows",
 	"license": "MIT",
 	"homepage": "https://flowcraft.js.org",
@@ -36,7 +35,7 @@
 	},
 	"dependencies": {
 		"esbuild": "^0.25.11",
-		"flowcraft": "^2.4.0",
+		"flowcraft": "^2.6.0",
 		"resolve": "^1.22.11",
 		"typescript": "^5.9.3"
 	},

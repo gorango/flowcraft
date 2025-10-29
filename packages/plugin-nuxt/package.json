@@ -1,8 +1,7 @@
 {
 	"name": "@flowcraft/nuxt-module",
 	"type": "commonjs",
-	"private": true,
-	"version": "0.0.0",
+	"version": "1.0.0-alpha.0",
 	"description": "Nuxt module for Flowcraft compiler integration",
 	"license": "MIT",
 	"homepage": "https://flowcraft.js.org",
@@ -36,10 +35,10 @@
 		"test": "echo \"Error: no test specified\" && exit 0"
 	},
 	"dependencies": {
-		"@flowcraft/vite-plugin": "workspace:*"
+		"@flowcraft/vite-plugin": "1.0.0-alpha.0"
 	},
 	"devDependencies": {
-		"@flowcraft/compiler": "workspace:*",
+		"@flowcraft/compiler": "1.0.0-alpha.0",
 		"@nuxt/kit": "^4.2.0",
 		"@types/node": "^24.9.2",
 		"tsup": "^8.5.0"
