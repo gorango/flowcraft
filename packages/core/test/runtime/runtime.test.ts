@@ -133,11 +133,11 @@ describe('FlowRuntime', () => {
 			const result1 = await runtime.run(blueprint)
 			expect(result1.status).toBe('awaiting')
 
-			// Start scheduler
-			runtime.startScheduler()
+			// Start scheduler with shorter interval for testing
+			runtime.startScheduler(100) // Check every 100ms
 
-			// Wait for scheduler to check (default 1s interval, so wait 1.1s)
-			await new Promise((resolve) => setTimeout(resolve, 1100))
+			// Wait for scheduler to check (should check within 200ms)
+			await new Promise((resolve) => setTimeout(resolve, 200))
 
 			// The workflow should have resumed and completed
 			const active = runtime.scheduler.getActiveWorkflows()

@@ -1,5 +1,13 @@
-import { describe, expect, it } from 'vitest'
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 import { PropertyEvaluator, UnsafeEvaluator } from '../src/evaluator'
+
+beforeAll(() => {
+	vi.spyOn(console, 'error').mockImplementation(() => {})
+})
+
+afterAll(() => {
+	vi.restoreAllMocks()
+})
 
 describe('PropertyEvaluator', () => {
 	it('should correctly access top-level properties', () => {

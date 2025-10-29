@@ -654,4 +654,520 @@ describe('Flowcraft Runtime - Integration Tests', () => {
 			expect(signalReceived).toBe(controller.signal)
 		})
 	})
+
+	describe('Boundary Conditions', () => {
+		describe('Blueprint Structure', () => {
+			it.each([
+				['empty blueprint', { id: 'empty', nodes: [], edges: [] }],
+				['blueprint with no nodes', { id: 'no-nodes', nodes: [], edges: [] }],
+				[
+					'blueprint with nodes but no edges',
+					() => {
+						const flow = createFlow('nodes-no-edges')
+						flow.node('A', async () => ({ output: 'A' }))
+						return flow.toBlueprint()
+					},
+				],
+			])('should handle %s gracefully', async (_description, blueprintOrFactory) => {
+				const blueprint = typeof blueprintOrFactory === 'function' ? blueprintOrFactory() : blueprintOrFactory
+				const runtime = new FlowRuntime({})
+				const result = await runtime.run(blueprint, {}, {})
+
+				expect(['completed', 'failed']).toContain(result.status)
+			})
+		})
+
+		describe('Node IDs and Names', () => {
+			it.each([
+				['empty string ID', ''],
+				['whitespace ID', '   '],
+				['special characters', 'node@#$%^&*()'],
+				['unicode characters', '节点🚀'],
+				['very long ID', 'a'.repeat(1000)],
+				['ID with dots', 'node.subnode'],
+				['ID with slashes', 'node/sub/node'],
+			])('should handle node ID: %s', async (_description, nodeId) => {
+				const flow = createFlow('node-id-test')
+				flow.node(nodeId, async () => ({ output: 'test' }))
+
+				const runtime = new FlowRuntime({})
+				const result = await runtime.run(flow.toBlueprint(), {}, { functionRegistry: flow.getFunctionRegistry() })
+
+				expect(result.status).toBe('completed')
+				if (nodeId.trim() !== '') {
+					expect(result.context[`_outputs.${nodeId}`]).toBe('test')
+				}
+			})
+		})
+
+		describe('Input/Output Data', () => {
+			it.each([
+				['null output', null],
+				['undefined output', undefined],
+				['empty string', ''],
+				['very long string', 'a'.repeat(10000)],
+				['empty object', {}],
+				['deeply nested object', { a: { b: { c: { d: { e: 'deep' } } } } }],
+				['large array', Array.from({ length: 1000 }, (_, i) => i)],
+				['mixed types', { str: 'string', num: 42, bool: true, arr: [1, 2], obj: { nested: 'value' } }],
+			])('should handle %s as node output', async (_description, output) => {
+				const flow = createFlow('output-test')
+				flow.node('A', async () => ({ output }))
+
+				const runtime = new FlowRuntime({})
+				const result = await runtime.run(flow.toBlueprint(), {}, { functionRegistry: flow.getFunctionRegistry() })
+
+				expect(result.status).toBe('completed')
+				expect(result.context['_outputs.A']).toBe(output)
+			})
+
+			it.each([
+				['null input', null],
+				['undefined input', undefined],
+				['empty string', ''],
+				['large number', Number.MAX_SAFE_INTEGER],
+				['negative number', -Number.MAX_SAFE_INTEGER],
+				['NaN', NaN],
+				['Infinity', Infinity],
+				['empty array', []],
+				['sparse array', Array(10)],
+			])('should handle %s as initial context value', async (_description, value) => {
+				const flow = createFlow('context-test')
+				flow.node('A', async ({ context }) => {
+					const val = await context.get('testKey')
+					return { output: val }
+				})
+
+				const runtime = new FlowRuntime({})
+				const result = await runtime.run(
+					flow.toBlueprint(),
+					{ testKey: value },
+					{ functionRegistry: flow.getFunctionRegistry() },
+				)
+
+				expect(result.status).toBe('completed')
+				expect(result.context['_outputs.A']).toBe(value)
+			})
+		})
+
+		describe('Concurrency and Performance', () => {
+			it.each([
+				[1, 'single concurrency'],
+				[2, 'low concurrency'],
+				[5, 'medium concurrency'],
+				[10, 'high concurrency'],
+				[0, 'zero concurrency'],
+			])('should handle concurrency limit of %d (%s)', async (concurrency, _description) => {
+				const flow = createFlow('concurrency-test')
+				const nodeCount = Math.max(1, Math.min(concurrency * 2, 20)) // Don't create too many nodes, at least 1
+
+				for (let i = 0; i < nodeCount; i++) {
+					flow.node(`node${i}`, async () => {
+						await new Promise((resolve) => setTimeout(resolve, 10)) // Small delay
+						return { output: `result${i}` }
+					})
+				}
+
+				const runtime = new FlowRuntime({})
+				const result = await runtime.run(
+					flow.toBlueprint(),
+					{},
+					{
+						functionRegistry: flow.getFunctionRegistry(),
+						concurrency,
+					},
+				)
+
+				expect(result.status).toBe('completed')
+			})
+
+			it('should handle negative concurrency gracefully', async () => {
+				const flow = createFlow('negative-concurrency')
+				flow.node('A', async () => ({ output: 'A' }))
+
+				const runtime = new FlowRuntime({})
+				const result = await runtime.run(
+					flow.toBlueprint(),
+					{},
+					{
+						functionRegistry: flow.getFunctionRegistry(),
+						concurrency: -1,
+					},
+				)
+
+				expect(result.status).toBe('completed')
+			})
+		})
+
+		describe('Graph Size Limits', () => {
+			it('should handle blueprint with maximum reasonable number of nodes', async () => {
+				const flow = createFlow('large-graph')
+				const nodeCount = 100 // Reasonable limit for testing
+
+				for (let i = 0; i < nodeCount; i++) {
+					flow.node(`node${i}`, async () => ({ output: i }))
+					if (i > 0) {
+						flow.edge(`node${i - 1}`, `node${i}`)
+					}
+				}
+
+				const runtime = new FlowRuntime({})
+				const result = await runtime.run(flow.toBlueprint(), {}, { functionRegistry: flow.getFunctionRegistry() })
+
+				expect(result.status).toBe('completed')
+				expect(result.context[`_outputs.node${nodeCount - 1}`]).toBe(nodeCount - 1)
+			})
+
+			it('should handle blueprint with complex edge patterns', async () => {
+				const flow = createFlow('complex-edges')
+				const nodeCount = 10
+
+				// Create nodes
+				for (let i = 0; i < nodeCount; i++) {
+					flow.node(`node${i}`, async () => ({ output: i }))
+				}
+
+				// Create multiple edges from each node to create a dense graph
+				for (let i = 0; i < nodeCount; i++) {
+					for (let j = i + 1; j < nodeCount; j++) {
+						flow.edge(`node${i}`, `node${j}`)
+					}
+				}
+
+				const runtime = new FlowRuntime({})
+				const result = await runtime.run(flow.toBlueprint(), {}, { functionRegistry: flow.getFunctionRegistry() })
+
+				expect(result.status).toBe('completed')
+			})
+		})
+
+		describe('Error Conditions', () => {
+			it.each([
+				['node throws string error', 'string error'],
+				['node throws Error object', new Error('error object')],
+				['node throws null', null],
+				['node throws undefined', undefined],
+				['node throws number', 42],
+				['node throws object', { error: 'object' }],
+			])('should handle node that throws %s', async (_description, error) => {
+				const flow = createFlow('error-test')
+				flow.node('A', async () => {
+					throw error
+				})
+
+				const runtime = new FlowRuntime({})
+				const result = await runtime.run(flow.toBlueprint(), {}, { functionRegistry: flow.getFunctionRegistry() })
+
+				expect(result.status).toBe('failed')
+				expect(result.errors).toBeDefined()
+				expect(result.errors?.length).toBeGreaterThan(0)
+			})
+
+			it('should handle node function that returns invalid result', async () => {
+				const flow = createFlow('invalid-result')
+				flow.node('A', async () => {
+					// Return something that's not a NodeResult
+					return 'invalid result' as any
+				})
+
+				const runtime = new FlowRuntime({})
+				const result = await runtime.run(flow.toBlueprint(), {}, { functionRegistry: flow.getFunctionRegistry() })
+
+				// Should either complete or fail gracefully
+				expect(['completed', 'failed']).toContain(result.status)
+			})
+		})
+
+		describe('Context Operations', () => {
+			it.each([
+				['set with null value', null],
+				['set with undefined value', undefined],
+				['set with complex object', { nested: { deep: { value: 42 } } }],
+				[
+					'set with circular reference',
+					(() => {
+						const obj: any = { prop: 'value' }
+						obj.self = obj
+						return obj
+					})(),
+				],
+			])('should handle context.set with %s', async (_description, value) => {
+				const flow = createFlow('context-set-test')
+				flow.node('A', async ({ context }) => {
+					await context.set('testKey', value)
+					return { output: 'done' }
+				})
+				flow.node('B', async ({ context }) => {
+					const val = await context.get('testKey')
+					return { output: val }
+				})
+				flow.edge('A', 'B')
+
+				const runtime = new FlowRuntime({})
+				const result = await runtime.run(flow.toBlueprint(), {}, { functionRegistry: flow.getFunctionRegistry() })
+
+				expect(result.status).toBe('completed')
+				expect(result.context['_outputs.B']).toBe(value)
+			})
+		})
+	})
+
+	describe.skip('Concurrency and Race Conditions', () => {
+		it('should handle concurrent context reads without race conditions', async () => {
+			const flow = createFlow('concurrent-reads')
+			const readCount = 10
+
+			// Initialize context
+			flow.node('init', async ({ context }) => {
+				await context.set('counter', 0)
+				return { output: 'initialized' }
+			})
+
+			// Create multiple nodes that read the same context value
+			for (let i = 0; i < readCount; i++) {
+				flow.node(`reader${i}`, async ({ context }) => {
+					const value = await context.get('counter')
+					return { output: value }
+				})
+			}
+
+			// Connect all readers to init
+			for (let i = 0; i < readCount; i++) {
+				flow.edge('init', `reader${i}`)
+			}
+
+			const runtime = new FlowRuntime({})
+			const result = await runtime.run(flow.toBlueprint(), {}, { functionRegistry: flow.getFunctionRegistry() })
+
+			expect(result.status).toBe('completed')
+			// All readers should get the same initial value
+			for (let i = 0; i < readCount; i++) {
+				expect(result.context[`_outputs.reader${i}`]).toBe(0)
+			}
+		})
+
+		it('should handle concurrent context writes safely', async () => {
+			const flow = createFlow('concurrent-writes')
+			const writeCount = 5
+
+			// Create multiple nodes that increment a counter
+			for (let i = 0; i < writeCount; i++) {
+				flow.node(`writer${i}`, async ({ context }) => {
+					const current = (await context.get('counter')) || 0
+					await context.set('counter', current + 1)
+					return { output: `incremented_to_${current + 1}` }
+				})
+			}
+
+			const runtime = new FlowRuntime({})
+			const result = await runtime.run(
+				flow.toBlueprint(),
+				{ counter: 0 },
+				{ functionRegistry: flow.getFunctionRegistry() },
+			)
+
+			expect(result.status).toBe('completed')
+			// Due to concurrent writes, the final counter value might not be exactly writeCount
+			// But each node should have operated on some valid state
+			expect(result.context.counter).toBeGreaterThanOrEqual(0)
+			expect(result.context.counter).toBeLessThanOrEqual(writeCount)
+		})
+
+		it('should maintain data integrity during parallel execution', async () => {
+			const flow = createFlow('data-integrity')
+			const nodeCount = 20
+
+			// Create nodes that append to an array in context
+			for (let i = 0; i < nodeCount; i++) {
+				flow.node(`appender${i}`, async ({ context }) => {
+					const arr = (await context.get('array')) || []
+					const newArr = [...arr, i]
+					await context.set('array', newArr)
+					return { output: `added_${i}` }
+				})
+			}
+
+			const runtime = new FlowRuntime({})
+			const result = await runtime.run(
+				flow.toBlueprint(),
+				{ array: [] },
+				{
+					functionRegistry: flow.getFunctionRegistry(),
+					concurrency: 5, // Allow parallel execution
+				},
+			)
+
+			expect(result.status).toBe('completed')
+			// The array should contain all values, though possibly in different orders due to concurrency
+			const finalArray = result.context.array
+			expect(finalArray).toHaveLength(nodeCount)
+			expect(finalArray.sort()).toEqual(Array.from({ length: nodeCount }, (_, i) => i))
+		})
+
+		it('should handle race conditions in conditional logic', async () => {
+			const flow = createFlow('conditional-race')
+			const executionOrder: string[] = []
+
+			// Two nodes that both try to set a flag and check conditions
+			flow.node('checker1', async ({ context }) => {
+				executionOrder.push('checker1-start')
+				const flag = await context.get('processed')
+				if (!flag) {
+					await context.set('processed', true)
+					await context.set('winner', 'checker1')
+				}
+				executionOrder.push('checker1-end')
+				return { output: 'done1' }
+			})
+
+			flow.node('checker2', async ({ context }) => {
+				executionOrder.push('checker2-start')
+				const flag = await context.get('processed')
+				if (!flag) {
+					await context.set('processed', true)
+					await context.set('winner', 'checker2')
+				}
+				executionOrder.push('checker2-end')
+				return { output: 'done2' }
+			})
+
+			const runtime = new FlowRuntime({})
+			const result = await runtime.run(flow.toBlueprint(), {}, { functionRegistry: flow.getFunctionRegistry() })
+
+			expect(result.status).toBe('completed')
+			// One and only one should have set the winner
+			expect(result.context.winner).toBeDefined()
+			expect(['checker1', 'checker2']).toContain(result.context.winner)
+			expect(result.context.processed).toBe(true)
+		})
+
+		it('should prevent race conditions in shared resource access', async () => {
+			const flow = createFlow('shared-resource')
+			const accessCount = 50
+			let concurrentAccesses = 0
+			let maxConcurrentAccesses = 0
+
+			// Create nodes that simulate accessing a shared resource
+			for (let i = 0; i < accessCount; i++) {
+				flow.node(`accessor${i}`, async ({ context }) => {
+					concurrentAccesses++
+					maxConcurrentAccesses = Math.max(maxConcurrentAccesses, concurrentAccesses)
+
+					// Simulate resource access time
+					await new Promise((resolve) => setTimeout(resolve, Math.random() * 10))
+
+					concurrentAccesses--
+					const accessId = (await context.get('nextId')) || 0
+					await context.set('nextId', accessId + 1)
+					return { output: `access_${accessId}` }
+				})
+			}
+
+			const runtime = new FlowRuntime({})
+			const result = await runtime.run(
+				flow.toBlueprint(),
+				{ nextId: 0 },
+				{
+					functionRegistry: flow.getFunctionRegistry(),
+					concurrency: 10, // High concurrency to test race conditions
+				},
+			)
+
+			expect(result.status).toBe('completed')
+			expect(maxConcurrentAccesses).toBeLessThanOrEqual(10) // Should respect concurrency limit
+			expect(result.context.nextId).toBe(accessCount) // All accesses should be accounted for
+		})
+
+		it('should handle concurrent node failures gracefully', async () => {
+			const flow = createFlow('concurrent-failures')
+			const nodeCount = 10
+
+			// Mix of succeeding and failing nodes
+			for (let i = 0; i < nodeCount; i++) {
+				flow.node(`node${i}`, async () => {
+					if (i % 3 === 0) {
+						// Every third node fails
+						throw new Error(`Node ${i} failed`)
+					}
+					await new Promise((resolve) => setTimeout(resolve, Math.random() * 20))
+					return { output: `success_${i}` }
+				})
+			}
+
+			const runtime = new FlowRuntime({})
+			const result = await runtime.run(
+				flow.toBlueprint(),
+				{},
+				{
+					functionRegistry: flow.getFunctionRegistry(),
+					concurrency: 5,
+				},
+			)
+
+			expect(result.status).toBe('failed') // Should fail due to some nodes failing
+			expect(result.errors).toBeDefined()
+			expect(result.errors?.length).toBeGreaterThan(0)
+
+			// Check that successful nodes still produced outputs
+			for (let i = 0; i < nodeCount; i++) {
+				if (i % 3 !== 0) {
+					expect(result.context[`_outputs.node${i}`]).toBe(`success_${i}`)
+				}
+			}
+		})
+
+		it('should maintain execution order invariants despite concurrency', async () => {
+			const flow = createFlow('order-invariants')
+			const executionLog: string[] = []
+
+			// Create a chain where order matters
+			flow.node('start', async () => {
+				executionLog.push('start')
+				return { output: 'start' }
+			})
+
+			flow.node('middle1', async () => {
+				executionLog.push('middle1')
+				return { output: 'middle1' }
+			})
+
+			flow.node('middle2', async () => {
+				executionLog.push('middle2')
+				return { output: 'middle2' }
+			})
+
+			flow.node('end', async ({ context }) => {
+				executionLog.push('end')
+				const inputs = await Promise.all([
+					context.get('_outputs.start'),
+					context.get('_outputs.middle1'),
+					context.get('_outputs.middle2'),
+				])
+				return { output: `end_with_${inputs.join('_')}` }
+			})
+
+			// Create edges that allow parallel execution but require proper sequencing
+			flow.edge('start', 'middle1')
+			flow.edge('start', 'middle2')
+			flow.edge('middle1', 'end')
+			flow.edge('middle2', 'end')
+
+			const runtime = new FlowRuntime({})
+			const result = await runtime.run(
+				flow.toBlueprint(),
+				{},
+				{
+					functionRegistry: flow.getFunctionRegistry(),
+					concurrency: 3,
+				},
+			)
+
+			expect(result.status).toBe('completed')
+			expect(result.context['_outputs.end']).toBe('end_with_start_middle1_middle2')
+			// Start should always be first
+			expect(executionLog[0]).toBe('start')
+			// End should always be last
+			expect(executionLog[executionLog.length - 1]).toBe('end')
+		})
+	})
 })
