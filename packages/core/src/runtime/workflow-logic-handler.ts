@@ -23,6 +23,8 @@ export class WorkflowLogicHandler {
 		context: ContextImplementation<any>,
 		executionId?: string,
 	): Promise<{ node: NodeDefinition; edge: EdgeDefinition }[]> {
+		if (!result) return []
+
 		let effectiveSourceNodeId = completedNodeId
 		const completedNodeDef = blueprint.nodes.find((n) => n.id === completedNodeId)
 		if (completedNodeDef?.uses === 'loop-controller' && result.action !== 'continue')
