@@ -1,0 +1,35 @@
+{
+	"name": "@flowcraft/sqlite-history",
+	"type": "module",
+	"version": "0.1.0",
+	"description": "SQLite-based event store for Flowcraft workflow observability",
+	"main": "dist/index.js",
+	"module": "dist/index.mjs",
+	"types": "dist/index.d.ts",
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"import": "./dist/index.mjs",
+			"require": "./dist/index.js"
+		}
+	},
+	"files": [
+		"dist"
+	],
+	"scripts": {
+		"build": "tsup",
+		"dev": "tsup --watch",
+		"typecheck": "tsc --noEmit",
+		"test": "vitest run"
+	},
+	"dependencies": {
+		"better-sqlite3": "^12.4.1",
+		"flowcraft": "workspace:*"
+	},
+	"devDependencies": {
+		"@types/better-sqlite3": "^7.6.13",
+		"tsup": "^8.5.0",
+		"typescript": "^5.9.3",
+		"vitest": "^4.0.4"
+	}
+}
