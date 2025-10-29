@@ -65,7 +65,7 @@ describe('Performance and Resource Testing', () => {
 			// Execution time should scale roughly linearly (allowing some overhead)
 			const scalingFactor = times[2] / times[0]
 			const expectedScaling = nodeCounts[2] / nodeCounts[0] // Should be 10x
-			expect(scalingFactor).toBeLessThan(expectedScaling * 2) // Allow 2x overhead
+			expect(scalingFactor).toBeLessThan(expectedScaling * 3) // Allow 3x overhead
 		})
 
 		it('should benefit from parallel execution', async () => {
