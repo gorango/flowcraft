@@ -147,8 +147,8 @@ export class FlowBuilder<
 	sleep(
 		id: string,
 		options: {
-			/** The duration to sleep in milliseconds. */
-			duration: number
+			/** The duration to sleep in milliseconds or a string like '5s', '1m', '2h', '1d'. */
+			duration: number | string
 		},
 	): this {
 		const nodeDef: NodeDefinition = {
@@ -236,7 +236,6 @@ export class FlowBuilder<
 		if (!this.blueprint.nodes || this.blueprint.nodes.length === 0) {
 			throw new Error('Cannot build a blueprint with no nodes.')
 		}
-
 		const finalEdges: EdgeDefinition[] = []
 		const processedOriginalEdges = new Set<EdgeDefinition>()
 		const allOriginalEdges = this.blueprint.edges || []

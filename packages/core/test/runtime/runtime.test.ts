@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { UnsafeEvaluator } from '../../src/evaluator'
+import { ExecutionContext } from '../../src/runtime/execution-context'
 import { FlowRuntime } from '../../src/runtime/runtime'
 import { WorkflowState } from '../../src/runtime/state'
 
@@ -27,6 +28,22 @@ describe('FlowRuntime', () => {
 		vi.spyOn((runtime as any).executorFactory, 'createExecutorForNode').mockReturnValue(mockExecutor)
 		const result = await runtime.executeNode(blueprint, 'A', state)
 		expect(result.output).toBe('result')
+	})
+
+	it('should handle executeNode errors', async () => {
+		const blueprint = {
+			id: 'node-error',
+			nodes: [{ id: 'A', uses: 'test', params: {} }],
+			edges: [],
+		}
+		const state = new WorkflowState({})
+		const runtime = new FlowRuntime({})
+		const mockExecutor = {
+			execute: vi.fn().mockRejectedValue(new Error('Execution failed')),
+		}
+
+		vi.spyOn((runtime as any).executorFactory, 'createExecutorForNode').mockReturnValue(mockExecutor)
+		await expect(runtime.executeNode(blueprint, 'A', state)).rejects.toThrow('Execution failed')
 	})
 
 	it('should determine next nodes correctly', async () => {
@@ -133,17 +150,26 @@ describe('FlowRuntime', () => {
 			const result1 = await runtime.run(blueprint)
 			expect(result1.status).toBe('awaiting')
 
-			// Start scheduler
-			runtime.startScheduler()
+			// Start scheduler with shorter interval for testing
+			runtime.startScheduler(100) // Check every 100ms
 
-			// Wait for scheduler to check (default 1s interval, so wait 1.1s)
-			await new Promise((resolve) => setTimeout(resolve, 1100))
+			// Wait for scheduler to check (should check within 200ms)
+			await new Promise((resolve) => setTimeout(resolve, 200))
 
 			// The workflow should have resumed and completed
 			const active = runtime.scheduler.getActiveWorkflows()
 			expect(active.length).toBe(0) // Should be completed
 
 			runtime.stopScheduler()
+		})
+
+		it('should create execution context for subflow', () => {
+			const runtime = new FlowRuntime({})
+			const subBlueprint = { id: 'sub', nodes: [], edges: [] }
+			const context = runtime.createForSubflow(subBlueprint, { initial: 'data' }, 'exec-123')
+			expect(context).toBeInstanceOf(ExecutionContext)
+			expect(context.executionId).toBe('exec-123')
+			expect(context.blueprint.id).toBe('sub')
 		})
 	})
 })

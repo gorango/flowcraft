@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import { analyzeBlueprint, checkForCycles, generateMermaid } from '../src/analysis'
-import type { WorkflowBlueprint } from '../src/types'
+import { analyzeBlueprint, checkForCycles, generateMermaid, generateMermaidForRun } from '../src/analysis'
+import { FlowcraftError } from '../src/errors'
+import type { FlowcraftEvent, WorkflowBlueprint } from '../src/types'
 
 describe('Graph Analysis', () => {
 	describe('checkForCycles', () => {
@@ -184,6 +185,109 @@ describe('Graph Analysis', () => {
 			expect(mermaid).toContain('A --> C')
 			expect(mermaid).toContain('B --> D')
 			expect(mermaid).toContain('C --> D')
+		})
+	})
+
+	describe('generateMermaidForRun', () => {
+		it('should generate a graph with successful node styling', () => {
+			const blueprint: WorkflowBlueprint = {
+				id: 'test',
+				nodes: [
+					{ id: 'A', uses: 'node' },
+					{ id: 'B', uses: 'node' },
+				],
+				edges: [{ source: 'A', target: 'B' }],
+			}
+			const events: FlowcraftEvent[] = [
+				{
+					type: 'node:finish',
+					payload: { nodeId: 'A', result: { output: 'success' }, executionId: 'test', blueprintId: 'test' },
+				},
+			]
+			const mermaid = generateMermaidForRun(blueprint, events)
+			expect(mermaid).toContain('flowchart TD')
+			expect(mermaid).toContain('A["A"]')
+			expect(mermaid).toContain('B["B"]')
+			expect(mermaid).toContain('A --> B')
+			expect(mermaid).toContain('style A fill:#d4edda,stroke:#c3e6cb')
+			expect(mermaid).not.toContain('style B')
+		})
+
+		it('should generate a graph with failed node styling', () => {
+			const blueprint: WorkflowBlueprint = {
+				id: 'test',
+				nodes: [
+					{ id: 'A', uses: 'node' },
+					{ id: 'B', uses: 'node' },
+				],
+				edges: [{ source: 'A', target: 'B' }],
+			}
+			const events: FlowcraftEvent[] = [
+				{
+					type: 'node:error',
+					payload: {
+						nodeId: 'A',
+						error: new FlowcraftError('fail', { isFatal: true }),
+						executionId: 'test',
+						blueprintId: 'test',
+					},
+				},
+			]
+			const mermaid = generateMermaidForRun(blueprint, events)
+			expect(mermaid).toContain('style A fill:#f8d7da,stroke:#f5c6cb')
+			expect(mermaid).not.toContain('style B')
+		})
+
+		it('should generate a graph with taken edge styling', () => {
+			const blueprint: WorkflowBlueprint = {
+				id: 'test',
+				nodes: [
+					{ id: 'A', uses: 'node' },
+					{ id: 'B', uses: 'node' },
+				],
+				edges: [{ source: 'A', target: 'B' }],
+			}
+			const events: FlowcraftEvent[] = [
+				{ type: 'edge:evaluate', payload: { source: 'A', target: 'B', condition: 'true', result: true } },
+			]
+			const mermaid = generateMermaidForRun(blueprint, events)
+			expect(mermaid).toContain('linkStyle 0 stroke:#007bff,stroke-width:3px')
+		})
+
+		it('should handle multiple events correctly', () => {
+			const blueprint: WorkflowBlueprint = {
+				id: 'test',
+				nodes: [
+					{ id: 'A', uses: 'node' },
+					{ id: 'B', uses: 'node' },
+					{ id: 'C', uses: 'node' },
+				],
+				edges: [
+					{ source: 'A', target: 'B' },
+					{ source: 'B', target: 'C' },
+				],
+			}
+			const events: FlowcraftEvent[] = [
+				{
+					type: 'node:finish',
+					payload: { nodeId: 'A', result: { output: 'success' }, executionId: 'test', blueprintId: 'test' },
+				},
+				{
+					type: 'node:error',
+					payload: {
+						nodeId: 'B',
+						error: new FlowcraftError('fail', { isFatal: true }),
+						executionId: 'test',
+						blueprintId: 'test',
+					},
+				},
+				{ type: 'edge:evaluate', payload: { source: 'A', target: 'B', condition: 'true', result: true } },
+			]
+			const mermaid = generateMermaidForRun(blueprint, events)
+			expect(mermaid).toContain('style A fill:#d4edda,stroke:#c3e6cb')
+			expect(mermaid).toContain('style B fill:#f8d7da,stroke:#f5c6cb')
+			expect(mermaid).toContain('linkStyle 0 stroke:#007bff,stroke-width:3px')
+			expect(mermaid).not.toContain('linkStyle 1')
 		})
 	})
 })

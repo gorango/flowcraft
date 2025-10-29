@@ -6,7 +6,8 @@
 	"scripts": {
 		"lint": "biome check packages examples",
 		"coverage": "pnpm --filter flowcraft test:coverage",
-		"changeset": "changeset"
+		"changeset": "changeset",
+		"release": "turbo build && changeset publish"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^2.3.2",

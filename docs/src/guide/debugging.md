@@ -62,6 +62,27 @@ it('should correctly execute step-by-step', async () => {
 - **Interactive Tools**: Build debugging or visualization tools
 - **Performance Analysis**: Measure execution time per step
 
+## Visual Execution Path Debugging
+
+For a high-level view of workflow execution, you can visualize the actual path taken through your workflow using execution events. The [`generateMermaidForRun`](/api/analysis#generatemermaidforrun-blueprint-events) function generates Mermaid diagrams with color-coded execution paths.
+
+```typescript
+import { generateMermaidForRun } from 'flowcraft'
+import { InMemoryEventLogger } from 'flowcraft/testing'
+
+const eventLogger = new InMemoryEventLogger()
+const runtime = new FlowRuntime({ eventBus: eventLogger })
+
+// Run your workflow
+await runtime.run(blueprint)
+
+// Generate visual execution trace
+const mermaidDiagram = generateMermaidForRun(blueprint, eventLogger.events)
+// Render with Mermaid to see successful (green), failed (red), and taken (blue) paths
+```
+
+This provides immediate visual diagnostics showing which nodes succeeded, failed, or were skipped during execution.
+
 ## Source-Mapped Runtime Errors
 
 When using the Flowcraft Compiler, runtime errors can be automatically mapped back to your original TypeScript source code, providing exact file locations (file:line:column) for workflow errors instead of generic blueprint node IDs.

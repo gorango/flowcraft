@@ -308,7 +308,10 @@ export class FlowRuntime<TContext extends Record<string, any>, TDependencies ext
 		}
 	}
 
-	startScheduler(): void {
+	startScheduler(checkIntervalMs?: number): void {
+		if (checkIntervalMs !== undefined) {
+			this.scheduler = new WorkflowScheduler(this, checkIntervalMs)
+		}
 		this.scheduler.start()
 	}
 

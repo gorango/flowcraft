@@ -36,8 +36,8 @@ importers:
         specifier: ^14.0.0
         version: 14.0.0(vue@3.5.22(typescript@5.9.3))
       flowcraft:
-        specifier: ^2.4.0
-        version: 2.4.0
+        specifier: ^2.6.1
+        version: 2.6.1
       vue:
         specifier: ^3.5.22
         version: 3.5.22(typescript@5.9.3)
@@ -73,8 +73,8 @@ importers:
   examples/1_basic:
     dependencies:
       flowcraft:
-        specifier: ^2.4.0
-        version: 2.4.0
+        specifier: ^2.6.1
+        version: 2.6.1
     devDependencies:
       tsx:
         specifier: ^4.20.6
@@ -89,8 +89,8 @@ importers:
         specifier: ^17.2.3
         version: 17.2.3
       flowcraft:
-        specifier: ^2.4.0
-        version: 2.4.0
+        specifier: ^2.6.1
+        version: 2.6.1
       openai:
         specifier: ^6.7.0
         version: 6.7.0(ws@8.18.3)(zod@3.25.76)
@@ -111,8 +111,8 @@ importers:
         specifier: ^17.2.3
         version: 17.2.3
       flowcraft:
-        specifier: ^2.4.0
-        version: 2.4.0
+        specifier: ^2.6.1
+        version: 2.6.1
       openai:
         specifier: ^6.7.0
         version: 6.7.0(ws@8.18.3)(zod@3.25.76)
@@ -136,8 +136,8 @@ importers:
         specifier: ^17.2.3
         version: 17.2.3
       flowcraft:
-        specifier: ^2.4.0
-        version: 2.4.0
+        specifier: ^2.6.1
+        version: 2.6.1
       openai:
         specifier: ^6.7.0
         version: 6.7.0(ws@8.18.3)(zod@3.25.76)
@@ -155,8 +155,8 @@ importers:
         specifier: workspace:*
         version: link:../4_declarative
       flowcraft:
-        specifier: ^2.4.0
-        version: 2.4.0
+        specifier: ^2.6.1
+        version: 2.6.1
     devDependencies:
       '@types/node':
         specifier: ^24.9.2
@@ -171,8 +171,8 @@ importers:
   examples/4b_distributed:
     dependencies:
       '@flowcraft/bullmq-adapter':
-        specifier: workspace:*
-        version: link:../../packages/adapter-bullmq
+        specifier: ^1.4.1
+        version: 1.4.1
       '@flowcraft/example-declarative-shared-logic':
         specifier: workspace:*
         version: link:../4_declarative
@@ -183,8 +183,8 @@ importers:
         specifier: ^17.2.3
         version: 17.2.3
       flowcraft:
-        specifier: ^2.4.0
-        version: 2.4.0
+        specifier: ^2.6.1
+        version: 2.6.1
       ioredis:
         specifier: ^5.8.2
         version: 5.8.2
@@ -208,8 +208,8 @@ importers:
         specifier: ^17.2.3
         version: 17.2.3
       flowcraft:
-        specifier: ^2.4.0
-        version: 2.4.0
+        specifier: ^2.6.1
+        version: 2.6.1
       openai:
         specifier: ^6.7.0
         version: 6.7.0(ws@8.18.3)(zod@3.25.76)
@@ -236,8 +236,8 @@ importers:
         specifier: ^12.28.1
         version: 12.28.1
       flowcraft:
-        specifier: ^2.4.0
-        version: 2.4.0
+        specifier: ^2.6.0
+        version: 2.6.0
       ioredis:
         specifier: ^5.8.2
         version: 5.8.2
@@ -267,8 +267,8 @@ importers:
         specifier: ^5.62.0
         version: 5.62.0
       flowcraft:
-        specifier: ^2.4.0
-        version: 2.4.0
+        specifier: ^2.6.0
+        version: 2.6.0
       ioredis:
         specifier: ^5.8.2
         version: 5.8.2
@@ -295,8 +295,8 @@ importers:
         specifier: ^5.2.0
         version: 5.2.0
       flowcraft:
-        specifier: workspace:*
-        version: link:../core
+        specifier: ^2.6.0
+        version: 2.6.0
       ioredis:
         specifier: ^5.8.2
         version: 5.8.2
@@ -326,8 +326,8 @@ importers:
         specifier: ^4.8.0
         version: 4.8.0
       flowcraft:
-        specifier: ^2.4.0
-        version: 2.4.0
+        specifier: ^2.6.0
+        version: 2.6.0
       ioredis:
         specifier: ^5.8.2
         version: 5.8.2
@@ -360,8 +360,8 @@ importers:
         specifier: ^0.10.9
         version: 0.10.9
       flowcraft:
-        specifier: ^2.4.0
-        version: 2.4.0
+        specifier: ^2.6.0
+        version: 2.6.0
       ioredis:
         specifier: ^5.8.2
         version: 5.8.2
@@ -409,8 +409,8 @@ importers:
         specifier: ^3.918.0
         version: 3.918.0(@aws-sdk/client-dynamodb@3.918.0)
       flowcraft:
-        specifier: ^2.4.0
-        version: 2.4.0
+        specifier: ^2.6.0
+        version: 2.6.0
       sqs-consumer:
         specifier: ^14.0.1
         version: 14.0.1(@aws-sdk/client-sqs@3.918.0)
@@ -437,8 +437,8 @@ importers:
         specifier: ^0.25.11
         version: 0.25.11
       flowcraft:
-        specifier: ^2.4.0
-        version: 2.4.0
+        specifier: ^2.6.0
+        version: 2.6.0
       resolve:
         specifier: ^1.22.11
         version: 1.22.11
@@ -453,8 +453,8 @@ importers:
         specifier: ^1.20.6
         version: 1.20.6
       '@vitest/coverage-v8':
-        specifier: 3.2.4
-        version: 3.2.4(vitest@4.0.4(@types/debug@4.1.12)(@types/node@24.9.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.44.0)(tsx@4.20.6)(yaml@2.8.1))
+        specifier: 4.0.4
+        version: 4.0.4(vitest@4.0.4(@types/debug@4.1.12)(@types/node@24.9.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.44.0)(tsx@4.20.6)(yaml@2.8.1))
       tsup:
         specifier: ^8.5.0
         version: 8.5.0(jiti@2.6.1)(postcss@8.5.6)(tsx@4.20.6)(typescript@5.9.3)(yaml@2.8.1)
@@ -468,8 +468,8 @@ importers:
         specifier: ^24.9.2
         version: 24.9.2
       '@vitest/coverage-v8':
-        specifier: 3.2.4
-        version: 3.2.4(vitest@4.0.4(@types/debug@4.1.12)(@types/node@24.9.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.44.0)(tsx@4.20.6)(yaml@2.8.1))
+        specifier: 4.0.4
+        version: 4.0.4(vitest@4.0.4(@types/debug@4.1.12)(@types/node@24.9.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.44.0)(tsx@4.20.6)(yaml@2.8.1))
       tsup:
         specifier: ^8.5.0
         version: 8.5.0(jiti@2.6.1)(postcss@8.5.6)(tsx@4.20.6)(typescript@5.9.3)(yaml@2.8.1)
@@ -486,8 +486,8 @@ importers:
         specifier: ^1.8.0
         version: 1.9.0
       flowcraft:
-        specifier: ^2.2.0
-        version: 2.4.0
+        specifier: ^2.6.0
+        version: 2.6.0
     devDependencies:
       '@opentelemetry/sdk-trace-base':
         specifier: ^2.2.0
@@ -508,8 +508,8 @@ importers:
   packages/plugin-astro:
     dependencies:
       '@flowcraft/compiler':
-        specifier: workspace:*
-        version: link:../compiler
+        specifier: 1.0.0-alpha.0
+        version: 1.0.0-alpha.0
     devDependencies:
       '@types/node':
         specifier: ^24.9.2
@@ -524,8 +524,8 @@ importers:
   packages/plugin-esbuild:
     dependencies:
       '@flowcraft/compiler':
-        specifier: workspace:*
-        version: link:../compiler
+        specifier: 1.0.0-alpha.0
+        version: 1.0.0-alpha.0
     devDependencies:
       '@types/node':
         specifier: ^24.9.2
@@ -540,8 +540,8 @@ importers:
   packages/plugin-next:
     dependencies:
       '@flowcraft/compiler':
-        specifier: workspace:*
-        version: link:../compiler
+        specifier: 1.0.0-alpha.0
+        version: 1.0.0-alpha.0
       next:
         specifier: ^13.0.0 || ^14.0.0 || ^15.0.0
         version: 15.5.6(@opentelemetry/api@1.9.0)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
@@ -556,15 +556,15 @@ importers:
   packages/plugin-nuxt:
     dependencies:
       '@flowcraft/vite-plugin':
-        specifier: workspace:*
-        version: link:../plugin-vite
+        specifier: 1.0.0-alpha.0
+        version: 1.0.0-alpha.0(vite@7.1.12(@types/node@24.9.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.44.0)(tsx@4.20.6)(yaml@2.8.1))
       nuxt:
         specifier: ^3.0.0
         version: 3.20.0(@azure/cosmos@4.7.0)(@biomejs/biome@2.3.2)(@parcel/watcher@2.5.1)(@types/node@24.9.2)(@vue/compiler-sfc@3.5.22)(db0@0.3.4)(eslint@9.38.0(jiti@2.6.1))(ioredis@5.8.2)(lightningcss@1.30.2)(magicast@0.5.0)(optionator@0.9.4)(rollup@4.52.5)(terser@5.44.0)(tsx@4.20.6)(typescript@5.9.3)(vite@7.1.12(@types/node@24.9.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.44.0)(tsx@4.20.6)(yaml@2.8.1))(yaml@2.8.1)
     devDependencies:
       '@flowcraft/compiler':
-        specifier: workspace:*
-        version: link:../compiler
+        specifier: 1.0.0-alpha.0
+        version: 1.0.0-alpha.0
       '@nuxt/kit':
         specifier: ^4.2.0
         version: 4.2.0(magicast@0.5.0)
@@ -578,8 +578,8 @@ importers:
   packages/plugin-vite:
     dependencies:
       '@flowcraft/compiler':
-        specifier: workspace:*
-        version: link:../compiler
+        specifier: 1.0.0-alpha.0
+        version: 1.0.0-alpha.0
     devDependencies:
       '@types/node':
         specifier: ^24.9.2
@@ -668,10 +668,6 @@ packages:
   '@algolia/requester-node-http@5.41.0':
     resolution: {integrity: sha512-tYv3rGbhBS0eZ5D8oCgV88iuWILROiemk+tQ3YsAKZv2J4kKUNvKkrX/If/SreRy4MGP2uJzMlyKcfSfO2mrsQ==}
     engines: {node: '>= 14.0.0'}
-
-  '@ampproject/remapping@2.3.0':
-    resolution: {integrity: sha512-30iZtAPgz+LTIYoeivqYo853f02jBYSd5uGnGpkFV0M3xOt9aN73erkgYAmZU43x4VfqcnLxW9Kpg3R5LC4YYw==}
-    engines: {node: '>=6.0.0'}
 
   '@antfu/eslint-config@6.1.0':
     resolution: {integrity: sha512-m/L9TGvtG3r4tkfq5BY6THz7pk0g6yuJwwA0SkLEDHJJpt0upuABhs8v3SU8yaPtCGUxq8k2QTLMZ3WPg4vSdw==}
@@ -1647,6 +1643,17 @@ packages:
     resolution: {integrity: sha512-sB5uyeq+dwCWyPi31B2gQlVlo+j5brPlWx4yZBrEaRo/nhdDE8Xke1gsGgtiBdaBTxuTkceLVuVt/pclrasb0A==}
     engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
 
+  '@flowcraft/bullmq-adapter@1.4.1':
+    resolution: {integrity: sha512-aGGoq5uaHg3GmctF31dOmHVRTo2HvlGPIQrq/Qw/vf3Kpcbxz1wtZVowoB++w1kJskdSHDKQmN4TEpNP/ySDww==}
+
+  '@flowcraft/compiler@1.0.0-alpha.0':
+    resolution: {integrity: sha512-EYDvcinyHPvpJnGDpasSQl4UJOfhEPDEE2orQ2KbvoSMbuhjpiTbCfPWRdu2bXSC/xAXy1B0LjxOc0dCv2NADw==}
+
+  '@flowcraft/vite-plugin@1.0.0-alpha.0':
+    resolution: {integrity: sha512-bAVo6aiJJkn2yQzBo8fAz9qWOHdSRDq8g1IAOPwVh5GgoXJAScKnVHCuAEBvt5bLo2cTzmNRTSQGWgf7CUBvpw==}
+    peerDependencies:
+      vite: ^4.0.0 || ^5.0.0 || ^6.0.0
+
   '@google-cloud/firestore@7.11.6':
     resolution: {integrity: sha512-EW/O8ktzwLfyWBOsNuhRoMi8lrC3clHM5LVFhGvO1HCsLozCOOXRAlHrYBoE6HL42Sc8yYMuCb2XqcnJ4OOEpw==}
     engines: {node: '>=14.0.0'}
@@ -1855,10 +1862,6 @@ packages:
   '@isaacs/fs-minipass@4.0.1':
     resolution: {integrity: sha512-wgm9Ehl2jpeqP3zw/7mo3kRHFp5MEDhqAdwy1fTGkHAwnkGOVsgpvQhL8B5n1qlb01jV3n/bI0ZfZp5lWA1k4w==}
     engines: {node: '>=18.0.0'}
-
-  '@istanbuljs/schema@0.1.3':
-    resolution: {integrity: sha512-ZXRY4jNvVgSVQ8DL3LTcakaAtXwTVUxE81hslsyD2AtoXW/wVob10HkOJ1X/pAlcI7D+2YoZKg5do8G/w6RYgA==}
-    engines: {node: '>=8'}
 
   '@jridgewell/gen-mapping@0.3.13':
     resolution: {integrity: sha512-2kkt/7niJ6MgEPxF0bYdQ6etZaA+fQvDcLKckhy1yIQOzaoKjBBjSj63/aLVjYE3qhRt5dvM+uUyfCg6UKCBbA==}
@@ -3393,11 +3396,11 @@ packages:
       vite: ^5.0.0 || ^6.0.0 || ^7.0.0
       vue: ^3.2.25
 
-  '@vitest/coverage-v8@3.2.4':
-    resolution: {integrity: sha512-EyF9SXU6kS5Ku/U82E259WSnvg6c8KTjppUncuNdm5QHpe17mwREHnjDzozC8x9MZ0xfBUFSaLkRv4TMA75ALQ==}
+  '@vitest/coverage-v8@4.0.4':
+    resolution: {integrity: sha512-YM7gDj2TX2AXyGLz0p/B7hvTsTfaQc+kSV/LU0nEnKlep/ZfbdCDppPND4YQiQC43OXyrhkG3y8ZSTqYb2CKqQ==}
     peerDependencies:
-      '@vitest/browser': 3.2.4
-      vitest: 3.2.4
+      '@vitest/browser': 4.0.4
+      vitest: 4.0.4
     peerDependenciesMeta:
       '@vitest/browser':
         optional: true
@@ -5020,8 +5023,11 @@ packages:
     resolution: {integrity: sha512-9UbaD6XdAL97+k/n+N7JwX46K/M6Zc6KcFYskrYL8wbBV/Uyk0CTAMY0VT+qiK5PM7AIc9aTWYtq65U7T+aCNQ==}
     engines: {node: '>=8'}
 
-  flowcraft@2.4.0:
-    resolution: {integrity: sha512-/WRNpl+UcSHfhEkAGnoTVlZTFs2/TZoYVSZre1Y7e7ZxuwveHRU6RbnVTPPzgjHGDjy9LOr4pni1G1kyiPCqwQ==}
+  flowcraft@2.6.0:
+    resolution: {integrity: sha512-PqTW4ZErxmOHkXFf7OQ0rLJuoxCOny0CJPMosTpcp3vs67MgvaQrWw59wnoU6GCVchGhDkXvQnfG08NBfhixnw==}
+
+  flowcraft@2.6.1:
+    resolution: {integrity: sha512-DbwZod6/L2d04gV7JwZcII5rQl34X9r6Nv/tqQu4l3oo9wxpT2Muo0lv4kFavHkuRMcZkIqRtg7wK8FY63Q54A==}
 
   focus-trap@7.6.6:
     resolution: {integrity: sha512-v/Z8bvMCajtx4mEXmOo7QEsIzlIOqRXTIwgUfsFOF9gEsespdbD0AkPIka1bSXZ8Y8oZ+2IVDQZePkTfEHZl7Q==}
@@ -7432,10 +7438,6 @@ packages:
     engines: {node: '>=10'}
     hasBin: true
 
-  test-exclude@7.0.1:
-    resolution: {integrity: sha512-pFYqmTw68LXVjeWJMST4+borgQP2AyMNbg1BpZh9LbyhUeNkeaPF9gzfPGUAnSMV3qPYdWUwDIjjCLiSDOl7vg==}
-    engines: {node: '>=18'}
-
   testcontainers@11.7.2:
     resolution: {integrity: sha512-jeFzeyzLhIouRAbLnQNapJ2esBs/mvXkkYvO1/vSZehT3/7+Q557qaNxwKwMqAbfxfSh7gcx1OLlMsQUZ9JLdA==}
 
@@ -7467,10 +7469,6 @@ packages:
   tinyglobby@0.2.15:
     resolution: {integrity: sha512-j2Zq4NyQYG5XMST4cbs02Ak8iJUdxRM0XI5QyxXuZOzKOINmWurp3smXu3y5wDcJrptwpSjgXHzIQxR0omXljQ==}
     engines: {node: '>=12.0.0'}
-
-  tinyrainbow@2.0.0:
-    resolution: {integrity: sha512-op4nsTR47R6p0vMUUoYl/a+ljLFVtlfaXkLQmqfLR1qHma1h/ysYk4hEXZ880bf2CYgTskvTa/e196Vd5dDQXw==}
-    engines: {node: '>=14.0.0'}
 
   tinyrainbow@3.0.3:
     resolution: {integrity: sha512-PSkbLUoxOFRzJYjjxHJt9xro7D+iilgMX/C9lawzVuYiIdcihh9DXmVibBe8lmcFrRi/VzlPjBxbN7rH24q8/Q==}
@@ -8446,11 +8444,6 @@ snapshots:
   '@algolia/requester-node-http@5.41.0':
     dependencies:
       '@algolia/client-common': 5.41.0
-
-  '@ampproject/remapping@2.3.0':
-    dependencies:
-      '@jridgewell/gen-mapping': 0.3.13
-      '@jridgewell/trace-mapping': 0.3.31
 
   '@antfu/eslint-config@6.1.0(@vue/compiler-sfc@3.5.22)(eslint@9.38.0(jiti@2.6.1))(typescript@5.9.3)(vitest@4.0.4(@types/debug@4.1.12)(@types/node@24.9.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.44.0)(tsx@4.20.6)(yaml@2.8.1))':
     dependencies:
@@ -9855,6 +9848,26 @@ snapshots:
       '@eslint/core': 0.16.0
       levn: 0.4.1
 
+  '@flowcraft/bullmq-adapter@1.4.1':
+    dependencies:
+      bullmq: 5.62.0
+      flowcraft: 2.6.1
+      ioredis: 5.8.2
+    transitivePeerDependencies:
+      - supports-color
+
+  '@flowcraft/compiler@1.0.0-alpha.0':
+    dependencies:
+      esbuild: 0.25.11
+      flowcraft: 2.6.1
+      resolve: 1.22.11
+      typescript: 5.9.3
+
+  '@flowcraft/vite-plugin@1.0.0-alpha.0(vite@7.1.12(@types/node@24.9.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.44.0)(tsx@4.20.6)(yaml@2.8.1))':
+    dependencies:
+      '@flowcraft/compiler': 1.0.0-alpha.0
+      vite: 7.1.12(@types/node@24.9.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.44.0)(tsx@4.20.6)(yaml@2.8.1)
+
   '@google-cloud/firestore@7.11.6':
     dependencies:
       '@opentelemetry/api': 1.9.0
@@ -10055,8 +10068,6 @@ snapshots:
   '@isaacs/fs-minipass@4.0.1':
     dependencies:
       minipass: 7.1.2
-
-  '@istanbuljs/schema@0.1.3': {}
 
   '@jridgewell/gen-mapping@0.3.13':
     dependencies:
@@ -11912,21 +11923,19 @@ snapshots:
       vite: 7.1.12(@types/node@24.9.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.44.0)(tsx@4.20.6)(yaml@2.8.1)
       vue: 3.5.22(typescript@5.9.3)
 
-  '@vitest/coverage-v8@3.2.4(vitest@4.0.4(@types/debug@4.1.12)(@types/node@24.9.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.44.0)(tsx@4.20.6)(yaml@2.8.1))':
+  '@vitest/coverage-v8@4.0.4(vitest@4.0.4(@types/debug@4.1.12)(@types/node@24.9.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.44.0)(tsx@4.20.6)(yaml@2.8.1))':
     dependencies:
-      '@ampproject/remapping': 2.3.0
       '@bcoe/v8-coverage': 1.0.2
+      '@vitest/utils': 4.0.4
       ast-v8-to-istanbul: 0.3.8
       debug: 4.4.3
       istanbul-lib-coverage: 3.2.2
       istanbul-lib-report: 3.0.1
       istanbul-lib-source-maps: 5.0.6
       istanbul-reports: 3.2.0
-      magic-string: 0.30.21
       magicast: 0.3.5
       std-env: 3.10.0
-      test-exclude: 7.0.1
-      tinyrainbow: 2.0.0
+      tinyrainbow: 3.0.3
       vitest: 4.0.4(@types/debug@4.1.12)(@types/node@24.9.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.44.0)(tsx@4.20.6)(yaml@2.8.1)
     transitivePeerDependencies:
       - supports-color
@@ -13837,7 +13846,9 @@ snapshots:
 
   flattie@1.1.1: {}
 
-  flowcraft@2.4.0: {}
+  flowcraft@2.6.0: {}
+
+  flowcraft@2.6.1: {}
 
   focus-trap@7.6.6:
     dependencies:
@@ -16852,12 +16863,6 @@ snapshots:
       commander: 2.20.3
       source-map-support: 0.5.21
 
-  test-exclude@7.0.1:
-    dependencies:
-      '@istanbuljs/schema': 0.1.3
-      glob: 10.4.5
-      minimatch: 9.0.5
-
   testcontainers@11.7.2:
     dependencies:
       '@balena/dockerignore': 1.0.2
@@ -16909,8 +16914,6 @@ snapshots:
     dependencies:
       fdir: 6.5.0(picomatch@4.0.3)
       picomatch: 4.0.3
-
-  tinyrainbow@2.0.0: {}
 
   tinyrainbow@3.0.3: {}
 

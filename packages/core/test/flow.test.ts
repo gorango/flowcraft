@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { createFlow } from '../src/flow'
 import { BaseNode } from '../src/node'
-import type { NodeFunction } from '../src/types'
+import type { NodeContext, NodeFunction } from '../src/types'
 
 describe('Flow Builder', () => {
 	describe('Blueprint Construction', () => {
@@ -39,6 +39,17 @@ describe('Flow Builder', () => {
 			const blueprint = flow.toBlueprint()
 			expect(blueprint.edges).toHaveLength(1)
 			expect(blueprint.edges[0]).toEqual({ source: 'A', target: 'B' })
+		})
+
+		it('should support method chaining when adding edges', () => {
+			const flow = createFlow('test')
+			flow.node('A', async () => ({}))
+			flow.node('B', async () => ({}))
+			flow.node('C', async () => ({}))
+			const result = flow.edge('A', 'B').edge('B', 'C')
+			expect(result).toBe(flow) // Should return this for chaining
+			const blueprint = flow.toBlueprint()
+			expect(blueprint.edges).toHaveLength(2)
 		})
 
 		it('should correctly add edge options like `action`, `condition`, and `transform`', () => {
@@ -151,6 +162,22 @@ describe('Flow Builder', () => {
 			expect(blueprint.edges[0].target).toBe('batch1_gather')
 		})
 
+		it('should support batch operations with class-based workers', () => {
+			const flow = createFlow('test')
+			class BatchWorker extends BaseNode {
+				async exec(_prepResult: any, _context: NodeContext) {
+					return { output: 'processed' }
+				}
+			}
+			flow.batch('batch1', BatchWorker, { inputKey: 'items', outputKey: 'results' })
+			const blueprint = flow.toBlueprint()
+			expect(blueprint.nodes).toHaveLength(2)
+			expect(blueprint.nodes[0].uses).toBe('batch-scatter')
+			expect(blueprint.nodes[1].uses).toBe('batch-gather')
+			const registry = flow.getFunctionRegistry()
+			expect(registry.has('BatchWorker')).toBe(true)
+		})
+
 		it('should generate a `loop-controller` node for a .loop() call', () => {
 			const flow = createFlow('test')
 			flow.node('start', async () => ({}))
@@ -188,6 +215,37 @@ describe('Flow Builder', () => {
 				action: 'continue',
 				transform: 'context.end',
 			})
+		})
+
+		it('should throw an error when loop references non-existent end node', () => {
+			const flow = createFlow('test')
+			flow.node('start', async () => ({}))
+			flow.edge('start', 'end')
+			flow.loop('loop1', {
+				startNodeId: 'start',
+				endNodeId: 'nonexistent',
+				condition: 'i < 10',
+			})
+			expect(() => flow.toBlueprint()).toThrow("Loop 'loop1' references non-existent end node 'nonexistent'.")
+		})
+
+		it('should throw an error when loop references non-existent start node', () => {
+			const flow = createFlow('test')
+			flow.node('end', async () => ({}))
+			flow.loop('loop1', {
+				startNodeId: 'nonexistent',
+				endNodeId: 'end',
+				condition: 'i < 10',
+			})
+			expect(() => flow.toBlueprint()).toThrow("Loop 'loop1' references non-existent start node 'nonexistent'.")
+		})
+
+		it('should include cycle entry points in blueprint metadata', () => {
+			const flow = createFlow('test')
+			flow.node('A', async () => ({}))
+			flow.setCycleEntryPoint('A')
+			const blueprint = flow.toBlueprint()
+			expect(blueprint.metadata?.cycleEntryPoints).toEqual(['A'])
 		})
 	})
 
@@ -228,6 +286,25 @@ describe('Flow Builder', () => {
 					label: 'continue if: i < 10',
 				},
 			})
+		})
+
+		it('should handle break edges in loops correctly in graph representation', () => {
+			const flow = createFlow('test')
+			flow.node('start', async () => ({}))
+			flow.node('end', async () => ({}))
+			flow.node('exit', async () => ({}))
+			flow.edge('start', 'end')
+			flow.edge('end', 'exit') // This should become a break edge
+			flow.loop('loop1', {
+				startNodeId: 'start',
+				endNodeId: 'end',
+				condition: 'i < 10',
+			})
+			const graph = flow.toGraphRepresentation()
+			expect(graph.nodes).toHaveLength(3) // start, end, exit
+			expect(graph.edges).toHaveLength(3) // original, loopback, break edge
+			const breakEdge = graph.edges.find((edge) => edge.source === 'end' && edge.target === 'exit')
+			expect(breakEdge).toBeDefined()
 		})
 
 		it('should replace batch scatter/gather pairs with a single batch-worker node', () => {

@@ -129,7 +129,7 @@ export class GraphTraverser {
 	markNodeCompleted(nodeId: string, result: NodeResult<any, any>, nextNodes: NodeDefinition[]): void {
 		this.completedNodes.add(nodeId)
 
-		if (result.dynamicNodes && result.dynamicNodes.length > 0) {
+		if (result?.dynamicNodes && result.dynamicNodes.length > 0) {
 			const gatherNodeId = result.output?.gatherNodeId
 			for (const dynamicNode of result.dynamicNodes) {
 				this.dynamicBlueprint.nodes.push(dynamicNode)

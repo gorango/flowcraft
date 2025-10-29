@@ -1,7 +1,7 @@
 {
 	"name": "flowcraft",
 	"type": "module",
-	"version": "2.4.0",
+	"version": "2.6.1",
 	"description": "A lightweight workflow framework",
 	"license": "MIT",
 	"homepage": "https://flowcraft.js.org",
@@ -52,7 +52,7 @@
 	},
 	"devDependencies": {
 		"@types/node": "^24.9.2",
-		"@vitest/coverage-v8": "3.2.4",
+		"@vitest/coverage-v8": "4.0.4",
 		"tsup": "^8.5.0",
 		"typescript": "^5.9.3",
 		"vitest": "^4.0.4"

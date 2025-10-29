@@ -58,6 +58,47 @@ flowchart TD
 
 Notice how the `action` and `condition` from the edges are automatically added as labels to the connections in the diagram.
 
+## `generateMermaidForRun`
+
+For debugging and monitoring, it's often more useful to see the actual execution path of a specific workflow run rather than just the blueprint structure. The [`generateMermaidForRun`](/api/analysis#generatemermaidforrun-blueprint-events) function takes both a blueprint and an array of execution events to generate a Mermaid diagram with visual highlighting of the execution path.
+
+```typescript
+import { createFlow, generateMermaidForRun } from 'flowcraft'
+import { InMemoryEventLogger } from 'flowcraft/testing'
+
+const flow = createFlow('conditional-workflow')
+	.node('fetch', async () => ({ output: { value: 10 } }))
+	.node('check', async ({ input }) => ({
+		action: input.value > 5 ? 'big' : 'small'
+	}), { threshold: 5 })
+	.node('process-big', async () => ({}))
+	.node('process-small', async () => ({}))
+	.edge('fetch', 'check')
+	.edge('check', 'process-big', { action: 'big', condition: 'result.output > 0' })
+	.edge('check', 'process-small', { action: 'small' })
+
+const blueprint = flow.toBlueprint()
+
+// Run the workflow with event logging
+const eventLogger = new InMemoryEventLogger()
+const runtime = new FlowRuntime({ eventBus: eventLogger })
+await runtime.run(blueprint)
+
+// Generate execution-highlighted diagram
+const mermaidSyntax = generateMermaidForRun(blueprint, eventLogger.events)
+console.log(mermaidSyntax)
+```
+
+### Execution Path Highlighting
+
+The generated diagram visually distinguishes the execution path:
+
+- **Successful nodes** are highlighted in green
+- **Failed nodes** are highlighted in red
+- **Taken edges** are shown with thicker blue lines
+
+This provides immediate visual diagnostics for any workflow run, making it easy to see which nodes succeeded, which failed, and which path was actually taken through the graph.
+
 ## `toGraphRepresentation`
 
 For programmatic visualization in user interfaces, the [`Flow`](/api/flow#flow-class) class provides a [`.toGraphRepresentation()`](/api/flow#tographrepresentation) method that returns a [`UIGraph`](/api/flow#uigraph-interface). This method:

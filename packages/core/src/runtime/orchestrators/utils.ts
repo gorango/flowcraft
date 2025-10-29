@@ -75,15 +75,17 @@ export async function processResults(
 
 		if (executionResult.status === 'success') {
 			const result = executionResult.result
-			state.addCompletedNode(nodeId, result.output)
-			if (result._fallbackExecuted) {
-				state.markFallbackExecuted()
-			}
+			if (result) {
+				state.addCompletedNode(nodeId, result.output)
+				if (result._fallbackExecuted) {
+					state.markFallbackExecuted()
+				}
 
-			if (result.dynamicNodes && result.dynamicNodes.length > 0) {
-				const gatherNodeId = result.output?.gatherNodeId
-				for (const dynamicNode of result.dynamicNodes) {
-					traverser.addDynamicNode(dynamicNode.id, dynamicNode, nodeId, gatherNodeId)
+				if (result.dynamicNodes && result.dynamicNodes.length > 0) {
+					const gatherNodeId = result.output?.gatherNodeId
+					for (const dynamicNode of result.dynamicNodes) {
+						traverser.addDynamicNode(dynamicNode.id, dynamicNode, nodeId, gatherNodeId)
+					}
 				}
 			}
 
