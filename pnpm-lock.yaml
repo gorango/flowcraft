@@ -36,8 +36,8 @@ importers:
         specifier: ^14.0.0
         version: 14.0.0(vue@3.5.22(typescript@5.9.3))
       flowcraft:
-        specifier: ^2.6.0
-        version: 2.6.0
+        specifier: ^2.6.1
+        version: 2.6.1
       vue:
         specifier: ^3.5.22
         version: 3.5.22(typescript@5.9.3)
@@ -73,8 +73,8 @@ importers:
   examples/1_basic:
     dependencies:
       flowcraft:
-        specifier: ^2.6.0
-        version: 2.6.0
+        specifier: ^2.6.1
+        version: 2.6.1
     devDependencies:
       tsx:
         specifier: ^4.20.6
@@ -89,8 +89,8 @@ importers:
         specifier: ^17.2.3
         version: 17.2.3
       flowcraft:
-        specifier: ^2.6.0
-        version: 2.6.0
+        specifier: ^2.6.1
+        version: 2.6.1
       openai:
         specifier: ^6.7.0
         version: 6.7.0(ws@8.18.3)(zod@3.25.76)
@@ -111,8 +111,8 @@ importers:
         specifier: ^17.2.3
         version: 17.2.3
       flowcraft:
-        specifier: ^2.6.0
-        version: 2.6.0
+        specifier: ^2.6.1
+        version: 2.6.1
       openai:
         specifier: ^6.7.0
         version: 6.7.0(ws@8.18.3)(zod@3.25.76)
@@ -136,8 +136,8 @@ importers:
         specifier: ^17.2.3
         version: 17.2.3
       flowcraft:
-        specifier: ^2.6.0
-        version: 2.6.0
+        specifier: ^2.6.1
+        version: 2.6.1
       openai:
         specifier: ^6.7.0
         version: 6.7.0(ws@8.18.3)(zod@3.25.76)
@@ -155,8 +155,8 @@ importers:
         specifier: workspace:*
         version: link:../4_declarative
       flowcraft:
-        specifier: ^2.6.0
-        version: 2.6.0
+        specifier: ^2.6.1
+        version: 2.6.1
     devDependencies:
       '@types/node':
         specifier: ^24.9.2
@@ -183,8 +183,8 @@ importers:
         specifier: ^17.2.3
         version: 17.2.3
       flowcraft:
-        specifier: ^2.6.0
-        version: 2.6.0
+        specifier: ^2.6.1
+        version: 2.6.1
       ioredis:
         specifier: ^5.8.2
         version: 5.8.2
@@ -208,8 +208,8 @@ importers:
         specifier: ^17.2.3
         version: 17.2.3
       flowcraft:
-        specifier: ^2.6.0
-        version: 2.6.0
+        specifier: ^2.6.1
+        version: 2.6.1
       openai:
         specifier: ^6.7.0
         version: 6.7.0(ws@8.18.3)(zod@3.25.76)
@@ -5025,6 +5025,9 @@ packages:
 
   flowcraft@2.6.0:
     resolution: {integrity: sha512-PqTW4ZErxmOHkXFf7OQ0rLJuoxCOny0CJPMosTpcp3vs67MgvaQrWw59wnoU6GCVchGhDkXvQnfG08NBfhixnw==}
+
+  flowcraft@2.6.1:
+    resolution: {integrity: sha512-DbwZod6/L2d04gV7JwZcII5rQl34X9r6Nv/tqQu4l3oo9wxpT2Muo0lv4kFavHkuRMcZkIqRtg7wK8FY63Q54A==}
 
   focus-trap@7.6.6:
     resolution: {integrity: sha512-v/Z8bvMCajtx4mEXmOo7QEsIzlIOqRXTIwgUfsFOF9gEsespdbD0AkPIka1bSXZ8Y8oZ+2IVDQZePkTfEHZl7Q==}
@@ -9848,7 +9851,7 @@ snapshots:
   '@flowcraft/bullmq-adapter@1.4.1':
     dependencies:
       bullmq: 5.62.0
-      flowcraft: 2.6.0
+      flowcraft: 2.6.1
       ioredis: 5.8.2
     transitivePeerDependencies:
       - supports-color
@@ -9856,7 +9859,7 @@ snapshots:
   '@flowcraft/compiler@1.0.0-alpha.0':
     dependencies:
       esbuild: 0.25.11
-      flowcraft: 2.6.0
+      flowcraft: 2.6.1
       resolve: 1.22.11
       typescript: 5.9.3
 
@@ -13844,6 +13847,8 @@ snapshots:
   flattie@1.1.1: {}
 
   flowcraft@2.6.0: {}
+
+  flowcraft@2.6.1: {}
 
   focus-trap@7.6.6:
     dependencies:
