@@ -2,6 +2,7 @@
 	"name": "@flowcraft/sqs-adapter",
 	"type": "module",
 	"version": "1.4.1",
+	"homepage": "https://flowcraft.js.org",
 	"exports": {
 		".": {
 			"types": "./dist/index.d.ts",
