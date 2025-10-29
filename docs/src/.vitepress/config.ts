@@ -125,6 +125,7 @@ export default defineConfig({
 					items: [
 						{ text: 'Testing', link: '/guide/testing' },
 						{ text: 'Debugging', link: '/guide/debugging' },
+						{ text: 'Time-Travel', link: '/guide/time-travel' },
 					],
 				},
 				{
@@ -167,9 +168,7 @@ export default defineConfig({
 			'/api/': [
 				{
 					text: 'API Reference',
-					items: [
-						{ text: 'Overview', link: '/api/' },
-					],
+					items: [{ text: 'Overview', link: '/api/' }],
 				},
 				{
 					text: 'Core API',
@@ -181,7 +180,7 @@ export default defineConfig({
 						{ text: 'Context', link: '/api/context' },
 						{ text: 'DI Container', link: '/api/container' },
 						{ text: 'Errors', link: '/api/errors' },
-					]
+					],
 				},
 				{
 					text: 'Extensibility',
@@ -193,7 +192,7 @@ export default defineConfig({
 						{ text: 'Evaluator', link: '/api/evaluator' },
 						{ text: 'Logger', link: '/api/logger' },
 						{ text: 'Distributed Adapter', link: '/api/distributed-adapter' },
-					]
+					],
 				},
 				{
 					text: 'Tooling',
@@ -205,8 +204,8 @@ export default defineConfig({
 						{ text: 'Sanitizer', link: '/api/sanitizer' },
 						{ text: 'Testing', link: '/api/testing' },
 						{ text: 'Types', link: '/api/types' },
-					]
-				}
+					],
+				},
 			],
 		},
 	},
