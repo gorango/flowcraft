@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest'
-import { AsyncContextView, Context } from '../src/context'
+import { describe, expect, it, vi } from 'vitest'
+import { AsyncContextView, Context, TrackedAsyncContext } from '../src/context'
 
 describe('State Management (Context)', () => {
 	describe('Context (Synchronous)', () => {
@@ -88,6 +88,82 @@ describe('State Management (Context)', () => {
 			const asyncContext = new AsyncContextView(syncContext)
 			const json = await asyncContext.toJSON()
 			expect(json).toEqual({ key: 'value' })
+		})
+	})
+
+	describe('TrackedAsyncContext (Change Tracking)', () => {
+		it('should track set operations', async () => {
+			const syncContext = new Context<Record<string, any>>()
+			const asyncContext = new AsyncContextView(syncContext)
+			const trackedContext = new TrackedAsyncContext(asyncContext)
+			await trackedContext.set('key', 'value')
+			expect(await trackedContext.get('key')).toBe('value')
+			// Check deltas
+			const deltas = (trackedContext as any).deltas
+			expect(deltas).toEqual([{ op: 'set', key: 'key', value: 'value' }])
+		})
+
+		it('should track delete operations', async () => {
+			const syncContext = new Context<Record<string, any>>({ key: 'value' })
+			const asyncContext = new AsyncContextView(syncContext)
+			const trackedContext = new TrackedAsyncContext(asyncContext)
+			const result = await trackedContext.delete('key')
+			expect(result).toBe(true)
+			const deltas = (trackedContext as any).deltas
+			expect(deltas).toEqual([{ op: 'delete', key: 'key' }])
+		})
+
+		it('should delegate get and has to inner context', async () => {
+			const syncContext = new Context<Record<string, any>>({ key: 'value' })
+			const asyncContext = new AsyncContextView(syncContext)
+			const trackedContext = new TrackedAsyncContext(asyncContext)
+			expect(await trackedContext.get('key')).toBe('value')
+			expect(await trackedContext.has('key')).toBe(true)
+			expect(await trackedContext.has('nonexistent')).toBe(false)
+		})
+
+		it('should throw on patch operations', async () => {
+			const syncContext = new Context<Record<string, any>>()
+			const asyncContext = new AsyncContextView(syncContext)
+			const trackedContext = new TrackedAsyncContext(asyncContext)
+			await expect(trackedContext.patch([])).rejects.toThrow('Patch operations not supported')
+		})
+
+		it('should support patch operations with set and delete', async () => {
+			const mockInnerContext = {
+				get: vi.fn().mockResolvedValue(undefined),
+				set: vi.fn().mockResolvedValue(undefined),
+				has: vi.fn().mockResolvedValue(false),
+				delete: vi.fn().mockResolvedValue(true),
+				toJSON: vi.fn().mockResolvedValue({}),
+				// No patch method, so TrackedAsyncContext will use set/delete
+			} as any
+			const trackedContext = new TrackedAsyncContext(mockInnerContext)
+			await trackedContext.patch([
+				{ op: 'set', key: 'newKey', value: 'newValue' },
+				{ op: 'delete', key: 'existing' },
+			])
+			expect(mockInnerContext.set).toHaveBeenCalledWith('newKey', 'newValue')
+			expect(mockInnerContext.delete).toHaveBeenCalledWith('existing')
+		})
+
+		it('should return and clear deltas', async () => {
+			const syncContext = new Context<Record<string, any>>()
+			const asyncContext = new AsyncContextView(syncContext)
+			const trackedContext = new TrackedAsyncContext(asyncContext)
+			await trackedContext.set('key1', 'value1')
+			await trackedContext.set('key2', 'value2')
+			await trackedContext.delete('key1')
+
+			const deltas = (trackedContext as any).getDeltas()
+			expect(deltas).toEqual([
+				{ op: 'set', key: 'key1', value: 'value1' },
+				{ op: 'set', key: 'key2', value: 'value2' },
+				{ op: 'delete', key: 'key1' },
+			])
+
+			;(trackedContext as any).clearDeltas()
+			expect((trackedContext as any).getDeltas()).toEqual([])
 		})
 	})
 })

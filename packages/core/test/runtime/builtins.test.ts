@@ -421,5 +421,34 @@ describe('Built-In Nodes', () => {
 			expect(result.status).toBe('failed')
 			expect(result.errors?.[0]?.message).toContain('execution failed')
 		})
+
+		it('should handle string duration', async () => {
+			const flow = createFlow('string-sleep-test')
+			flow.node('start', async () => ({ output: 'start' }))
+			flow.sleep('sleep', { duration: '5s' })
+			flow.node('end', async () => ({ output: 'end' }))
+			flow.edge('start', 'sleep')
+			flow.edge('sleep', 'end')
+
+			const runtime = new FlowRuntime({})
+			const result = await runtime.run(flow.toBlueprint(), {}, { functionRegistry: flow.getFunctionRegistry() })
+
+			expect(result.status).toBe('awaiting')
+			expect(result.context._awaitingNodeIds).toContain('sleep')
+		})
+
+		it('should throw error for invalid string duration', async () => {
+			const flow = createFlow('invalid-string-sleep-test')
+			flow.node('start', async () => ({ output: 'start' }))
+			flow.sleep('sleep', { duration: 'invalid' })
+			flow.node('end', async () => ({ output: 'end' }))
+			flow.edge('start', 'sleep')
+			flow.edge('sleep', 'end')
+
+			const runtime = new FlowRuntime({})
+			const result = await runtime.run(flow.toBlueprint(), {}, { functionRegistry: flow.getFunctionRegistry() })
+
+			expect(result.status).toBe('failed')
+		})
 	})
 })
