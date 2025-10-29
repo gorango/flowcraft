@@ -1,22 +1,9 @@
 {
 	"name": "@flowcraft/opentelemetry-middleware",
-	"version": "2.0.0",
 	"type": "module",
+	"version": "1.0.1",
 	"description": "OpenTelemetry middleware for Flowcraft workflows",
-	"license": "MIT",
 	"homepage": "https://flowcraft.js.org",
-	"repository": {
-		"type": "git",
-		"url": "https://github.com/gorango/flowcraft.git"
-	},
-	"bugs": "https://github.com/gorango/flowcraft/issues",
-	"keywords": [
-		"flowcraft",
-		"middleware",
-		"opentelemetry",
-		"observability",
-		"tracing"
-	],
 	"exports": {
 		".": {
 			"types": "./dist/index.d.ts",
@@ -32,7 +19,7 @@
 		"typecheck": "tsc --noEmit"
 	},
 	"peerDependencies": {
-		"flowcraft": "^2.2.0",
+		"flowcraft": "^2.6.0",
 		"@opentelemetry/api": "^1.8.0"
 	},
 	"devDependencies": {

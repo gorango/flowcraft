@@ -1,7 +1,8 @@
 {
 	"name": "@flowcraft/next-plugin",
 	"type": "commonjs",
-	"version": "1.0.0",
+	"private": true,
+	"version": "0.0.0",
 	"description": "Next.js plugin for Flowcraft compiler integration",
 	"license": "MIT",
 	"homepage": "https://flowcraft.js.org",

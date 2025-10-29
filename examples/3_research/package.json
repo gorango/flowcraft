@@ -1,13 +1,14 @@
 {
 	"name": "@flowcraft/example-research-workflow",
 	"type": "module",
+	"private": true,
 	"scripts": {
 		"start": "tsx src/main.ts",
 		"typecheck": "tsc --noEmit"
 	},
 	"dependencies": {
 		"dotenv": "^17.2.3",
-		"flowcraft": "^2.4.0",
+		"flowcraft": "^2.6.0",
 		"openai": "^6.7.0",
 		"serpapi": "^2.2.1",
 		"yaml": "^2.8.1"

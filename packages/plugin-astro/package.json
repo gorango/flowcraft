@@ -1,7 +1,8 @@
 {
 	"name": "@flowcraft/astro-integration",
 	"type": "module",
-	"version": "1.0.0",
+	"private": true,
+	"version": "0.0.0",
 	"description": "Astro integration for Flowcraft compiler integration",
 	"license": "MIT",
 	"homepage": "https://flowcraft.js.org",

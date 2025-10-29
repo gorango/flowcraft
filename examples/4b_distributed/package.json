@@ -1,6 +1,7 @@
 {
 	"name": "@flowcraft/example-declarative-distributed-workflow",
 	"type": "module",
+	"private": true,
 	"scripts": {
 		"start": "tsx src/client.ts",
 		"worker": "tsx --watch src/worker.ts",
@@ -11,7 +12,7 @@
 		"@flowcraft/example-declarative-shared-logic": "workspace:*",
 		"bullmq": "^5.62.0",
 		"dotenv": "^17.2.3",
-		"flowcraft": "^2.4.0",
+		"flowcraft": "^2.6.0",
 		"ioredis": "^5.8.2",
 		"openai": "^6.7.0"
 	},

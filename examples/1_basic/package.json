@@ -1,12 +1,13 @@
 {
 	"name": "@flowcraft/example-basic-workflow",
 	"type": "module",
+	"private": true,
 	"scripts": {
 		"start": "tsx src/main.ts",
 		"typecheck": "tsc --noEmit"
 	},
 	"dependencies": {
-		"flowcraft": "^2.4.0"
+		"flowcraft": "^2.6.0"
 	},
 	"devDependencies": {
 		"tsx": "^4.20.6",

@@ -1,7 +1,8 @@
 {
 	"name": "@flowcraft/azure-adapter",
 	"type": "module",
-	"version": "1.3.0",
+	"version": "1.4.1",
+	"homepage": "https://flowcraft.js.org",
 	"exports": {
 		".": {
 			"types": "./dist/index.d.ts",
@@ -19,7 +20,7 @@
 	"dependencies": {
 		"@azure/cosmos": "^4.7.0",
 		"@azure/storage-queue": "^12.28.1",
-		"flowcraft": "^2.4.0",
+		"flowcraft": "^2.6.0",
 		"ioredis": "^5.8.2"
 	},
 	"devDependencies": {
