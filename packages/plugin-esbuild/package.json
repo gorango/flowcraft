@@ -1,7 +1,7 @@
 {
 	"name": "@flowcraft/esbuild-plugin",
 	"type": "module",
-	"version": "1.0.0-alpha.0",
+	"version": "1.0.0-alpha.1",
 	"description": "esbuild plugin for Flowcraft compiler integration",
 	"license": "MIT",
 	"homepage": "https://flowcraft.js.org",
