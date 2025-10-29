@@ -236,7 +236,6 @@ export class FlowBuilder<
 		if (!this.blueprint.nodes || this.blueprint.nodes.length === 0) {
 			throw new Error('Cannot build a blueprint with no nodes.')
 		}
-
 		const finalEdges: EdgeDefinition[] = []
 		const processedOriginalEdges = new Set<EdgeDefinition>()
 		const allOriginalEdges = this.blueprint.edges || []

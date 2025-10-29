@@ -24,7 +24,7 @@ export default defineConfig({
 				'src/flow.ts': {
 					lines: 90,
 					functions: 90,
-					branches: 65,
+					branches: 80,
 					statements: 90,
 				},
 				'src/evaluator.ts': {
