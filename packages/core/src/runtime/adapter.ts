@@ -4,6 +4,7 @@ import { ConsoleLogger } from '../logger'
 import { JsonSerializer } from '../serializer'
 import type {
 	IAsyncContext,
+	IEventBus,
 	ILogger,
 	ISerializer,
 	NodeResult,
@@ -34,6 +35,7 @@ export interface ICoordinationStore {
 export interface AdapterOptions {
 	runtimeOptions: RuntimeOptions<any>
 	coordinationStore: ICoordinationStore
+	eventBus?: IEventBus
 }
 
 /** The data payload expected for a job in the queue. */
@@ -52,6 +54,7 @@ export abstract class BaseDistributedAdapter {
 	protected readonly store: ICoordinationStore
 	protected readonly serializer: ISerializer
 	protected readonly logger: ILogger
+	protected readonly eventBus?: IEventBus
 
 	constructor(options: AdapterOptions) {
 		const runtimeOptions = {
@@ -65,6 +68,7 @@ export abstract class BaseDistributedAdapter {
 		this.store = options.coordinationStore
 		this.serializer = options.runtimeOptions.serializer || new JsonSerializer()
 		this.logger = options.runtimeOptions.logger || new ConsoleLogger()
+		this.eventBus = options.eventBus
 		this.logger.info('[Adapter] BaseDistributedAdapter initialized.')
 	}
 
@@ -129,6 +133,7 @@ export abstract class BaseDistributedAdapter {
 	 */
 	protected async handleJob(job: JobPayload): Promise<void> {
 		const { runId, blueprintId, nodeId } = job
+		const startTime = Date.now()
 
 		await this.onJobStart(runId, blueprintId, nodeId)
 
@@ -242,15 +247,36 @@ export abstract class BaseDistributedAdapter {
 				if (isReady) {
 					this.logger.info(`[Adapter] Node '${nextNodeDef.id}' is ready. Enqueuing job.`)
 					await this.enqueueJob({ runId, blueprintId, nodeId: nextNodeDef.id })
+					if (this.eventBus) {
+						await this.eventBus.emit({
+							type: 'job:enqueued',
+							payload: { runId, blueprintId, nodeId: nextNodeDef.id },
+						})
+					}
 				} else {
 					this.logger.info(`[Adapter] Node '${nextNodeDef.id}' is waiting for other predecessors to complete.`)
 				}
+			}
+
+			const duration = Date.now() - startTime
+			if (this.eventBus) {
+				await this.eventBus.emit({
+					type: 'job:processed',
+					payload: { runId, blueprintId, nodeId, duration, success: true },
+				})
 			}
 		} catch (error: any) {
 			const reason = error.message || 'Unknown execution error'
 			this.logger.error(`[Adapter] FATAL: Job for node '${nodeId}' failed for Run ID '${runId}': ${reason}`)
 			await this.publishFinalResult(runId, { status: 'failed', reason })
 			await this.writePoisonPillForSuccessors(runId, blueprint, nodeId)
+
+			if (this.eventBus) {
+				await this.eventBus.emit({
+					type: 'job:failed',
+					payload: { runId, blueprintId, nodeId, error },
+				})
+			}
 		} finally {
 			clearInterval(heartbeatInterval)
 		}

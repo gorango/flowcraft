@@ -25,6 +25,9 @@ The event bus uses structured events for observability. See the [`FlowcraftEvent
 - **`context:change`**: Emitted when data is written to the workflow context.
 - **`batch:start`**: Emitted when a batch operation begins.
 - **`batch:finish`**: Emitted when a batch operation completes.
+- **`job:enqueued`**: Emitted when a job is enqueued for distributed processing.
+- **`job:processed`**: Emitted when a distributed job completes successfully.
+- **`job:failed`**: Emitted when a distributed job fails.
 
 ### Using the Event Bus
 
@@ -144,6 +147,105 @@ interface IEventStore {
   retrieveMultiple(executionIds: string[]): Promise<Map<string, FlowcraftEvent[]>>
 }
 ```
+
+## History Adapters
+
+For persistent event storage in production environments, Flowcraft provides dedicated history adapter packages that implement the `IEventStore` interface for different databases.
+
+### SQLite History Adapter
+
+The `@flowcraft/sqlite-history` package provides SQLite-based event storage, ideal for development, testing, and small-scale production deployments.
+
+```typescript
+import { PersistentEventBusAdapter } from 'flowcraft'
+import { SQLiteEventStore } from '@flowcraft/sqlite-history'
+
+const eventStore = new SQLiteEventStore({
+  databasePath: './workflow-events.db'
+})
+const eventBus = new PersistentEventBusAdapter(eventStore)
+const runtime = new FlowRuntime({ eventBus })
+```
+
+### PostgreSQL History Adapter
+
+The `@flowcraft/postgres-history` package provides PostgreSQL-based event storage for enterprise-scale deployments requiring high availability and performance.
+
+```typescript
+import { PersistentEventBusAdapter } from 'flowcraft'
+import { PostgresEventStore } from '@flowcraft/postgres-history'
+
+const eventStore = new PostgresEventStore({
+  connectionString: process.env.DATABASE_URL,
+  tableName: 'workflow_events' // optional, defaults to 'flowcraft_events'
+})
+const eventBus = new PersistentEventBusAdapter(eventStore)
+const runtime = new FlowRuntime({ eventBus })
+```
+
+Both adapters automatically create the necessary database schema on first use and support efficient querying by execution ID.
+
+## CLI Tool
+
+The `@flowcraft/cli` package provides a command-line interface for inspecting workflow executions stored in history adapters.
+
+### Installation
+
+```bash
+npm install -g @flowcraft/cli
+# or
+pnpm add -g @flowcraft/cli
+```
+
+### Usage
+
+```bash
+flowcraft inspect <run-id> [options]
+```
+
+### Configuration
+
+The CLI supports multiple configuration methods:
+
+1. **Command-line arguments**:
+   ```bash
+   flowcraft inspect run_abc123 --store sqlite --database-path ./events.db
+   ```
+
+2. **Environment variables**:
+   ```bash
+   FLOWCRAFT_STORE=sqlite FLOWCRAFT_DATABASE_PATH=./events.db flowcraft inspect run_abc123
+   ```
+
+3. **Configuration file** (`.flowcraftrc.json` or `flowcraft.config.json`):
+   ```json
+   {
+     "store": "sqlite",
+     "databasePath": "./events.db"
+   }
+   ```
+
+### Supported Stores
+
+- **SQLite**: `--store sqlite --database-path <path>`
+- **PostgreSQL**: `--store postgres --connection-string <url>`
+
+### Output Formats
+
+- **Human-readable** (default): Formatted output with colors and structure
+- **JSON**: `--json` flag for machine-readable output
+
+### Example
+
+```bash
+# Inspect a run with SQLite storage
+flowcraft inspect run_abc123 --store sqlite --database-path ./workflow-events.db
+
+# Inspect with PostgreSQL and JSON output
+flowcraft inspect run_xyz789 --store postgres --connection-string $DATABASE_URL --json
+```
+
+The CLI reconstructs the complete workflow execution state from stored events, providing detailed information about node executions, context changes, and any errors that occurred.
 
 ## OpenTelemetry
 

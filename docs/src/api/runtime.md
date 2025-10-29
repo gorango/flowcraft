@@ -53,6 +53,9 @@ export type FlowcraftEvent =
   | { type: 'context:change'; payload: { sourceNode: string; key: string; op: 'set' | 'delete'; value?: any } }
   | { type: 'batch:start'; payload: { batchId: string; scatterNodeId: string; workerNodeIds: string[] } }
   | { type: 'batch:finish'; payload: { batchId: string; gatherNodeId: string; results: any[] } }
+  | { type: 'job:enqueued'; payload: { runId: string; blueprintId: string; nodeId: string; queueName?: string } }
+  | { type: 'job:processed'; payload: { runId: string; blueprintId: string; nodeId: string; result: NodeResult } }
+  | { type: 'job:failed'; payload: { runId: string; blueprintId: string; nodeId: string; error: FlowcraftError } }
 ```
 
 ### `IEventBus` Interface
@@ -80,6 +83,9 @@ export interface IEventBus {
 - **`context:change`**: Emitted when data is written to or deleted from the workflow context.
 - **`batch:start`**: Emitted when a batch operation begins.
 - **`batch:finish`**: Emitted when a batch operation completes.
+- **`job:enqueued`**: Emitted when a job is enqueued for distributed processing.
+- **`job:processed`**: Emitted when a distributed job completes successfully.
+- **`job:failed`**: Emitted when a distributed job fails.
 
 ### `.run(blueprint, initialState?, options?)`
 
