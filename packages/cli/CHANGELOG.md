@@ -1,5 +1,14 @@
 # @flowcraft/cli
 
+## 1.0.0-alpha.1
+
+### Patch Changes
+
+- Fix build
+- Updated dependencies
+  - @flowcraft/postgres-history@1.0.0-alpha.1
+  - @flowcraft/sqlite-history@1.0.0-alpha.1
+
 ## 1.0.0-alpha.0
 
 ### Major Changes
