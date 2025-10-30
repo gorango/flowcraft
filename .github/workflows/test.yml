@@ -2,9 +2,8 @@ name: Coverage
 
 on:
   push:
-    branches: [master]
-  pull_request:
-    branches: [master]
+    tags:
+      - 'flowcraft*'
 
 jobs:
   test:
@@ -21,9 +20,9 @@ jobs:
       - name: Install dependencies
         run: pnpm install
       - name: Run tests and create coverage report
-        run: pnpm coverage
+        run: pnpm --filter flowcraft test:coverage
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v5
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
-          files: ./packages/flowcraft/coverage/lcov.info
+          files: ./packages/core/coverage/lcov.info

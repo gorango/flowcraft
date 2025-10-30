@@ -5,7 +5,6 @@
 	"packageManager": "pnpm@10.20.0",
 	"scripts": {
 		"lint": "biome check packages examples",
-		"coverage": "pnpm --filter flowcraft test:coverage",
 		"changeset": "changeset",
 		"release": "turbo build && changeset publish"
 	},
