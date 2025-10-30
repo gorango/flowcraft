@@ -1,5 +1,16 @@
 # flowcraft
 
+## 2.7.0
+
+### Minor Changes
+
+- Add time-travel debugging with persistent event storage and workflow replay.
+
+  - Add `PersistentEventBusAdapter` and `IEventStore` interface for event persistence
+  - Add `FlowRuntime.replay()` method for reconstructing workflow state from events
+  - Add new event types: `job:enqueued`, `job:processed`, `job:failed`
+  - Update context change events to include operation type
+
 ## 2.6.1
 
 ### Patch Changes

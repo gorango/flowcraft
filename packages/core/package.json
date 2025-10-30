@@ -1,8 +1,8 @@
 {
 	"name": "flowcraft",
 	"type": "module",
-	"version": "2.6.1",
-	"description": "A lightweight workflow framework",
+	"version": "2.7.0",
+	"description": "A lightweight workflow engine",
 	"license": "MIT",
 	"homepage": "https://flowcraft.js.org",
 	"repository": {
