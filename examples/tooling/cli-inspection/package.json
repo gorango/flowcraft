@@ -1,5 +1,5 @@
 {
-	"name": "@flowcraft/example-cli-inspect",
+	"name": "@example/cli-inspect",
 	"type": "module",
 	"private": true,
 	"scripts": {

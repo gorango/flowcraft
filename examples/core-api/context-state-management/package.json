@@ -1,5 +1,5 @@
 {
-	"name": "@flowcraft/example-context-state-management",
+	"name": "@example/context-state-management",
 	"type": "module",
 	"private": true,
 	"scripts": {

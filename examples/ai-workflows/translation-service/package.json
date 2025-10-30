@@ -1,5 +1,5 @@
 {
-	"name": "@flowcraft/example-parallel-workflow",
+	"name": "@example/parallel-workflow",
 	"type": "module",
 	"private": true,
 	"scripts": {

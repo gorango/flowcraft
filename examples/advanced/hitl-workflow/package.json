@@ -1,5 +1,5 @@
 {
-	"name": "@flowcraft/example-hitl-workflow",
+	"name": "@example/hitl-workflow",
 	"type": "module",
 	"private": true,
 	"scripts": {

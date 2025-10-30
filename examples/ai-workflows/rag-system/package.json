@@ -1,5 +1,5 @@
 {
-	"name": "@flowcraft/example-rag-workflow",
+	"name": "@example/rag-workflow",
 	"type": "module",
 	"private": true,
 	"scripts": {

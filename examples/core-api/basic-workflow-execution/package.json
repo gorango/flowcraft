@@ -1,5 +1,5 @@
 {
-	"name": "@flowcraft/example-basic-workflow-execution",
+	"name": "@example/basic-workflow-execution",
 	"type": "module",
 	"private": true,
 	"scripts": {

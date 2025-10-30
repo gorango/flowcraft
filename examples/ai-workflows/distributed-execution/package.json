@@ -1,5 +1,5 @@
 {
-	"name": "@flowcraft/example-declarative-distributed-workflow",
+	"name": "@example/declarative-distributed-workflow",
 	"type": "module",
 	"private": true,
 	"scripts": {
@@ -9,7 +9,7 @@
 	},
 	"dependencies": {
 		"@flowcraft/bullmq-adapter": "^1.4.2",
-		"@flowcraft/example-declarative-shared-logic": "workspace:*",
+		"@example/declarative-shared-logic": "workspace:*",
 		"bullmq": "^5.62.0",
 		"dotenv": "^17.2.3",
 		"flowcraft": "^2.7.1",

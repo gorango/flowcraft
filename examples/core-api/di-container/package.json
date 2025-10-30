@@ -1,5 +1,5 @@
 {
-	"name": "@flowcraft/example-di-container",
+	"name": "@example/di-container",
 	"type": "module",
 	"private": true,
 	"scripts": {

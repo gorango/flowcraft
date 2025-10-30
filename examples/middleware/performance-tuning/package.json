@@ -1,5 +1,5 @@
 {
-	"name": "@flowcraft/example-performance-tuning",
+	"name": "@example/performance-tuning",
 	"type": "module",
 	"private": true,
 	"scripts": {

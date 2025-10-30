@@ -1,5 +1,5 @@
 {
-	"name": "@flowcraft/example-research-workflow",
+	"name": "@example/research-workflow",
 	"type": "module",
 	"private": true,
 	"scripts": {

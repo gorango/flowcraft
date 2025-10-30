@@ -104,12 +104,12 @@ importers:
 
   examples/ai-workflows/distributed-execution:
     dependencies:
+      '@example/declarative-shared-logic':
+        specifier: workspace:*
+        version: link:../declarative-workflows
       '@flowcraft/bullmq-adapter':
         specifier: ^1.4.2
         version: 1.4.2
-      '@flowcraft/example-declarative-shared-logic':
-        specifier: workspace:*
-        version: link:../declarative-workflows
       bullmq:
         specifier: ^5.62.0
         version: 5.62.0
@@ -138,7 +138,7 @@ importers:
 
   examples/ai-workflows/in-memory-processing:
     dependencies:
-      '@flowcraft/example-declarative-shared-logic':
+      '@example/declarative-shared-logic':
         specifier: workspace:*
         version: link:../declarative-workflows
       flowcraft:

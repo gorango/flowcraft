@@ -1,5 +1,5 @@
 {
-	"name": "@flowcraft/example-db-transactions",
+	"name": "@example/db-transactions",
 	"type": "module",
 	"private": true,
 	"scripts": {

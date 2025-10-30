@@ -1,5 +1,5 @@
 {
-	"name": "@flowcraft/example-compiler-usage",
+	"name": "@example/compiler-usage",
 	"type": "module",
 	"private": true,
 	"scripts": {

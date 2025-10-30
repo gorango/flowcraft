@@ -1,5 +1,5 @@
 {
-	"name": "@flowcraft/example-retry-patterns",
+	"name": "@example/retry-patterns",
 	"type": "module",
 	"private": true,
 	"scripts": {

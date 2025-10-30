@@ -1,5 +1,5 @@
 {
-	"name": "@flowcraft/example-declarative-in-memory-workflow",
+	"name": "@example/declarative-in-memory-workflow",
 	"type": "module",
 	"private": true,
 	"scripts": {
@@ -7,7 +7,7 @@
 		"typecheck": "tsc --noEmit"
 	},
 	"dependencies": {
-		"@flowcraft/example-declarative-shared-logic": "workspace:*",
+		"@example/declarative-shared-logic": "workspace:*",
 		"flowcraft": "^2.7.1"
 	},
 	"devDependencies": {

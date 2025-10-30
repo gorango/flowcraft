@@ -1,5 +1,5 @@
 {
-	"name": "@flowcraft/example-static-analysis-diagrams",
+	"name": "@example/static-analysis-diagrams",
 	"type": "module",
 	"private": true,
 	"scripts": {

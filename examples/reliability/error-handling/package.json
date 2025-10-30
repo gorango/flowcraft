@@ -1,5 +1,5 @@
 {
-	"name": "@flowcraft/example-error-handling",
+	"name": "@example/error-handling",
 	"type": "module",
 	"private": true,
 	"scripts": {

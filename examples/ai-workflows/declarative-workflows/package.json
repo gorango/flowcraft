@@ -1,5 +1,5 @@
 {
-	"name": "@flowcraft/example-declarative-shared-logic",
+	"name": "@example/declarative-shared-logic",
 	"type": "module",
 	"private": true,
 	"exports": {

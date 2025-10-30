@@ -1,5 +1,5 @@
 {
-	"name": "@flowcraft/example-interactive-debugging",
+	"name": "@example/interactive-debugging",
 	"type": "module",
 	"private": true,
 	"scripts": {
