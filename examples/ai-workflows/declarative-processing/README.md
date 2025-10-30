@@ -3,8 +3,8 @@
 This package contains the core business logic, workflow definitions (blueprints), and node implementations for a declarative AI agent. It is designed to be a reusable library consumed by different execution environments, such as an in-memory runtime or a distributed worker system.
 
 This package **is not runnable on its own**. It is used by the following examples:
-*   **[4a.declarative-in-memory](../4a.declarative-in-memory/):** Demonstrates executing these workflows with the standard, in-memory `FlowRuntime`.
-*   **[4b.declarative-distributed](../4b.declarative-distributed/):** Demonstrates executing the same workflows in a distributed environment using the `BullMQAdapter`.
+*   **[in-memory-processing](../in-memory-processing/):** Demonstrates executing these workflows with the standard, in-memory `FlowRuntime`.
+*   **[distributed-execution](../distributed-execution):** Demonstrates executing the same workflows in a distributed environment using the `BullMQAdapter`.
 
 ## Features of the Agent Logic
 

@@ -28,7 +28,7 @@ It showcases a client-worker architecture where a client can initiate a workflow
     ```
 
 3.  **Set your OpenAI API key**:
-    Create a `.env` file in this project's root directory (`examples/4b.declarative-distributed/`):
+    Create a `.env` file in this project's root directory (`examples/adapters/distributed-execution/`):
 
     ```
     OPENAI_API_KEY="your-api-key-here"

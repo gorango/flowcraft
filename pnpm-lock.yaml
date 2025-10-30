@@ -70,11 +70,11 @@ importers:
         specifier: ^2.0.17
         version: 2.0.17(mermaid@11.12.1)(vitepress@1.6.4(@algolia/client-search@5.41.0)(@types/node@24.9.2)(change-case@5.4.4)(fuse.js@7.1.0)(lightningcss@1.30.2)(postcss@8.5.6)(search-insights@2.17.3)(terser@5.44.0)(typescript@5.9.3))
 
-  examples/1_basic:
+  examples/ai-workflows/basic-workflow:
     dependencies:
       flowcraft:
         specifier: ^2.6.1
-        version: 2.6.1
+        version: 2.7.0
     devDependencies:
       tsx:
         specifier: ^4.20.6
@@ -83,61 +83,14 @@ importers:
         specifier: ^5.9.3
         version: 5.9.3
 
-  examples/2_translate:
+  examples/ai-workflows/declarative-processing:
     dependencies:
       dotenv:
         specifier: ^17.2.3
         version: 17.2.3
       flowcraft:
         specifier: ^2.6.1
-        version: 2.6.1
-      openai:
-        specifier: ^6.7.0
-        version: 6.7.0(ws@8.18.3)(zod@3.25.76)
-      yaml:
-        specifier: ^2.8.1
-        version: 2.8.1
-    devDependencies:
-      tsx:
-        specifier: ^4.20.6
-        version: 4.20.6
-      typescript:
-        specifier: ^5.9.3
-        version: 5.9.3
-
-  examples/3_research:
-    dependencies:
-      dotenv:
-        specifier: ^17.2.3
-        version: 17.2.3
-      flowcraft:
-        specifier: ^2.6.1
-        version: 2.6.1
-      openai:
-        specifier: ^6.7.0
-        version: 6.7.0(ws@8.18.3)(zod@3.25.76)
-      serpapi:
-        specifier: ^2.2.1
-        version: 2.2.1
-      yaml:
-        specifier: ^2.8.1
-        version: 2.8.1
-    devDependencies:
-      tsx:
-        specifier: ^4.20.6
-        version: 4.20.6
-      typescript:
-        specifier: ^5.9.3
-        version: 5.9.3
-
-  examples/4_declarative:
-    dependencies:
-      dotenv:
-        specifier: ^17.2.3
-        version: 17.2.3
-      flowcraft:
-        specifier: ^2.6.1
-        version: 2.6.1
+        version: 2.7.0
       openai:
         specifier: ^6.7.0
         version: 6.7.0(ws@8.18.3)(zod@3.25.76)
@@ -149,33 +102,14 @@ importers:
         specifier: ^5.9.3
         version: 5.9.3
 
-  examples/4a_in-memory:
-    dependencies:
-      '@flowcraft/example-declarative-shared-logic':
-        specifier: workspace:*
-        version: link:../4_declarative
-      flowcraft:
-        specifier: ^2.6.1
-        version: 2.6.1
-    devDependencies:
-      '@types/node':
-        specifier: ^24.9.2
-        version: 24.9.2
-      tsx:
-        specifier: ^4.20.6
-        version: 4.20.6
-      typescript:
-        specifier: ^5.9.3
-        version: 5.9.3
-
-  examples/4b_distributed:
+  examples/ai-workflows/distributed-execution:
     dependencies:
       '@flowcraft/bullmq-adapter':
         specifier: ^1.4.1
         version: 1.4.1
       '@flowcraft/example-declarative-shared-logic':
         specifier: workspace:*
-        version: link:../4_declarative
+        version: link:../declarative-processing
       bullmq:
         specifier: ^5.62.0
         version: 5.62.0
@@ -184,7 +118,7 @@ importers:
         version: 17.2.3
       flowcraft:
         specifier: ^2.6.1
-        version: 2.6.1
+        version: 2.7.0
       ioredis:
         specifier: ^5.8.2
         version: 5.8.2
@@ -202,14 +136,33 @@ importers:
         specifier: ^5.9.3
         version: 5.9.3
 
-  examples/5_rag:
+  examples/ai-workflows/in-memory-processing:
+    dependencies:
+      '@flowcraft/example-declarative-shared-logic':
+        specifier: workspace:*
+        version: link:../declarative-processing
+      flowcraft:
+        specifier: ^2.6.1
+        version: 2.7.0
+    devDependencies:
+      '@types/node':
+        specifier: ^24.9.2
+        version: 24.9.2
+      tsx:
+        specifier: ^4.20.6
+        version: 4.20.6
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
+
+  examples/ai-workflows/rag-system:
     dependencies:
       dotenv:
         specifier: ^17.2.3
         version: 17.2.3
       flowcraft:
         specifier: ^2.6.1
-        version: 2.6.1
+        version: 2.7.0
       openai:
         specifier: ^6.7.0
         version: 6.7.0(ws@8.18.3)(zod@3.25.76)
@@ -220,6 +173,53 @@ importers:
       '@types/node':
         specifier: ^24.9.2
         version: 24.9.2
+      tsx:
+        specifier: ^4.20.6
+        version: 4.20.6
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
+
+  examples/ai-workflows/research-assistant:
+    dependencies:
+      dotenv:
+        specifier: ^17.2.3
+        version: 17.2.3
+      flowcraft:
+        specifier: ^2.6.1
+        version: 2.7.0
+      openai:
+        specifier: ^6.7.0
+        version: 6.7.0(ws@8.18.3)(zod@3.25.76)
+      serpapi:
+        specifier: ^2.2.1
+        version: 2.2.1
+      yaml:
+        specifier: ^2.8.1
+        version: 2.8.1
+    devDependencies:
+      tsx:
+        specifier: ^4.20.6
+        version: 4.20.6
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
+
+  examples/ai-workflows/translation-service:
+    dependencies:
+      dotenv:
+        specifier: ^17.2.3
+        version: 17.2.3
+      flowcraft:
+        specifier: ^2.6.1
+        version: 2.7.0
+      openai:
+        specifier: ^6.7.0
+        version: 6.7.0(ws@8.18.3)(zod@3.25.76)
+      yaml:
+        specifier: ^2.8.1
+        version: 2.8.1
+    devDependencies:
       tsx:
         specifier: ^4.20.6
         version: 4.20.6
@@ -434,11 +434,11 @@ importers:
   packages/cli:
     dependencies:
       '@flowcraft/postgres-history':
-        specifier: 1.0.0-alpha.0
-        version: 1.0.0-alpha.0
+        specifier: 1.0.0-alpha.1
+        version: 1.0.0-alpha.1
       '@flowcraft/sqlite-history':
-        specifier: 1.0.0-alpha.0
-        version: 1.0.0-alpha.0
+        specifier: 1.0.0-alpha.1
+        version: 1.0.0-alpha.1
       chalk:
         specifier: ^5.6.2
         version: 5.6.2
@@ -1733,11 +1733,11 @@ packages:
   '@flowcraft/compiler@1.0.0-alpha.0':
     resolution: {integrity: sha512-EYDvcinyHPvpJnGDpasSQl4UJOfhEPDEE2orQ2KbvoSMbuhjpiTbCfPWRdu2bXSC/xAXy1B0LjxOc0dCv2NADw==}
 
-  '@flowcraft/postgres-history@1.0.0-alpha.0':
-    resolution: {integrity: sha512-LFoeIipj/UJ6RWzNwNfsgaHVo7rw6a+LhkMx4hj5O2gBQ7rDAaHhtQ6uMWaAjrP/GS7QgRuWaIfJ/cimEJVJ7g==}
+  '@flowcraft/postgres-history@1.0.0-alpha.1':
+    resolution: {integrity: sha512-zxGkx/wnuYrOqFMks4CZhsX3Dc/sTMXMQlE9gn9GqNYaFcx/JVhrUPUCLaAqxn44/eys/gkc6NP/6KkJpJ7Zjw==}
 
-  '@flowcraft/sqlite-history@1.0.0-alpha.0':
-    resolution: {integrity: sha512-dKvpvoyocGrDM4iRG+ks3ncYyD4lO/I3MWsihFZ11IUMfEAjf1Shar0maHeQlrC2eyqqjsM+uHct3rBpQC9NfQ==}
+  '@flowcraft/sqlite-history@1.0.0-alpha.1':
+    resolution: {integrity: sha512-Ovawn8i9a6Is64dx7OZd/7c7wsC9TBhWADLGYcg20zQwtDSyo38v9wbYW8GdRBvrluyV3+/GeRVAVdIJUSQz2Q==}
 
   '@flowcraft/vite-plugin@1.0.0-alpha.0':
     resolution: {integrity: sha512-bAVo6aiJJkn2yQzBo8fAz9qWOHdSRDq8g1IAOPwVh5GgoXJAScKnVHCuAEBvt5bLo2cTzmNRTSQGWgf7CUBvpw==}
@@ -5156,9 +5156,6 @@ packages:
 
   flowcraft@2.6.0:
     resolution: {integrity: sha512-PqTW4ZErxmOHkXFf7OQ0rLJuoxCOny0CJPMosTpcp3vs67MgvaQrWw59wnoU6GCVchGhDkXvQnfG08NBfhixnw==}
-
-  flowcraft@2.6.1:
-    resolution: {integrity: sha512-DbwZod6/L2d04gV7JwZcII5rQl34X9r6Nv/tqQu4l3oo9wxpT2Muo0lv4kFavHkuRMcZkIqRtg7wK8FY63Q54A==}
 
   flowcraft@2.7.0:
     resolution: {integrity: sha512-ha0SNhzQqPeAZvqvC6C3/fV6TYTnrrS+KTDBRkUa4Qcq7HhqnHzQtDdo9OCF4wMEcwIck4SkkoOdpwzWko27xg==}
@@ -10089,14 +10086,14 @@ snapshots:
       resolve: 1.22.11
       typescript: 5.9.3
 
-  '@flowcraft/postgres-history@1.0.0-alpha.0':
+  '@flowcraft/postgres-history@1.0.0-alpha.1':
     dependencies:
       flowcraft: 2.7.0
       pg: 8.16.3
     transitivePeerDependencies:
       - pg-native
 
-  '@flowcraft/sqlite-history@1.0.0-alpha.0':
+  '@flowcraft/sqlite-history@1.0.0-alpha.1':
     dependencies:
       better-sqlite3: 12.4.1
       flowcraft: 2.7.0
@@ -14123,8 +14120,6 @@ snapshots:
   flattie@1.1.1: {}
 
   flowcraft@2.6.0: {}
-
-  flowcraft@2.6.1: {}
 
   flowcraft@2.7.0: {}
 

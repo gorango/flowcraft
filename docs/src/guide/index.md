@@ -28,14 +28,14 @@ Flowcraft is versatile for various workflow scenarios.
 
 Build intelligent agents that process data, make decisions, and interact with users.
 
-- **Example**: Research Agent (see [Research Example](https://github.com/gorango/flowcraft/tree/master/examples/3_research))
+- **Example**: Research Agent (see [Research Example](https://github.com/gorango/flowcraft/tree/master/examples/ai-workflows/research-assistant))
 - **Features**: Conditional branching, LLM integration, human-in-the-loop.
 
 ### ETL Pipelines
 
 Extract, transform, and load data efficiently.
 
-- **Example**: Parallel Workflow (see [Translation Example](https://github.com/gorango/flowcraft/tree/master/examples/2_translate))
+- **Example**: Parallel Workflow (see [Translation Example](https://github.com/gorango/flowcraft/tree/master/examples/ai-workflows/translation-service))
 - **Features**: Batch processing, parallel execution, error handling.
 
 ### Business Process Automation
@@ -49,7 +49,7 @@ Automate routine business tasks like approvals and notifications.
 
 Run workflows across multiple machines or services.
 
-- **Example**: Distributed Workflow (see [Distributed Example](https://github.com/gorango/flowcraft/tree/master/examples/4b_distributed))
+- **Example**: Distributed Workflow (see [Distributed Example](https://github.com/gorango/flowcraft/tree/master/examples/adapters/distributed-execution))
 - **Features**: Adapters for queues, persistence.
 
 Choose the right pattern for your needs!
