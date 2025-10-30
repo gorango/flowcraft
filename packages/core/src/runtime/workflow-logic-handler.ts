@@ -103,6 +103,7 @@ export class WorkflowLogicHandler {
 		targetNode: NodeDefinition,
 		context: ContextImplementation<any>,
 		allPredecessors?: Map<string, Set<string>>,
+		executionId?: string,
 	): Promise<void> {
 		const asyncContext = context.type === 'sync' ? new AsyncContextView(context) : context
 		const predecessors = allPredecessors?.get(targetNode.id)
@@ -124,7 +125,13 @@ export class WorkflowLogicHandler {
 		await asyncContext.set(inputKey as any, finalInput)
 		await this.eventBus.emit({
 			type: 'context:change',
-			payload: { sourceNode: edge.source, key: inputKey, value: finalInput },
+			payload: {
+				sourceNode: edge.source,
+				key: inputKey,
+				op: 'set',
+				value: finalInput,
+				executionId: executionId || 'unknown',
+			},
 		})
 		if (!hasExplicitInputs) {
 			targetNode.inputs = inputKey

@@ -33,7 +33,9 @@ export class ExecutionContext<TContext extends Record<string, any>, TDependencie
 		},
 		public readonly signal?: AbortSignal,
 		public readonly concurrency?: number,
-	) {}
+	) {
+		this.state.setEventEmitter(this.services.eventBus, this.executionId)
+	}
 
 	public createForSubflow(
 		subBlueprint: WorkflowBlueprint,

@@ -248,7 +248,16 @@ export type FlowcraftEvent =
 			payload: { nodeId: string; edge: EdgeDefinition; executionId: string; blueprintId: string }
 	  }
 	| { type: 'edge:evaluate'; payload: { source: string; target: string; condition?: string; result: boolean } }
-	| { type: 'context:change'; payload: { sourceNode: string; key: string; value: any } }
+	| {
+			type: 'context:change'
+			payload: { sourceNode: string; key: string; op: 'set' | 'delete'; value?: any; executionId: string }
+	  }
+	| { type: 'job:enqueued'; payload: { runId: string; blueprintId: string; nodeId: string; queueName?: string } }
+	| {
+			type: 'job:processed'
+			payload: { runId: string; blueprintId: string; nodeId: string; duration: number; success: boolean }
+	  }
+	| { type: 'job:failed'; payload: { runId: string; blueprintId: string; nodeId: string; error: FlowcraftError } }
 	| {
 			type: 'batch:start'
 			payload: { batchId: string; scatterNodeId: string; workerNodeIds: string[] }

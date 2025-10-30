@@ -1,3 +1,4 @@
+export * from './adapters'
 export * from './analysis'
 export * from './container'
 export * from './container-factory'

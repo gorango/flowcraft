@@ -103,7 +103,14 @@ export async function processResults(
 			const finalMatched = loopControllerMatch ? [loopControllerMatch] : matched
 
 			for (const { node, edge } of finalMatched) {
-				await runtime.applyEdgeTransform(edge, result, node, state.getContext(), traverser.getAllPredecessors())
+				await runtime.applyEdgeTransform(
+					edge,
+					result,
+					node,
+					state.getContext(),
+					traverser.getAllPredecessors(),
+					executionId,
+				)
 			}
 
 			traverser.markNodeCompleted(

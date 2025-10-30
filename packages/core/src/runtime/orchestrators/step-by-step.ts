@@ -27,7 +27,7 @@ export class StepByStepOrchestrator implements IOrchestrator {
 		if (!traverser.hasMoreWork()) {
 			const isTraversalComplete = !traverser.hasMoreWork()
 			const status = context.state.getStatus(isTraversalComplete)
-			const result = await context.state.toResult(context.services.serializer)
+			const result = await context.state.toResult(context.services.serializer, context.executionId)
 			result.status = status
 			return result
 		}
@@ -60,7 +60,7 @@ export class StepByStepOrchestrator implements IOrchestrator {
 
 		const isTraversalComplete = !traverser.hasMoreWork()
 		const status = context.state.getStatus(isTraversalComplete)
-		const result = await context.state.toResult(context.services.serializer)
+		const result = await context.state.toResult(context.services.serializer, context.executionId)
 		result.status = status
 		return result
 	}

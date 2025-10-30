@@ -31,6 +31,7 @@ export interface ExecutionServices {
 		targetNode: NodeDefinition,
 		context: ContextImplementation<any>,
 		allPredecessors?: Map<string, Set<string>>,
+		executionId?: string,
 	) => Promise<void>
 	resolveNodeInput: (nodeId: string, blueprint: WorkflowBlueprint, context: any) => Promise<any>
 }
@@ -69,6 +70,7 @@ export interface IRuntime<
 		targetNode: NodeDefinition,
 		context: ContextImplementation<TContext>,
 		allPredecessors?: Map<string, Set<string>>,
+		executionId?: string,
 	) => Promise<void>
 	createForSubflow: (
 		subBlueprint: WorkflowBlueprint,

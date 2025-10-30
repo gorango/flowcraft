@@ -129,14 +129,14 @@ export async function createStepper<TContext extends Record<string, any>, TDepen
 			state = new WorkflowState(previousStateData)
 			traverser = GraphTraverser.fromState(_initialBlueprint, state)
 
-			return state.toResult(runtime.serializer)
+			return state.toResult(runtime.serializer, undefined)
 		},
 		async next(options: { signal?: AbortSignal; concurrency?: number } = {}) {
 			if (stepper.isDone()) {
 				return null
 			}
 
-			const serializedContext = (await state.toResult(runtime.serializer)).serializedContext
+			const serializedContext = (await state.toResult(runtime.serializer, undefined)).serializedContext
 			history.push(serializedContext)
 
 			const executionContext = new ExecutionContext(

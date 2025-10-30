@@ -33,6 +33,16 @@ export class WorkflowState<TContext extends Record<string, any>> {
 		}
 	}
 
+	/**
+	 * Configure the context to emit events when modified.
+	 * This is called after the ExecutionContext is created.
+	 */
+	setEventEmitter(eventBus: any, executionId: string, sourceNode?: string): void {
+		if (this.context instanceof TrackedAsyncContext) {
+			this.context.configureEventEmitter(eventBus, executionId, sourceNode)
+		}
+	}
+
 	async addCompletedNode(nodeId: string, output: any) {
 		this._completedNodes.add(nodeId)
 		await this.context.set(`_outputs.${nodeId}` as any, output)
@@ -124,11 +134,14 @@ export class WorkflowState<TContext extends Record<string, any>> {
 		return 'stalled'
 	}
 
-	async toResult(serializer: ISerializer): Promise<WorkflowResult<TContext>> {
+	async toResult(serializer: ISerializer, executionId?: string): Promise<WorkflowResult<TContext>> {
 		const contextJSON = (await this.context.toJSON()) as TContext
 		if (!this._isAwaiting && (contextJSON as any)._awaitingNodeIds) {
 			delete (contextJSON as any)._awaitingNodeIds
 			delete (contextJSON as any)._awaitingDetails
+		}
+		if (executionId) {
+			;(contextJSON as any)._executionId = executionId
 		}
 		return {
 			context: contextJSON,
