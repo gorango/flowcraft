@@ -1,0 +1,36 @@
+{
+	"name": "@flowcraft/postgres-history",
+	"type": "module",
+	"version": "0.0.0",
+	"description": "PostgreSQL-based event store for Flowcraft workflow observability",
+	"main": "dist/index.js",
+	"module": "dist/index.mjs",
+	"types": "dist/index.d.ts",
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"import": "./dist/index.mjs",
+			"require": "./dist/index.js"
+		}
+	},
+	"files": [
+		"dist"
+	],
+	"scripts": {
+		"build": "tsup",
+		"dev": "tsup --watch",
+		"typecheck": "tsc --noEmit",
+		"test": "./testcontainers.sh && vitest run"
+	},
+	"dependencies": {
+		"flowcraft": "workspace:*",
+		"pg": "^8.16.3"
+	},
+	"devDependencies": {
+		"@testcontainers/postgresql": "^11.7.2",
+		"@types/pg": "^8.15.6",
+		"tsup": "^8.5.0",
+		"typescript": "^5.9.3",
+		"vitest": "^4.0.4"
+	}
+}
