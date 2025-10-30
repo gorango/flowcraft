@@ -36,8 +36,8 @@ importers:
         specifier: ^14.0.0
         version: 14.0.0(vue@3.5.22(typescript@5.9.3))
       flowcraft:
-        specifier: ^2.7.0
-        version: 2.7.0
+        specifier: ^2.7.1
+        version: 2.7.1
       vue:
         specifier: ^3.5.22
         version: 3.5.22(typescript@5.9.3)
@@ -73,8 +73,8 @@ importers:
   examples/advanced/hitl-workflow:
     dependencies:
       flowcraft:
-        specifier: ^2.6.1
-        version: 2.7.0
+        specifier: ^2.7.1
+        version: 2.7.1
     devDependencies:
       tsx:
         specifier: ^4.20.6
@@ -89,8 +89,8 @@ importers:
         specifier: ^17.2.3
         version: 17.2.3
       flowcraft:
-        specifier: ^2.6.1
-        version: 2.7.0
+        specifier: ^2.7.1
+        version: 2.7.1
       openai:
         specifier: ^6.7.0
         version: 6.7.0(ws@8.18.3)(zod@3.25.76)
@@ -105,8 +105,8 @@ importers:
   examples/ai-workflows/distributed-execution:
     dependencies:
       '@flowcraft/bullmq-adapter':
-        specifier: ^1.4.1
-        version: 1.4.1
+        specifier: ^1.4.2
+        version: 1.4.2
       '@flowcraft/example-declarative-shared-logic':
         specifier: workspace:*
         version: link:../declarative-workflows
@@ -117,8 +117,8 @@ importers:
         specifier: ^17.2.3
         version: 17.2.3
       flowcraft:
-        specifier: ^2.6.1
-        version: 2.7.0
+        specifier: ^2.7.1
+        version: 2.7.1
       ioredis:
         specifier: ^5.8.2
         version: 5.8.2
@@ -142,8 +142,8 @@ importers:
         specifier: workspace:*
         version: link:../declarative-workflows
       flowcraft:
-        specifier: ^2.6.1
-        version: 2.7.0
+        specifier: ^2.7.1
+        version: 2.7.1
     devDependencies:
       '@types/node':
         specifier: ^24.9.2
@@ -161,8 +161,8 @@ importers:
         specifier: ^17.2.3
         version: 17.2.3
       flowcraft:
-        specifier: ^2.6.1
-        version: 2.7.0
+        specifier: ^2.7.1
+        version: 2.7.1
       openai:
         specifier: ^6.7.0
         version: 6.7.0(ws@8.18.3)(zod@3.25.76)
@@ -186,8 +186,8 @@ importers:
         specifier: ^17.2.3
         version: 17.2.3
       flowcraft:
-        specifier: ^2.6.1
-        version: 2.7.0
+        specifier: ^2.7.1
+        version: 2.7.1
       openai:
         specifier: ^6.7.0
         version: 6.7.0(ws@8.18.3)(zod@3.25.76)
@@ -211,8 +211,8 @@ importers:
         specifier: ^17.2.3
         version: 17.2.3
       flowcraft:
-        specifier: ^2.6.1
-        version: 2.7.0
+        specifier: ^2.7.1
+        version: 2.7.1
       openai:
         specifier: ^6.7.0
         version: 6.7.0(ws@8.18.3)(zod@3.25.76)
@@ -230,8 +230,8 @@ importers:
   examples/core-api/basic-workflow-execution:
     dependencies:
       flowcraft:
-        specifier: ^2.6.1
-        version: 2.7.0
+        specifier: ^2.7.1
+        version: 2.7.1
     devDependencies:
       '@types/node':
         specifier: ^20.0.0
@@ -246,8 +246,8 @@ importers:
   examples/core-api/built-in-nodes:
     dependencies:
       flowcraft:
-        specifier: ^2.6.1
-        version: 2.7.0
+        specifier: ^2.7.1
+        version: 2.7.1
     devDependencies:
       '@types/node':
         specifier: ^20.0.0
@@ -262,8 +262,8 @@ importers:
   examples/core-api/context-state-management:
     dependencies:
       flowcraft:
-        specifier: ^2.6.1
-        version: 2.7.0
+        specifier: ^2.7.1
+        version: 2.7.1
     devDependencies:
       '@types/node':
         specifier: ^20.0.0
@@ -278,8 +278,8 @@ importers:
   examples/core-api/di-container:
     dependencies:
       flowcraft:
-        specifier: ^2.7.0
-        version: 2.7.0
+        specifier: ^2.7.1
+        version: 2.7.1
     devDependencies:
       '@types/node':
         specifier: ^24.9.2
@@ -297,8 +297,8 @@ importers:
   examples/core-api/function-class-nodes:
     dependencies:
       flowcraft:
-        specifier: ^2.6.1
-        version: 2.7.0
+        specifier: ^2.7.1
+        version: 2.7.1
     devDependencies:
       '@types/node':
         specifier: ^20.0.0
@@ -313,8 +313,8 @@ importers:
   examples/middleware/custom-logging:
     dependencies:
       flowcraft:
-        specifier: ^2.6.1
-        version: 2.7.0
+        specifier: ^2.7.1
+        version: 2.7.1
     devDependencies:
       tsx:
         specifier: ^4.20.6
@@ -326,8 +326,8 @@ importers:
   examples/middleware/db-transactions:
     dependencies:
       flowcraft:
-        specifier: ^2.6.1
-        version: 2.7.0
+        specifier: ^2.7.1
+        version: 2.7.1
     devDependencies:
       tsx:
         specifier: ^4.20.6
@@ -339,8 +339,8 @@ importers:
   examples/middleware/performance-tuning:
     dependencies:
       flowcraft:
-        specifier: ^2.6.1
-        version: 2.7.0
+        specifier: ^2.7.1
+        version: 2.7.1
     devDependencies:
       tsx:
         specifier: ^4.20.6
@@ -352,8 +352,8 @@ importers:
   examples/reliability/error-handling:
     dependencies:
       flowcraft:
-        specifier: ^2.6.1
-        version: 2.7.0
+        specifier: ^2.7.1
+        version: 2.7.1
     devDependencies:
       tsx:
         specifier: ^4.20.6
@@ -365,8 +365,8 @@ importers:
   examples/reliability/fallback-strategies:
     dependencies:
       flowcraft:
-        specifier: ^2.6.1
-        version: 2.7.0
+        specifier: ^2.7.1
+        version: 2.7.1
     devDependencies:
       tsx:
         specifier: ^4.20.6
@@ -378,8 +378,8 @@ importers:
   examples/reliability/retry-patterns:
     dependencies:
       flowcraft:
-        specifier: ^2.6.1
-        version: 2.7.0
+        specifier: ^2.7.1
+        version: 2.7.1
     devDependencies:
       tsx:
         specifier: ^4.20.6
@@ -394,8 +394,8 @@ importers:
         specifier: ^1.0.0-alpha.1
         version: 1.0.0-alpha.1
       flowcraft:
-        specifier: ^2.7.0
-        version: 2.7.0
+        specifier: ^2.7.1
+        version: 2.7.1
     devDependencies:
       tsx:
         specifier: ^4.20.6
@@ -410,8 +410,8 @@ importers:
         specifier: ^1.0.0-alpha.0
         version: 1.0.0-alpha.0
       flowcraft:
-        specifier: ^2.6.1
-        version: 2.7.0
+        specifier: ^2.7.1
+        version: 2.7.1
     devDependencies:
       '@types/node':
         specifier: ^20.0.0
@@ -426,8 +426,8 @@ importers:
   examples/tooling/interactive-debugging:
     dependencies:
       flowcraft:
-        specifier: ^2.6.1
-        version: 2.7.0
+        specifier: ^2.7.1
+        version: 2.7.1
     devDependencies:
       '@types/node':
         specifier: ^20.0.0
@@ -442,8 +442,8 @@ importers:
   examples/tooling/static-analysis-diagrams:
     dependencies:
       flowcraft:
-        specifier: ^2.6.1
-        version: 2.7.0
+        specifier: ^2.7.1
+        version: 2.7.1
     devDependencies:
       '@types/node':
         specifier: ^20.0.0
@@ -464,8 +464,8 @@ importers:
         specifier: ^12.28.1
         version: 12.28.1
       flowcraft:
-        specifier: ^2.6.0
-        version: 2.6.0
+        specifier: ^2.7.1
+        version: 2.7.1
       ioredis:
         specifier: ^5.8.2
         version: 5.8.2
@@ -495,8 +495,8 @@ importers:
         specifier: ^5.62.0
         version: 5.62.0
       flowcraft:
-        specifier: ^2.6.0
-        version: 2.7.0
+        specifier: ^2.7.1
+        version: 2.7.1
       ioredis:
         specifier: ^5.8.2
         version: 5.8.2
@@ -523,8 +523,8 @@ importers:
         specifier: ^5.2.0
         version: 5.2.0
       flowcraft:
-        specifier: ^2.6.0
-        version: 2.6.0
+        specifier: ^2.7.1
+        version: 2.7.1
       ioredis:
         specifier: ^5.8.2
         version: 5.8.2
@@ -554,8 +554,8 @@ importers:
         specifier: ^4.8.0
         version: 4.8.0
       flowcraft:
-        specifier: ^2.6.0
-        version: 2.6.0
+        specifier: ^2.7.1
+        version: 2.7.1
       ioredis:
         specifier: ^5.8.2
         version: 5.8.2
@@ -588,8 +588,8 @@ importers:
         specifier: ^0.10.9
         version: 0.10.9
       flowcraft:
-        specifier: ^2.6.0
-        version: 2.6.0
+        specifier: ^2.7.1
+        version: 2.7.1
       ioredis:
         specifier: ^5.8.2
         version: 5.8.2
@@ -637,8 +637,8 @@ importers:
         specifier: ^3.918.0
         version: 3.918.0(@aws-sdk/client-dynamodb@3.918.0)
       flowcraft:
-        specifier: ^2.6.0
-        version: 2.6.0
+        specifier: ^2.7.1
+        version: 2.7.1
       sqs-consumer:
         specifier: ^14.0.1
         version: 14.0.1(@aws-sdk/client-sqs@3.918.0)
@@ -1955,8 +1955,8 @@ packages:
     resolution: {integrity: sha512-sB5uyeq+dwCWyPi31B2gQlVlo+j5brPlWx4yZBrEaRo/nhdDE8Xke1gsGgtiBdaBTxuTkceLVuVt/pclrasb0A==}
     engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
 
-  '@flowcraft/bullmq-adapter@1.4.1':
-    resolution: {integrity: sha512-aGGoq5uaHg3GmctF31dOmHVRTo2HvlGPIQrq/Qw/vf3Kpcbxz1wtZVowoB++w1kJskdSHDKQmN4TEpNP/ySDww==}
+  '@flowcraft/bullmq-adapter@1.4.2':
+    resolution: {integrity: sha512-g77tJ6sgtJ5X0sDg9l2cBNmf8KwvkD09RygSZ3Tb6kn1tyJE2lAVNPMleQGR2aHaG7qjQ6ED7EN5oCo5CzRnvQ==}
 
   '@flowcraft/compiler@1.0.0-alpha.0':
     resolution: {integrity: sha512-EYDvcinyHPvpJnGDpasSQl4UJOfhEPDEE2orQ2KbvoSMbuhjpiTbCfPWRdu2bXSC/xAXy1B0LjxOc0dCv2NADw==}
@@ -5419,6 +5419,9 @@ packages:
 
   flowcraft@2.7.0:
     resolution: {integrity: sha512-ha0SNhzQqPeAZvqvC6C3/fV6TYTnrrS+KTDBRkUa4Qcq7HhqnHzQtDdo9OCF4wMEcwIck4SkkoOdpwzWko27xg==}
+
+  flowcraft@2.7.1:
+    resolution: {integrity: sha512-bm70Qu2zW+YcEK/6/oLpe/dHYvMOk5T4RlAC7AdmI0NblzeTqQN8G6vuF2bpA4MMQ55DSQPrsNiwtA6lUX72gQ==}
 
   focus-trap@7.6.6:
     resolution: {integrity: sha512-v/Z8bvMCajtx4mEXmOo7QEsIzlIOqRXTIwgUfsFOF9gEsespdbD0AkPIka1bSXZ8Y8oZ+2IVDQZePkTfEHZl7Q==}
@@ -10368,10 +10371,10 @@ snapshots:
       '@eslint/core': 0.16.0
       levn: 0.4.1
 
-  '@flowcraft/bullmq-adapter@1.4.1':
+  '@flowcraft/bullmq-adapter@1.4.2':
     dependencies:
       bullmq: 5.62.0
-      flowcraft: 2.7.0
+      flowcraft: 2.7.1
       ioredis: 5.8.2
     transitivePeerDependencies:
       - supports-color
@@ -10379,13 +10382,13 @@ snapshots:
   '@flowcraft/compiler@1.0.0-alpha.0':
     dependencies:
       esbuild: 0.25.11
-      flowcraft: 2.7.0
+      flowcraft: 2.7.1
       resolve: 1.22.11
       typescript: 5.9.3
 
   '@flowcraft/postgres-history@1.0.0-alpha.1':
     dependencies:
-      flowcraft: 2.7.0
+      flowcraft: 2.7.1
       pg: 8.16.3
     transitivePeerDependencies:
       - pg-native
@@ -10393,7 +10396,7 @@ snapshots:
   '@flowcraft/sqlite-history@1.0.0-alpha.1':
     dependencies:
       better-sqlite3: 12.4.1
-      flowcraft: 2.7.0
+      flowcraft: 2.7.1
 
   '@flowcraft/vite-plugin@1.0.0-alpha.0(vite@7.1.12(@types/node@24.9.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.44.0)(tsx@4.20.6)(yaml@2.8.1))':
     dependencies:
@@ -14462,6 +14465,8 @@ snapshots:
   flowcraft@2.6.0: {}
 
   flowcraft@2.7.0: {}
+
+  flowcraft@2.7.1: {}
 
   focus-trap@7.6.6:
     dependencies:

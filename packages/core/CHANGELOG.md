@@ -1,5 +1,19 @@
 # flowcraft
 
+## 2.7.1
+
+### Patch Changes
+
+- - Fix FlowRuntime constructor registry handling for DI containers
+
+    - The container-based FlowRuntime configuration was failing because the node registry from createDefaultContainer was an object, but FlowRuntime expected a Map.
+
+  - Resolve distributed execution bug by properly instantiating WorkflowState
+
+    - Modified WorkflowState constructor to accept optional IAsyncContext for distributed contexts
+    - Updated BaseDistributedAdapter to create WorkflowState
+    - Handled TrackedAsyncContext deltas for proper persistence in distributed execution
+
 ## 2.7.0
 
 ### Minor Changes

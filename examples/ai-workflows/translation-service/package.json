@@ -8,7 +8,7 @@
 	},
 	"dependencies": {
 		"dotenv": "^17.2.3",
-		"flowcraft": "^2.6.1",
+		"flowcraft": "^2.7.1",
 		"openai": "^6.7.0",
 		"yaml": "^2.8.1"
 	},

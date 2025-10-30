@@ -7,7 +7,7 @@
 		"typecheck": "tsc --noEmit"
 	},
 	"dependencies": {
-		"flowcraft": "^2.7.0",
+		"flowcraft": "^2.7.1",
 		"@flowcraft/sqlite-history": "^1.0.0-alpha.1"
 	},
 	"devDependencies": {

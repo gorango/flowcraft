@@ -8,7 +8,7 @@
 		"typecheck": "tsc --noEmit"
 	},
 	"dependencies": {
-		"flowcraft": "^2.7.0"
+		"flowcraft": "^2.7.1"
 	},
 	"devDependencies": {
 		"@types/node": "^24.9.2",

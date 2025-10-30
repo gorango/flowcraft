@@ -8,11 +8,11 @@
 		"typecheck": "tsc --noEmit"
 	},
 	"dependencies": {
-		"@flowcraft/bullmq-adapter": "^1.4.1",
+		"@flowcraft/bullmq-adapter": "^1.4.2",
 		"@flowcraft/example-declarative-shared-logic": "workspace:*",
 		"bullmq": "^5.62.0",
 		"dotenv": "^17.2.3",
-		"flowcraft": "^2.6.1",
+		"flowcraft": "^2.7.1",
 		"ioredis": "^5.8.2",
 		"openai": "^6.7.0"
 	},
