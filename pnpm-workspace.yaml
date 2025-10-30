@@ -1,4 +1,7 @@
 packages:
-  - 'docs'
-  - 'examples/*'
-  - 'packages/*'
+  - docs
+  - examples/*
+  - packages/*
+
+onlyBuiltDependencies:
+  - better-sqlite3
