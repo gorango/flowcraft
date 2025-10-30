@@ -120,4 +120,4 @@ try {
 
 ## Conclusion
 
-Use `createStepper` for interactive debugging and `createErrorMapper` for source-mapped errors when using the compiler. For automated testing, see [Unit & Integration Testing](/guide/testing).
+Use `createStepper` for interactive debugging and `createErrorMapper` for source-mapped errors when using the compiler. For persistent execution analysis and replay debugging, see [Time-Travel Debugging](/guide/time-travel). For automated testing, see [Unit & Integration Testing](/guide/testing).
