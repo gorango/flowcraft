@@ -1,7 +1,7 @@
 {
 	"name": "@flowcraft/cli",
 	"type": "module",
-	"version": "0.0.0",
+	"version": "1.0.0-alpha.0",
 	"description": "Command-line interface for Flowcraft workflow observability and debugging",
 	"bin": {
 		"flowcraft": "./dist/index.js"
@@ -27,11 +27,11 @@
 		"test": "vitest run"
 	},
 	"dependencies": {
-		"@flowcraft/postgres-history": "workspace:*",
-		"@flowcraft/sqlite-history": "workspace:*",
+		"@flowcraft/postgres-history": "1.0.0-alpha.0",
+		"@flowcraft/sqlite-history": "1.0.0-alpha.0",
 		"chalk": "^5.6.2",
 		"commander": "^14.0.2",
-		"flowcraft": "workspace:*",
+		"flowcraft": "^2.7.0",
 		"ora": "^9.0.0",
 		"table": "^6.9.0"
 	},
