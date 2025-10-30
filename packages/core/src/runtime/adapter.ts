@@ -13,6 +13,7 @@ import type {
 	WorkflowResult,
 } from '../types'
 import { FlowRuntime } from './runtime'
+import { WorkflowState } from './state'
 
 /**
  * Defines the contract for an atomic, distributed key-value store required by
@@ -177,22 +178,18 @@ export abstract class BaseDistributedAdapter {
 		}, 1800000) // 30 minutes
 
 		try {
-			const workerState = {
-				getContext: () => context,
-				markFallbackExecuted: () => {},
-				addError: (nodeId: string, error: Error) => {
-					this.logger.error(`[Adapter] Error in node ${nodeId}:`, error)
-				},
-			} as any
+			const contextData = await context.toJSON()
+			const state = new WorkflowState(contextData, context)
 
-			const result: NodeResult<any, any> = await this.runtime.executeNode(blueprint, nodeId, workerState)
+			const result: NodeResult<any, any> = await this.runtime.executeNode(blueprint, nodeId, state)
 			await context.set(`_outputs.${nodeId}` as any, result.output)
 
-			if (context instanceof TrackedAsyncContext) {
-				const deltas = context.getDeltas()
+			const stateContext = state.getContext()
+			if (stateContext instanceof TrackedAsyncContext) {
+				const deltas = stateContext.getDeltas()
 				if (deltas.length > 0) {
-					await context.patch(deltas)
-					context.clearDeltas()
+					await stateContext.patch(deltas)
+					stateContext.clearDeltas()
 				}
 			}
 

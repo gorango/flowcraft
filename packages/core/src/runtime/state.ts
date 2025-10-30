@@ -11,8 +11,12 @@ export class WorkflowState<TContext extends Record<string, any>> {
 	private _awaitingNodeIds = new Set<string>()
 	private _awaitingDetails = new Map<string, any>()
 
-	constructor(initialData: Partial<TContext>) {
-		this.context = new TrackedAsyncContext(new AsyncContextView(new SyncContext<TContext>(initialData)))
+	constructor(initialData: Partial<TContext>, context?: IAsyncContext<TContext>) {
+		if (context) {
+			this.context = context instanceof TrackedAsyncContext ? context : new TrackedAsyncContext(context)
+		} else {
+			this.context = new TrackedAsyncContext(new AsyncContextView(new SyncContext<TContext>(initialData)))
+		}
 		if ((initialData as any)._awaitingNodeIds) {
 			this._isAwaiting = true
 			const awaitingIds = (initialData as any)._awaitingNodeIds
