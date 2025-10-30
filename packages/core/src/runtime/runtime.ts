@@ -68,6 +68,8 @@ export class FlowRuntime<TContext extends Record<string, any>, TDependencies ext
 		containerOrOptions: DIContainer | RuntimeOptions<TDependencies>,
 		legacyOptions?: RuntimeOptions<TDependencies>,
 	) {
+		let userRegistry: any
+
 		if (containerOrOptions instanceof DIContainer) {
 			this.container = containerOrOptions
 			this.logger = this.container.resolve<ILogger>(ServiceTokens.Logger)
@@ -75,7 +77,7 @@ export class FlowRuntime<TContext extends Record<string, any>, TDependencies ext
 			this.evaluator = this.container.resolve<IEvaluator>(ServiceTokens.Evaluator)
 			this.eventBus = this.container.resolve<IEventBus>(ServiceTokens.EventBus) || { emit: async () => {} }
 			this.middleware = this.container.resolve<Middleware[]>(ServiceTokens.Middleware) || []
-			this.registry = this.container.resolve<Map<string, NodeFunction | NodeClass>>(ServiceTokens.NodeRegistry)
+			userRegistry = this.container.resolve(ServiceTokens.NodeRegistry)
 			this.blueprints = this.container.resolve<Record<string, WorkflowBlueprint>>(ServiceTokens.BlueprintRegistry)
 			this.dependencies = this.container.resolve<TDependencies>(ServiceTokens.Dependencies)
 			this.options = legacyOptions || ({} as RuntimeOptions<TDependencies>)
@@ -88,32 +90,34 @@ export class FlowRuntime<TContext extends Record<string, any>, TDependencies ext
 			this.evaluator = options.evaluator || new PropertyEvaluator()
 			this.eventBus = options.eventBus || { emit: async () => {} }
 			this.middleware = options.middleware || []
-			const loopControllerFunction: NodeFunction = async (context) => {
-				const condition = context.params.condition
-				const contextData = await context.context.toJSON()
-				const result = this.evaluator.evaluate(condition, contextData)
-				if (result) {
-					return { action: 'continue' }
-				} else {
-					return { action: 'break', output: null }
-				}
-			}
-			const builtInNodes = {
-				wait: WaitNode,
-				sleep: SleepNode,
-				webhook: WebhookNode,
-				subflow: SubflowNode,
-				'batch-scatter': BatchScatterNode,
-				'batch-gather': BatchGatherNode,
-				'loop-controller': loopControllerFunction,
-			}
-			this.registry = new Map(Object.entries({ ...builtInNodes, ...(options.registry || {}) }))
+			userRegistry = options.registry || {}
 			this.blueprints = options.blueprints || {}
 			this.scheduler = new WorkflowScheduler(this)
 			this.dependencies = options.dependencies || ({} as TDependencies)
 			this.options = options
 			this.container = null as any
 		}
+
+		const loopControllerFunction: NodeFunction = async (context) => {
+			const condition = context.params.condition
+			const contextData = await context.context.toJSON()
+			const result = this.evaluator.evaluate(condition, contextData)
+			if (result) {
+				return { action: 'continue' }
+			} else {
+				return { action: 'break', output: null }
+			}
+		}
+		const builtInNodes = {
+			wait: WaitNode,
+			sleep: SleepNode,
+			webhook: WebhookNode,
+			subflow: SubflowNode,
+			'batch-scatter': BatchScatterNode,
+			'batch-gather': BatchGatherNode,
+			'loop-controller': loopControllerFunction,
+		}
+		this.registry = new Map(Object.entries({ ...builtInNodes, ...userRegistry }))
 		this.orchestrator = this.container?.has(ServiceTokens.Orchestrator)
 			? this.container.resolve<IOrchestrator>(ServiceTokens.Orchestrator)
 			: new DefaultOrchestrator()
