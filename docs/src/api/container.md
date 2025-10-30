@@ -57,29 +57,90 @@ Predefined symbolic tokens for core services:
 
 ## `createDefaultContainer(options?)`
 
-Creates a pre-configured container with default services.
+Creates a pre-configured container with default services. This is the recommended way to set up a container for most use cases, as it provides sensible defaults while allowing customization.
 
 -   **`options?`** `ContainerOptions<TDependencies>`: Optional overrides for default services.
-     -   **`logger?`**: Custom logger (defaults to `NullLogger`).
-     -   **`serializer?`**: Custom serializer (defaults to `JsonSerializer`).
-     -   **`evaluator?`**: Custom evaluator (defaults to `PropertyEvaluator`).
-     -   **`eventBus?`**: Custom event bus (defaults to no-op).
-     -   **`middleware?`**: Custom middleware array (defaults to empty).
-     -   **`registry?`**: Node registry (defaults to empty).
-     -   **`blueprints?`**: Blueprint registry (defaults to empty).
-     -   **`dependencies?`**: Custom dependencies (defaults to empty).
+      -   **`logger?`**: Custom logger (defaults to `NullLogger`).
+      -   **`serializer?`**: Custom serializer (defaults to `JsonSerializer`).
+      -   **`evaluator?`**: Custom evaluator (defaults to `PropertyEvaluator`).
+      -   **`eventBus?`**: Custom event bus (defaults to no-op).
+      -   **`middleware?`**: Custom middleware array (defaults to empty).
+      -   **`registry?`**: Node registry (defaults to empty).
+      -   **`blueprints?`**: Blueprint registry (defaults to empty).
+      -   **`dependencies?`**: Custom dependencies (defaults to empty).
 -   **Returns** `DIContainer`: A configured container.
 
-## Usage Example
+### Usage Examples
+
+#### Basic Usage with Defaults
 
 ```typescript
-import { createDefaultContainer, FlowRuntime, ServiceTokens, ConsoleLogger } from 'flowcraft'
+import { createDefaultContainer, FlowRuntime } from 'flowcraft'
+
+const container = createDefaultContainer()
+const runtime = new FlowRuntime(container)
+// Container has NullLogger, JsonSerializer, PropertyEvaluator, etc.
+```
+
+#### Custom Logger and Registry
+
+```typescript
+import { createDefaultContainer, FlowRuntime, ConsoleLogger } from 'flowcraft'
 
 const container = createDefaultContainer({
-  registry: { fetchData, processData },
+  registry: {
+    fetchData: async ({ context }) => {
+      const data = await apiCall()
+      return { output: data }
+    },
+    processData: async ({ input }) => {
+      return { output: input.toUpperCase() }
+    }
+  },
   logger: new ConsoleLogger(),
 })
 
 const runtime = new FlowRuntime(container)
-await runtime.run(blueprint)
+```
+
+#### With Middleware and Dependencies
+
+```typescript
+import { createDefaultContainer, FlowRuntime } from 'flowcraft'
+
+const container = createDefaultContainer({
+  middleware: [{
+    beforeNode: async (ctx, nodeId) => {
+      console.log(`Starting ${nodeId}`)
+    }
+  }],
+  dependencies: {
+    database: new DatabaseClient(),
+    cache: new RedisClient()
+  }
+})
+
+const runtime = new FlowRuntime(container)
+// Nodes can access database and cache via context.dependencies
+```
+
+#### Advanced: Custom Services
+
+```typescript
+import { createDefaultContainer, FlowRuntime, ServiceTokens } from 'flowcraft'
+import { CustomEvaluator } from './custom-evaluator'
+
+const container = createDefaultContainer({
+  evaluator: new CustomEvaluator(),
+  eventBus: {
+    emit: async (event) => {
+      await monitoringService.track(event)
+    }
+  }
+})
+
+// You can also manually register additional services
+container.register('customService', new CustomService())
+
+const runtime = new FlowRuntime(container)
 ```
