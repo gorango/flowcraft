@@ -89,6 +89,7 @@ export default defineConfig({
 							items: [
 								{ text: 'Configuration', link: '/guide/compiler/configuration' },
 								{ text: 'Authoring Guide', link: '/guide/compiler/authoring-guide' },
+								{ text: 'Durable Primitives', link: '/guide/durable-primitives' },
 								{ text: 'Build Tool Integration', link: '/guide/compiler/build-tools' },
 							],
 						},
@@ -101,7 +102,6 @@ export default defineConfig({
 						{ text: 'Batches', link: '/guide/batches' },
 						{ text: 'Loops', link: '/guide/loops' },
 						{ text: 'Pausing', link: '/guide/pausing' },
-						{ text: 'Durable Primitives', link: '/guide/durable-primitives' },
 						{ text: 'Human-in-the-Loop', link: '/guide/hitl' },
 						{ text: 'Subflows', link: '/guide/subflows' },
 					],
