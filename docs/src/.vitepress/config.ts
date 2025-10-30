@@ -108,7 +108,7 @@ export default defineConfig({
 				},
 				{
 					text: 'Reliability',
-					collapsed: false,
+					collapsed: true,
 					items: [
 						{ text: 'Static Analysis', link: '/guide/static-analysis' },
 						{
@@ -126,6 +126,7 @@ export default defineConfig({
 						{ text: 'Testing', link: '/guide/testing' },
 						{ text: 'Debugging', link: '/guide/debugging' },
 						{ text: 'Time-Travel', link: '/guide/time-travel' },
+						{ text: 'CLI', link: '/guide/cli' },
 					],
 				},
 				{

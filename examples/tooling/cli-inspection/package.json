@@ -1,0 +1,17 @@
+{
+	"name": "@flowcraft/example-cli-inspect",
+	"type": "module",
+	"private": true,
+	"scripts": {
+		"start": "tsx src/main.ts",
+		"typecheck": "tsc --noEmit"
+	},
+	"dependencies": {
+		"flowcraft": "^2.7.0",
+		"@flowcraft/sqlite-history": "^1.0.0-alpha.1"
+	},
+	"devDependencies": {
+		"tsx": "^4.20.6",
+		"typescript": "^5.9.3"
+	}
+}
