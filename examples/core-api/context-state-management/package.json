@@ -1,0 +1,17 @@
+{
+	"name": "@flowcraft/example-context-state-management",
+	"type": "module",
+	"private": true,
+	"scripts": {
+		"start": "tsx src/main.ts",
+		"typecheck": "tsc --noEmit"
+	},
+	"dependencies": {
+		"flowcraft": "^2.6.1"
+	},
+	"devDependencies": {
+		"@types/node": "^20.0.0",
+		"tsx": "^4.20.6",
+		"typescript": "^5.9.3"
+	}
+}

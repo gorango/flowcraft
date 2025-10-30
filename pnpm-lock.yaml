@@ -70,7 +70,7 @@ importers:
         specifier: ^2.0.17
         version: 2.0.17(mermaid@11.12.1)(vitepress@1.6.4(@algolia/client-search@5.41.0)(@types/node@24.9.2)(change-case@5.4.4)(fuse.js@7.1.0)(lightningcss@1.30.2)(postcss@8.5.6)(search-insights@2.17.3)(terser@5.44.0)(typescript@5.9.3))
 
-  examples/ai-workflows/basic-workflow:
+  examples/advanced/hitl-workflow:
     dependencies:
       flowcraft:
         specifier: ^2.6.1
@@ -83,7 +83,7 @@ importers:
         specifier: ^5.9.3
         version: 5.9.3
 
-  examples/ai-workflows/declarative-processing:
+  examples/ai-workflows/declarative-workflows:
     dependencies:
       dotenv:
         specifier: ^17.2.3
@@ -109,7 +109,7 @@ importers:
         version: 1.4.1
       '@flowcraft/example-declarative-shared-logic':
         specifier: workspace:*
-        version: link:../declarative-processing
+        version: link:../declarative-workflows
       bullmq:
         specifier: ^5.62.0
         version: 5.62.0
@@ -140,7 +140,7 @@ importers:
     dependencies:
       '@flowcraft/example-declarative-shared-logic':
         specifier: workspace:*
-        version: link:../declarative-processing
+        version: link:../declarative-workflows
       flowcraft:
         specifier: ^2.6.1
         version: 2.7.0
@@ -227,10 +227,58 @@ importers:
         specifier: ^5.9.3
         version: 5.9.3
 
-  examples/core-api/di-container:
+  examples/core-api/basic-workflow-execution:
     dependencies:
       flowcraft:
         specifier: ^2.6.1
+        version: 2.7.0
+    devDependencies:
+      '@types/node':
+        specifier: ^20.0.0
+        version: 20.19.24
+      tsx:
+        specifier: ^4.20.6
+        version: 4.20.6
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
+
+  examples/core-api/built-in-nodes:
+    dependencies:
+      flowcraft:
+        specifier: ^2.6.1
+        version: 2.7.0
+    devDependencies:
+      '@types/node':
+        specifier: ^20.0.0
+        version: 20.19.24
+      tsx:
+        specifier: ^4.20.6
+        version: 4.20.6
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
+
+  examples/core-api/context-state-management:
+    dependencies:
+      flowcraft:
+        specifier: ^2.6.1
+        version: 2.7.0
+    devDependencies:
+      '@types/node':
+        specifier: ^20.0.0
+        version: 20.19.24
+      tsx:
+        specifier: ^4.20.6
+        version: 4.20.6
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
+
+  examples/core-api/di-container:
+    dependencies:
+      flowcraft:
+        specifier: ^2.7.0
         version: 2.7.0
     devDependencies:
       '@types/node':
@@ -246,6 +294,100 @@ importers:
         specifier: ^4.0.5
         version: 4.0.5(@types/debug@4.1.12)(@types/node@24.9.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.44.0)(tsx@4.20.6)(yaml@2.8.1)
 
+  examples/core-api/function-class-nodes:
+    dependencies:
+      flowcraft:
+        specifier: ^2.6.1
+        version: 2.7.0
+    devDependencies:
+      '@types/node':
+        specifier: ^20.0.0
+        version: 20.19.24
+      tsx:
+        specifier: ^4.20.6
+        version: 4.20.6
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
+
+  examples/middleware/custom-logging:
+    dependencies:
+      flowcraft:
+        specifier: ^2.6.1
+        version: 2.7.0
+    devDependencies:
+      tsx:
+        specifier: ^4.20.6
+        version: 4.20.6
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
+
+  examples/middleware/db-transactions:
+    dependencies:
+      flowcraft:
+        specifier: ^2.6.1
+        version: 2.7.0
+    devDependencies:
+      tsx:
+        specifier: ^4.20.6
+        version: 4.20.6
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
+
+  examples/middleware/performance-tuning:
+    dependencies:
+      flowcraft:
+        specifier: ^2.6.1
+        version: 2.7.0
+    devDependencies:
+      tsx:
+        specifier: ^4.20.6
+        version: 4.20.6
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
+
+  examples/reliability/error-handling:
+    dependencies:
+      flowcraft:
+        specifier: ^2.6.1
+        version: 2.7.0
+    devDependencies:
+      tsx:
+        specifier: ^4.20.6
+        version: 4.20.6
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
+
+  examples/reliability/fallback-strategies:
+    dependencies:
+      flowcraft:
+        specifier: ^2.6.1
+        version: 2.7.0
+    devDependencies:
+      tsx:
+        specifier: ^4.20.6
+        version: 4.20.6
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
+
+  examples/reliability/retry-patterns:
+    dependencies:
+      flowcraft:
+        specifier: ^2.6.1
+        version: 2.7.0
+    devDependencies:
+      tsx:
+        specifier: ^4.20.6
+        version: 4.20.6
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
+
   examples/tooling/cli-inspection:
     dependencies:
       '@flowcraft/sqlite-history':
@@ -255,6 +397,57 @@ importers:
         specifier: ^2.7.0
         version: 2.7.0
     devDependencies:
+      tsx:
+        specifier: ^4.20.6
+        version: 4.20.6
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
+
+  examples/tooling/compiler-usage:
+    dependencies:
+      '@flowcraft/compiler':
+        specifier: ^1.0.0-alpha.0
+        version: 1.0.0-alpha.0
+      flowcraft:
+        specifier: ^2.6.1
+        version: 2.7.0
+    devDependencies:
+      '@types/node':
+        specifier: ^20.0.0
+        version: 20.19.24
+      tsx:
+        specifier: ^4.20.6
+        version: 4.20.6
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
+
+  examples/tooling/interactive-debugging:
+    dependencies:
+      flowcraft:
+        specifier: ^2.6.1
+        version: 2.7.0
+    devDependencies:
+      '@types/node':
+        specifier: ^20.0.0
+        version: 20.19.24
+      tsx:
+        specifier: ^4.20.6
+        version: 4.20.6
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
+
+  examples/tooling/static-analysis-diagrams:
+    dependencies:
+      flowcraft:
+        specifier: ^2.6.1
+        version: 2.7.0
+    devDependencies:
+      '@types/node':
+        specifier: ^20.0.0
+        version: 20.19.24
       tsx:
         specifier: ^4.20.6
         version: 4.20.6
@@ -303,7 +496,7 @@ importers:
         version: 5.62.0
       flowcraft:
         specifier: ^2.6.0
-        version: 2.6.0
+        version: 2.7.0
       ioredis:
         specifier: ^5.8.2
         version: 5.8.2
@@ -3377,6 +3570,9 @@ packages:
 
   '@types/node@18.19.130':
     resolution: {integrity: sha512-GRaXQx6jGfL8sKfaIDD6OupbIHBr9jv7Jnaml9tB7l4v068PAOXqfcujMMo5PhbIs6ggR1XODELqahT2R8v0fg==}
+
+  '@types/node@20.19.24':
+    resolution: {integrity: sha512-FE5u0ezmi6y9OZEzlJfg37mqqf6ZDSF2V/NLjUyGrR9uTZ7Sb9F7bLNZ03S4XVUNRWGA7Ck4c1kK+YnuWjl+DA==}
 
   '@types/node@24.9.2':
     resolution: {integrity: sha512-uWN8YqxXxqFMX2RqGOrumsKeti4LlmIMIyV0lgut4jx7KQBcBiW6vkDtIBvHnHIquwNfJhk8v2OtmO8zXWHfPA==}
@@ -7936,6 +8132,9 @@ packages:
   undici-types@5.26.5:
     resolution: {integrity: sha512-JlCMO+ehdEIKqlFxk6IfVoAUVmgz7cU7zD/h9XZ0qzeosSHmUJVOzSQvvYSYWXkFXC+IfLKSIffhv0sVZup6pA==}
 
+  undici-types@6.21.0:
+    resolution: {integrity: sha512-iwDZqg0QAGrg9Rav5H4n0M64c3mkR59cJ6wQp+7C4nI0gsmExaedaYLNO44eT4AtBBwjbTiGPMlt2Md0T9H9JQ==}
+
   undici-types@7.16.0:
     resolution: {integrity: sha512-Zz+aZWSj8LE6zoxD+xrjh4VfkIG8Ya6LvYkZqtUQGJPZjYl53ypCaUwWqo7eI0x66KBGeRo+mlBEkMSeSZ38Nw==}
 
@@ -12053,6 +12252,10 @@ snapshots:
   '@types/node@18.19.130':
     dependencies:
       undici-types: 5.26.5
+
+  '@types/node@20.19.24':
+    dependencies:
+      undici-types: 6.21.0
 
   '@types/node@24.9.2':
     dependencies:
@@ -17580,6 +17783,8 @@ snapshots:
       unplugin: 2.3.10
 
   undici-types@5.26.5: {}
+
+  undici-types@6.21.0: {}
 
   undici-types@7.16.0: {}
 

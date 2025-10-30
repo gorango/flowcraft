@@ -3,8 +3,8 @@
 	"type": "module",
 	"private": true,
 	"scripts": {
-		"start": "tsx src/client.ts",
 		"worker": "tsx --watch src/worker.ts",
+		"client": "tsx src/client.ts",
 		"typecheck": "tsc --noEmit"
 	},
 	"dependencies": {

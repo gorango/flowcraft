@@ -1,5 +1,5 @@
 {
-	"name": "@flowcraft/example-basic-workflow",
+	"name": "@flowcraft/example-function-class-nodes",
 	"type": "module",
 	"private": true,
 	"scripts": {
@@ -10,6 +10,7 @@
 		"flowcraft": "^2.6.1"
 	},
 	"devDependencies": {
+		"@types/node": "^20.0.0",
 		"tsx": "^4.20.6",
 		"typescript": "^5.9.3"
 	}

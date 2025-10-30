@@ -1,0 +1,16 @@
+{
+	"name": "@flowcraft/example-db-transactions",
+	"type": "module",
+	"private": true,
+	"scripts": {
+		"start": "tsx src/main.ts",
+		"typecheck": "tsc --noEmit"
+	},
+	"dependencies": {
+		"flowcraft": "^2.6.1"
+	},
+	"devDependencies": {
+		"tsx": "^4.20.6",
+		"typescript": "^5.9.3"
+	}
+}

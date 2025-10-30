@@ -10,7 +10,7 @@ It showcases a client-worker architecture where a client can initiate a workflow
 - **Client-Worker Architecture**:
   - The **Client** (`src/client.ts`) is a lightweight process that starts the workflow and awaits the final result.
   - The **Worker** (`src/worker.ts`) is a separate process that executes the actual node logic.
-- **Reuses Business Logic**: Executes the exact same workflow definitions from the `@flowcraft/example-declarative-shared-logic` package without any changes, showcasing the power of abstracting the execution layer.
+- **Reuses Business Logic**: Executes the exact same workflow definitions from the [`@flowcraft/example-declarative-shared-logic`](../declarative-workflows/) package without any changes, showcasing the power of abstracting the execution layer.
 - **Resilience & Scalability**: By using a message queue, workflows can survive process restarts. You can run multiple worker processes to handle a high volume of concurrent tasks.
 
 ## How to Run
@@ -43,7 +43,7 @@ It showcases a client-worker architecture where a client can initiate a workflow
 5.  **Run the Client**: Open a **second terminal** and run the client. This will kick off the workflow and log a `Run ID`.
 
     ```bash
-    npm start
+    npm run client
     ```
     You can change the active use-case in `src/client.ts`.
 

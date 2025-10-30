@@ -70,9 +70,3 @@ const eventStore = new PostgresHistoryAdapter({
   tableName: 'workflow_events',
 })
 ```
-
-## Files
-
-- `src/main.ts` - Workflow execution with persistent storage setup
-- `src/flow.ts` - Simple greeting workflow definition
-- `workflow-events.db` - SQLite database created during execution (not committed)
