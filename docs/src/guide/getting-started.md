@@ -54,7 +54,7 @@ async function run() {
 	//   "serializedContext": "{\"value\":42,\"_outputs.start\":42,\"_inputs.double\":42,\"_outputs.double\":84}",
 	//   "status": "completed"
 	// }
-
+}
 run()
 ```
 
@@ -77,12 +77,12 @@ export async function simpleWorkflow(value: number) {
 }
 
 /** @step */
-async function startNode(value: number) {
+export async function startNode(value: number) {
   return value
 }
 
 /** @step */
-async function doubleNode(input: number) {
+export async function doubleNode(input: number) {
   return input * 2
 }
 ```
