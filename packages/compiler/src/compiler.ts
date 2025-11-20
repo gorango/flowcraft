@@ -101,7 +101,7 @@ export class Compiler {
 		const manifestDir = path.dirname(path.resolve('./dist/flowcraft.manifest.ts'))
 		for (const [uses, { importPath, exportName }] of Object.entries(registry)) {
 			const relativePath = path.relative(manifestDir, importPath).replace(/\.ts$/, '')
-			imports.push(`import { ${exportName} } from '${relativePath}'`)
+			imports.push(`import { ${exportName} } from '${relativePath.split(path.sep).join(path.posix.sep)}'`)
 			registryEntries.push(`  '${uses}': ${exportName}`)
 		}
 
