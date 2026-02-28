@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { FlowcraftError } from '../../src/errors'
 import { GraphTraverser } from '../../src/runtime/traverser'
 
 describe('GraphTraverser', () => {
@@ -211,5 +212,24 @@ describe('GraphTraverser', () => {
 		expect(nextReady).toHaveLength(2)
 		expect(nextReady.some((n) => n.nodeId === 'worker1')).toBe(true)
 		expect(nextReady.some((n) => n.nodeId === 'worker2')).toBe(true)
+	})
+
+	it('should throw FlowcraftError when loop has no continue edge', () => {
+		const blueprint = {
+			id: 'test-loop',
+			nodes: [
+				{ id: 'start', uses: 'test', params: {} },
+				{ id: 'loopBody', uses: 'test', params: {} },
+				{ id: 'loop', uses: 'loop-controller', params: { condition: 'true' } },
+			],
+			edges: [
+				{ source: 'start', target: 'loop' },
+				{ source: 'loopBody', target: 'loop' },
+				// Missing: { source: 'loop', target: 'loopBody', action: 'continue' }
+			],
+		}
+
+		expect(() => new GraphTraverser(blueprint, false)).toThrow(FlowcraftError)
+		expect(() => new GraphTraverser(blueprint, false)).toThrow("Loop 'loop' has no continue edge to start node")
 	})
 })

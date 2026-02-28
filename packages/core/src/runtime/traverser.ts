@@ -1,4 +1,5 @@
 import { analyzeBlueprint } from '../analysis'
+import { FlowcraftError } from '../errors'
 import type { NodeDefinition, NodeResult, WorkflowBlueprint } from '../types'
 import type { WorkflowState } from './state'
 
@@ -109,7 +110,13 @@ export class GraphTraverser {
 			if (node.uses !== 'loop-controller') return
 
 			const nextInLoopId = blueprint.edges.find((e) => e.source === node.id && e.action === 'continue')?.target
-			if (!nextInLoopId) return
+			if (!nextInLoopId) {
+				throw new FlowcraftError(
+					`Loop '${node.id}' has no continue edge to start node. ` +
+						`Ensure edges are wired inside the loop and incoming/breaking edges point to the loop controller.`,
+					{ nodeId: node.id, blueprintId: blueprint.id },
+				)
+			}
 
 			const set: Set<string> = new Set()
 			set.add(nextInLoopId)
