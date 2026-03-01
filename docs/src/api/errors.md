@@ -43,3 +43,21 @@ throw new FlowcraftError('Unrecoverable failure', {
   isFatal: true,
 });
 ```
+
+## Runtime Validation Errors
+
+Flowcraft performs runtime validation on workflow blueprints and throws descriptive errors when misconfigurations are detected.
+
+### Loop Controller Missing Continue Edge
+
+When a loop controller node lacks a required continue edge, Flowcraft throws:
+
+```typescript
+throw new FlowcraftError(
+  "Loop 'myLoop' has no continue edge to start node. " +
+    "Ensure edges are wired inside the loop and incoming/breaking edges point to the loop controller.",
+  { nodeId: 'myLoop', blueprintId: 'my-blueprint' }
+);
+```
+
+This validation ensures loops are properly configured and prevents silent failures during execution.

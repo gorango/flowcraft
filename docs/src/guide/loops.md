@@ -95,6 +95,37 @@ The [`.loop()`](/api/flow#loop-id-options) method adds a `loop-controller` node.
 4.  The controller evaluates the condition. If true, it triggers `increment` again.
 5.  This repeats until the condition is false.
 
+### Conditional Edges from Loop Controllers
+
+Loop controllers support conditional edges that are evaluated first, allowing early loop exit based on runtime conditions. This enables more complex loop behavior than the default condition-based continuation.
+
+```typescript
+const flow = createFlow('conditional-loop')
+	.node('process', async ({ context }) => {
+		const items = await context.get('items') || []
+		const item = items.shift()
+		await context.set('items', items)
+		return { item }
+	})
+	.node('check', async ({ context }) => {
+		const items = await context.get('items') || []
+		return { shouldContinue: items.length > 0 }
+	})
+	.loop('loop', {
+		startNodeId: 'process',
+		endNodeId: 'check',
+		condition: 'result.shouldContinue === true',
+	})
+	// continue to process if there are more items
+	.edge('check', 'process')
+	// break and exit when no more items
+	.edge('check', 'done', { condition: 'result.shouldContinue === false' })
+	.node('done', async ({ context }) => ({ output: 'Completed' }))
+	.toBlueprint()
+```
+
+When a loop controller has multiple outgoing edges with conditions, all conditional edges are evaluated first. If any condition evaluates to true, the corresponding edge is taken. This allows the loop to exit early based on runtime conditions.
+
 > [!NOTE]
 > The [`.loop()`](/api/flow#loop-id-options) method automatically configures the `joinStrategy` of the loop's start and end nodes to `'any'` so they can be re-executed on each iteration.
 
@@ -103,6 +134,21 @@ The [`.loop()`](/api/flow#loop-id-options) method adds a `loop-controller` node.
 > - `'any'`: the node will be executed when any of the predecessors finishes, possibly for many times
 > - `'all'`: the node will be only executed once when all its predecessors finish.
 > The default value is `'all'`.
+
+## Error Handling
+
+Flowcraft validates loop configurations at runtime and provides descriptive errors to help identify misconfigured loops.
+
+### Missing Continue Edge
+
+When a loop controller is missing a required continue edge, Flowcraft throws a descriptive `FlowcraftError`:
+
+```
+FlowcraftError: Loop 'myLoop' has no continue edge to start node. 
+Ensure edges are wired inside the loop and incoming/breaking edges point to the loop controller.
+```
+
+This ensures loops are properly wired and prevents silent failures during execution.
 
 ## Security Considerations
 
