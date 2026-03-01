@@ -186,6 +186,38 @@ describe('Flowcraft Runtime - Integration Tests', () => {
 			expect(branchBeforeLoop).toBeCalled()
 		})
 
+		it('should evaluate conditional edges from loop controller on each iteration', async () => {
+			const specialExitCalled = vi.fn(async () => ({ output: 'special exit!' }))
+
+			const flow = createFlow('conditional-loop-exit')
+				.node('start', async ({ context }) => {
+					await context.set('counter', 0)
+					return { output: 0 }
+				})
+				.node('body', async ({ context }) => {
+					const c = (await context.get('counter')) + 1
+					await context.set('counter', c)
+					return { output: c }
+				})
+				.node('specialExit', specialExitCalled)
+				.node('end', async () => ({ output: 'finished' }))
+				.loop('myLoop', {
+					startNodeId: 'body',
+					endNodeId: 'body',
+					condition: 'counter < 10',
+				})
+				.edge('start', 'myLoop')
+				.edge('myLoop', 'specialExit', { condition: 'counter === 5' })
+				.edge('myLoop', 'end')
+
+			const runtime = new FlowRuntime({ evaluator: new UnsafeEvaluator() })
+			const result = await runtime.run(flow.toBlueprint(), {}, { functionRegistry: flow.getFunctionRegistry() })
+
+			expect(result.status).toBe('completed')
+			expect(specialExitCalled).toHaveBeenCalledTimes(1)
+			expect(result.context.counter).toBe(5)
+		})
+
 		it('should execute fallback node when main node fails', async () => {
 			const flow = createFlow('fallback-test')
 			flow

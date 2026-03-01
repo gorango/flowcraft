@@ -58,6 +58,27 @@ export class WorkflowLogicHandler {
 			return evaluationResult
 		}
 
+		const completedNode = blueprint.nodes.find((n) => n.id === completedNodeId)
+		const isLoopController = completedNode?.uses === 'loop-controller'
+
+		if (isLoopController) {
+			const conditionalEdges = outgoingEdges.filter((edge) => edge.condition)
+			for (const edge of conditionalEdges) {
+				if (await evaluateEdge(edge)) {
+					const targetNode = blueprint.nodes.find((n) => n.id === edge.target)
+					if (targetNode) matched.push({ node: targetNode, edge })
+				} else {
+					await this.eventBus.emit({
+						type: 'node:skipped',
+						payload: { nodeId: completedNodeId, edge, executionId: executionId || '', blueprintId: blueprint.id },
+					})
+				}
+			}
+			if (matched.length > 0) {
+				return matched
+			}
+		}
+
 		if (result.action) {
 			const actionEdges = outgoingEdges.filter((edge) => edge.action === result.action)
 			for (const edge of actionEdges) {
