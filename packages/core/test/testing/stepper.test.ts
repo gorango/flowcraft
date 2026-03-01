@@ -235,22 +235,23 @@ describe('createStepper', () => {
 				return { output: `work_${count}` }
 			})
 			.node('end', async () => ({ output: 'end' }))
-			.edge('init', 'work')
+			.edge('init', 'test-loop')
 			.loop('test-loop', {
 				startNodeId: 'work',
 				endNodeId: 'work',
 				condition: 'count < 1',
 			})
-			.edge('work', 'end')
+			.edge('test-loop', 'end')
 
 		const runtime = new FlowRuntime({ evaluator: new (await import('../../src/evaluator')).UnsafeEvaluator() })
 		const stepper = await createStepper(runtime, flow.toBlueprint(), flow.getFunctionRegistry(), {})
 
 		// Execute steps
 		await stepper.next() // init
-		await stepper.next() // work1
-		await stepper.next() // end
-		const result = await stepper.next()
+		await stepper.next() // controller
+		await stepper.next() // work
+		await stepper.next() // controller
+		const result = await stepper.next() // end
 		expect(result?.status).toBe('completed')
 		expect((await stepper.state.getContext().toJSON())['_outputs.end']).toBe('end')
 	})

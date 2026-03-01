@@ -10,19 +10,28 @@ export interface ReadyNode {
 export class GraphTraverser {
 	private frontier = new Set<string>()
 	private allPredecessors: Map<string, Set<string>>
+	private allSuccessors: Map<string, Set<string>>
 	private dynamicBlueprint: WorkflowBlueprint
 	private completedNodes = new Set<string>()
+	private nodesInLoops: Map<string, Set<string>>
 
 	constructor(blueprint: WorkflowBlueprint, isStrictMode: boolean = false) {
 		this.dynamicBlueprint = structuredClone(blueprint) as WorkflowBlueprint
 		this.allPredecessors = new Map<string, Set<string>>()
+		this.allSuccessors = new Map<string, Set<string>>()
+		this.nodesInLoops = new Map<string, Set<string>>()
 		for (const node of this.dynamicBlueprint.nodes) {
 			this.allPredecessors.set(node.id, new Set())
+			this.allSuccessors.set(node.id, new Set())
 		}
 		for (const edge of this.dynamicBlueprint.edges) {
-			this.allPredecessors.get(edge.target)?.add(edge.source)
+			this.getPredecessors(edge.target).add(edge.source)
+		}
+		for (const edge of this.dynamicBlueprint.edges) {
+			this.getSuccessors(edge.source).add(edge.target)
 		}
 		const analysis = analyzeBlueprint(blueprint)
+		this.filterNodesInLoops(blueprint)
 		this.frontier = new Set(analysis.startNodeIds.filter((id) => !this.isFallbackNode(id)))
 		if (this.frontier.size === 0 && analysis.cycles.length > 0 && !isStrictMode) {
 			const uniqueStartNodes = new Set<string>()
@@ -65,7 +74,7 @@ export class GraphTraverser {
 			if (traverser.completedNodes.has(node.id)) continue
 
 			const requiredPredecessors = traverser.allPredecessors.get(node.id)
-			const joinStrategy = traverser.getEffectiveJoinStrategy(node.id)
+			const joinStrategy = traverser.getJoinStrategy(node.id)
 
 			// if no predecessors and not completed, it's a start node and should be in the frontier
 			if (!requiredPredecessors || requiredPredecessors.size === 0) {
@@ -89,25 +98,34 @@ export class GraphTraverser {
 		return this.dynamicBlueprint.nodes.some((n) => n.config?.fallback === nodeId)
 	}
 
-	private getEffectiveJoinStrategy(nodeId: string): 'any' | 'all' {
+	private getJoinStrategy(nodeId: string): 'any' | 'all' {
 		const node = this.dynamicBlueprint.nodes.find((n) => n.id === nodeId)
 		const baseJoinStrategy = node?.config?.joinStrategy || 'all'
-
-		if (node?.uses === 'loop-controller') {
-			return 'any'
-		}
-
-		const predecessors = this.allPredecessors.get(nodeId)
-		if (predecessors) {
-			for (const predecessorId of predecessors) {
-				const predecessorNode = this.dynamicBlueprint.nodes.find((n) => n.id === predecessorId)
-				if (predecessorNode?.uses === 'loop-controller') {
-					return 'any'
-				}
-			}
-		}
-
 		return baseJoinStrategy
+	}
+
+	private filterNodesInLoops(blueprint: WorkflowBlueprint): void {
+		blueprint.nodes.forEach((node) => {
+			if (node.uses !== 'loop-controller') return
+
+			const nextInLoopId = blueprint.edges.find((e) => e.source === node.id && e.action === 'continue')?.target
+			if (!nextInLoopId) return
+
+			const set: Set<string> = new Set()
+			set.add(nextInLoopId)
+			this.nodesInLoops.set(node.id, this.getAllLoopSuccessors(nextInLoopId, blueprint, set))
+		})
+	}
+
+	private getAllLoopSuccessors(nodeId: string, blueprint: WorkflowBlueprint, set: Set<string>): Set<string> {
+		this.getSuccessors(nodeId).forEach((successor) => {
+			if (set.has(successor)) return
+			const node = this.getNode(successor, blueprint)
+			if (!node || node.uses === 'loop-controller') return
+			set.add(successor)
+			this.getAllLoopSuccessors(successor, blueprint, set)
+		})
+		return set
 	}
 
 	getReadyNodes(): ReadyNode[] {
@@ -135,18 +153,17 @@ export class GraphTraverser {
 				this.dynamicBlueprint.nodes.push(dynamicNode)
 				this.allPredecessors.set(dynamicNode.id, new Set([nodeId]))
 				if (gatherNodeId) {
-					this.allPredecessors.get(gatherNodeId)?.add(dynamicNode.id)
+					this.getPredecessors(gatherNodeId).add(dynamicNode.id)
 				}
 				this.frontier.add(dynamicNode.id)
 			}
 		}
 
 		for (const node of nextNodes) {
-			const joinStrategy = this.getEffectiveJoinStrategy(node.id)
+			const joinStrategy = this.getJoinStrategy(node.id)
 			if (joinStrategy !== 'any' && this.completedNodes.has(node.id)) continue
 
-			const requiredPredecessors = this.allPredecessors.get(node.id)
-			if (!requiredPredecessors) continue
+			const requiredPredecessors = this.getPredecessors(node.id)
 
 			const isReady =
 				joinStrategy === 'any'
@@ -155,19 +172,33 @@ export class GraphTraverser {
 
 			if (isReady) {
 				this.frontier.add(node.id)
+				// reset to uncompleted for all nodes in a loop
+				if (node.uses === 'loop-controller') {
+					this.getNodesInLoop(node.id).forEach((id) => {
+						this.resetNodeCompletion(id)
+					})
+				}
 			}
 		}
 
 		if (nextNodes.length === 0) {
 			for (const [potentialNextId, predecessors] of this.allPredecessors) {
 				if (predecessors.has(nodeId) && !this.completedNodes.has(potentialNextId)) {
-					const joinStrategy = this.getEffectiveJoinStrategy(potentialNextId)
+					const joinStrategy = this.getJoinStrategy(potentialNextId)
 					const isReady =
 						joinStrategy === 'any'
 							? predecessors.has(nodeId)
 							: [...predecessors].every((p) => this.completedNodes.has(p))
 					if (isReady) {
 						this.frontier.add(potentialNextId)
+						const node = this.getNode(potentialNextId, this.dynamicBlueprint)
+						if (!node) continue
+						// reset to uncompleted for all nodes in a loop
+						if (node.uses === 'loop-controller') {
+							this.getNodesInLoop(node.id).forEach((id) => {
+								this.resetNodeCompletion(id)
+							})
+						}
 					}
 				}
 			}
@@ -196,6 +227,36 @@ export class GraphTraverser {
 
 	getAllPredecessors(): Map<string, Set<string>> {
 		return this.allPredecessors
+	}
+
+	getAllSuccessors(): Map<string, Set<string>> {
+		return this.allSuccessors
+	}
+
+	getPredecessors(nodeId: string): Set<string> {
+		const predecessors = this.allPredecessors.get(nodeId)
+		if (!predecessors) return new Set()
+		return predecessors
+	}
+
+	getSuccessors(nodeId: string): Set<string> {
+		const successors = this.allSuccessors.get(nodeId)
+		if (!successors) return new Set()
+		return successors
+	}
+
+	getNodesInLoop(id: string): Set<string> {
+		const loopNodes = this.nodesInLoops.get(id)
+		if (!loopNodes) return new Set()
+		return loopNodes
+	}
+
+	resetNodeCompletion(nodeId: string): void {
+		this.completedNodes.delete(nodeId)
+	}
+
+	getNode(nodeId: string, blueprint: WorkflowBlueprint): NodeDefinition | undefined {
+		return blueprint.nodes.find((n) => n.id === nodeId)
 	}
 
 	addDynamicNode(_nodeId: string, dynamicNode: NodeDefinition, predecessorId: string, gatherNodeId?: string): void {

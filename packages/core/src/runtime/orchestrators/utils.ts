@@ -97,12 +97,7 @@ export async function processResults(
 				executionId,
 			)
 
-			const loopControllerMatch = matched.find(
-				(m: { node: NodeDefinition; edge: any }) => m.node.uses === 'loop-controller',
-			)
-			const finalMatched = loopControllerMatch ? [loopControllerMatch] : matched
-
-			for (const { node, edge } of finalMatched) {
+			for (const { node, edge } of matched) {
 				await runtime.applyEdgeTransform(
 					edge,
 					result,
@@ -116,7 +111,7 @@ export async function processResults(
 			traverser.markNodeCompleted(
 				nodeId,
 				result,
-				finalMatched.map((m: { node: NodeDefinition; edge: any }) => m.node),
+				matched.map((m: { node: NodeDefinition; edge: any }) => m.node),
 			)
 		} else if (executionResult.status === 'failed_with_fallback') {
 			const { fallbackNodeId, error } = executionResult

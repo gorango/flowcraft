@@ -79,7 +79,7 @@ const flow = createFlow('loop-workflow')
 	})
 
 	// 4. Define the edges.
-	.edge('initialize', 'increment')
+	.edge('initialize', 'counter')
 	.toBlueprint()
 ```
 
@@ -97,6 +97,12 @@ The [`.loop()`](/api/flow#loop-id-options) method adds a `loop-controller` node.
 
 > [!NOTE]
 > The [`.loop()`](/api/flow#loop-id-options) method automatically configures the `joinStrategy` of the loop's start and end nodes to `'any'` so they can be re-executed on each iteration.
+
+> [!INFO]
+> `joinStrategy` decides how a node should be executed when it has multiple predecessors:
+> - `'any'`: the node will be executed when any of the predecessors finishes, possibly for many times
+> - `'all'`: the node will be only executed once when all its predecessors finish.
+> The default value is `'all'`.
 
 ## Security Considerations
 
@@ -118,6 +124,8 @@ const runtime = new FlowRuntime({
 ## Cycles and Non-DAG Flows
 
 While loops provide a structured way to handle iteration, it's also possible to create workflows with cycles (non-DAG graphs) using manual edges. However, this comes with significant risks and unpredictable behavior.
+
+For this reason, Flowcraft stops at cycles that are not handled by `loop-controller` by default. You should prefer `.loop()` for handling cycles.
 
 ### Risks of Non-DAG Workflows
 

@@ -196,24 +196,32 @@ describe('Flow Builder', () => {
 		it('should wire the `continue` and `break` paths for a .loop() construct', () => {
 			const flow = createFlow('test')
 			flow.node('start', async () => ({}))
+			flow.node('inner', async () => ({}))
 			flow.node('end', async () => ({}))
-			flow.edge('start', 'end')
-			flow.loop('loop1', {
-				startNodeId: 'start',
-				endNodeId: 'end',
+			flow.edge('start', 'loop')
+			flow.edge('loop', 'end')
+			flow.loop('loop', {
+				startNodeId: 'inner',
+				endNodeId: 'inner',
 				condition: 'i < 10',
 			})
 			const blueprint = flow.toBlueprint()
-			expect(blueprint.edges).toHaveLength(3)
-			expect(blueprint.edges[1]).toEqual({
-				source: 'end',
-				target: 'loop1-loop',
-			})
+			expect(blueprint.edges).toHaveLength(4)
 			expect(blueprint.edges[2]).toEqual({
-				source: 'loop1-loop',
-				target: 'start',
+				source: 'inner',
+				target: 'loop',
+			})
+			expect(blueprint.edges[3]).toEqual({
+				source: 'loop',
+				target: 'inner',
 				action: 'continue',
-				transform: 'context.end',
+				transform: 'context.inner',
+			})
+			expect(blueprint.edges[0]).toEqual({
+				source: 'loop',
+				target: 'end',
+				action: 'break',
+				transform: 'context.inner',
 			})
 		})
 
@@ -294,8 +302,8 @@ describe('Flow Builder', () => {
 			flow.node('end', async () => ({}))
 			flow.node('exit', async () => ({}))
 			flow.edge('start', 'end')
-			flow.edge('end', 'exit') // This should become a break edge
-			flow.loop('loop1', {
+			flow.edge('loop', 'exit') // This should become a break edge
+			flow.loop('loop', {
 				startNodeId: 'start',
 				endNodeId: 'end',
 				condition: 'i < 10',

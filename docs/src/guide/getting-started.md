@@ -54,6 +54,7 @@ async function run() {
 	//   "serializedContext": "{\"value\":42,\"_outputs.start\":42,\"_inputs.double\":42,\"_outputs.double\":84}",
 	//   "status": "completed"
 	// }
+}
 
 run()
 ```

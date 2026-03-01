@@ -169,9 +169,8 @@ describe('Built-In Nodes', () => {
 					const finalCount = await context.get('count')
 					return { output: `Finalized at ${finalCount}` }
 				})
-				.edge('initialize', 'increment')
-				// The intuitive edge that now works, replacing the need for .edge('counter-loop', 'finalize')
-				.edge('increment', 'finalize')
+				.edge('initialize', 'counter')
+				.edge('counter', 'finalize')
 
 			const runtime = new FlowRuntime({ evaluator: new UnsafeEvaluator() })
 			const result = await runtime.run(flow.toBlueprint(), {}, { functionRegistry: flow.getFunctionRegistry() })
@@ -199,7 +198,7 @@ describe('Built-In Nodes', () => {
 					return { output: `checked_${counter}` }
 				})
 				.node('final', async () => ({ output: 'final' }))
-				.edge('initialize', 'increment')
+				.edge('initialize', 'test-loop')
 				.edge('increment', 'check')
 				.loop('test-loop', {
 					startNodeId: 'increment',
@@ -207,7 +206,7 @@ describe('Built-In Nodes', () => {
 					condition: 'counter < 3',
 				})
 				// This intuitive edge from the loop's end node ('check') now correctly wires the exit.
-				.edge('check', 'final')
+				.edge('test-loop', 'final')
 
 			const runtime = new FlowRuntime({ evaluator: new UnsafeEvaluator() })
 			const result = await runtime.run(flow.toBlueprint(), {}, { functionRegistry: flow.getFunctionRegistry() })

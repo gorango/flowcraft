@@ -1,5 +1,5 @@
-import { createFlow, type NodeContext } from 'flowcraft'
 import { createInterface } from 'node:readline'
+import { createFlow, type NodeContext } from 'flowcraft'
 
 interface WorkflowContext {
 	task: { id: string; description: string; amount: number; reason: string }

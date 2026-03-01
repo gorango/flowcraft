@@ -26,7 +26,6 @@ export class FlowBuilder<
 > {
 	private blueprint: Partial<WorkflowBlueprint>
 	private functionRegistry: Map<string, NodeFunction | NodeClass>
-	private loopControllerIds: Map<string, string>
 	private loopDefinitions: Array<{
 		id: string
 		startNodeId: string
@@ -43,7 +42,6 @@ export class FlowBuilder<
 	constructor(id: string) {
 		this.blueprint = { id, nodes: [], edges: [] }
 		this.functionRegistry = new Map()
-		this.loopControllerIds = new Map()
 		this.loopDefinitions = []
 		this.batchDefinitions = []
 		this.cycleEntryPoints = new Map()
@@ -191,35 +189,22 @@ export class FlowBuilder<
 		},
 	): this {
 		const { startNodeId, endNodeId, condition } = options
-		const controllerId = `${id}-loop`
-
-		this.loopControllerIds.set(id, controllerId)
-
 		this.loopDefinitions.push({ id, startNodeId, endNodeId, condition })
 
 		this.blueprint.nodes?.push({
-			id: controllerId,
+			id,
 			uses: 'loop-controller',
 			params: { condition },
 			config: { joinStrategy: 'any' },
 		})
 
-		this.edge(endNodeId, controllerId)
-
-		this.edge(controllerId, startNodeId, {
+		this.edge(endNodeId, id)
+		this.edge(id, startNodeId, {
 			action: 'continue',
 			transform: `context.${endNodeId}`,
 		})
 
 		return this
-	}
-
-	getLoopControllerId(id: string): string {
-		const controllerId = this.loopControllerIds.get(id)
-		if (!controllerId) {
-			throw new Error(`Loop with id '${id}' not found. Ensure you have defined it using the .loop() method.`)
-		}
-		return controllerId
 	}
 
 	/**
@@ -242,10 +227,9 @@ export class FlowBuilder<
 
 		// loop edge re-wiring
 		for (const loopDef of this.loopDefinitions) {
-			const controllerId = this.getLoopControllerId(loopDef.id)
-			const edgesToRewire = allOriginalEdges.filter((e) => e.source === loopDef.endNodeId && e.target !== controllerId)
+			const edgesToRewire = allOriginalEdges.filter((e) => e.source === loopDef.id && e.target !== loopDef.startNodeId)
 			for (const edge of edgesToRewire) {
-				finalEdges.push({ ...edge, source: controllerId, action: edge.action || 'break' })
+				finalEdges.push({ ...edge, action: edge.action || 'break', transform: `context.${loopDef.endNodeId}` })
 				processedOriginalEdges.add(edge)
 			}
 		}
@@ -283,9 +267,6 @@ export class FlowBuilder<
 			if (!endNode) {
 				throw new Error(`Loop '${loopDef.id}' references non-existent end node '${loopDef.endNodeId}'.`)
 			}
-
-			startNode.config = { ...startNode.config, joinStrategy: 'any' }
-			endNode.config = { ...endNode.config, joinStrategy: 'any' }
 		}
 
 		if (this.cycleEntryPoints.size > 0) {
@@ -311,10 +292,8 @@ export class FlowBuilder<
 
 		// replace loop-controllers with direct, cyclical edges
 		for (const loopDef of this.loopDefinitions) {
-			const controllerId = this.loopControllerIds.get(loopDef.id)
-			if (!controllerId) continue
-
-			ignoredNodeIds.add(controllerId)
+			const id = loopDef.id
+			ignoredNodeIds.add(id)
 
 			// direct edge from the end of loop to start
 			uiEdges.push({
@@ -328,11 +307,20 @@ export class FlowBuilder<
 			})
 
 			// re-wire any 'break' edges
-			const breakEdges = blueprint.edges.filter((edge) => edge.source === controllerId && edge.action === 'break')
+			const breakEdges = blueprint.edges.filter((edge) => edge.source === id && edge.action === 'break')
 			for (const breakEdge of breakEdges) {
 				uiEdges.push({
 					...breakEdge,
 					source: loopDef.endNodeId,
+				})
+			}
+
+			// re-wire any 'incoming' edges
+			const incomingEdges = blueprint.edges.filter((edge) => edge.target === id && edge.source !== loopDef.endNodeId)
+			for (const incomingEdge of incomingEdges) {
+				uiEdges.push({
+					...incomingEdge,
+					source: loopDef.startNodeId,
 				})
 			}
 		}

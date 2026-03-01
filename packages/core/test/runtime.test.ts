@@ -137,9 +137,8 @@ describe('Flowcraft Runtime - Integration Tests', () => {
 					endNodeId: 'loopBody',
 					condition: 'counter < 2',
 				})
-				.edge('start', 'loopBody')
-				// The break path is the default edge (no action) from the loop controller
-				.edge('mainLoop-loop', 'end')
+				.edge('start', 'mainLoop')
+				.edge('mainLoop', 'end')
 
 			const runtime = new FlowRuntime({ evaluator: new UnsafeEvaluator() })
 			const result = await runtime.run(flow.toBlueprint(), {}, { functionRegistry: flow.getFunctionRegistry() })
@@ -148,6 +147,43 @@ describe('Flowcraft Runtime - Integration Tests', () => {
 			expect(loopBodyMock).toHaveBeenCalledTimes(2)
 			expect(result.context.counter).toBe(2)
 			expect(result.context['_outputs.end']).toBe('finished')
+		})
+
+		it('should correctly execute a loop involving multiple nodes', async () => {
+			const loopBodyMock = vi.fn(async ({ context }) => {
+				const count = (await context.get('counter')) + 1 || 1
+				await context.set('counter', count)
+				return { output: `iteration_${count}` }
+			})
+			const branchBeforeLoop = vi.fn(async () => ({ output: 0 }))
+
+			const flow = createFlow('multi-node-loop-test')
+				.node('start', async ({ context }) => {
+					await context.set('counter', 0)
+					return { output: 0 }
+				})
+				.node('branchBeforeLoop', branchBeforeLoop)
+				.node('loopBody', async () => ({ output: 0 }))
+				.node('loopBody2', loopBodyMock)
+				.node('loopBody3', async () => ({ output: 0 }))
+				.node('end', async () => ({ output: 'finished' }))
+				.loop('mainLoop', {
+					startNodeId: 'loopBody',
+					endNodeId: 'loopBody3',
+					condition: 'counter < 3',
+				})
+				.edge('start', 'mainLoop')
+				.edge('start', 'branchBeforeLoop')
+				.edge('loopBody', 'loopBody2')
+				.edge('loopBody2', 'loopBody3')
+				.edge('mainLoop', 'end')
+
+			const runtime = new FlowRuntime({ evaluator: new UnsafeEvaluator() })
+			const result = await runtime.run(flow.toBlueprint(), {}, { functionRegistry: flow.getFunctionRegistry() })
+
+			expect(result.status).toBe('completed')
+			expect(loopBodyMock).toHaveBeenCalledTimes(3)
+			expect(branchBeforeLoop).toBeCalled()
 		})
 
 		it('should execute fallback node when main node fails', async () => {

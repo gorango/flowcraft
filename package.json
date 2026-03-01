@@ -5,6 +5,7 @@
 	"packageManager": "pnpm@10.20.0",
 	"scripts": {
 		"lint": "biome check packages examples",
+		"lint:fix": "biome check packages examples --write",
 		"changeset": "changeset",
 		"release": "turbo build && changeset publish"
 	},
