@@ -1,5 +1,5 @@
-import { blueprints, config } from '@flowcraft/example-declarative-shared-logic'
-import { Queue } from 'bullmq'
+import { blueprints, config } from '@example/declarative-shared-logic'
+import { type ConnectionOptions, Queue } from 'bullmq'
 import type { WorkflowResult } from 'flowcraft'
 import { analyzeBlueprint } from 'flowcraft'
 import IORedis from 'ioredis'
@@ -38,7 +38,7 @@ async function main() {
 
 	const runId = Math.floor(Math.random() * 10).toString()
 	const redisConnection = new IORedis({ maxRetriesPerRequest: null })
-	const queue = new Queue(QUEUE_NAME, { connection: redisConnection })
+	const queue = new Queue(QUEUE_NAME, { connection: redisConnection as ConnectionOptions })
 
 	const useCase = config[ACTIVE_USE_CASE]
 	const blueprint = blueprints[useCase.entryWorkflowId]

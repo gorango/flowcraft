@@ -1,5 +1,5 @@
+import { agentNodeRegistry, blueprints } from '@example/declarative-shared-logic'
 import { BullMQAdapter, RedisCoordinationStore } from '@flowcraft/bullmq-adapter'
-import { agentNodeRegistry, blueprints } from '@flowcraft/example-declarative-shared-logic'
 import IORedis from 'ioredis'
 import 'dotenv/config'
 

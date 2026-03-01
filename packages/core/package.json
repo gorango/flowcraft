@@ -51,10 +51,10 @@
 		"test:coverage": "vitest run --coverage"
 	},
 	"devDependencies": {
-		"@types/node": "^24.9.2",
+		"@types/node": "^25.3.3",
 		"@vitest/coverage-v8": "4.0.4",
-		"tsup": "^8.5.0",
+		"tsup": "^8.5.1",
 		"typescript": "^5.9.3",
-		"vitest": "^4.0.4"
+		"vitest": "^4.0.18"
 	}
 }

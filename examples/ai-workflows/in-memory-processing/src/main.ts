@@ -1,4 +1,4 @@
-import { agentNodeRegistry, blueprints, config } from '@flowcraft/example-declarative-shared-logic'
+import { agentNodeRegistry, blueprints, config } from '@example/declarative-shared-logic'
 import { FlowRuntime } from 'flowcraft'
 
 type UseCase = keyof typeof config

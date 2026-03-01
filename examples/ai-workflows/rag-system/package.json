@@ -7,14 +7,14 @@
 		"typecheck": "tsc --noEmit"
 	},
 	"dependencies": {
-		"dotenv": "^17.2.3",
+		"dotenv": "^17.3.1",
 		"flowcraft": "^2.7.1",
-		"openai": "^6.7.0",
-		"superjson": "^2.2.5"
+		"openai": "^6.25.0",
+		"superjson": "^2.2.6"
 	},
 	"devDependencies": {
-		"@types/node": "^24.9.2",
-		"tsx": "^4.20.6",
+		"@types/node": "^25.3.3",
+		"tsx": "^4.21.0",
 		"typescript": "^5.9.3"
 	}
 }

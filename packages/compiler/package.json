@@ -34,16 +34,16 @@
 		"test:coverage": "vitest run --coverage"
 	},
 	"dependencies": {
-		"esbuild": "^0.25.11",
+		"esbuild": "^0.27.3",
 		"flowcraft": "^2.6.0",
 		"resolve": "^1.22.11",
 		"typescript": "^5.9.3"
 	},
 	"devDependencies": {
-		"@types/node": "^24.9.2",
+		"@types/node": "^25.3.3",
 		"@types/resolve": "^1.20.6",
 		"@vitest/coverage-v8": "4.0.4",
-		"tsup": "^8.5.0",
-		"vitest": "^4.0.4"
+		"tsup": "^8.5.1",
+		"vitest": "^4.0.18"
 	}
 }

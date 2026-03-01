@@ -18,18 +18,18 @@
 		"typecheck": "tsc --noEmit"
 	},
 	"dependencies": {
-		"@aws-sdk/client-dynamodb": "^3.918.0",
-		"@aws-sdk/client-sqs": "^3.918.0",
-		"@aws-sdk/lib-dynamodb": "^3.918.0",
-		"@aws-sdk/util-dynamodb": "^3.918.0",
+		"@aws-sdk/client-dynamodb": "^3.1000.0",
+		"@aws-sdk/client-sqs": "^3.1000.0",
+		"@aws-sdk/lib-dynamodb": "^3.1000.0",
+		"@aws-sdk/util-dynamodb": "^3.996.1",
 		"flowcraft": "^2.7.1",
-		"sqs-consumer": "^14.0.1"
+		"sqs-consumer": "^14.2.2"
 	},
 	"devDependencies": {
-		"@testcontainers/localstack": "^11.7.2",
+		"@testcontainers/localstack": "^11.12.0",
 		"aws-sdk-client-mock": "^4.1.0",
-		"tsup": "^8.5.0",
+		"tsup": "^8.5.1",
 		"typescript": "^5.9.3",
-		"vitest": "^4.0.4"
+		"vitest": "^4.0.18"
 	}
 }

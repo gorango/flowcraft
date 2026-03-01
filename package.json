@@ -2,7 +2,7 @@
 	"name": "flowcraft",
 	"type": "module",
 	"private": true,
-	"packageManager": "pnpm@10.20.0",
+	"packageManager": "pnpm@10.30.3",
 	"scripts": {
 		"lint": "biome check packages examples",
 		"lint:fix": "biome check packages examples --write",
@@ -10,8 +10,8 @@
 		"release": "turbo build && changeset publish"
 	},
 	"devDependencies": {
-		"@biomejs/biome": "^2.3.2",
-		"@changesets/cli": "^2.29.7",
-		"turbo": "^2.5.8"
+		"@biomejs/biome": "^2.4.4",
+		"@changesets/cli": "^2.29.8",
+		"turbo": "^2.8.12"
 	}
 }

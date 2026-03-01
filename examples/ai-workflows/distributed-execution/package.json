@@ -8,17 +8,17 @@
 		"typecheck": "tsc --noEmit"
 	},
 	"dependencies": {
-		"@flowcraft/bullmq-adapter": "^1.4.2",
 		"@example/declarative-shared-logic": "workspace:*",
-		"bullmq": "^5.62.0",
-		"dotenv": "^17.2.3",
+		"@flowcraft/bullmq-adapter": "^1.4.2",
+		"bullmq": "^5.70.1",
+		"dotenv": "^17.3.1",
 		"flowcraft": "^2.7.1",
-		"ioredis": "^5.8.2",
-		"openai": "^6.7.0"
+		"ioredis": "^5.10.0",
+		"openai": "^6.25.0"
 	},
 	"devDependencies": {
-		"@types/node": "^24.9.2",
-		"tsx": "^4.20.6",
+		"@types/node": "^25.3.3",
+		"tsx": "^4.21.0",
 		"typescript": "^5.9.3"
 	}
 }

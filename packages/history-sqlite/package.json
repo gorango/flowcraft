@@ -19,13 +19,13 @@
 		"test": "vitest run"
 	},
 	"dependencies": {
-		"better-sqlite3": "^12.4.1",
+		"better-sqlite3": "^12.6.2",
 		"flowcraft": "^2.7.0"
 	},
 	"devDependencies": {
 		"@types/better-sqlite3": "^7.6.13",
-		"tsup": "^8.5.0",
+		"tsup": "^8.5.1",
 		"typescript": "^5.9.3",
-		"vitest": "^4.0.4"
+		"vitest": "^4.0.18"
 	}
 }

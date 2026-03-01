@@ -20,17 +20,17 @@
 	"dependencies": {
 		"amqplib": "^0.10.9",
 		"flowcraft": "^2.7.1",
-		"ioredis": "^5.8.2",
-		"pg": "^8.16.3"
+		"ioredis": "^5.10.0",
+		"pg": "^8.19.0"
 	},
 	"devDependencies": {
-		"@testcontainers/postgresql": "^11.7.2",
-		"@testcontainers/rabbitmq": "^11.7.2",
-		"@testcontainers/redis": "^11.7.2",
+		"@testcontainers/postgresql": "^11.12.0",
+		"@testcontainers/rabbitmq": "^11.12.0",
+		"@testcontainers/redis": "^11.12.0",
 		"@types/amqplib": "^0.10.8",
-		"@types/pg": "^8.15.6",
-		"tsup": "^8.5.0",
+		"@types/pg": "^8.18.0",
+		"tsup": "^8.5.1",
 		"typescript": "^5.9.3",
-		"vitest": "^4.0.4"
+		"vitest": "^4.0.18"
 	}
 }

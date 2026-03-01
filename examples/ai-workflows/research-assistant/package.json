@@ -7,14 +7,15 @@
 		"typecheck": "tsc --noEmit"
 	},
 	"dependencies": {
-		"dotenv": "^17.2.3",
+		"@example/declarative-shared-logic": "workspace:*",
+		"dotenv": "^17.3.1",
 		"flowcraft": "^2.7.1",
-		"openai": "^6.7.0",
+		"openai": "^6.25.0",
 		"serpapi": "^2.2.1",
-		"yaml": "^2.8.1"
+		"yaml": "^2.8.2"
 	},
 	"devDependencies": {
-		"tsx": "^4.20.6",
+		"tsx": "^4.21.0",
 		"typescript": "^5.9.3"
 	}
 }

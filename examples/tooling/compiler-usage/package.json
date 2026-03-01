@@ -7,12 +7,12 @@
 		"typecheck": "tsc --noEmit"
 	},
 	"dependencies": {
-		"flowcraft": "^2.7.1",
-		"@flowcraft/compiler": "^1.0.0-alpha.0"
+		"@flowcraft/compiler": "^1.0.0-alpha.0",
+		"flowcraft": "^2.7.1"
 	},
 	"devDependencies": {
-		"@types/node": "^20.0.0",
-		"tsx": "^4.20.6",
+		"@types/node": "^25.3.3",
+		"tsx": "^4.21.0",
 		"typescript": "^5.9.3"
 	}
 }
