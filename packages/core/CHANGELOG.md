@@ -1,18 +1,36 @@
 # flowcraft
 
+## 2.8.0
+
+### Minor Changes
+
+**Features**
+- Evaluate conditional edges from loop controllers for early loop exit (#659c59e)
+
+**Fixes**
+- Throw descriptive error when loop controller lacks continue edge (#13906a5)
+- Refactor loop detection to reset all nodes for re-execution (#a4af9f0)
+- Fix loop siblings not executing by removing dead code (#a4af9f0)
+- Fix FlowRuntime constructor registry handling for DI containers (#cb3be5d)
+- Fix distributed execution by properly instantiating WorkflowState (#77e54d5)
+
+**Docs**
+- Add loop controller error handling section (#3d0495c)
+- Document conditional edges from loop controllers (#3d0495c)
+
 ## 2.7.1
 
 ### Patch Changes
 
-- - Fix FlowRuntime constructor registry handling for DI containers
+- Fix FlowRuntime constructor registry handling for DI containers
 
-    - The container-based FlowRuntime configuration was failing because the node registry from createDefaultContainer was an object, but FlowRuntime expected a Map.
+  - The container-based FlowRuntime configuration was failing because the node registry from createDefaultContainer was an object, but FlowRuntime expected a Map.
 
-  - Resolve distributed execution bug by properly instantiating WorkflowState
+- Resolve distributed execution bug by properly instantiating WorkflowState
 
-    - Modified WorkflowState constructor to accept optional IAsyncContext for distributed contexts
-    - Updated BaseDistributedAdapter to create WorkflowState
-    - Handled TrackedAsyncContext deltas for proper persistence in distributed execution
+  - Modified WorkflowState constructor to accept optional IAsyncContext for distributed contexts
+  - Updated BaseDistributedAdapter to create WorkflowState
+  - Handled TrackedAsyncContext deltas for proper persistence in distributed execution
 
 ## 2.7.0
 
