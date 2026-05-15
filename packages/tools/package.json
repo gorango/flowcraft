@@ -1,0 +1,104 @@
+{
+	"name": "@flowcraft/tools",
+	"version": "0.1.0",
+	"description": "AI agent tools for composing, orchestrating, and executing Flowcraft workflows",
+	"keywords": [
+		"agentic-workflows",
+		"ai-agents",
+		"ai-tools",
+		"flowcraft",
+		"langchain",
+		"llm-orchestration",
+		"vercel-ai"
+	],
+	"homepage": "https://flowcraft.js.org",
+	"bugs": "https://github.com/gorango/flowcraft/issues",
+	"license": "MIT",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/gorango/flowcraft.git",
+		"directory": "packages/tools"
+	},
+	"files": [
+		"dist"
+	],
+	"type": "module",
+	"exports": {
+		".": {
+			"types": "./dist/index.d.mts",
+			"import": "./dist/index.mjs"
+		},
+		"./compose": {
+			"types": "./dist/compose/index.d.mts",
+			"import": "./dist/compose/index.mjs"
+		},
+		"./orchestrate": {
+			"types": "./dist/orchestrate/index.d.mts",
+			"import": "./dist/orchestrate/index.mjs"
+		},
+		"./actions": {
+			"types": "./dist/actions/index.d.mts",
+			"import": "./dist/actions/index.mjs"
+		},
+		"./discover": {
+			"types": "./dist/discover/index.d.mts",
+			"import": "./dist/discover/index.mjs"
+		},
+		"./resolve": {
+			"types": "./dist/resolve/index.d.mts",
+			"import": "./dist/resolve/index.mjs"
+		},
+		"./adapters": {
+			"types": "./dist/adapters/index.d.mts",
+			"import": "./dist/adapters/index.mjs"
+		}
+	},
+	"scripts": {
+		"dev": "tsdown --watch",
+		"build": "tsdown",
+		"typecheck": "tsc --noEmit",
+		"test": "vitest run",
+		"test:watch": "vitest",
+		"test:coverage": "vitest run --coverage"
+	},
+	"dependencies": {
+		"zod": "^3.25.0",
+		"zod-to-json-schema": "^3.24.0"
+	},
+	"devDependencies": {
+		"@anthropic-ai/sdk": "^0.30.0",
+		"@langchain/core": "^0.3.0",
+		"@types/node": "^25.6.0",
+		"@vitest/coverage-v8": "^4.1.4",
+		"ai": "^4.0.0",
+		"flowcraft": "workspace:*",
+		"openai": "^4.0.0",
+		"tsdown": "^0.21.7",
+		"typescript": "^6.0.2",
+		"vitest": "^4.1.4"
+	},
+	"peerDependencies": {
+		"@anthropic-ai/sdk": ">=0.30.0",
+		"@langchain/core": ">=0.3.0",
+		"ai": ">=4.0.0",
+		"flowcraft": ">=2.10.0",
+		"openai": ">=4.0.0"
+	},
+	"peerDependenciesMeta": {
+		"@anthropic-ai/sdk": {
+			"optional": true
+		},
+		"@langchain/core": {
+			"optional": true
+		},
+		"ai": {
+			"optional": true
+		},
+		"flowcraft": {
+			"optional": true
+		},
+		"openai": {
+			"optional": true
+		}
+	}
+}

@@ -1,0 +1,17 @@
+{
+	"compilerOptions": {
+		"target": "esnext",
+		"module": "esnext",
+		"moduleResolution": "bundler",
+		"strict": true,
+		"noImplicitAny": true,
+		"declaration": true,
+		"outDir": "dist",
+		"sourceMap": true,
+		"esModuleInterop": true,
+		"skipLibCheck": true,
+		"types": ["node", "vitest/globals"]
+	},
+	"include": ["./src", "./test"],
+	"exclude": ["node_modules", "dist"]
+}
