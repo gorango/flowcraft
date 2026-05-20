@@ -1,4 +1,4 @@
-import { zodToJsonSchema } from 'zod-to-json-schema'
+import * as z from 'zod'
 import type { WorkflowTool } from '../types'
 
 export interface LangChainTool {
@@ -12,7 +12,7 @@ export function toLangChainTool(tool: WorkflowTool): LangChainTool {
 	return {
 		name: tool.name,
 		description: tool.description,
-		schema: zodToJsonSchema(tool.parameters) as Record<string, unknown>,
+		schema: z.toJSONSchema(tool.parameters) as Record<string, unknown>,
 		func: async (input: string) => {
 			const params = typeof input === 'string' ? JSON.parse(input) : input
 			const result = await tool.execute(params)

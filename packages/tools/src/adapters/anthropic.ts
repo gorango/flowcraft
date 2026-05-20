@@ -1,4 +1,4 @@
-import { zodToJsonSchema } from 'zod-to-json-schema'
+import * as z from 'zod'
 import type { WorkflowTool } from '../types'
 
 export interface AnthropicTool {
@@ -11,7 +11,7 @@ export function toAnthropicTool(tool: WorkflowTool): AnthropicTool {
 	return {
 		name: tool.name,
 		description: tool.description,
-		input_schema: zodToJsonSchema(tool.parameters) as Record<string, unknown>,
+		input_schema: z.toJSONSchema(tool.parameters) as Record<string, unknown>,
 	}
 }
 

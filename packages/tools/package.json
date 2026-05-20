@@ -62,17 +62,16 @@
 		"test:coverage": "vitest run --coverage"
 	},
 	"dependencies": {
-		"zod": "^3.25.0",
-		"zod-to-json-schema": "^3.24.0"
+		"zod": "^4.4.3"
 	},
 	"devDependencies": {
-		"@anthropic-ai/sdk": "^0.30.0",
-		"@langchain/core": "^0.3.0",
+		"@anthropic-ai/sdk": "^0.96.0",
+		"@langchain/core": "^1.1.46",
 		"@types/node": "^25.6.0",
 		"@vitest/coverage-v8": "^4.1.4",
-		"ai": "^4.0.0",
+		"ai": "^6.0.182",
 		"flowcraft": "workspace:*",
-		"openai": "^4.0.0",
+		"openai": "^6.37.0",
 		"tsdown": "^0.21.7",
 		"typescript": "^6.0.2",
 		"vitest": "^4.1.4"

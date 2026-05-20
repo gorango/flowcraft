@@ -1,4 +1,4 @@
-import { zodToJsonSchema } from 'zod-to-json-schema'
+import * as z from 'zod'
 import type { WorkflowTool } from '../types'
 
 export interface OpenAIFunctionSchema {
@@ -16,7 +16,7 @@ export function toOpenAISchema(tool: WorkflowTool): OpenAIFunctionSchema {
 		function: {
 			name: tool.name,
 			description: tool.description,
-			parameters: zodToJsonSchema(tool.parameters) as Record<string, unknown>,
+			parameters: z.toJSONSchema(tool.parameters) as Record<string, unknown>,
 		},
 	}
 }

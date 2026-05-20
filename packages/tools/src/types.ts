@@ -85,6 +85,21 @@ export interface FlowcraftRuntime {
 		status: string
 		errors?: Array<{ message: string; nodeId?: string }>
 	}>
+	executeNodes(
+		blueprint: WorkflowBlueprint,
+		executionId: string,
+		nodeIds: string[],
+		events: unknown[],
+		options?: {
+			inputOverrides?: Record<string, Record<string, unknown>>
+			signal?: AbortSignal
+		},
+	): Promise<{
+		context: Record<string, unknown>
+		serializedContext: string
+		status: string
+		errors?: Array<{ message: string; nodeId?: string }>
+	}>
 }
 
 export interface EventStore {
@@ -113,6 +128,16 @@ export type ExecutionMode = 'sync' | 'async'
 export interface AsyncExecutionStore {
 	start(executionId: string, fn: () => Promise<ToolResult>): void
 	get(executionId: string): Promise<ToolResult | undefined>
+}
+
+export interface NodeImplementationRegistry {
+	has(usesKey: string): boolean
+	getSchema?(usesKey: string): Record<string, unknown> | undefined
+}
+
+export interface TemplateStore {
+	get(name: string): WorkflowBlueprint | undefined
+	list(): string[]
 }
 
 export const INTERNAL_NODE_USES = [
