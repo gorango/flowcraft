@@ -206,6 +206,103 @@ Executes a specific set of nodes within a workflow, reconstructing state from a 
 
 This method: 1) Reconstructs context from `context:change` events; 2) builds a predecessor map for edge transform resolution; 3) Executes each node sequentially; 4) Propagates outputs through edge transforms; 5) Emits `node:start`, `node:finish`, and `node:error` events
 
+### `.patchContext(blueprint, executionId, events, patches)`
+
+Modifies context values mid-execution by reconstructing state from a pre-recorded event history and applying patch operations. Useful for debugging, correcting workflow state, or building tools that manipulate execution context.
+
+- **`blueprint`** [`WorkflowBlueprint`](/api/flow#workflowblueprint-interface): The workflow blueprint.
+- **`executionId`** `string`: The execution ID to patch.
+- **`events`** `FlowcraftEvent[]`: Historical events to reconstruct the current context state from.
+- **`patches`** `Array<{ key: string; value: unknown; op: 'set' | 'delete' }>`: Context modifications to apply.
+- **Returns**: `Promise<WorkflowResult<TContext>>`
+
+This method: 1) Reconstructs context from `context:change` and `node:finish` events; 2) Creates a new `WorkflowState` from the reconstructed data; 3) Applies each patch via the async context (which emits `context:change` events); 4) Returns the updated workflow result.
+
+```typescript
+const result = await runtime.patchContext(blueprint, executionId, events, [
+	{ key: 'userEmail', value: 'updated@example.com', op: 'set' },
+	{ key: 'tempData', value: undefined, op: 'delete' },
+])
+```
+
+### `.markNodeCompleted(blueprint, executionId, nodeId, output)`
+
+Manually marks a node as completed with a synthetic output, without executing its logic. Unlike `executeNodes()`, this does NOT emit `node:start` — only `node:finish`. Edge transforms are propagated to downstream nodes so their inputs are populated correctly.
+
+- **`blueprint`** [`WorkflowBlueprint`](/api/flow#workflowblueprint-interface): The workflow blueprint.
+- **`executionId`** `string`: The execution ID.
+- **`nodeId`** `string`: The node to mark as completed.
+- **`output`** `unknown`: The synthetic output to store.
+- **Returns**: `Promise<WorkflowResult<TContext>>`
+
+Throws `FlowcraftError` if the node does not exist in the blueprint. Clears any existing error state on the node before marking it complete.
+
+```typescript
+// Skip a node by providing a synthetic output
+const result = await runtime.markNodeCompleted(blueprint, executionId, 'optionalStep', {
+	skipped: true,
+})
+```
+
+### `.requestPause(executionId)`
+
+Sets a pause flag for a running execution. The orchestrator checks this flag between node iterations and will pause at the next safe checkpoint by marking the first uncompleted node as awaiting.
+
+- **`executionId`** `string`: The execution to pause.
+- **Returns**: `void`
+
+The paused workflow can be resumed later via `.resume()`. This is the mechanism behind programmatic pause points and human-in-the-loop breakpoints.
+
+```typescript
+// During execution, request a pause
+runtime.requestPause(executionId)
+// The orchestrator will pause at the next node boundary
+// Then resume later
+const resumed = await runtime.resume(blueprint, serializedContext, { output: 'continue' })
+```
+
+### `.rollbackExecution(blueprint, executionId, events, targetNodeId)`
+
+Undoes context mutations for nodes completed **after** a target node, effectively reverting execution state to that point. This is a "soft" rollback — it removes outputs, inputs, and errors from context but cannot undo side effects (API calls, database writes, etc.) that occurred during node execution.
+
+- **`blueprint`** [`WorkflowBlueprint`](/api/flow#workflowblueprint-interface): The workflow blueprint.
+- **`executionId`** `string`: The execution ID.
+- **`events`** `FlowcraftEvent[]`: Historical events to reconstruct the current context state from.
+- **`targetNodeId`** `string`: The node to rollback to (this node remains completed).
+- **Returns**: `Promise<WorkflowResult<TContext>>`
+
+Throws `FlowcraftError` if the target node has not completed. Uses BFS to find all downstream nodes from the target, then removes their `_outputs`, `_inputs`, and error entries from context.
+
+```typescript
+// Rollback to node B, removing C and D's effects
+const result = await runtime.rollbackExecution(blueprint, executionId, events, 'B')
+// result.context['_outputs.B'] is preserved
+// result.context['_outputs.C'] is undefined
+```
+
+### `.replayFrom(blueprint, events, fromNodeId, options?)`
+
+Replays execution from a specific node with optional input overrides. Reconstructs state from events, pre-populates ancestor node outputs as initial state, then runs the workflow via `.run()` from that point.
+
+- **`blueprint`** [`WorkflowBlueprint`](/api/flow#workflowblueprint-interface): The workflow blueprint.
+- **`events`** `FlowcraftEvent[]`: The full event history.
+- **`fromNodeId`** `string`: The node to replay from (must exist in the blueprint).
+- **`options?`**:
+    - **`inputOverrides?`**: `Record<string, unknown>` — values to inject into the initial context.
+    - **`functionRegistry?`**: A `Map` of node implementations.
+    - **`signal?`**: An `AbortSignal` to cancel execution.
+- **Returns**: `Promise<WorkflowResult<TContext>>`
+
+Throws `FlowcraftError` if the node does not exist in the blueprint. Ancestor outputs (nodes that are predecessors of `fromNodeId`) are pre-populated so downstream nodes receive correct inputs.
+
+```typescript
+// Replay from the point of failure with corrected input
+const result = await runtime.replayFrom(blueprint, events, 'processData', {
+	inputOverrides: { inputData: correctedData },
+	functionRegistry: flow.getFunctionRegistry(),
+})
+```
+
 ### `.startScheduler(checkIntervalMs?)`
 
 Starts the internal [`WorkflowScheduler`](/api/runtime#workflowscheduler) that monitors awaiting workflows and automatically resumes them when their timers expire. Required for `sleep` nodes to function in in-memory workflows.
