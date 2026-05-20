@@ -86,6 +86,18 @@ export class DefaultOrchestrator implements IOrchestrator {
 					break
 				}
 			}
+
+			if (context.runtime.pauseFlags.get(context.executionId)) {
+				const completed = context.state.getCompletedNodes()
+				const allNodeIds = traverser.getAllNodeIds()
+				for (const nodeId of allNodeIds) {
+					if (!completed.has(nodeId)) {
+						await context.state.markAsAwaiting(nodeId, { reason: 'user_pause' })
+						break
+					}
+				}
+				break
+			}
 		}
 
 		const isTraversalComplete = !traverser.hasMoreWork()

@@ -738,3 +738,32 @@ describe('FlowRuntime - markNodeCompleted', () => {
 		expect(result.errors).toBeUndefined()
 	})
 })
+
+describe('FlowRuntime - requestPause', () => {
+	it('should set pause flag for execution', () => {
+		const runtime = new FlowRuntime()
+
+		runtime.requestPause('exec-123')
+
+		expect(runtime.pauseFlags.get('exec-123')).toBe(true)
+	})
+
+	it('should be idempotent', () => {
+		const runtime = new FlowRuntime()
+
+		runtime.requestPause('exec-123')
+		runtime.requestPause('exec-123')
+		runtime.requestPause('exec-123')
+
+		expect(runtime.pauseFlags.get('exec-123')).toBe(true)
+		expect(runtime.pauseFlags.size).toBe(1)
+	})
+
+	it('should not affect other executions', () => {
+		const runtime = new FlowRuntime()
+
+		runtime.requestPause('exec-123')
+
+		expect(runtime.pauseFlags.get('exec-456')).toBeUndefined()
+	})
+})

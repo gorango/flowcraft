@@ -60,6 +60,11 @@ export class FlowRuntime<
 	private readonly logicHandler: WorkflowLogicHandler
 	private readonly executorFactory: NodeExecutorFactory
 	public scheduler: WorkflowScheduler
+	private _pauseFlags: Map<string, boolean> = new Map()
+
+	get pauseFlags(): Map<string, boolean> {
+		return this._pauseFlags
+	}
 
 	getBlueprint(id: string): WorkflowBlueprint | undefined {
 		return this.blueprints[id]
@@ -1063,5 +1068,15 @@ export class FlowRuntime<
 		}
 
 		return workflowState.toResult(this.serializer, executionId)
+	}
+
+	/**
+	 * Request that a running execution pause at the next safe checkpoint.
+	 * The execution will be marked as awaiting and can be resumed later.
+	 *
+	 * @param executionId The execution to pause
+	 */
+	requestPause(executionId: string): void {
+		this._pauseFlags.set(executionId, true)
 	}
 }
