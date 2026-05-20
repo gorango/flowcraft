@@ -190,6 +190,22 @@ The replay system processes these event types to reconstruct state:
 
 Replay always produces a "completed" status since it reconstructs the final state without re-executing logic.
 
+### `.executeNodes(blueprint, executionId, nodeIds, events, options?)`
+
+Executes a specific set of nodes within a workflow, reconstructing state from a pre-recorded event history. Useful for debugging, re-running failed nodes, or selectively executing a subset of a workflow.
+
+- **`blueprint`** [`WorkflowBlueprint`](/api/flow#workflowblueprint-interface): The workflow blueprint.
+- **`executionId`** `string`: The execution ID for the run.
+- **`nodeIds`** `string[]`: An array of node IDs to execute in order.
+- **`events`** `FlowcraftEvent[]`: Historical events to reconstruct initial context from.
+- **`options?`**:
+    - **`inputOverrides?`**: A record of node ID to input value overrides.
+    - **`signal?`**: An `AbortSignal` to cancel execution.
+    - **`functionRegistry?`**: A `Map` of node implementations.
+- **Returns**: `Promise<WorkflowResult<TContext>>`
+
+This method: 1) Reconstructs context from `context:change` events; 2) builds a predecessor map for edge transform resolution; 3) Executes each node sequentially; 4) Propagates outputs through edge transforms; 5) Emits `node:start`, `node:finish`, and `node:error` events
+
 ### `.startScheduler(checkIntervalMs?)`
 
 Starts the internal [`WorkflowScheduler`](/api/runtime#workflowscheduler) that monitors awaiting workflows and automatically resumes them when their timers expire. Required for `sleep` nodes to function in in-memory workflows.

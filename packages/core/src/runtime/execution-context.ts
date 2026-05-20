@@ -36,6 +36,7 @@ export class ExecutionContext<
 		},
 		public readonly signal?: AbortSignal,
 		public readonly concurrency?: number,
+		public readonly targetNodeIds?: Set<string>,
 	) {
 		this.state.setEventEmitter(this.services.eventBus, this.executionId)
 	}
@@ -54,6 +55,7 @@ export class ExecutionContext<
 			this.services,
 			this.signal,
 			this.concurrency,
+			this.targetNodeIds,
 		)
 	}
 }

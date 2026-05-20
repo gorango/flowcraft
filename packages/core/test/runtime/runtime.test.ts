@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { createFlow } from '../../src/flow'
 import { FlowRuntime } from '../../src/runtime/runtime'
 import { WorkflowState } from '../../src/runtime/state'
+import { UnsafeEvaluator } from '../../src/evaluator'
 import type { FlowcraftEvent, IEventBus } from '../../src/types'
 
 class MockEventBus implements IEventBus {
@@ -323,5 +324,185 @@ describe('FlowRuntime - replay edge cases', () => {
 
 		const replayResult = await runtime.replay(blueprint, eventBus.events, executionId)
 		expect(replayResult.status).toBe('completed')
+	})
+})
+
+describe('FlowRuntime - executeNodes', () => {
+	it('should reconstruct context from context:change events', async () => {
+		const flow = createFlow('exec-nodes-basic').node('A', async ({ context }) => {
+			await context.set('value', 42)
+			return { output: 'done' }
+		})
+
+		const blueprint = flow.toBlueprint()
+		const runtime = new FlowRuntime()
+
+		const events: FlowcraftEvent[] = [
+			{
+				type: 'context:change',
+				payload: { sourceNode: 'A', key: 'value', op: 'set', value: 42 },
+			},
+		]
+
+		const result = await runtime.executeNodes(blueprint, 'test-exec', [], events, {
+			functionRegistry: flow.getFunctionRegistry(),
+		})
+
+		expect(result.context.value).toBe(42)
+	})
+
+	it('should execute a single node and store output', async () => {
+		const eventBus = new MockEventBus()
+		const runtime = new FlowRuntime({ eventBus })
+
+		const flow = createFlow('exec-nodes-single').node('A', async () => ({
+			output: 'a-output',
+		}))
+
+		const blueprint = flow.toBlueprint()
+		const events: FlowcraftEvent[] = []
+
+		const result = await runtime.executeNodes(blueprint, 'test-exec', ['A'], events, {
+			functionRegistry: flow.getFunctionRegistry(),
+		})
+
+		expect(result.context.A).toBe('a-output')
+		expect(result.context['_outputs.A']).toBe('a-output')
+	})
+
+	it('should apply edge transforms during execution', async () => {
+		const evaluator = new UnsafeEvaluator()
+		const runtime = new FlowRuntime({ evaluator })
+
+		const flow = createFlow('exec-nodes-transform')
+			.node('A', async () => ({ output: 100 }))
+			.node('B', async ({ params }) => ({ output: params.result }))
+			.edge('A', 'B', { transform: 'input * 2' })
+
+		const blueprint = flow.toBlueprint()
+
+		const result = await runtime.executeNodes(blueprint, 'test-exec', ['A', 'B'], [], {
+			functionRegistry: flow.getFunctionRegistry(),
+		})
+
+		expect(result.context['_inputs.B']).toBe(200)
+	})
+
+	it('should throw when executing non-existent node', async () => {
+		const runtime = new FlowRuntime()
+
+		const flow = createFlow('exec-nodes-missing').node('A', async () => ({ output: 'a' }))
+
+		const blueprint = flow.toBlueprint()
+
+		await expect(runtime.executeNodes(blueprint, 'test-exec', ['missing'], [])).rejects.toThrow(
+			"Node 'missing' not found",
+		)
+	})
+
+	it('should handle inputOverrides for specific nodes', async () => {
+		const runtime = new FlowRuntime()
+
+		const flow = createFlow('exec-nodes-override').node('A', async ({ context }) => ({
+			output: await context.get('customInput' as any),
+		}))
+
+		const blueprint = flow.toBlueprint()
+
+		const result = await runtime.executeNodes(blueprint, 'test-exec', ['A'], [], {
+			functionRegistry: flow.getFunctionRegistry(),
+			inputOverrides: {
+				A: { customInput: 'override-value' },
+			},
+		})
+
+		expect(result.context.A).toBe('override-value')
+	})
+
+	it('should emit node:start and node:finish events', async () => {
+		const eventBus = new MockEventBus()
+		const runtime = new FlowRuntime({ eventBus })
+
+		const flow = createFlow('exec-nodes-events').node('A', async () => ({ output: 'a' }))
+
+		const blueprint = flow.toBlueprint()
+
+		await runtime.executeNodes(blueprint, 'test-exec', ['A'], [], {
+			functionRegistry: flow.getFunctionRegistry(),
+		})
+
+		const nodeStart = eventBus.events.find((e) => e.type === 'node:start')
+		const nodeFinish = eventBus.events.find((e) => e.type === 'node:finish')
+
+		expect(nodeStart).toBeDefined()
+		expect(nodeStart?.payload.nodeId).toBe('A')
+		expect(nodeFinish).toBeDefined()
+		expect(nodeFinish?.payload.nodeId).toBe('A')
+	})
+
+	it('should handle node errors and emit node:error event', async () => {
+		const eventBus = new MockEventBus()
+		const runtime = new FlowRuntime({ eventBus })
+
+		const flow = createFlow('exec-nodes-error').node('A', async () => {
+			throw new Error('Node failed')
+		})
+
+		const blueprint = flow.toBlueprint()
+
+		await expect(
+			runtime.executeNodes(blueprint, 'test-exec', ['A'], [], {
+				functionRegistry: flow.getFunctionRegistry(),
+			}),
+		).rejects.toThrow()
+
+		const nodeError = eventBus.events.find((e) => e.type === 'node:error')
+		expect(nodeError).toBeDefined()
+		expect(nodeError?.payload.nodeId).toBe('A')
+		expect(nodeError?.payload.error.message).toContain('execution failed')
+	})
+
+	it('should handle context:change with delete operation', async () => {
+		const runtime = new FlowRuntime()
+
+		const flow = createFlow('exec-nodes-delete').node('A', async ({ context }) => {
+			await context.set('temp', 'value')
+			await context.delete('temp')
+			return { output: 'done' }
+		})
+
+		const blueprint = flow.toBlueprint()
+
+		const events: FlowcraftEvent[] = [
+			{
+				type: 'context:change',
+				payload: { sourceNode: 'A', key: 'temp', op: 'set', value: 'value' },
+			},
+			{ type: 'context:change', payload: { sourceNode: 'A', key: 'temp', op: 'delete' } },
+		]
+
+		const result = await runtime.executeNodes(blueprint, 'test-exec', ['A'], events, {
+			functionRegistry: flow.getFunctionRegistry(),
+		})
+
+		expect(result.context.temp).toBeUndefined()
+	})
+
+	it('should execute multiple nodes in sequence', async () => {
+		const runtime = new FlowRuntime()
+
+		const flow = createFlow('exec-nodes-chain')
+			.node('A', async () => ({ output: 10 }))
+			.node('B', async () => ({ output: 20 }))
+			.edge('A', 'B')
+
+		const blueprint = flow.toBlueprint()
+
+		const result = await runtime.executeNodes(blueprint, 'test-exec', ['A', 'B'], [], {
+			functionRegistry: flow.getFunctionRegistry(),
+		})
+
+		expect(result.context.A).toBe(10)
+		expect(result.context.B).toBe(20)
 	})
 })

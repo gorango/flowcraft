@@ -53,6 +53,7 @@ export class DefaultOrchestrator implements IOrchestrator {
 				context.services,
 				context.signal,
 				context.concurrency,
+				context.targetNodeIds,
 			)
 			const settledResults = await executeBatch(
 				readyNodes,
@@ -74,6 +75,16 @@ export class DefaultOrchestrator implements IOrchestrator {
 
 			if (context.state.isAwaiting()) {
 				break
+			}
+
+			if (context.targetNodeIds && context.targetNodeIds.size > 0) {
+				const completed = context.state.getCompletedNodes()
+				const allTargetsReached = [...context.targetNodeIds].every((id) =>
+					completed.has(id),
+				)
+				if (allTargetsReached) {
+					break
+				}
 			}
 		}
 

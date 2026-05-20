@@ -149,6 +149,21 @@ export class FlowRuntime<
 			typeof initialState === 'string'
 				? (this.serializer.deserialize(initialState) as Partial<TContext>)
 				: initialState
+
+		let targetNodeIds: Set<string> | undefined
+		if (contextData && '_targetNode' in contextData) {
+			const raw = (contextData as Record<string, unknown>)._targetNode
+			if (typeof raw === 'string') {
+				targetNodeIds = new Set([raw])
+			} else if (Array.isArray(raw)) {
+				targetNodeIds = new Set(raw.filter((id): id is string => typeof id === 'string'))
+			}
+			if (targetNodeIds && targetNodeIds.size === 0) {
+				targetNodeIds = undefined
+			}
+			delete (contextData as Record<string, unknown>)._targetNode
+		}
+
 		blueprint = sanitizeBlueprint(blueprint)
 		const state = new WorkflowState<TContext>(contextData)
 		const nodeRegistry = this._createExecutionRegistry(options?.functionRegistry)
@@ -168,6 +183,7 @@ export class FlowRuntime<
 			},
 			options?.signal,
 			options?.concurrency,
+			targetNodeIds,
 		)
 	}
 
@@ -776,5 +792,148 @@ export class FlowRuntime<
 		const traverser = new GraphTraverser(blueprint)
 
 		return await replayOrchestrator.run(executionContext, traverser)
+	}
+
+	async executeNodes(
+		blueprint: WorkflowBlueprint,
+		executionId: string,
+		nodeIds: string[],
+		events: FlowcraftEvent[],
+		options?: {
+			inputOverrides?: Record<string, Record<string, unknown>>
+			signal?: AbortSignal
+			functionRegistry?: Map<string, any>
+		},
+	): Promise<WorkflowResult<TContext>> {
+		const contextData: Record<string, unknown> = {}
+		for (const event of events) {
+			if (event.type === 'context:change') {
+				const { key, value, op } = event.payload
+				if (key) {
+					if (op === 'delete') {
+						delete contextData[key]
+					} else {
+						contextData[key] = value
+					}
+				}
+			}
+			if (event.type === 'node:finish') {
+				contextData[`_outputs.${event.payload.nodeId}`] = event.payload.result.output
+			}
+		}
+
+		const workflowState = new WorkflowState<TContext>(contextData as Partial<TContext>)
+
+		const allPredecessors = new Map<string, Set<string>>()
+		for (const node of blueprint.nodes) {
+			const preds = new Set<string>()
+			for (const edge of blueprint.edges) {
+				if (edge.target === node.id) preds.add(edge.source)
+			}
+			allPredecessors.set(node.id, preds)
+		}
+
+		const contextImpl = workflowState.getContext()
+
+		for (const nodeId of nodeIds) {
+			const nodeDef = blueprint.nodes.find((n) => n.id === nodeId)
+			if (!nodeDef) {
+				throw new FlowcraftError(`Node '${nodeId}' not found in blueprint`, {
+					nodeId,
+					blueprintId: blueprint.id,
+					executionId,
+					isFatal: false,
+				})
+			}
+
+			workflowState.clearError(nodeId)
+
+			if (options?.inputOverrides?.[nodeId]) {
+				const overrides = options.inputOverrides[nodeId]
+				for (const [key, value] of Object.entries(overrides)) {
+					await contextImpl.set(key as any, value)
+				}
+			}
+
+			await this.eventBus.emit({
+				type: 'node:start',
+				payload: {
+					nodeId,
+					executionId,
+					input: null,
+					blueprintId: blueprint.id,
+				},
+			})
+
+			try {
+				const result = await this.executeNode(
+					blueprint,
+					nodeId,
+					workflowState,
+					allPredecessors,
+					options?.functionRegistry,
+					executionId,
+					options?.signal,
+				)
+
+				workflowState.addCompletedNode(nodeId, result.output)
+
+				await this.eventBus.emit({
+					type: 'node:finish',
+					payload: {
+						nodeId,
+						result,
+						executionId,
+						blueprintId: blueprint.id,
+					},
+				})
+
+				const nextSteps = await this.determineNextNodes(
+					blueprint,
+					nodeId,
+					result,
+					contextImpl,
+					executionId,
+				)
+
+				for (const { node, edge } of nextSteps) {
+					await this.applyEdgeTransform(
+						edge,
+						result,
+						node,
+						contextImpl,
+						allPredecessors,
+						executionId,
+					)
+				}
+			} catch (error) {
+				const flowcraftError =
+					error instanceof FlowcraftError
+						? error
+						: new FlowcraftError(
+								error instanceof Error ? error.message : String(error),
+								{ nodeId, executionId, isFatal: false },
+							)
+
+				await this.eventBus.emit({
+					type: 'node:error',
+					payload: {
+						nodeId,
+						error: flowcraftError,
+						executionId,
+						blueprintId: blueprint.id,
+					},
+				})
+
+				workflowState.addError(
+					nodeId,
+					error instanceof Error ? error : new Error(String(error)),
+				)
+
+				throw error
+			}
+		}
+
+		return workflowState.toResult(this.serializer, executionId)
 	}
 }
