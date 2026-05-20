@@ -1158,4 +1158,107 @@ export class FlowRuntime<
 
 		return workflowState.toResult(this.serializer, executionId)
 	}
+
+	/**
+	 * Replay an execution from a specific node, with optional input overrides.
+	 * Reconstructs state from events up to the target node, then runs the
+	 * workflow from that point.
+	 *
+	 * @param blueprint The workflow blueprint
+	 * @param events The full event history
+	 * @param fromNodeId The node to replay from (must have completed in original execution)
+	 * @param options Optional input overrides and execution ID
+	 * @returns The replayed workflow result
+	 */
+	async replayFrom(
+		blueprint: WorkflowBlueprint,
+		events: FlowcraftEvent[],
+		fromNodeId: string,
+		options?: {
+			inputOverrides?: Record<string, unknown>
+			executionId?: string
+			signal?: AbortSignal
+			functionRegistry?: Map<string, any>
+		},
+	): Promise<WorkflowResult<TContext>> {
+		const fromNodeDef = blueprint.nodes.find((n) => n.id === fromNodeId)
+		if (!fromNodeDef) {
+			throw new FlowcraftError(`Node '${fromNodeId}' not found in blueprint`, {
+				nodeId: fromNodeId,
+				blueprintId: blueprint.id,
+				isFatal: false,
+			})
+		}
+
+		const contextData: Record<string, unknown> = {}
+		for (const event of events) {
+			if (event.type === 'context:change') {
+				const { key, value, op } = event.payload
+				if (key) {
+					if (op === 'delete') {
+						delete contextData[key]
+					} else {
+						contextData[key] = value
+					}
+				}
+			}
+			if (event.type === 'node:finish') {
+				contextData[`_outputs.${event.payload.nodeId}`] = event.payload.result.output
+			}
+		}
+
+		const allPredecessors = new Map<string, Set<string>>()
+		for (const node of blueprint.nodes) {
+			const preds = new Set<string>()
+			for (const edge of blueprint.edges) {
+				if (edge.target === node.id) preds.add(edge.source)
+			}
+			allPredecessors.set(node.id, preds)
+		}
+
+		const getAncestors = (nodeId: string): Set<string> => {
+			const ancestors = new Set<string>()
+			const queue = [nodeId]
+			const visited = new Set<string>()
+			while (queue.length > 0) {
+				const current = queue.shift()!
+				if (visited.has(current)) continue
+				visited.add(current)
+				ancestors.add(current)
+				const preds = allPredecessors.get(current)
+				if (preds) {
+					for (const pred of preds) {
+						queue.push(pred)
+					}
+				}
+			}
+			return ancestors
+		}
+
+		const ancestors = getAncestors(fromNodeId)
+
+		const initialState: Record<string, unknown> = {}
+		for (const [key, value] of Object.entries(contextData)) {
+			if (key.startsWith('_outputs.')) {
+				const nodeId = key.substring('_outputs.'.length)
+				if (ancestors.has(nodeId) || nodeId === fromNodeId) {
+					initialState[key] = value
+					initialState[nodeId] = value
+				}
+			} else if (!key.startsWith('_outputs.') && !key.startsWith('_inputs.')) {
+				initialState[key] = value
+			}
+		}
+
+		if (options?.inputOverrides) {
+			Object.assign(initialState, options.inputOverrides)
+		}
+
+		const result = await this.run(blueprint, initialState as Partial<TContext>, {
+			signal: options?.signal,
+			functionRegistry: options?.functionRegistry,
+		})
+
+		return result
+	}
 }

@@ -340,7 +340,13 @@ describe('FlowRuntime - executeNodes', () => {
 		const events: FlowcraftEvent[] = [
 			{
 				type: 'context:change',
-				payload: { sourceNode: 'A', key: 'value', op: 'set', value: 42 },
+				payload: {
+					sourceNode: 'A',
+					key: 'value',
+					op: 'set',
+					value: 42,
+					executionId: 'test-exec',
+				},
 			},
 		]
 
@@ -476,9 +482,18 @@ describe('FlowRuntime - executeNodes', () => {
 		const events: FlowcraftEvent[] = [
 			{
 				type: 'context:change',
-				payload: { sourceNode: 'A', key: 'temp', op: 'set', value: 'value' },
+				payload: {
+					sourceNode: 'A',
+					key: 'temp',
+					op: 'set',
+					value: 'value',
+					executionId: 'test-exec',
+				},
 			},
-			{ type: 'context:change', payload: { sourceNode: 'A', key: 'temp', op: 'delete' } },
+			{
+				type: 'context:change',
+				payload: { sourceNode: 'A', key: 'temp', op: 'delete', executionId: 'test-exec' },
+			},
 		]
 
 		const result = await runtime.executeNodes(blueprint, 'test-exec', ['A'], events, {
@@ -775,15 +790,30 @@ describe('FlowRuntime - rollbackExecution', () => {
 		const events: FlowcraftEvent[] = [
 			{
 				type: 'node:finish',
-				payload: { nodeId: 'A', result: { output: 'a' }, executionId: 'test-exec', blueprintId: 'test' },
+				payload: {
+					nodeId: 'A',
+					result: { output: 'a' },
+					executionId: 'test-exec',
+					blueprintId: 'test',
+				},
 			},
 			{
 				type: 'node:finish',
-				payload: { nodeId: 'B', result: { output: 'b' }, executionId: 'test-exec', blueprintId: 'test' },
+				payload: {
+					nodeId: 'B',
+					result: { output: 'b' },
+					executionId: 'test-exec',
+					blueprintId: 'test',
+				},
 			},
 			{
 				type: 'node:finish',
-				payload: { nodeId: 'C', result: { output: 'c' }, executionId: 'test-exec', blueprintId: 'test' },
+				payload: {
+					nodeId: 'C',
+					result: { output: 'c' },
+					executionId: 'test-exec',
+					blueprintId: 'test',
+				},
 			},
 		]
 
@@ -809,7 +839,12 @@ describe('FlowRuntime - rollbackExecution', () => {
 		const events: FlowcraftEvent[] = [
 			{
 				type: 'node:finish',
-				payload: { nodeId: 'A', result: { output: 'a' }, executionId: 'test-exec', blueprintId: 'test' },
+				payload: {
+					nodeId: 'A',
+					result: { output: 'a' },
+					executionId: 'test-exec',
+					blueprintId: 'test',
+				},
 			},
 		]
 
@@ -830,11 +865,21 @@ describe('FlowRuntime - rollbackExecution', () => {
 		const events: FlowcraftEvent[] = [
 			{
 				type: 'node:finish',
-				payload: { nodeId: 'A', result: { output: 'a' }, executionId: 'test-exec', blueprintId: 'test' },
+				payload: {
+					nodeId: 'A',
+					result: { output: 'a' },
+					executionId: 'test-exec',
+					blueprintId: 'test',
+				},
 			},
 			{
 				type: 'node:finish',
-				payload: { nodeId: 'B', result: { output: 'b' }, executionId: 'test-exec', blueprintId: 'test' },
+				payload: {
+					nodeId: 'B',
+					result: { output: 'b' },
+					executionId: 'test-exec',
+					blueprintId: 'test',
+				},
 			},
 		]
 
@@ -858,11 +903,21 @@ describe('FlowRuntime - rollbackExecution', () => {
 		const events: FlowcraftEvent[] = [
 			{
 				type: 'node:finish',
-				payload: { nodeId: 'A', result: { output: 'a' }, executionId: 'test-exec', blueprintId: 'test' },
+				payload: {
+					nodeId: 'A',
+					result: { output: 'a' },
+					executionId: 'test-exec',
+					blueprintId: 'test',
+				},
 			},
 			{
 				type: 'node:finish',
-				payload: { nodeId: 'B', result: { output: 'b' }, executionId: 'test-exec', blueprintId: 'test' },
+				payload: {
+					nodeId: 'B',
+					result: { output: 'b' },
+					executionId: 'test-exec',
+					blueprintId: 'test',
+				},
 			},
 		]
 
@@ -884,15 +939,31 @@ describe('FlowRuntime - rollbackExecution', () => {
 		const events: FlowcraftEvent[] = [
 			{
 				type: 'context:change',
-				payload: { sourceNode: 'A', key: 'userData', op: 'set', value: { name: 'test' }, executionId: 'test-exec' },
+				payload: {
+					sourceNode: 'A',
+					key: 'userData',
+					op: 'set',
+					value: { name: 'test' },
+					executionId: 'test-exec',
+				},
 			},
 			{
 				type: 'node:finish',
-				payload: { nodeId: 'A', result: { output: 'a' }, executionId: 'test-exec', blueprintId: 'test' },
+				payload: {
+					nodeId: 'A',
+					result: { output: 'a' },
+					executionId: 'test-exec',
+					blueprintId: 'test',
+				},
 			},
 			{
 				type: 'node:finish',
-				payload: { nodeId: 'B', result: { output: 'b' }, executionId: 'test-exec', blueprintId: 'test' },
+				payload: {
+					nodeId: 'B',
+					result: { output: 'b' },
+					executionId: 'test-exec',
+					blueprintId: 'test',
+				},
 			},
 		]
 

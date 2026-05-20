@@ -6,6 +6,7 @@ import {
 import { createFlow } from '../../src/flow'
 import { FlowRuntime } from '../../src/runtime/runtime'
 import { InMemoryEventLogger } from '../../src/testing/event-logger'
+import type { FlowcraftEvent } from '../../src/types'
 
 describe('Workflow Replay', () => {
 	describe('Basic Replay Functionality', () => {
@@ -451,6 +452,165 @@ describe('Workflow Replay', () => {
 				expect(replayResult.status).toBe('completed')
 				expect(replayResult.context['_outputs.shared']).toBe('shared')
 			})
+		})
+	})
+
+	describe('replayFrom', () => {
+		it('should replay from a middle node with ancestors pre-populated', async () => {
+			const runtime = new FlowRuntime()
+
+			const flow = createFlow('replay-from-chain')
+				.node('A', async () => ({ output: 'a' }))
+				.node('B', async () => ({ output: 'b' }))
+				.node('C', async () => ({ output: 'c' }))
+				.edge('A', 'B')
+				.edge('B', 'C')
+
+			const blueprint = flow.toBlueprint()
+
+			const events: FlowcraftEvent[] = [
+				{
+					type: 'context:change',
+					payload: {
+						sourceNode: 'init',
+						key: 'sharedData',
+						op: 'set',
+						value: 'preserved',
+						executionId: 'orig-exec',
+					},
+				},
+				{
+					type: 'node:finish',
+					payload: {
+						nodeId: 'A',
+						result: { output: 'pre-populated-a' },
+						executionId: 'orig-exec',
+						blueprintId: 'replay-from-chain',
+					},
+				},
+				{
+					type: 'node:finish',
+					payload: {
+						nodeId: 'B',
+						result: { output: 'pre-populated-b' },
+						executionId: 'orig-exec',
+						blueprintId: 'replay-from-chain',
+					},
+				},
+			]
+
+			const result = await runtime.replayFrom(blueprint, events, 'B', {
+				functionRegistry: flow.getFunctionRegistry(),
+			})
+
+			expect(result.status).toBe('completed')
+			expect(result.context.sharedData).toBe('preserved')
+			expect(result.context['_outputs.A']).toBe('a')
+			expect(result.context['_outputs.B']).toBe('b')
+			expect(result.context['_outputs.C']).toBe('c')
+		})
+
+		it('should apply input overrides', async () => {
+			const runtime = new FlowRuntime()
+
+			const flow = createFlow('replay-from-overrides')
+				.node('A', async () => ({ output: 'a' }))
+				.node('B', async ({ context }) => ({
+					output: await context.get('overrideKey' as any),
+				}))
+				.edge('A', 'B')
+
+			const blueprint = flow.toBlueprint()
+
+			const events: FlowcraftEvent[] = [
+				{
+					type: 'node:finish',
+					payload: {
+						nodeId: 'A',
+						result: { output: 'original' },
+						executionId: 'orig',
+						blueprintId: 'replay-from-overrides',
+					},
+				},
+			]
+
+			const result = await runtime.replayFrom(blueprint, events, 'B', {
+				inputOverrides: { overrideKey: 'overridden' },
+				functionRegistry: flow.getFunctionRegistry(),
+			})
+
+			expect(result.context.overrideKey).toBe('overridden')
+		})
+
+		it('should throw when fromNodeId does not exist', async () => {
+			const runtime = new FlowRuntime()
+
+			const flow = createFlow('replay-from-missing').node('A', async () => ({ output: 'a' }))
+
+			const blueprint = flow.toBlueprint()
+
+			await expect(runtime.replayFrom(blueprint, [], 'nonexistent')).rejects.toThrow(
+				"Node 'nonexistent' not found",
+			)
+		})
+
+		it('should execute downstream nodes when replaying from start', async () => {
+			const runtime = new FlowRuntime()
+
+			const flow = createFlow('replay-from-start')
+				.node('A', async () => ({ output: 'from-a' }))
+				.node('B', async ({ input }) => ({ output: `processed: ${input}` }))
+				.edge('A', 'B')
+
+			const blueprint = flow.toBlueprint()
+
+			const events: FlowcraftEvent[] = []
+
+			const result = await runtime.replayFrom(blueprint, events, 'A', {
+				functionRegistry: flow.getFunctionRegistry(),
+			})
+
+			expect(result.status).toBe('completed')
+			expect(result.context['_outputs.A']).toBe('from-a')
+		})
+
+		it('should reconstruct context from context:change events', async () => {
+			const runtime = new FlowRuntime()
+
+			const flow = createFlow('replay-from-context')
+				.node('A', async () => ({ output: 'a' }))
+				.node('B', async ({ context }) => ({ output: await context.get('shared' as any) }))
+				.edge('A', 'B')
+
+			const blueprint = flow.toBlueprint()
+
+			const events: FlowcraftEvent[] = [
+				{
+					type: 'context:change',
+					payload: {
+						sourceNode: 'init',
+						key: 'shared',
+						op: 'set',
+						value: 'context-value',
+						executionId: 'orig',
+					},
+				},
+				{
+					type: 'node:finish',
+					payload: {
+						nodeId: 'A',
+						result: { output: 'a' },
+						executionId: 'orig',
+						blueprintId: 'replay-from-context',
+					},
+				},
+			]
+
+			const result = await runtime.replayFrom(blueprint, events, 'B', {
+				functionRegistry: flow.getFunctionRegistry(),
+			})
+
+			expect(result.context.shared).toBe('context-value')
 		})
 	})
 })
