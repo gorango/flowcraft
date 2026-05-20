@@ -80,11 +80,12 @@ For more granular control, you can implement a node using the `BaseNode` class, 
 
 ## Tooling and Utilities
 
-Flowcraft includes tools to help you validate and visualize your workflows.
+Flowcraft includes tools to help you validate, visualize, and integrate workflows with AI agents.
 
 - **Linter (`lintBlueprint`)**: Statically analyze a blueprint to find common errors, such as orphan nodes, invalid edges, or nodes with missing implementations.
 - **Analysis (`analyzeBlueprint`)**: Programmatically inspect a blueprint to detect cycles, find start/terminal nodes, and get other graph metrics.
 - **Diagram Generation (`generateMermaid`)**: Automatically generate a [Mermaid](https://mermaid-js.github.io/mermaid/#/) syntax string from a blueprint to easily visualize your workflow's structure.
+- **Agent Tools**: Use [`@flowcraft/tools`](http://npmjs.com/package/@flowcraft/tools) to give LLMs Zod-based tools for composing, running, and monitoring workflows.
 
 ## Extensibility and Customization
 

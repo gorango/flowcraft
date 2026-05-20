@@ -77,6 +77,7 @@ export default defineConfig({
 						{ text: 'What is Flowcraft?', link: '/guide/' },
 						{ text: 'Getting Started', link: '/guide/getting-started' },
 						{ text: 'Core Concepts', link: '/guide/core-concepts' },
+						{ text: 'LLM Integration', link: '/guide/llm-integration' },
 					],
 				},
 				{

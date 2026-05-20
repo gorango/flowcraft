@@ -32,6 +32,7 @@ Build intelligent agents that process data, make decisions, and interact with us
 
 - **Example**: Research Agent (see [Research Example](https://github.com/gorango/flowcraft/tree/master/examples/ai-workflows/research-assistant))
 - **Features**: Conditional branching, LLM integration, human-in-the-loop.
+- **Agent Tools**: Use [`@flowcraft/tools`](/guide/llm-integration) to give LLMs Zod-based tools for composing, running, and monitoring workflows through Vercel AI SDK, LangChain, OpenAI, or Anthropic.
 
 ### ETL Pipelines
 

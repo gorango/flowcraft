@@ -12,6 +12,7 @@ The Flowcraft API is organized into several key modules, each responsible for a 
 - **[Context](/api/context)**: The interfaces and classes for managing workflow state ([`ISyncContext`](/api/context#isynccontext-interface), `IAsyncContext`).
 - **[Analysis](/api/analysis)**: Utilities for validating and visualizing blueprints ([`analyzeBlueprint`](/api/analysis#analyzeblueprint-blueprint), `generateMermaid`).
 - **[Linter](/api/linter)**: Tools for static analysis to find common errors before runtime.
+- **[LLM Tools](https://github.com/gorango/flowcraft/tree/master/packages/tools)**: Zod-based tool definitions and framework adapters for AI agent workflow orchestration in [`@flowcraft/tools`](https://www.npmjs.com/package/@flowcraft/tools).
 - **[Errors](/api/errors)**: Custom error classes thrown by the runtime.
 - **Extensibility Interfaces**:
     - **[Middleware](/api/middleware)**: The `Middleware` interface for adding cross-cutting concerns like tracing and transactions.
