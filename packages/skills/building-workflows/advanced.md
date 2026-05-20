@@ -135,6 +135,27 @@ await runtime.resume(flow.toBlueprint(), serialized, {
 })
 ```
 
+### Programmatic pause
+
+Alternatively, pause a running execution at the next safe checkpoint without using `.wait()` nodes:
+
+```typescript
+// During execution, request a pause
+runtime.requestPause(executionId)
+
+// The orchestrator pauses at the next node boundary
+// and the workflow becomes 'awaiting'
+
+// Resume later
+await runtime.resume(blueprint, serializedContext, { output: 'continue' })
+```
+
+This is useful for:
+
+- Setting breakpoints during debugging
+- Implementing approval checkpoints dynamically
+- Pausing long-running workflows for external conditions
+
 ## Sleep (durable timers)
 
 ```typescript

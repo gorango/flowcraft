@@ -98,6 +98,27 @@ const events = await eventStore.retrieve(result.context._executionId)
 const replayResult = await runtime.replay(blueprint, events)
 ```
 
+### Partial replay from a specific node
+
+For more granular debugging, replay from a specific point with modified inputs:
+
+```typescript
+// Replay from the failure point with corrected data
+const replayResult = await runtime.replayFrom(blueprint, events, 'processNode', {
+	inputOverrides: { correctedInput: '...' },
+	functionRegistry: flow.getFunctionRegistry(),
+})
+```
+
+### Rollback execution
+
+Undo context mutations after a target node to revert execution state:
+
+```typescript
+// Rollback to node B, removing C and D's effects
+const rolledBack = await runtime.rollbackExecution(blueprint, executionId, events, 'B')
+```
+
 ### Event types for replay
 
 | Event             | Purpose                                   |
@@ -108,6 +129,37 @@ const replayResult = await runtime.replay(blueprint, events)
 | `workflow:finish` | Marks workflow completion                 |
 
 Replay always produces `completed` status since it reconstructs state without re-execution.
+
+## Execution control
+
+### Patch context mid-execution
+
+Modify workflow state without re-running nodes:
+
+```typescript
+const patched = await runtime.patchContext(blueprint, executionId, events, [
+	{ key: 'status', value: 'corrected', op: 'set' },
+])
+```
+
+### Mark node completed
+
+Skip a node or provide synthetic output without executing its logic:
+
+```typescript
+const result = await runtime.markNodeCompleted(blueprint, executionId, 'skippedNode', {
+	synthetic: true,
+})
+```
+
+### Request pause
+
+Programmatically pause a running execution at the next checkpoint:
+
+```typescript
+runtime.requestPause(executionId)
+// Workflow becomes awaiting; resume later via runtime.resume()
+```
 
 ## Troubleshooting
 
@@ -127,7 +179,10 @@ See [common-errors.md](common-errors.md) for detailed troubleshooting of:
 3. **Analyze blueprint**: Use `analyzeBlueprint(blueprint)` for cycle/start/terminal info
 4. **Capture events**: Use `InMemoryEventLogger` to trace execution flow
 5. **Replay execution**: Use `runtime.replay()` to reconstruct state from events
-6. **Check context**: Inspect `result.context` for expected state
+6. **Partial replay**: Use `runtime.replayFrom()` to replay from a specific node with modified inputs
+7. **Rollback state**: Use `runtime.rollbackExecution()` to undo nodes after a target point
+8. **Patch context**: Use `runtime.patchContext()` to correct state without re-execution
+9. **Check context**: Inspect `result.context` for expected state
 
 ## Test coverage
 

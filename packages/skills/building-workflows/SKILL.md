@@ -180,3 +180,41 @@ const result = await runtime.run(blueprint, initialState, options)
 const resumed = await runtime.resume(blueprint, serializedContext, resumeData)
 const replayed = await runtime.replay(blueprint, events)
 ```
+
+### Execution control
+
+Beyond `run`, `resume`, and `replay`, the runtime provides methods for fine-grained execution control:
+
+```typescript
+// Execute specific nodes within an existing execution
+const result = await runtime.executeNodes(
+	blueprint,
+	executionId,
+	['nodeA', 'nodeB'],
+	events,
+	options,
+)
+
+// Modify context mid-execution by reconstructing state and applying patches
+const patched = await runtime.patchContext(blueprint, executionId, events, [
+	{ key: 'userEmail', value: 'new@example.com', op: 'set' },
+	{ key: 'tempData', value: undefined, op: 'delete' },
+])
+
+// Mark a node as completed with synthetic output (no node:start emitted)
+const skipped = await runtime.markNodeCompleted(blueprint, executionId, 'optionalStep', {
+	skipped: true,
+})
+
+// Request pause at next safe checkpoint (orchestrator checks between iterations)
+runtime.requestPause(executionId)
+
+// Rollback context to before a target node (soft rollback — cannot undo side effects)
+const rolledBack = await runtime.rollbackExecution(blueprint, executionId, events, 'targetNode')
+
+// Replay from a specific node with optional input overrides
+const replayed = await runtime.replayFrom(blueprint, events, 'processNode', {
+	inputOverrides: { correctedData: '...' },
+	functionRegistry: flow.getFunctionRegistry(),
+})
+```

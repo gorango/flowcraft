@@ -50,6 +50,45 @@ console.log(replayResult.context.toJSON())
 console.log(replayResult.status) // Always 'completed'
 ```
 
+## Partial replay from a specific node
+
+For more targeted debugging, replay from a specific node rather than the beginning. This pre-populates ancestor node outputs as initial state and re-executes downstream nodes:
+
+```typescript
+// Replay from the failure point with corrected input
+const replayResult = await runtime.replayFrom(blueprint, events, 'processNode', {
+	inputOverrides: { inputData: correctedData },
+	functionRegistry: flow.getFunctionRegistry(),
+})
+
+// The replayed workflow runs from 'processNode' onward
+// Ancestor outputs (predecessors of 'processNode') are pre-populated
+console.log(replayResult.status) // 'completed' or 'failed'
+```
+
+This is useful when:
+
+- A workflow fails late and you want to skip re-running early nodes
+- You need to test with corrected input at a specific point
+- You want to understand how a node behaves with different upstream data
+
+## Rollback execution
+
+Undo context mutations for nodes completed after a target point, reverting execution state:
+
+```typescript
+// Rollback to node B, removing C and D's effects from context
+const rolledBack = await runtime.rollbackExecution(blueprint, executionId, events, 'B')
+
+// B's output is preserved; C and D are removed
+console.log(rolledBack.context['_outputs.B']) // preserved
+console.log(rolledBack.context['_outputs.C']) // undefined
+```
+
+**Important**: This is a "soft" rollback — it removes `_outputs`, `_inputs`, and errors from context but **cannot undo side effects** (API calls, database writes, file operations) that occurred during node execution.
+
+Throws if the target node has not completed. Uses BFS to find all downstream nodes from the target.
+
 ## Event types processed during replay
 
 ### node:finish
