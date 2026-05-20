@@ -37,7 +37,7 @@ export function createGetNodeInfoTool(config: {
 						},
 						metadata: {
 							duration: Date.now() - start,
-							nodesExecuted: [],
+							affectedNodes: [],
 							blueprintId: blueprint.id,
 						},
 					}
@@ -75,7 +75,7 @@ export function createGetNodeInfoTool(config: {
 					},
 					metadata: {
 						duration: Date.now() - start,
-						nodesExecuted: [node.id],
+						affectedNodes: [node.id],
 						blueprintId: blueprint.id,
 						blueprintVersion: blueprint.metadata?.version,
 					},
@@ -86,7 +86,7 @@ export function createGetNodeInfoTool(config: {
 					error: { message: error instanceof Error ? error.message : String(error) },
 					metadata: {
 						duration: Date.now() - start,
-						nodesExecuted: [],
+						affectedNodes: [],
 						blueprintId: params.workflowId,
 					},
 				}

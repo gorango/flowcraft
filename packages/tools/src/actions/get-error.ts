@@ -32,7 +32,7 @@ export function createGetNodeErrorTool(config: {
 						},
 						metadata: {
 							duration: Date.now() - start,
-							nodesExecuted: [],
+							affectedNodes: [],
 							blueprintId: '',
 						},
 					}
@@ -51,7 +51,7 @@ export function createGetNodeErrorTool(config: {
 						},
 						metadata: {
 							duration: Date.now() - start,
-							nodesExecuted: [],
+							affectedNodes: [],
 							blueprintId: '',
 						},
 					}
@@ -74,7 +74,7 @@ export function createGetNodeErrorTool(config: {
 					},
 					metadata: {
 						duration: Date.now() - start,
-						nodesExecuted: [],
+						affectedNodes: [],
 						blueprintId: '',
 					},
 				}
@@ -84,7 +84,7 @@ export function createGetNodeErrorTool(config: {
 					error: { message: error instanceof Error ? error.message : String(error) },
 					metadata: {
 						duration: Date.now() - start,
-						nodesExecuted: [],
+						affectedNodes: [],
 						blueprintId: '',
 					},
 				}

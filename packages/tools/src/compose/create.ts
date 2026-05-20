@@ -30,7 +30,7 @@ export function createCreateBlueprintTool(config: {
 					data: { blueprint },
 					metadata: {
 						duration: Date.now() - start,
-						nodesExecuted: blueprint.nodes.map((n) => n.id),
+						affectedNodes: [],
 						blueprintId: blueprint.id,
 						blueprintVersion: blueprint.metadata?.version,
 					},
@@ -39,7 +39,7 @@ export function createCreateBlueprintTool(config: {
 				return {
 					status: 'failed',
 					error: { message: error instanceof Error ? error.message : String(error) },
-					metadata: { duration: Date.now() - start, nodesExecuted: [], blueprintId: '' },
+					metadata: { duration: Date.now() - start, affectedNodes: [], blueprintId: '' },
 				}
 			}
 		},

@@ -65,7 +65,7 @@ export function createCheckNodeImplementationsTool(config?: {
 					},
 					metadata: {
 						duration: Date.now() - start,
-						nodesExecuted: blueprint.nodes.map((n) => n.id),
+						affectedNodes: [],
 						blueprintId: blueprint.id,
 						blueprintVersion: blueprint.metadata?.version,
 					},
@@ -76,7 +76,7 @@ export function createCheckNodeImplementationsTool(config?: {
 					error: { message: error instanceof Error ? error.message : String(error) },
 					metadata: {
 						duration: Date.now() - start,
-						nodesExecuted: [],
+						affectedNodes: [],
 						blueprintId: (params.blueprint as Record<string, unknown>).id as string,
 					},
 				}

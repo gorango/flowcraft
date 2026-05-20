@@ -42,7 +42,7 @@ export function createGetExecutionContextTool(config: {
 						},
 						metadata: {
 							duration: Date.now() - start,
-							nodesExecuted: [],
+							affectedNodes: [],
 							blueprintId: '',
 						},
 					}
@@ -89,7 +89,7 @@ export function createGetExecutionContextTool(config: {
 					data: result,
 					metadata: {
 						duration: Date.now() - start,
-						nodesExecuted: completedNodes,
+						affectedNodes: completedNodes,
 						blueprintId: status.blueprintId ?? '',
 					},
 				}
@@ -99,7 +99,7 @@ export function createGetExecutionContextTool(config: {
 					error: { message: error instanceof Error ? error.message : String(error) },
 					metadata: {
 						duration: Date.now() - start,
-						nodesExecuted: [],
+						affectedNodes: [],
 						blueprintId: '',
 					},
 				}

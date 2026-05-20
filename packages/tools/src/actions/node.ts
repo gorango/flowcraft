@@ -59,7 +59,7 @@ export function createNodeActionTools(
 							_targetNode: node.id,
 						})
 
-						const ctx = result.context.toJSON()
+						const ctx = result.context
 						const nodeOutput =
 							ctx[node.id] ?? (ctx._outputs as Record<string, unknown>)?.[node.id]
 
@@ -68,7 +68,7 @@ export function createNodeActionTools(
 							data: nodeOutput,
 							metadata: {
 								duration: Date.now() - start,
-								nodesExecuted: [node.id],
+								affectedNodes: [node.id],
 								blueprintId: blueprint.id,
 								blueprintVersion: blueprint.metadata?.version,
 							},
@@ -81,7 +81,7 @@ export function createNodeActionTools(
 							},
 							metadata: {
 								duration: Date.now() - start,
-								nodesExecuted: [],
+								affectedNodes: [],
 								blueprintId: blueprint.id,
 								blueprintVersion: blueprint.metadata?.version,
 							},

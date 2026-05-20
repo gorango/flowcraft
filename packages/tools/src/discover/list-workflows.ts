@@ -29,7 +29,7 @@ export function createListWorkflowsTool(config: {
 						data: { workflows, total: workflows.length },
 						metadata: {
 							duration: Date.now() - start,
-							nodesExecuted: [],
+							affectedNodes: [],
 							blueprintId: '',
 						},
 					}
@@ -38,13 +38,13 @@ export function createListWorkflowsTool(config: {
 				return {
 					status: 'completed',
 					data: { workflows: [], note: 'Resolver does not support listing' },
-					metadata: { duration: Date.now() - start, nodesExecuted: [], blueprintId: '' },
+					metadata: { duration: Date.now() - start, affectedNodes: [], blueprintId: '' },
 				}
 			} catch (error) {
 				return {
 					status: 'failed',
 					error: { message: error instanceof Error ? error.message : String(error) },
-					metadata: { duration: Date.now() - start, nodesExecuted: [], blueprintId: '' },
+					metadata: { duration: Date.now() - start, affectedNodes: [], blueprintId: '' },
 				}
 			}
 		},

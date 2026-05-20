@@ -23,7 +23,7 @@ export function createCancelWorkflowTool(config: {
 					status: 'failed',
 					error: { message: `No active execution found for ${params.executionId}` },
 					executionId: params.executionId,
-					metadata: { duration: Date.now() - start, nodesExecuted: [], blueprintId: '' },
+					metadata: { duration: Date.now() - start, affectedNodes: [], blueprintId: '' },
 				}
 			}
 
@@ -34,7 +34,7 @@ export function createCancelWorkflowTool(config: {
 				status: 'completed',
 				data: { cancelled: true, reason: params.reason },
 				executionId: params.executionId,
-				metadata: { duration: Date.now() - start, nodesExecuted: [], blueprintId: '' },
+				metadata: { duration: Date.now() - start, affectedNodes: [], blueprintId: '' },
 			}
 		},
 	})

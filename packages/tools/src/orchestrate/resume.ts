@@ -82,7 +82,7 @@ export function createResumeWorkflowTool(config: {
 				)
 
 				const duration = Date.now() - start
-				const ctx = result.context.toJSON()
+				const ctx = result.context
 
 				return {
 					status: result.status as 'completed' | 'failed' | 'awaiting',
@@ -92,7 +92,7 @@ export function createResumeWorkflowTool(config: {
 					awaitingDetails: result.context._awaitingDetails,
 					metadata: {
 						duration,
-						nodesExecuted: Object.keys(ctx._outputs || {}),
+						affectedNodes: Object.keys(ctx._outputs || {}),
 						blueprintId: blueprint.id,
 						blueprintVersion: version,
 					},
@@ -104,7 +104,7 @@ export function createResumeWorkflowTool(config: {
 					executionId: params.executionId,
 					metadata: {
 						duration: Date.now() - start,
-						nodesExecuted: [],
+						affectedNodes: [],
 						blueprintId: params.workflowId ?? '',
 					},
 				}

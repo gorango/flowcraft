@@ -32,7 +32,7 @@ export function createGetAwaitingNodesTool(config: {
 						},
 						metadata: {
 							duration: Date.now() - start,
-							nodesExecuted: [],
+							affectedNodes: [],
 							blueprintId: '',
 						},
 					}
@@ -60,7 +60,7 @@ export function createGetAwaitingNodesTool(config: {
 					},
 					metadata: {
 						duration: Date.now() - start,
-						nodesExecuted: [],
+						affectedNodes: [],
 						blueprintId: status.blueprintId ?? '',
 					},
 				}
@@ -70,7 +70,7 @@ export function createGetAwaitingNodesTool(config: {
 					error: { message: error instanceof Error ? error.message : String(error) },
 					metadata: {
 						duration: Date.now() - start,
-						nodesExecuted: [],
+						affectedNodes: [],
 						blueprintId: '',
 					},
 				}

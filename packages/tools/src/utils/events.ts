@@ -9,9 +9,6 @@ export function getEventProp<T>(e: unknown, key: string): T | undefined {
 	if (value !== undefined) return value
 	const payload = record.payload as Record<string, unknown> | undefined
 	if (payload && key in payload) {
-		console.warn(
-			`[getEventProp] Key '${key}' exists in payload but not at top level — this may return unexpected values`,
-		)
 		value = payload[key] as T | undefined
 	}
 	return value
@@ -47,6 +44,32 @@ export function getNodeErrors(
 	return errors
 }
 
+function setNestedValue(obj: Record<string, unknown>, key: string, value: unknown): void {
+	const parts = key.split('.')
+	let current: Record<string, unknown> = obj
+	for (let i = 0; i < parts.length - 1; i++) {
+		const part = parts[i]
+		if (!(part in current) || typeof current[part] !== 'object' || current[part] === null) {
+			current[part] = {}
+		}
+		current = current[part] as Record<string, unknown>
+	}
+	current[parts[parts.length - 1]] = value
+}
+
+function deleteNestedValue(obj: Record<string, unknown>, key: string): void {
+	const parts = key.split('.')
+	let current: Record<string, unknown> = obj
+	for (let i = 0; i < parts.length - 1; i++) {
+		const part = parts[i]
+		if (!(part in current) || typeof current[part] !== 'object' || current[part] === null) {
+			return
+		}
+		current = current[part] as Record<string, unknown>
+	}
+	delete current[parts[parts.length - 1]]
+}
+
 export function reconstructContext(events: unknown[]): Record<string, unknown> {
 	const context: Record<string, unknown> = {}
 	for (const event of events) {
@@ -56,9 +79,9 @@ export function reconstructContext(events: unknown[]): Record<string, unknown> {
 		const op = getEventProp<string>(event, 'op')
 		if (!key) continue
 		if (op === 'delete') {
-			delete context[key]
+			deleteNestedValue(context, key)
 		} else {
-			context[key] = value
+			setNestedValue(context, key, value)
 		}
 	}
 	return context

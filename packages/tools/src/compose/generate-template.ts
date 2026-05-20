@@ -40,7 +40,7 @@ export function createGenerateFromTemplateTool(config: {
 						},
 						metadata: {
 							duration: Date.now() - start,
-							nodesExecuted: [],
+							affectedNodes: [],
 							blueprintId: '',
 						},
 					}
@@ -78,9 +78,7 @@ export function createGenerateFromTemplateTool(config: {
 					},
 					metadata: {
 						duration: Date.now() - start,
-						nodesExecuted: blueprint.nodes.map(
-							(n: unknown) => (n as Record<string, unknown>).id as string,
-						),
+						affectedNodes: [],
 						blueprintId: blueprint.id,
 						blueprintVersion: blueprint.metadata?.version,
 					},
@@ -91,7 +89,7 @@ export function createGenerateFromTemplateTool(config: {
 					error: { message: error instanceof Error ? error.message : String(error) },
 					metadata: {
 						duration: Date.now() - start,
-						nodesExecuted: [],
+						affectedNodes: [],
 						blueprintId: '',
 					},
 				}

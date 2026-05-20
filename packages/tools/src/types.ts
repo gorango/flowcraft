@@ -12,7 +12,7 @@ export interface ToolResult {
 	error?: { message: string; code?: string }
 	metadata?: {
 		duration: number
-		nodesExecuted: string[]
+		affectedNodes: string[]
 		blueprintId: string
 		blueprintVersion?: string
 	}
@@ -58,8 +58,7 @@ export interface FlowcraftRuntime {
 		initialState?: Record<string, unknown>,
 		options?: Record<string, unknown>,
 	): Promise<{
-		context: {
-			toJSON(): Record<string, unknown>
+		context: Record<string, unknown> & {
 			_executionId?: string
 			_awaitingNodeIds?: string[]
 			_awaitingDetails?: Record<string, unknown>
@@ -75,8 +74,7 @@ export interface FlowcraftRuntime {
 		nodeId?: string,
 		options?: Record<string, unknown>,
 	): Promise<{
-		context: {
-			toJSON(): Record<string, unknown>
+		context: Record<string, unknown> & {
 			_executionId?: string
 			_awaitingNodeIds?: string[]
 			_awaitingDetails?: Record<string, unknown>
@@ -93,6 +91,55 @@ export interface FlowcraftRuntime {
 		options?: {
 			inputOverrides?: Record<string, Record<string, unknown>>
 			signal?: AbortSignal
+			functionRegistry?: Map<string, unknown>
+		},
+	): Promise<{
+		context: Record<string, unknown>
+		serializedContext: string
+		status: string
+		errors?: Array<{ message: string; nodeId?: string }>
+	}>
+	patchContext(
+		blueprint: WorkflowBlueprint,
+		executionId: string,
+		events: unknown[],
+		patches: Array<{ key: string; value: unknown; op: 'set' | 'delete' }>,
+	): Promise<{
+		context: Record<string, unknown>
+		serializedContext: string
+		status: string
+		errors?: Array<{ message: string; nodeId?: string }>
+	}>
+	markNodeCompleted(
+		blueprint: WorkflowBlueprint,
+		executionId: string,
+		nodeId: string,
+		output: unknown,
+	): Promise<{
+		context: Record<string, unknown>
+		serializedContext: string
+		status: string
+		errors?: Array<{ message: string; nodeId?: string }>
+	}>
+	requestPause(executionId: string): void
+	rollbackExecution(
+		blueprint: WorkflowBlueprint,
+		executionId: string,
+		events: unknown[],
+		targetNodeId: string,
+	): Promise<{
+		context: Record<string, unknown>
+		serializedContext: string
+		status: string
+		errors?: Array<{ message: string; nodeId?: string }>
+	}>
+	replayFrom(
+		blueprint: WorkflowBlueprint,
+		events: unknown[],
+		fromNodeId: string,
+		options?: {
+			inputOverrides?: Record<string, unknown>
+			executionId?: string
 		},
 	): Promise<{
 		context: Record<string, unknown>

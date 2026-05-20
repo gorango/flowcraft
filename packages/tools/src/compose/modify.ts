@@ -84,7 +84,7 @@ export function createModifyBlueprintTool(): WorkflowTool<typeof modifyBlueprint
 					data: { blueprint: modified },
 					metadata: {
 						duration: Date.now() - start,
-						nodesExecuted: modified.nodes.map((n) => n.id),
+						affectedNodes: [],
 						blueprintId: modified.id,
 						blueprintVersion: modified.metadata?.version,
 					},
@@ -95,7 +95,7 @@ export function createModifyBlueprintTool(): WorkflowTool<typeof modifyBlueprint
 					error: { message: error instanceof Error ? error.message : String(error) },
 					metadata: {
 						duration: Date.now() - start,
-						nodesExecuted: [],
+						affectedNodes: [],
 						blueprintId: params.blueprint.id,
 					},
 				}

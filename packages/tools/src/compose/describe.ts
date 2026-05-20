@@ -63,7 +63,7 @@ export function createDescribeBlueprintTool(): WorkflowTool<typeof describeBluep
 				},
 				metadata: {
 					duration: Date.now() - start,
-					nodesExecuted: blueprint.nodes.map((n) => n.id),
+					affectedNodes: [],
 					blueprintId: blueprint.id,
 					blueprintVersion: blueprint.metadata?.version,
 				},

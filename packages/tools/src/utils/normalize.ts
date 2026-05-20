@@ -3,8 +3,7 @@ import type { ToolResult } from '../types'
 export function normalizeResult(
 	result: {
 		status: string
-		context?: {
-			toJSON(): Record<string, unknown>
+		context?: Record<string, unknown> & {
 			_executionId?: string
 			_awaitingNodeIds?: string[]
 			_awaitingDetails?: Record<string, unknown>
@@ -15,8 +14,8 @@ export function normalizeResult(
 	blueprintId: string,
 	blueprintVersion?: string,
 ): ToolResult {
-	const contextData = result.context?.toJSON() ?? {}
-	const nodesExecuted = Object.keys(contextData._outputs ?? {})
+	const contextData = (result.context ?? {}) as Record<string, unknown>
+	const affectedNodes = Object.keys(contextData._outputs ?? {})
 
 	const base: ToolResult = {
 		status: result.status as ToolResult['status'],
@@ -26,7 +25,7 @@ export function normalizeResult(
 		awaitingDetails: result.context?._awaitingDetails,
 		metadata: {
 			duration: 0,
-			nodesExecuted,
+			affectedNodes,
 			blueprintId,
 			blueprintVersion,
 		},
@@ -43,13 +42,31 @@ export function normalizeResult(
 
 export function createAsyncExecutionStore(): import('../types').AsyncExecutionStore {
 	const executions = new Map<string, Promise<ToolResult>>()
+	const errors = new Map<string, Error>()
 
 	return {
 		start(executionId: string, fn: () => Promise<ToolResult>) {
-			executions.set(executionId, fn())
+			executions.set(
+				executionId,
+				fn().catch((err) => {
+					errors.set(executionId, err instanceof Error ? err : new Error(String(err)))
+					throw err
+				}),
+			)
 		},
 		async get(executionId: string) {
-			return executions.get(executionId)
+			const promise = executions.get(executionId)
+			if (!promise) return undefined
+			try {
+				return await promise
+			} catch {
+				const error = errors.get(executionId)
+				return {
+					status: 'failed',
+					error: { message: error?.message ?? 'Unknown error' },
+					metadata: { duration: 0, affectedNodes: [], blueprintId: '' },
+				}
+			}
 		},
 	}
 }

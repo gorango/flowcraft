@@ -22,7 +22,7 @@ export function createExecuteNodeBatchTool(config: {
 	return createWorkflowTool({
 		name: 'execute_node_batch',
 		description:
-			'Execute a workflow up to specific target nodes, running all required predecessors',
+			'Execute a workflow targeting specific nodes, running all required predecessors to reach them',
 		parameters: executeNodeBatchSchema,
 		execute: async (params) => {
 			const start = Date.now()
@@ -43,7 +43,7 @@ export function createExecuteNodeBatchTool(config: {
 						},
 						metadata: {
 							duration: Date.now() - start,
-							nodesExecuted: [],
+							affectedNodes: [],
 							blueprintId: blueprint.id,
 						},
 					}
@@ -55,21 +55,20 @@ export function createExecuteNodeBatchTool(config: {
 					_targetNode: params.nodeIds,
 				})
 
-				const ctx =
-					runResult.context?.toJSON?.() ?? (runResult.context as Record<string, unknown>)
-				const completedNodes = Object.keys((ctx as Record<string, unknown>)?._outputs ?? {})
+				const ctx = runResult.context
+				const completedNodes = Object.keys(ctx._outputs ?? {})
 
 				return {
 					status: runResult.status as 'completed' | 'failed' | 'awaiting',
 					data: {
-						executionId: (ctx as Record<string, unknown>)?._executionId ?? executionId,
+						executionId: ctx._executionId ?? executionId,
 						requestedNodes: params.nodeIds,
 						completedNodes,
 						context: ctx,
 					},
 					metadata: {
 						duration: Date.now() - start,
-						nodesExecuted: completedNodes,
+						affectedNodes: completedNodes,
 						blueprintId: blueprint.id,
 						blueprintVersion: version,
 					},
@@ -80,7 +79,7 @@ export function createExecuteNodeBatchTool(config: {
 					error: { message: error instanceof Error ? error.message : String(error) },
 					metadata: {
 						duration: Date.now() - start,
-						nodesExecuted: [],
+						affectedNodes: [],
 						blueprintId: params.workflowId,
 					},
 				}

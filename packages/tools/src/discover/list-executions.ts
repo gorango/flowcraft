@@ -36,7 +36,7 @@ export function createListExecutionsTool(config: {
 						data: { executions, total: executions.length },
 						metadata: {
 							duration: Date.now() - start,
-							nodesExecuted: [],
+							affectedNodes: [],
 							blueprintId: '',
 						},
 					}
@@ -45,13 +45,13 @@ export function createListExecutionsTool(config: {
 				return {
 					status: 'completed',
 					data: { executions: [], note: 'No execution index provided' },
-					metadata: { duration: Date.now() - start, nodesExecuted: [], blueprintId: '' },
+					metadata: { duration: Date.now() - start, affectedNodes: [], blueprintId: '' },
 				}
 			} catch (error) {
 				return {
 					status: 'failed',
 					error: { message: error instanceof Error ? error.message : String(error) },
-					metadata: { duration: Date.now() - start, nodesExecuted: [], blueprintId: '' },
+					metadata: { duration: Date.now() - start, affectedNodes: [], blueprintId: '' },
 				}
 			}
 		},

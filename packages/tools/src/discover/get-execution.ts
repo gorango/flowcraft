@@ -27,7 +27,7 @@ export function createGetExecutionTool(config: {
 						error: { message: `No events found for execution ${params.executionId}` },
 						metadata: {
 							duration: Date.now() - start,
-							nodesExecuted: [],
+							affectedNodes: [],
 							blueprintId: '',
 						},
 					}
@@ -63,7 +63,7 @@ export function createGetExecutionTool(config: {
 					},
 					metadata: {
 						duration: Date.now() - start,
-						nodesExecuted: nodeEvents.map((e) => e.nodeId as string),
+						affectedNodes: nodeEvents.map((e) => e.nodeId as string),
 						blueprintId: (startEvent?.blueprintId as string) ?? '',
 					},
 				}
@@ -71,7 +71,7 @@ export function createGetExecutionTool(config: {
 				return {
 					status: 'failed',
 					error: { message: error instanceof Error ? error.message : String(error) },
-					metadata: { duration: Date.now() - start, nodesExecuted: [], blueprintId: '' },
+					metadata: { duration: Date.now() - start, affectedNodes: [], blueprintId: '' },
 				}
 			}
 		},

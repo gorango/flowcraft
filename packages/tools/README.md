@@ -63,41 +63,78 @@ Three layers of abstraction:
 
 ### Compose (`@flowcraft/tools/compose`)
 
-Tools for creating and modifying workflow blueprints:
+Tools for creating, modifying, and analyzing workflow blueprints:
 
-| Tool                | Description                                 |
-| ------------------- | ------------------------------------------- |
-| `create_workflow`   | Generate a blueprint from natural language  |
-| `modify_workflow`   | Add, remove, or edit nodes and edges        |
-| `validate_workflow` | Check for errors, cycles, unreachable nodes |
-| `describe_workflow` | Human-readable description of blueprint     |
+| Tool                         | Description                                       |
+| ---------------------------- | ------------------------------------------------- |
+| `create_workflow`            | Generate a blueprint from natural language        |
+| `modify_workflow`            | Add, remove, or edit nodes and edges              |
+| `validate_workflow`          | Check for errors, cycles, unreachable nodes       |
+| `describe_workflow`          | Human-readable description of blueprint           |
+| `generate_from_template`     | Create a blueprint from a named template          |
+| `check_node_implementations` | Verify all `uses` keys have implementations       |
+| `check_data_flow`            | Validate input/output compatibility between nodes |
+| `add_retry_config`           | Add retry configuration to nodes                  |
+| `add_fallback_node`          | Add fallback routing for error handling           |
+| `optimize_for_parallelism`   | Analyze and suggest parallelism improvements      |
+| `simulate_execution`         | Dry-run workflow with sample data                 |
+| `get_blueprint_diff`         | Compare two blueprint versions                    |
 
 ```typescript
-import { createCreateBlueprintTool, createValidateBlueprintTool } from '@flowcraft/tools/compose'
+import {
+	createCreateBlueprintTool,
+	createValidateBlueprintTool,
+	createCheckNodeImplementationsTool,
+	createGenerateFromTemplateTool,
+} from '@flowcraft/tools/compose'
 
 const tools = [
 	createCreateBlueprintTool({ generate: myBlueprintGenerator }),
 	createValidateBlueprintTool(),
+	createCheckNodeImplementationsTool({ registry: myRegistry }),
+	createGenerateFromTemplateTool({ templates: myTemplateStore }),
 ]
 ```
 
 ### Orchestrate (`@flowcraft/tools/orchestrate`)
 
-Tools for executing workflows:
+Tools for executing and monitoring workflows:
 
-| Tool                    | Description                        |
-| ----------------------- | ---------------------------------- |
-| `run_workflow`          | Execute a workflow (sync or async) |
-| `resume_workflow`       | Resume an awaiting workflow        |
-| `check_workflow_status` | Poll execution status              |
-| `cancel_workflow`       | Cancel a running workflow          |
+| Tool                       | Description                               |
+| -------------------------- | ----------------------------------------- |
+| `run_workflow`             | Execute a workflow (sync or async)        |
+| `resume_workflow`          | Resume an awaiting workflow               |
+| `check_workflow_status`    | Poll execution status                     |
+| `cancel_workflow`          | Cancel a running workflow                 |
+| `pause_workflow`           | Pause running workflow at next checkpoint |
+| `retry_failed_nodes`       | Retry only failed nodes in execution      |
+| `skip_failed_node`         | Mark failed node as skipped, continue     |
+| `restart_from_node`        | Re-run workflow from a specific node      |
+| `rollback_execution`       | Undo completed nodes to restore state     |
+| `request_approval`         | Trigger approval request to human         |
+| `get_execution_context`    | Retrieve full context at current state    |
+| `get_awaiting_nodes`       | List nodes waiting for input              |
+| `get_error_diagnosis`      | Get AI-friendly error analysis            |
+| `get_execution_timeline`   | Get detailed node execution timestamps    |
+| `get_execution_metrics`    | Get success rate, duration, cost stats    |
+| `watch_execution`          | Stream real-time execution events         |
+| `run_workflows_sequential` | Run multiple workflows in order           |
+| `run_workflows_parallel`   | Run multiple workflows concurrently       |
+| `batch_execute`            | Run same workflow with multiple inputs    |
 
 ```typescript
-import { createRunWorkflowTool, createResumeWorkflowTool } from '@flowcraft/tools/orchestrate'
+import {
+	createRunWorkflowTool,
+	createResumeWorkflowTool,
+	createRetryFailedNodesTool,
+	createGetExecutionTimelineTool,
+} from '@flowcraft/tools/orchestrate'
 
 const tools = [
 	createRunWorkflowTool({ resolver, runtime, asyncStore }),
 	createResumeWorkflowTool({ resolver, runtime, eventStore }),
+	createRetryFailedNodesTool({ eventStore, runtime, resolver }),
+	createGetExecutionTimelineTool({ eventStore }),
 ]
 ```
 
@@ -118,6 +155,24 @@ const tools = createNodeActionTools(orderBlueprint, {
 // Returns tools: order-processing__validate-order, order-processing__process-payment
 ```
 
+Additional per-node action tools available:
+
+| Tool                    | Description                               |
+| ----------------------- | ----------------------------------------- |
+| `get_node_info`         | Get node definition, config, and metadata |
+| `check_node_readiness`  | Check if node's predecessors completed    |
+| `get_node_output`       | Get a completed node's output             |
+| `get_node_error`        | Get detailed error from failed node       |
+| `retry_node`            | Re-execute a failed node                  |
+| `skip_node`             | Mark node as skipped without execution    |
+| `set_node_complete`     | Manually mark node as done with output    |
+| `pause_before_node`     | Set breakpoint before node execution      |
+| `request_node_approval` | Pause and wait for human approval         |
+| `transform_node_input`  | Modify input before node execution        |
+| `patch_node_context`    | Modify context keys for a node            |
+| `execute_nodes_up_to`   | Run workflow until specific node          |
+| `execute_node_batch`    | Run multiple nodes in parallel            |
+
 ### Discover (`@flowcraft/tools/discover`)
 
 Tools for discovering workflows and executions:
@@ -130,10 +185,17 @@ Tools for discovering workflows and executions:
 | `get_execution`   | Get detailed execution info           |
 
 ```typescript
-import { createListWorkflowsTool, createGetExecutionTool } from '@flowcraft/tools/discover'
+import {
+	createListWorkflowsTool,
+	createGetWorkflowTool,
+	createListExecutionsTool,
+	createGetExecutionTool,
+} from '@flowcraft/tools/discover'
 
 const tools = [
 	createListWorkflowsTool({ resolver: dbResolver }),
+	createGetWorkflowTool({ resolver: dbResolver }),
+	createListExecutionsTool({ eventStore }),
 	createGetExecutionTool({ eventStore }),
 ]
 ```
@@ -164,6 +226,29 @@ const db = new DatabaseResolver({
 
 // Composite: try multiple resolvers in order
 const composite = new CompositeResolver([registry, db])
+```
+
+### Utilities (`@flowcraft/tools/utils`)
+
+Shared utilities for event parsing and graph analysis:
+
+```typescript
+import {
+	getCompletedNodes,
+	getNodeErrors,
+	reconstructContext,
+	getExecutionStatus,
+	getAwaitingNodes,
+} from '@flowcraft/tools/utils/events'
+
+import {
+	getPredecessors,
+	getSuccessors,
+	haveAllPredecessorsCompleted,
+	getExecutionOrder,
+	findOrphanNodes,
+	getDataFlow,
+} from '@flowcraft/tools/utils/graph'
 ```
 
 ### Adapters (`@flowcraft/tools/adapters`)

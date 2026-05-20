@@ -2,7 +2,7 @@ import { z } from 'zod'
 import type { WorkflowTool, EventStore, FlowcraftRuntime, BlueprintResolver } from '../types'
 import { createWorkflowTool } from '../tool'
 import { ErrorCodes } from '../utils/errors'
-import { getNodeErrorEvents } from '../utils/events'
+import { getNodeErrorEvents, getEventProp } from '../utils/events'
 
 const retryNodeSchema = z.object({
 	executionId: z.string().describe('The execution ID'),
@@ -41,7 +41,7 @@ export function createRetryNodeTool(config: {
 						},
 						metadata: {
 							duration: Date.now() - start,
-							nodesExecuted: [],
+							affectedNodes: [],
 							blueprintId: '',
 						},
 					}
@@ -57,7 +57,7 @@ export function createRetryNodeTool(config: {
 						},
 						metadata: {
 							duration: Date.now() - start,
-							nodesExecuted: [],
+							affectedNodes: [],
 							blueprintId: '',
 						},
 					}
@@ -66,12 +66,12 @@ export function createRetryNodeTool(config: {
 				let blueprintId = params.workflowId
 				if (!blueprintId) {
 					const startEvent = typedEvents.find(
-						(e) => (e as Record<string, unknown>).type === 'workflow:start',
+						(e) => getEventProp<string>(e, 'type') === 'workflow:start',
 					)
 					const startPayload = (startEvent as Record<string, unknown>)?.payload as
 						| Record<string, unknown>
 						| undefined
-					blueprintId = params.workflowId ?? (startPayload?.blueprintId as string)
+					blueprintId = startPayload?.blueprintId as string
 					if (!blueprintId) {
 						return {
 							status: 'failed',
@@ -82,7 +82,7 @@ export function createRetryNodeTool(config: {
 							},
 							metadata: {
 								duration: Date.now() - start,
-								nodesExecuted: [],
+								affectedNodes: [],
 								blueprintId: '',
 							},
 						}
@@ -115,7 +115,7 @@ export function createRetryNodeTool(config: {
 					},
 					metadata: {
 						duration: Date.now() - start,
-						nodesExecuted: [params.nodeId],
+						affectedNodes: [params.nodeId],
 						blueprintId: blueprint.id,
 						blueprintVersion: blueprint.metadata?.version,
 					},
@@ -126,7 +126,7 @@ export function createRetryNodeTool(config: {
 					error: { message: error instanceof Error ? error.message : String(error) },
 					metadata: {
 						duration: Date.now() - start,
-						nodesExecuted: [],
+						affectedNodes: [],
 						blueprintId: params.workflowId ?? '',
 					},
 				}

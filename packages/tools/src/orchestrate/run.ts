@@ -45,7 +45,7 @@ export function createRunWorkflowTool(config: {
 					const runFn = async () => {
 						const result = await config.runtime.run(blueprint, params.params)
 						const duration = Date.now() - start
-						const ctx = result.context.toJSON()
+						const ctx = result.context
 						return {
 							status: result.status as 'completed' | 'failed' | 'awaiting',
 							data: ctx,
@@ -54,7 +54,7 @@ export function createRunWorkflowTool(config: {
 							awaitingDetails: result.context._awaitingDetails,
 							metadata: {
 								duration,
-								nodesExecuted: Object.keys(ctx._outputs || {}),
+								affectedNodes: Object.keys(ctx._outputs || {}),
 								blueprintId: blueprint.id,
 								blueprintVersion: version,
 							},
@@ -68,7 +68,7 @@ export function createRunWorkflowTool(config: {
 						executionId,
 						metadata: {
 							duration: Date.now() - start,
-							nodesExecuted: [],
+							affectedNodes: [],
 							blueprintId: blueprint.id,
 							blueprintVersion: version,
 						},
@@ -77,7 +77,7 @@ export function createRunWorkflowTool(config: {
 
 				const result = await config.runtime.run(blueprint, params.params)
 				const duration = Date.now() - start
-				const ctx = result.context.toJSON()
+				const ctx = result.context
 
 				return {
 					status: result.status as 'completed' | 'failed' | 'awaiting',
@@ -87,7 +87,7 @@ export function createRunWorkflowTool(config: {
 					awaitingDetails: result.context._awaitingDetails,
 					metadata: {
 						duration,
-						nodesExecuted: Object.keys(ctx._outputs || {}),
+						affectedNodes: Object.keys(ctx._outputs || {}),
 						blueprintId: blueprint.id,
 						blueprintVersion: version,
 					},
@@ -99,7 +99,7 @@ export function createRunWorkflowTool(config: {
 					executionId,
 					metadata: {
 						duration: Date.now() - start,
-						nodesExecuted: [],
+						affectedNodes: [],
 						blueprintId: params.workflowId,
 					},
 				}

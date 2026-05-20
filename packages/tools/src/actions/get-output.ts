@@ -32,7 +32,7 @@ export function createGetNodeOutputTool(config: {
 						},
 						metadata: {
 							duration: Date.now() - start,
-							nodesExecuted: [],
+							affectedNodes: [],
 							blueprintId: '',
 						},
 					}
@@ -51,7 +51,7 @@ export function createGetNodeOutputTool(config: {
 							},
 							metadata: {
 								duration: Date.now() - start,
-								nodesExecuted: [],
+								affectedNodes: [],
 								blueprintId: '',
 							},
 						}
@@ -65,7 +65,7 @@ export function createGetNodeOutputTool(config: {
 						},
 						metadata: {
 							duration: Date.now() - start,
-							nodesExecuted: [],
+							affectedNodes: [],
 							blueprintId: '',
 						},
 					}
@@ -83,7 +83,7 @@ export function createGetNodeOutputTool(config: {
 					},
 					metadata: {
 						duration: Date.now() - start,
-						nodesExecuted: [params.nodeId],
+						affectedNodes: [params.nodeId],
 						blueprintId: '',
 					},
 				}
@@ -93,7 +93,7 @@ export function createGetNodeOutputTool(config: {
 					error: { message: error instanceof Error ? error.message : String(error) },
 					metadata: {
 						duration: Date.now() - start,
-						nodesExecuted: [],
+						affectedNodes: [],
 						blueprintId: '',
 					},
 				}

@@ -26,7 +26,7 @@ export function createCheckStatusTool(config: {
 						error: { message: `No events found for execution ${params.executionId}` },
 						metadata: {
 							duration: Date.now() - start,
-							nodesExecuted: [],
+							affectedNodes: [],
 							blueprintId: '',
 						},
 					}
@@ -56,7 +56,7 @@ export function createCheckStatusTool(config: {
 					executionId: params.executionId,
 					metadata: {
 						duration: Date.now() - start,
-						nodesExecuted: nodeIds,
+						affectedNodes: nodeIds,
 						blueprintId: (startEvent?.blueprintId as string) ?? '',
 					},
 				}
@@ -65,7 +65,7 @@ export function createCheckStatusTool(config: {
 					status: 'failed',
 					error: { message: error instanceof Error ? error.message : String(error) },
 					executionId: params.executionId,
-					metadata: { duration: Date.now() - start, nodesExecuted: [], blueprintId: '' },
+					metadata: { duration: Date.now() - start, affectedNodes: [], blueprintId: '' },
 				}
 			}
 		},
