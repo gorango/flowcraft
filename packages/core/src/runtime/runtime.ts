@@ -1079,4 +1079,83 @@ export class FlowRuntime<
 	requestPause(executionId: string): void {
 		this._pauseFlags.set(executionId, true)
 	}
+
+	/**
+	 * Rollback execution state by removing completed nodes after a target point.
+	 * This is a "soft" rollback — it undoes context mutations but cannot undo
+	 * side effects (API calls, DB writes, etc.).
+	 *
+	 * @param blueprint The workflow blueprint
+	 * @param executionId The execution to rollback
+	 * @param events The event history to reconstruct state from
+	 * @param targetNodeId The node to rollback to (this node remains completed)
+	 * @returns The rolled-back workflow result
+	 */
+	async rollbackExecution(
+		blueprint: WorkflowBlueprint,
+		executionId: string,
+		events: FlowcraftEvent[],
+		targetNodeId: string,
+	): Promise<WorkflowResult<TContext>> {
+		const contextData: Record<string, unknown> = {}
+		for (const event of events) {
+			if (event.type === 'context:change') {
+				const { key, value, op } = event.payload
+				if (key) {
+					if (op === 'delete') {
+						delete contextData[key]
+					} else {
+						contextData[key] = value
+					}
+				}
+			}
+			if (event.type === 'node:finish') {
+				contextData[`_outputs.${event.payload.nodeId}`] = event.payload.result.output
+			}
+		}
+
+		const targetOutputKey = `_outputs.${targetNodeId}`
+		if (!(targetOutputKey in contextData)) {
+			throw new FlowcraftError(
+				`Cannot rollback: target node '${targetNodeId}' has not completed`,
+				{ nodeId: targetNodeId, blueprintId: blueprint.id, executionId, isFatal: false },
+			)
+		}
+
+		const completedNodeIds = new Set<string>()
+		for (const key of Object.keys(contextData)) {
+			if (key.startsWith('_outputs.')) {
+				completedNodeIds.add(key.substring('_outputs.'.length))
+			}
+		}
+
+		const nodesAfterTarget = new Set<string>()
+		const queue = [targetNodeId]
+		const visited = new Set<string>()
+		while (queue.length > 0) {
+			const current = queue.shift()!
+			if (visited.has(current)) continue
+			visited.add(current)
+			for (const edge of blueprint.edges) {
+				if (edge.source === current && edge.target !== targetNodeId) {
+					nodesAfterTarget.add(edge.target)
+					queue.push(edge.target)
+				}
+			}
+		}
+
+		const workflowState = new WorkflowState<TContext>(contextData as Partial<TContext>)
+
+		for (const nodeId of nodesAfterTarget) {
+			if (completedNodeIds.has(nodeId)) {
+				const contextImpl = workflowState.getContext()
+				await contextImpl.delete(`_outputs.${nodeId}` as any)
+				await contextImpl.delete(nodeId as any)
+				await contextImpl.delete(`_inputs.${nodeId}` as any)
+				workflowState.clearError(nodeId)
+			}
+		}
+
+		return workflowState.toResult(this.serializer, executionId)
+	}
 }

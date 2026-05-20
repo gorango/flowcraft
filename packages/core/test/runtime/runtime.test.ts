@@ -767,3 +767,146 @@ describe('FlowRuntime - requestPause', () => {
 		expect(runtime.pauseFlags.get('exec-456')).toBeUndefined()
 	})
 })
+
+describe('FlowRuntime - rollbackExecution', () => {
+	it('should remove nodes completed after target node', async () => {
+		const runtime = new FlowRuntime()
+
+		const events: FlowcraftEvent[] = [
+			{
+				type: 'node:finish',
+				payload: { nodeId: 'A', result: { output: 'a' }, executionId: 'test-exec', blueprintId: 'test' },
+			},
+			{
+				type: 'node:finish',
+				payload: { nodeId: 'B', result: { output: 'b' }, executionId: 'test-exec', blueprintId: 'test' },
+			},
+			{
+				type: 'node:finish',
+				payload: { nodeId: 'C', result: { output: 'c' }, executionId: 'test-exec', blueprintId: 'test' },
+			},
+		]
+
+		const flow = createFlow('rollback-chain')
+			.node('A', async () => ({ output: 'a' }))
+			.node('B', async () => ({ output: 'b' }))
+			.node('C', async () => ({ output: 'c' }))
+			.edge('A', 'B')
+			.edge('B', 'C')
+
+		const blueprint = flow.toBlueprint()
+
+		const result = await runtime.rollbackExecution(blueprint, 'test-exec', events, 'B')
+
+		expect(result.context['_outputs.A']).toBe('a')
+		expect(result.context['_outputs.B']).toBe('b')
+		expect(result.context['_outputs.C']).toBeUndefined()
+	})
+
+	it('should throw when target node has not completed', async () => {
+		const runtime = new FlowRuntime()
+
+		const events: FlowcraftEvent[] = [
+			{
+				type: 'node:finish',
+				payload: { nodeId: 'A', result: { output: 'a' }, executionId: 'test-exec', blueprintId: 'test' },
+			},
+		]
+
+		const flow = createFlow('rollback-missing-target')
+			.node('A', async () => ({ output: 'a' }))
+			.node('B', async () => ({ output: 'b' }))
+
+		const blueprint = flow.toBlueprint()
+
+		await expect(
+			runtime.rollbackExecution(blueprint, 'test-exec', events, 'B'),
+		).rejects.toThrow("target node 'B' has not completed")
+	})
+
+	it('should remove edge inputs for rolled-back nodes', async () => {
+		const runtime = new FlowRuntime()
+
+		const events: FlowcraftEvent[] = [
+			{
+				type: 'node:finish',
+				payload: { nodeId: 'A', result: { output: 'a' }, executionId: 'test-exec', blueprintId: 'test' },
+			},
+			{
+				type: 'node:finish',
+				payload: { nodeId: 'B', result: { output: 'b' }, executionId: 'test-exec', blueprintId: 'test' },
+			},
+		]
+
+		const flow = createFlow('rollback-inputs')
+			.node('A', async () => ({ output: 'a' }))
+			.node('B', async () => ({ output: 'b' }))
+			.edge('A', 'B')
+
+		const blueprint = flow.toBlueprint()
+
+		const result = await runtime.rollbackExecution(blueprint, 'test-exec', events, 'A')
+
+		expect(result.context['_outputs.A']).toBe('a')
+		expect(result.context['_outputs.B']).toBeUndefined()
+		expect(result.context['_inputs.B']).toBeUndefined()
+	})
+
+	it('should clear errors on rolled-back nodes', async () => {
+		const runtime = new FlowRuntime()
+
+		const events: FlowcraftEvent[] = [
+			{
+				type: 'node:finish',
+				payload: { nodeId: 'A', result: { output: 'a' }, executionId: 'test-exec', blueprintId: 'test' },
+			},
+			{
+				type: 'node:finish',
+				payload: { nodeId: 'B', result: { output: 'b' }, executionId: 'test-exec', blueprintId: 'test' },
+			},
+		]
+
+		const flow = createFlow('rollback-errors')
+			.node('A', async () => ({ output: 'a' }))
+			.node('B', async () => ({ output: 'b' }))
+			.edge('A', 'B')
+
+		const blueprint = flow.toBlueprint()
+
+		const result = await runtime.rollbackExecution(blueprint, 'test-exec', events, 'A')
+
+		expect(result.errors).toBeUndefined()
+	})
+
+	it('should preserve context keys not related to rolled-back nodes', async () => {
+		const runtime = new FlowRuntime()
+
+		const events: FlowcraftEvent[] = [
+			{
+				type: 'context:change',
+				payload: { sourceNode: 'A', key: 'userData', op: 'set', value: { name: 'test' }, executionId: 'test-exec' },
+			},
+			{
+				type: 'node:finish',
+				payload: { nodeId: 'A', result: { output: 'a' }, executionId: 'test-exec', blueprintId: 'test' },
+			},
+			{
+				type: 'node:finish',
+				payload: { nodeId: 'B', result: { output: 'b' }, executionId: 'test-exec', blueprintId: 'test' },
+			},
+		]
+
+		const flow = createFlow('rollback-preserve-context')
+			.node('A', async () => ({ output: 'a' }))
+			.node('B', async () => ({ output: 'b' }))
+			.edge('A', 'B')
+
+		const blueprint = flow.toBlueprint()
+
+		const result = await runtime.rollbackExecution(blueprint, 'test-exec', events, 'A')
+
+		expect(result.context.userData).toEqual({ name: 'test' })
+		expect(result.context['_outputs.A']).toBe('a')
+		expect(result.context['_outputs.B']).toBeUndefined()
+	})
+})
