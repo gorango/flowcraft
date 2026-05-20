@@ -936,4 +936,53 @@ export class FlowRuntime<
 
 		return workflowState.toResult(this.serializer, executionId)
 	}
+
+	/**
+	 * Modify context values mid-execution by reconstructing state from events
+	 * and applying patch operations.
+	 *
+	 * @param blueprint The workflow blueprint
+	 * @param executionId The execution to patch
+	 * @param events The event history to reconstruct state from
+	 * @param patches Array of { key, value, op } operations
+	 * @returns The updated workflow result with patched context
+	 */
+	async patchContext(
+		blueprint: WorkflowBlueprint,
+		executionId: string,
+		events: FlowcraftEvent[],
+		patches: Array<{ key: string; value: unknown; op: 'set' | 'delete' }>,
+	): Promise<WorkflowResult<TContext>> {
+		const contextData: Record<string, unknown> = {}
+		for (const event of events) {
+			if (event.type === 'context:change') {
+				const { key, value, op } = event.payload
+				if (key) {
+					if (op === 'delete') {
+						delete contextData[key]
+					} else {
+						contextData[key] = value
+					}
+				}
+			}
+			if (event.type === 'node:finish') {
+				contextData[`_outputs.${event.payload.nodeId}`] = event.payload.result.output
+			}
+		}
+
+		const workflowState = new WorkflowState<TContext>(contextData as Partial<TContext>)
+		const contextImpl = workflowState.getContext()
+
+		workflowState.setEventEmitter(this.eventBus, executionId)
+
+		for (const patch of patches) {
+			if (patch.op === 'delete') {
+				await contextImpl.delete(patch.key as any)
+			} else {
+				await contextImpl.set(patch.key as any, patch.value)
+			}
+		}
+
+		return workflowState.toResult(this.serializer, executionId)
+	}
 }

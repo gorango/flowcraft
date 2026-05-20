@@ -506,3 +506,158 @@ describe('FlowRuntime - executeNodes', () => {
 		expect(result.context.B).toBe(20)
 	})
 })
+
+describe('FlowRuntime - patchContext', () => {
+	it('should set a context key', async () => {
+		const runtime = new FlowRuntime()
+
+		const events: FlowcraftEvent[] = []
+
+		const result = await runtime.patchContext(
+			{ id: 'test', nodes: [], edges: [] },
+			'test-exec',
+			events,
+			[{ key: 'myKey', value: 'myValue', op: 'set' }],
+		)
+
+		expect(result.context.myKey).toBe('myValue')
+	})
+
+	it('should delete a context key', async () => {
+		const runtime = new FlowRuntime()
+
+		const events: FlowcraftEvent[] = [
+			{
+				type: 'context:change',
+				payload: {
+					sourceNode: 'A',
+					key: 'tempKey',
+					op: 'set',
+					value: 'temp',
+					executionId: 'test-exec',
+				},
+			},
+		]
+
+		const result = await runtime.patchContext(
+			{ id: 'test', nodes: [], edges: [] },
+			'test-exec',
+			events,
+			[{ key: 'tempKey', value: undefined, op: 'delete' }],
+		)
+
+		expect(result.context.tempKey).toBeUndefined()
+	})
+
+	it('should apply multiple patches in sequence', async () => {
+		const runtime = new FlowRuntime()
+
+		const events: FlowcraftEvent[] = []
+
+		const result = await runtime.patchContext(
+			{ id: 'test', nodes: [], edges: [] },
+			'test-exec',
+			events,
+			[
+				{ key: 'a', value: 1, op: 'set' },
+				{ key: 'b', value: 2, op: 'set' },
+				{ key: 'c', value: 3, op: 'set' },
+			],
+		)
+
+		expect(result.context.a).toBe(1)
+		expect(result.context.b).toBe(2)
+		expect(result.context.c).toBe(3)
+	})
+
+	it('should handle empty patches array', async () => {
+		const runtime = new FlowRuntime()
+
+		const events: FlowcraftEvent[] = [
+			{
+				type: 'context:change',
+				payload: {
+					sourceNode: 'A',
+					key: 'existing',
+					op: 'set',
+					value: 'yes',
+					executionId: 'test-exec',
+				},
+			},
+		]
+
+		const result = await runtime.patchContext(
+			{ id: 'test', nodes: [], edges: [] },
+			'test-exec',
+			events,
+			[],
+		)
+
+		expect(result.context.existing).toBe('yes')
+	})
+
+	it('should reconstruct context from events before patching', async () => {
+		const runtime = new FlowRuntime()
+
+		const events: FlowcraftEvent[] = [
+			{
+				type: 'context:change',
+				payload: {
+					sourceNode: 'A',
+					key: 'original',
+					op: 'set',
+					value: 'before',
+					executionId: 'test-exec',
+				},
+			},
+			{
+				type: 'node:finish',
+				payload: {
+					nodeId: 'A',
+					result: { output: 'done' },
+					executionId: 'test-exec',
+					blueprintId: 'test',
+				},
+			},
+		]
+
+		const result = await runtime.patchContext(
+			{ id: 'test', nodes: [], edges: [] },
+			'test-exec',
+			events,
+			[{ key: 'original', value: 'after', op: 'set' }],
+		)
+
+		expect(result.context.original).toBe('after')
+		expect(result.context['_outputs.A']).toBe('done')
+	})
+
+	it('should handle set after delete', async () => {
+		const runtime = new FlowRuntime()
+
+		const events: FlowcraftEvent[] = [
+			{
+				type: 'context:change',
+				payload: {
+					sourceNode: 'A',
+					key: 'key',
+					op: 'set',
+					value: 'first',
+					executionId: 'test-exec',
+				},
+			},
+		]
+
+		const result = await runtime.patchContext(
+			{ id: 'test', nodes: [], edges: [] },
+			'test-exec',
+			events,
+			[
+				{ key: 'key', value: undefined, op: 'delete' },
+				{ key: 'key', value: 'second', op: 'set' },
+			],
+		)
+
+		expect(result.context.key).toBe('second')
+	})
+})
