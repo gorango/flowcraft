@@ -985,4 +985,83 @@ export class FlowRuntime<
 
 		return workflowState.toResult(this.serializer, executionId)
 	}
+
+	/**
+	 * Manually mark a node as completed with a synthetic output,
+	 * without executing its logic. Enables skip_node, skip_failed_node,
+	 * and set_node_complete tools.
+	 *
+	 * @param blueprint The workflow blueprint
+	 * @param executionId The execution to modify
+	 * @param nodeId The node to mark as completed
+	 * @param output The synthetic output to store
+	 * @returns The updated workflow result with the node marked complete
+	 */
+	async markNodeCompleted(
+		blueprint: WorkflowBlueprint,
+		executionId: string,
+		nodeId: string,
+		output: unknown,
+	): Promise<WorkflowResult<TContext>> {
+		const nodeDef = blueprint.nodes.find((n) => n.id === nodeId)
+		if (!nodeDef) {
+			throw new FlowcraftError(`Node '${nodeId}' not found in blueprint`, {
+				nodeId,
+				blueprintId: blueprint.id,
+				executionId,
+				isFatal: false,
+			})
+		}
+
+		const contextData: Record<string, unknown> = {}
+
+		const workflowState = new WorkflowState<TContext>(contextData as Partial<TContext>)
+		const contextImpl = workflowState.getContext()
+
+		workflowState.setEventEmitter(this.eventBus, executionId)
+
+		workflowState.clearError(nodeId)
+
+		await workflowState.addCompletedNode(nodeId, output)
+
+		await this.eventBus.emit({
+			type: 'node:finish',
+			payload: {
+				nodeId,
+				result: { output },
+				executionId,
+				blueprintId: blueprint.id,
+			},
+		})
+
+		const allPredecessors = new Map<string, Set<string>>()
+		for (const node of blueprint.nodes) {
+			const preds = new Set<string>()
+			for (const edge of blueprint.edges) {
+				if (edge.target === node.id) preds.add(edge.source)
+			}
+			allPredecessors.set(node.id, preds)
+		}
+
+		const nextSteps = await this.determineNextNodes(
+			blueprint,
+			nodeId,
+			{ output },
+			contextImpl,
+			executionId,
+		)
+
+		for (const { node, edge } of nextSteps) {
+			await this.applyEdgeTransform(
+				edge,
+				{ output },
+				node,
+				contextImpl,
+				allPredecessors,
+				executionId,
+			)
+		}
+
+		return workflowState.toResult(this.serializer, executionId)
+	}
 }

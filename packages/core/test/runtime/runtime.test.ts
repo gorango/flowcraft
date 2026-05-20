@@ -661,3 +661,80 @@ describe('FlowRuntime - patchContext', () => {
 		expect(result.context.key).toBe('second')
 	})
 })
+
+describe('FlowRuntime - markNodeCompleted', () => {
+	it('should mark a node as completed with synthetic output', async () => {
+		const eventBus = new MockEventBus()
+		const runtime = new FlowRuntime({ eventBus })
+
+		const flow = createFlow('mark-complete').node('A', async () => ({ output: 'real' }))
+
+		const blueprint = flow.toBlueprint()
+
+		const result = await runtime.markNodeCompleted(blueprint, 'test-exec', 'A', {
+			synthetic: true,
+		})
+
+		expect(result.context.A).toEqual({ synthetic: true })
+		expect(result.context['_outputs.A']).toEqual({ synthetic: true })
+	})
+
+	it('should emit node:finish event without node:start', async () => {
+		const eventBus = new MockEventBus()
+		const runtime = new FlowRuntime({ eventBus })
+
+		const flow = createFlow('mark-complete-events').node('A', async () => ({ output: 'real' }))
+
+		const blueprint = flow.toBlueprint()
+
+		await runtime.markNodeCompleted(blueprint, 'test-exec', 'A', 'synthetic-output')
+
+		const nodeStart = eventBus.events.find((e) => e.type === 'node:start')
+		const nodeFinish = eventBus.events.find((e) => e.type === 'node:finish')
+
+		expect(nodeStart).toBeUndefined()
+		expect(nodeFinish).toBeDefined()
+		expect(nodeFinish?.payload.nodeId).toBe('A')
+		expect(nodeFinish?.payload.result.output).toBe('synthetic-output')
+	})
+
+	it('should throw when node does not exist in blueprint', async () => {
+		const runtime = new FlowRuntime()
+
+		const blueprint = { id: 'test', nodes: [], edges: [] }
+
+		await expect(
+			runtime.markNodeCompleted(blueprint, 'test-exec', 'nonexistent', 'output'),
+		).rejects.toThrow("Node 'nonexistent' not found")
+	})
+
+	it('should propagate edge transforms to downstream nodes', async () => {
+		const evaluator = new UnsafeEvaluator()
+		const runtime = new FlowRuntime({ evaluator })
+
+		const flow = createFlow('mark-complete-transform')
+			.node('A', async () => ({ output: { value: 10 } }))
+			.node('B', async ({ params }) => ({ output: params.value }))
+			.edge('A', 'B', { transform: 'input.value * 2' })
+
+		const blueprint = flow.toBlueprint()
+
+		const result = await runtime.markNodeCompleted(blueprint, 'test-exec', 'A', { value: 5 })
+
+		expect(result.context['_inputs.B']).toBe(10)
+	})
+
+	it('should clear error state on the node', async () => {
+		const runtime = new FlowRuntime()
+
+		const flow = createFlow('mark-complete-clear-error').node('A', async () => ({
+			output: 'real',
+		}))
+
+		const blueprint = flow.toBlueprint()
+
+		const result = await runtime.markNodeCompleted(blueprint, 'test-exec', 'A', 'output')
+
+		expect(result.errors).toBeUndefined()
+	})
+})
