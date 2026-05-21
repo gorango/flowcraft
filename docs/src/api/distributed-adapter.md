@@ -19,6 +19,16 @@ The base class for all distributed adapters. It handles the technology-agnostic 
 - **`protected abstract enqueueJob(job)`**: Must enqueue a new job onto the message queue.
 - **`protected abstract publishFinalResult(runId, result)`**: Must publish the final result of a workflow run.
 
+### Public Methods
+
+- **`start()`**: Starts the worker, which begins listening for and processing jobs from the queue.
+- **`reconcile(runId)`**: Inspects the persisted context to find completed nodes, determines the next executable nodes (the frontier), and enqueues jobs for them. Returns the set of enqueued node IDs.
+- **`resumeWithAction(runId, action, output?)`**: Resumes an awaiting workflow run by injecting user-provided action/output data, clearing the awaiting state, and reconciling the execution frontier. This is the core of the Human-in-the-Loop (HITL) resume pattern for distributed adapters.
+    - **`runId`** `string`: The unique ID of the workflow execution to resume.
+    - **`action`** `string`: The user action (e.g., `'approve'`, `'reject'`).
+    - **`output?`** `unknown`: Optional user-provided output data.
+    - **Returns**: `Promise<Set<string>>` — the set of node IDs that were enqueued.
+
 ### Overridable Hooks
 
 - **`protected shouldRetryInProcess(nodeDef)`**: Returns `true` by default. Override to return `false` when your queue system should handle retries natively (e.g., BullMQ `attempts`/`backoff`). When `false`, the adapter forces `maxRetries = 1` so the executor runs exactly once and lets the queue schedule retries.

@@ -60,6 +60,23 @@ class RetryAwareMockAdapter extends BaseDistributedAdapter {
 	}
 }
 
+function createMockContext(
+	initialData: Record<string, any> = {},
+): IAsyncContext<Record<string, any>> {
+	const data = new Map(Object.entries(initialData))
+	return {
+		get: vi.fn().mockImplementation(async (key: string) => data.get(key)),
+		set: vi.fn().mockImplementation(async (key: string, value: any) => {
+			data.set(key, value)
+		}),
+		has: vi.fn().mockImplementation(async (key: string) => data.has(key)),
+		delete: vi.fn().mockImplementation(async (key: string) => data.delete(key)),
+		toJSON: vi.fn().mockImplementation(async () => Object.fromEntries(data)),
+		patch: vi.fn(),
+		type: 'async',
+	}
+}
+
 describe('BaseDistributedAdapter', () => {
 	let mockCoordinationStore: ICoordinationStore
 	let mockContext: IAsyncContext<Record<string, any>>
@@ -931,6 +948,117 @@ describe('BaseDistributedAdapter', () => {
 				'run1',
 				expect.objectContaining({ status: 'completed' }),
 			)
+		})
+	})
+
+	describe('resumeWithAction', () => {
+		it('should set resume data and clear awaiting state', async () => {
+			const statefulContext = createMockContext({
+				blueprintId: 'linear',
+				'_outputs.A': 'result from A',
+				_awaitingNodeIds: ['B'],
+				_awaitingDetails: { B: { reason: 'external_event' } },
+			})
+			adapter.createContext.mockReturnValue(statefulContext)
+
+			const enqueuedNodes = await adapter.resumeWithAction('run1', 'approve', {
+				approved: true,
+			})
+
+			expect(statefulContext.set).toHaveBeenCalledWith('_resume.action', 'approve')
+			expect(statefulContext.set).toHaveBeenCalledWith('_resume.output', { approved: true })
+			expect(statefulContext.delete).toHaveBeenCalledWith('_awaitingNodeIds')
+			expect(statefulContext.delete).toHaveBeenCalledWith('_awaitingDetails')
+			// B is a terminal node, so no successors to enqueue
+			expect(enqueuedNodes).toEqual(new Set())
+		})
+
+		it('should mark the awaiting node as completed so successors are enqueued', async () => {
+			const hitlBlueprint: WorkflowBlueprint = {
+				id: 'hitl-test',
+				nodes: [
+					{ id: 'start', uses: 'test' },
+					{ id: 'wait', uses: 'wait' },
+					{ id: 'process', uses: 'output' },
+				],
+				edges: [
+					{ source: 'start', target: 'wait' },
+					{ source: 'wait', target: 'process' },
+				],
+			}
+			if (runtime.options.blueprints) {
+				runtime.options.blueprints['hitl-test'] = hitlBlueprint
+			}
+
+			const statefulContext = createMockContext({
+				blueprintId: 'hitl-test',
+				'_outputs.start': { value: 42 },
+				_awaitingNodeIds: ['wait'],
+				_awaitingDetails: { wait: { reason: 'external_event' } },
+			})
+			adapter.createContext.mockReturnValue(statefulContext)
+
+			const enqueuedNodes = await adapter.resumeWithAction('run1', 'approve', {
+				approved: true,
+			})
+
+			// The awaiting node 'wait' should be marked as completed so 'process' gets enqueued
+			expect(statefulContext.set).toHaveBeenCalledWith('_outputs.wait', { approved: true })
+			expect(enqueuedNodes).toEqual(new Set(['process']))
+		})
+
+		it('should handle resume without optional output data', async () => {
+			const statefulContext = createMockContext({
+				blueprintId: 'linear',
+				'_outputs.A': 'result from A',
+				_awaitingNodeIds: ['B'],
+			})
+			adapter.createContext.mockReturnValue(statefulContext)
+
+			const enqueuedNodes = await adapter.resumeWithAction('run1', 'continue')
+
+			expect(statefulContext.set).toHaveBeenCalledWith('_resume.action', 'continue')
+			expect(statefulContext.set).not.toHaveBeenCalledWith(
+				'_resume.output',
+				expect.anything(),
+			)
+			// B is a terminal node, so no successors to enqueue
+			expect(enqueuedNodes).toEqual(new Set())
+		})
+
+		it('should handle fan-in successors after resuming an awaiting node', async () => {
+			const fanInHitlBlueprint: WorkflowBlueprint = {
+				id: 'fanin-hitl',
+				nodes: [
+					{ id: 'A', uses: 'test' },
+					{ id: 'B', uses: 'test' },
+					{ id: 'wait', uses: 'wait' },
+					{ id: 'gather', uses: 'output' },
+				],
+				edges: [
+					{ source: 'A', target: 'wait' },
+					{ source: 'wait', target: 'gather' },
+					{ source: 'B', target: 'gather' },
+				],
+			}
+			if (runtime.options.blueprints) {
+				runtime.options.blueprints['fanin-hitl'] = fanInHitlBlueprint
+			}
+
+			const statefulContext = createMockContext({
+				blueprintId: 'fanin-hitl',
+				'_outputs.A': 'result A',
+				'_outputs.B': 'result B',
+				_awaitingNodeIds: ['wait'],
+				_awaitingDetails: { wait: { reason: 'external_event' } },
+			})
+			adapter.createContext.mockReturnValue(statefulContext)
+
+			const enqueuedNodes = await adapter.resumeWithAction('run1', 'approve')
+
+			expect(statefulContext.set).toHaveBeenCalledWith('_outputs.wait', undefined)
+			// gather should be enqueued since both predecessors (wait + B) are now complete
+			expect(enqueuedNodes).toEqual(new Set(['gather']))
 		})
 	})
 

@@ -138,6 +138,58 @@ const workflow = createFlow('any-join-example')
 
 This robust error handling ensures that distributed workflows maintain consistency and reliability even when individual nodes fail.
 
+## Human-in-the-Loop Resume
+
+In distributed execution, resuming an awaiting workflow requires coordinating state across the message queue and coordination store. The adapter provides the `resumeWithAction` method to simplify this pattern.
+
+### Resuming with `resumeWithAction`
+
+When a workflow pauses at a `wait` node, the awaiting state is persisted in the distributed context. To resume:
+
+```typescript
+// client.ts
+import { BullMQAdapter } from '@flowcraft/bullmq-adapter'
+
+async function resumeApproval(adapter: BullMQAdapter, runId: string) {
+	const enqueued = await adapter.resumeWithAction(runId, 'approve', {
+		approved: true,
+		reviewer: 'manager@example.com',
+	})
+
+	console.log(`Resumed ${runId}, enqueued nodes:`, [...enqueued])
+}
+```
+
+The method:
+
+1. Injects `_resume.action` and `_resume.output` into the context for awaiting nodes to consume
+2. Marks all awaiting nodes as completed with the provided output
+3. Clears `_awaitingNodeIds` and `_awaitingDetails` from the context
+4. Calls `reconcile()` to compute the new frontier and enqueue ready successors
+
+### Conditional Routing with Actions
+
+The `action` parameter drives conditional edge routing, enabling approval/rejection patterns:
+
+```typescript
+const workflow = createFlow('distributed-approval')
+	.node('start', () => ({ output: { document: 'contract.pdf' } }))
+	.wait('review')
+	.node('approve', () => ({ output: 'Document approved' }))
+	.node('reject', () => ({ output: 'Document rejected' }))
+	.edge('start', 'review')
+	.edge('review', 'approve', { action: 'approve' })
+	.edge('review', 'reject', { action: 'reject' })
+	.toBlueprint()
+
+// Resume with different actions
+await adapter.resumeWithAction(runId, 'approve') // routes to 'approve'
+await adapter.resumeWithAction(runId, 'reject') // routes to 'reject'
+```
+
+> [!NOTE]
+> Unlike the in-memory `runtime.resume()` which requires the serialized context and awaiting node ID, `resumeWithAction` only needs the `runId` — it reads the awaiting state directly from the distributed context store.
+
 ## Reconciliation Resilience
 
 The `reconcile` method in `BaseDistributedAdapter` is used to resume a workflow run by inspecting the persisted context, determining the next executable nodes, and enqueuing jobs for them. To increase resilience, the adapter stores the `blueprintId` in both the context and the coordination store as a fallback. If the `blueprintId` is missing from the context during reconciliation, it will be retrieved from the coordination store, preventing failures due to lost context data.

@@ -552,6 +552,52 @@ export abstract class BaseDistributedAdapter {
 		return enqueuedNodes
 	}
 
+	/**
+	 * Resumes an awaiting workflow run by injecting user-provided action/output
+	 * data into the context, clearing the awaiting state, and reconciling the
+	 * execution frontier.
+	 *
+	 * This is the core of the Human-in-the-Loop (HITL) resume pattern. The
+	 * injected resume data is stored under `_resume.action` and `_resume.output`
+	 * keys in the context, where awaiting nodes (e.g., `waitNode`) can read
+	 * them and return with the appropriate action to drive edge routing.
+	 *
+	 * @param runId The unique ID of the workflow execution to resume.
+	 * @param action The user action (e.g., 'approve', 'reject').
+	 * @param output Optional user-provided output data.
+	 * @returns The set of node IDs that were enqueued for execution.
+	 */
+	public async resumeWithAction(
+		runId: string,
+		action: string,
+		output?: unknown,
+	): Promise<Set<string>> {
+		const context = this.createContext(runId)
+
+		const awaitingNodeIds = (await context.get('_awaitingNodeIds' as any)) as
+			| string[]
+			| undefined
+
+		await context.set('_resume.action' as any, action)
+		if (output !== undefined) {
+			await context.set('_resume.output' as any, output)
+		}
+
+		// mark awaiting nodes as completed so reconcile enqueues their successors
+		if (awaitingNodeIds && awaitingNodeIds.length > 0) {
+			for (const nodeId of awaitingNodeIds) {
+				await context.set(`_outputs.${nodeId}` as any, output)
+			}
+		}
+
+		await context.delete('_awaitingNodeIds' as any)
+		await context.delete('_awaitingDetails' as any)
+
+		this.logger.info(`[Adapter] Resuming run '${runId}' with action '${action}'`)
+
+		return this.reconcile(runId)
+	}
+
 	private calculateResumedFrontier(
 		blueprint: WorkflowBlueprint,
 		completedNodes: Set<string>,
