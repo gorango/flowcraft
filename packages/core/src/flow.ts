@@ -103,7 +103,7 @@ export class FlowBuilder<
 	 * @param options Configuration for the batch operation.
 	 * @returns The Flow instance with an updated context type for chaining.
 	 */
-	batch<TWorkerInput, TWorkerOutput, TWorkerAction extends string, TOutputKey extends string>(
+	batch<TWorkerInput, TWorkerOutput, TWorkerAction extends string, TOutputKey extends string = string>(
 		id: string,
 		worker:
 			| NodeFunction<TContext, TDependencies, TWorkerInput, TWorkerOutput, TWorkerAction>
@@ -111,8 +111,8 @@ export class FlowBuilder<
 		options: {
 			/** The key in the context that holds the input array for the batch. */
 			inputKey: keyof TContext
-			/** The key in the context where the array of results will be stored. */
-			outputKey: TOutputKey
+			/** The key in the context where the array of results will be stored. Defaults to the gather node ID. */
+			outputKey?: TOutputKey
 			/** The number of items to process in each chunk to limit memory usage. */
 			chunkSize?: number
 		},

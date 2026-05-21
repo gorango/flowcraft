@@ -69,7 +69,7 @@ const flow = createFlow<{ items: string[]; results: string[] }>('batch')
 **Batch configuration:**
 
 - `inputKey`: Context key containing the array to scatter
-- `outputKey`: Context key where gathered results are stored
+- `outputKey` (optional): Context key where gathered results are stored (defaults to `${id}_gather`)
 - Each item is processed in parallel by the worker function
 - Results are collected into an array at `outputKey`
 

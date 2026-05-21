@@ -52,7 +52,7 @@ flow.batch(
 	worker: NodeFunction | NodeClass, // The implementation for the worker node
 	options: {
 		inputKey: keyof TContext, // The context key holding the source array
-		outputKey: keyof TContext, // The context key where the results array will be saved
+		outputKey?: keyof TContext, // The context key where the results array will be saved (defaults to `${id}_gather`)
 	}
 )
 ```

@@ -7,6 +7,7 @@ export class BatchGatherNode extends BaseNode {
 		context: NodeContext<any, any, any>,
 	): Promise<Omit<NodeResult, 'error'>> {
 		const { gatherNodeId, outputKey } = (this.params as any) || {}
+		const resolvedOutputKey = outputKey ?? this.nodeId
 		const hasMore = (await context.context.get(`${gatherNodeId}_hasMore`)) || false
 		const dynamicNodes: any[] = []
 		let results: any[] = []
@@ -28,7 +29,7 @@ export class BatchGatherNode extends BaseNode {
 				const result = await context.context.get(`_outputs.${workerId}` as any)
 				if (result !== undefined) results.push(result)
 			}
-			await context.context.set(outputKey as any, results)
+			await context.context.set(resolvedOutputKey as any, results)
 
 			const parentBatchId = gatherNodeId.replace('_gather', '')
 			await context.dependencies.runtime.services.eventBus.emit({
