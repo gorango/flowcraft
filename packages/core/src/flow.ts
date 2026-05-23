@@ -103,7 +103,12 @@ export class FlowBuilder<
 	 * @param options Configuration for the batch operation.
 	 * @returns The Flow instance with an updated context type for chaining.
 	 */
-	batch<TWorkerInput, TWorkerOutput, TWorkerAction extends string, TOutputKey extends string = string>(
+	batch<
+		TWorkerInput,
+		TWorkerOutput,
+		TWorkerAction extends string,
+		TOutputKey extends string = string,
+	>(
 		id: string,
 		worker:
 			| NodeFunction<TContext, TDependencies, TWorkerInput, TWorkerOutput, TWorkerAction>

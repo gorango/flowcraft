@@ -1,0 +1,46 @@
+{
+	"name": "@flowcraft/tldraw",
+	"version": "0.1.0",
+	"description": "tldraw-based visual workflow editor and execution viewer for flowcraft",
+	"license": "MIT",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/gorango/flowcraft.git"
+	},
+	"files": [
+		"dist"
+	],
+	"type": "module",
+	"exports": {
+		".": {
+			"types": "./dist/index.d.mts",
+			"import": "./dist/index.mjs"
+		}
+	},
+	"scripts": {
+		"dev": "tsdown --watch",
+		"build": "tsdown",
+		"typecheck": "tsc --noEmit",
+		"test": "vitest run",
+		"test:watch": "vitest"
+	},
+	"devDependencies": {
+		"@tldraw/validate": "^5.0.1",
+		"@types/react": "^19.2.15",
+		"@types/react-dom": "^19.2.3",
+		"flowcraft": "workspace:*",
+		"jsdom": "^29.1.1",
+		"react": "^19.2.6",
+		"react-dom": "^19.2.6",
+		"tldraw": "^5.0.1",
+		"tsdown": "^0.21.7",
+		"typescript": "^6.0.2",
+		"vitest": "^4.1.4"
+	},
+	"peerDependencies": {
+		"flowcraft": "^2.0.0",
+		"react": "^19.0.0",
+		"react-dom": "^19.0.0",
+		"tldraw": "^3.0.0"
+	}
+}
