@@ -5,26 +5,27 @@ import { createRoot } from 'react-dom/client'
 import type { FlowBuilder } from 'flowcraft'
 import { FlowcraftCanvas } from '../../src/components/FlowcraftCanvas'
 
-vi.mock('tldraw', () => {
-	const MockTldraw = () => createElement('div', { 'data-testid': 'tldraw-canvas' })
-	return {
-		Tldraw: MockTldraw,
-		createShapeId: vi.fn((id: string) => id),
-		ShapeUtil: class {
-			editor: any
-			constructor(editor: any) {
-				this.editor = editor
-			}
-		},
-		BindingUtil: class {
-			editor: any
-			constructor(editor: any) {
-				this.editor = editor
-			}
-		},
-		defaultShapeUtils: [],
-	}
-})
+function MockTldraw() {
+	return createElement('div', { 'data-testid': 'tldraw-canvas' })
+}
+
+vi.mock('tldraw', () => ({
+	Tldraw: MockTldraw,
+	createShapeId: vi.fn((id: string) => id),
+	ShapeUtil: class {
+		editor: any
+		constructor(editor: any) {
+			this.editor = editor
+		}
+	},
+	BindingUtil: class {
+		editor: any
+		constructor(editor: any) {
+			this.editor = editor
+		}
+	},
+	defaultShapeUtils: [],
+}))
 
 vi.mock('../../src/runtime/RuntimeControls', () => ({
 	RuntimeControls: () => createElement('div', { 'data-testid': 'runtime-controls' }),

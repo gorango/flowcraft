@@ -3,5 +3,7 @@
 		"correctness": "error",
 		"suspicious": "warn"
 	},
-	"rules": {}
+	"rules": {
+		"no-underscore-dangle": "off"
+	}
 }

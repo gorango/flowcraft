@@ -36,9 +36,9 @@
 		"@flowcraft/compiler": "1.0.0-alpha.2"
 	},
 	"devDependencies": {
-		"@types/node": "^25.5.2",
-		"astro": "^6.1.4",
-		"tsdown": "^0.21.7"
+		"@types/node": "^25.9.1",
+		"astro": "^6.3.7",
+		"tsdown": "^0.22.0"
 	},
 	"peerDependencies": {
 		"astro": "^3.0.0 || ^4.0.0"

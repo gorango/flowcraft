@@ -22,11 +22,11 @@
 		"flowcraft": "^2.10.1"
 	},
 	"devDependencies": {
-		"@cloudflare/workers-types": "^4.20260413.1",
-		"@vitest/coverage-v8": "^4.1.4",
-		"miniflare": "^4.20260409.0",
-		"tsdown": "^0.21.7",
-		"typescript": "^6.0.2",
-		"vitest": "^4.1.4"
+		"@cloudflare/workers-types": "^4.20260524.1",
+		"@vitest/coverage-v8": "^4.1.7",
+		"miniflare": "^4.20260521.0",
+		"tsdown": "^0.22.0",
+		"typescript": "^6.0.3",
+		"vitest": "^4.1.7"
 	}
 }

@@ -62,7 +62,7 @@ export function autoLayoutNodes(editor: Editor, options: AutoLayoutOptions = {})
 	}
 
 	const roots =
-		Array.from(rooted).length > 0
+		rooted.size > 0
 			? Array.from(rooted)
 			: nodeShapes.length > 0
 				? [nodeShapes[0].props.nodeDef.id]

@@ -10,15 +10,15 @@
 	"dependencies": {
 		"@example/declarative-shared-logic": "workspace:*",
 		"@flowcraft/bullmq-adapter": "workspace:*",
-		"bullmq": "^5.73.1",
-		"dotenv": "^17.4.1",
+		"bullmq": "^5.77.2",
+		"dotenv": "^17.4.2",
 		"flowcraft": "workspace:*",
 		"ioredis": "^5.10.1",
-		"openai": "^6.33.0"
+		"openai": "^6.39.0"
 	},
 	"devDependencies": {
-		"@types/node": "^25.5.2",
-		"tsx": "^4.21.0",
-		"typescript": "^6.0.2"
+		"@types/node": "^25.9.1",
+		"tsx": "^4.22.3",
+		"typescript": "^6.0.3"
 	}
 }

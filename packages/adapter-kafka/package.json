@@ -28,9 +28,9 @@
 		"@testcontainers/cassandra": "^11.14.0",
 		"@testcontainers/kafka": "^11.14.0",
 		"@testcontainers/redis": "^11.14.0",
-		"@vitest/coverage-v8": "^4.1.4",
-		"tsdown": "^0.21.7",
-		"typescript": "^6.0.2",
-		"vitest": "^4.1.4"
+		"@vitest/coverage-v8": "^4.1.7",
+		"tsdown": "^0.22.0",
+		"typescript": "^6.0.3",
+		"vitest": "^4.1.7"
 	}
 }

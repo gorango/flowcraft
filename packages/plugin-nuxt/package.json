@@ -38,9 +38,9 @@
 	},
 	"devDependencies": {
 		"@flowcraft/compiler": "1.0.0-alpha.2",
-		"@nuxt/kit": "^4.4.2",
-		"@types/node": "^25.5.2",
-		"tsdown": "^0.21.7"
+		"@nuxt/kit": "^4.4.6",
+		"@types/node": "^25.9.1",
+		"tsdown": "^0.22.0"
 	},
 	"peerDependencies": {
 		"@nuxt/kit": "^3.0.0",

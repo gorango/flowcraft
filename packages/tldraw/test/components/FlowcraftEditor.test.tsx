@@ -5,28 +5,29 @@ import { createRoot } from 'react-dom/client'
 import type { WorkflowBlueprint } from 'flowcraft'
 import { FlowcraftEditor } from '../../src/components/FlowcraftEditor'
 
-vi.mock('tldraw', () => {
-	const MockTldraw = () => createElement('div', { 'data-testid': 'tldraw-editor' })
-	return {
-		Tldraw: MockTldraw,
-		createShapeId: vi.fn((id: string) => id),
-		createBindingId: vi.fn(() => 'binding-1'),
-		ShapeUtil: class {
-			editor: any
-			constructor(editor: any) {
-				this.editor = editor
-			}
-		},
-		BindingUtil: class {
-			editor: any
-			constructor(editor: any) {
-				this.editor = editor
-			}
-		},
-		defaultShapeUtils: [],
-		defaultBindingUtils: [],
-	}
-})
+function MockTldraw() {
+	return createElement('div', { 'data-testid': 'tldraw-editor' })
+}
+
+vi.mock('tldraw', () => ({
+	Tldraw: MockTldraw,
+	createShapeId: vi.fn((id: string) => id),
+	createBindingId: vi.fn(() => 'binding-1'),
+	ShapeUtil: class {
+		editor: any
+		constructor(editor: any) {
+			this.editor = editor
+		}
+	},
+	BindingUtil: class {
+		editor: any
+		constructor(editor: any) {
+			this.editor = editor
+		}
+	},
+	defaultShapeUtils: [],
+	defaultBindingUtils: [],
+}))
 
 const sampleBlueprint: WorkflowBlueprint = {
 	id: 'test-wf',

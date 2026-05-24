@@ -193,34 +193,34 @@ describe('PubSubAdapter - Testcontainers Integration', () => {
 	})
 })
 
+function createMockPubSub() {
+	return {
+		topic: vi.fn().mockReturnValue({
+			publishMessage: vi.fn().mockResolvedValue('msg-id'),
+		}),
+		subscription: vi.fn().mockReturnValue({
+			on: vi.fn(),
+			close: vi.fn().mockResolvedValue(undefined),
+		}),
+	}
+}
+
+function createMockFirestore() {
+	return {
+		collection: vi.fn().mockReturnValue({
+			doc: vi.fn().mockReturnValue({
+				set: vi.fn().mockResolvedValue(undefined),
+				get: vi.fn().mockResolvedValue({ exists: false }),
+			}),
+		}),
+	}
+}
+
+function createMockRedis() {
+	return { quit: vi.fn() }
+}
+
 describe('PubSubAdapter - Unit Tests', function () {
-	function createMockPubSub() {
-		return {
-			topic: vi.fn().mockReturnValue({
-				publishMessage: vi.fn().mockResolvedValue('msg-id'),
-			}),
-			subscription: vi.fn().mockReturnValue({
-				on: vi.fn(),
-				close: vi.fn().mockResolvedValue(undefined),
-			}),
-		}
-	}
-
-	function createMockFirestore() {
-		return {
-			collection: vi.fn().mockReturnValue({
-				doc: vi.fn().mockReturnValue({
-					set: vi.fn().mockResolvedValue(undefined),
-					get: vi.fn().mockResolvedValue({ exists: false }),
-				}),
-			}),
-		}
-	}
-
-	function createMockRedis() {
-		return { quit: vi.fn() }
-	}
-
 	it('should throw on registerWebhookEndpoint', async function () {
 		const mockPubSub = createMockPubSub()
 		const mockFirestore = createMockFirestore()

@@ -21,14 +21,14 @@
 	},
 	"dependencies": {
 		"flowcraft": "^2.10.1",
-		"pg": "^8.20.0"
+		"pg": "^8.21.0"
 	},
 	"devDependencies": {
 		"@testcontainers/postgresql": "^11.14.0",
 		"@types/pg": "^8.20.0",
-		"@vitest/coverage-v8": "^4.1.4",
-		"tsdown": "^0.21.7",
-		"typescript": "^6.0.2",
-		"vitest": "^4.1.4"
+		"@vitest/coverage-v8": "^4.1.7",
+		"tsdown": "^0.22.0",
+		"typescript": "^6.0.3",
+		"vitest": "^4.1.7"
 	}
 }

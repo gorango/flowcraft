@@ -20,12 +20,12 @@
 		"typecheck": "tsc --noEmit"
 	},
 	"devDependencies": {
-		"@opentelemetry/sdk-trace-base": "^2.6.1",
-		"@types/node": "^25.6.0",
-		"@vitest/coverage-v8": "^4.1.4",
-		"tsdown": "^0.21.7",
-		"typescript": "^6.0.2",
-		"vitest": "^4.1.4"
+		"@opentelemetry/sdk-trace-base": "^2.7.1",
+		"@types/node": "^25.9.1",
+		"@vitest/coverage-v8": "^4.1.7",
+		"tsdown": "^0.22.0",
+		"typescript": "^6.0.3",
+		"vitest": "^4.1.7"
 	},
 	"peerDependencies": {
 		"@opentelemetry/api": "^1.8.0",
