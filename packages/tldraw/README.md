@@ -55,14 +55,14 @@ Every canvas change (drag, connect, edit) fires `onBlueprintChange` with the rec
 
 ```
 User code                       @flowcraft/tldraw                    flowcraft
-┌─────────────────┐          ┌───────────────────────┐          ┌──────────────┐
-│ FlowcraftCanvas │ ──blueprint──►  blueprintToCanvas │          │  FlowRuntime │
-│ FlowcraftEditor │ ◄──changes──  canvasToBlueprint  │──IEventBus──►  EventBus   │
-└─────────────────┘          │  FlowcraftSync        │          │  Evaluator   │
-                              │  ExecutionBridge     │◄──────────┘              │
-                              │  FlowcraftNodeUtil   │          └──────────────┘
-                              │  (custom ShapeUtil)   │
-                              └───────────────────────┘
+┌─────────────────┐          ┌─────────────────────────┐          ┌───────────────┐
+│ FlowcraftCanvas │ ──blueprint──►  blueprintToCanvas  │          │  FlowRuntime  │
+│ FlowcraftEditor │ ◄──changes───  canvasToBlueprint   │──IEventBus──►  EventBus  │
+└─────────────────┘          │  FlowcraftSync          │          │  Evaluator    │
+                             │  ExecutionBridge        │◄───────────────┘         │
+                             │  FlowcraftNodeUtil      │          └───────────────┘
+                             │  (custom ShapeUtil)     │
+                             └─────────────────────────┘
 ```
 
 Two distinct sync paths:
