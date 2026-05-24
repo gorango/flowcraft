@@ -29,7 +29,7 @@ export function createCheckNodeReadinessTool(config: {
 
 			try {
 				const events = await config.eventStore.retrieve(params.executionId)
-				const typedEvents = events as unknown[]
+				const typedEvents = events
 
 				if (typedEvents.length === 0) {
 					return {
@@ -113,14 +113,14 @@ export function createCheckNodeReadinessTool(config: {
 					completed: completedNodes.has(p.nodeId),
 				}))
 
-				const joinStrategy = (node.config?.joinStrategy as string) ?? 'all'
+				const joinStrategy = node.config?.joinStrategy ?? 'all'
 				const ready =
 					joinStrategy === 'any'
 						? predecessorStatus.some((p) => p.completed) || predecessors.length === 0
 						: haveAllPredecessorsCompleted(blueprint, params.nodeId, completedNodes)
 
-				const nodeRecord = node as unknown as Record<string, unknown>
-				const nodeInputs = nodeRecord.inputs as Record<string, string> | undefined
+				const nodeRecord = node
+				const nodeInputs = nodeRecord.inputs
 				const missingInputs: string[] = []
 				if (nodeInputs && typeof nodeInputs === 'object') {
 					for (const [inputKey, contextKey] of Object.entries(nodeInputs)) {

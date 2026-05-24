@@ -55,14 +55,10 @@ export function createGenerateFromTemplateTool(config: {
 				if (params.description && config.generate) {
 					const enhanced = await config.generate({
 						description: `${params.description}. Base template: ${params.template}`,
-						nodes: blueprint.nodes.map((n: unknown) => {
-							const node = n as unknown as Record<string, unknown>
+						nodes: blueprint.nodes.map((node) => {
 							return {
-								id: node.id as string,
-								purpose:
-									((node.params as Record<string, unknown>)?.purpose as
-										| string
-										| undefined) ?? (node.id as string),
+								id: node.id,
+								purpose: node.params?.purpose ?? node.id,
 							}
 						}),
 					})
@@ -108,8 +104,7 @@ function applyTemplateParams(
 ): WorkflowBlueprint {
 	const result = deepCloneBlueprint(blueprint)
 	for (const node of result.nodes) {
-		const nodeRecord = node as unknown as Record<string, unknown>
-		const nodeParams = nodeRecord.params as Record<string, unknown> | undefined
+		const nodeParams = node.params
 		if (nodeParams) {
 			for (const [key, value] of Object.entries(params)) {
 				if (key in nodeParams) {

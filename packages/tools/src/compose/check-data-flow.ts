@@ -35,10 +35,10 @@ export function createCheckDataFlowTool(): WorkflowTool<typeof checkDataFlowSche
 				}> = []
 
 				for (const edge of blueprint.edges) {
-					const e = edge as unknown as Record<string, unknown>
-					const fromNode = e.source as string
-					const toNode = e.target as string
-					const transform = e.transform as string | undefined
+					const e = edge
+					const fromNode = e.source
+					const toNode = e.target
+					const transform = e.transform
 
 					const targetNode = blueprint.nodes.find((n) => nodeId(n) === toNode)
 					const targetInputs = targetNode?.inputs
@@ -49,7 +49,7 @@ export function createCheckDataFlowTool(): WorkflowTool<typeof checkDataFlowSche
 						typeof targetInputs === 'object' &&
 						!Array.isArray(targetInputs)
 					) {
-						inputMapping = targetInputs as Record<string, string>
+						inputMapping = targetInputs
 					} else if (typeof targetInputs === 'string') {
 						inputMapping = { default: targetInputs }
 					}

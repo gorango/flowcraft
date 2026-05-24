@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import type { WorkflowBlueprint } from 'flowcraft'
+import type { WorkflowBlueprint, EdgeDefinition } from 'flowcraft'
 import type { WorkflowTool } from '../types'
 import { createWorkflowTool } from '../tool'
 import { nodeId } from './helpers'
@@ -13,7 +13,7 @@ const getBlueprintDiffSchema = z.object({
 		.describe('Second blueprint version'),
 })
 
-function edgeKey(e: Record<string, unknown>): string {
+function edgeKey(e: EdgeDefinition): string {
 	return `${e.source}_${e.target}`
 }
 
@@ -39,9 +39,7 @@ export function createGetBlueprintDiffTool(): WorkflowTool<typeof getBlueprintDi
 
 				const addedNodes = addedNodeIds.map((id) => {
 					const n = bpB.nodes.find((node) => nodeId(node) === id)
-					const uses = (n as unknown as Record<string, unknown>)?.uses as
-						| string
-						| undefined
+					const uses = n?.uses as string | undefined
 					return { id, uses: uses ?? 'unknown' }
 				})
 
@@ -53,24 +51,18 @@ export function createGetBlueprintDiffTool(): WorkflowTool<typeof getBlueprintDi
 				}> = []
 
 				for (const id of commonIds) {
-					const nodeA = bpA.nodes.find((n) => nodeId(n) === id) as unknown as Record<
-						string,
-						unknown
-					>
-					const nodeB = bpB.nodes.find((n) => nodeId(n) === id) as unknown as Record<
-						string,
-						unknown
-					>
+					const nodeA = bpA.nodes.find((n) => nodeId(n) === id)
+					const nodeB = bpB.nodes.find((n) => nodeId(n) === id)
 					const changes: Record<string, { from: unknown; to: unknown }> = {}
 
-					if (nodeA.uses !== nodeB.uses) {
-						changes.uses = { from: nodeA.uses, to: nodeB.uses }
+					if (nodeA?.uses !== nodeB?.uses) {
+						changes.uses = { from: nodeA?.uses, to: nodeB?.uses }
 					}
-					if (JSON.stringify(nodeA.params) !== JSON.stringify(nodeB.params)) {
-						changes.params = { from: nodeA.params, to: nodeB.params }
+					if (JSON.stringify(nodeA?.params) !== JSON.stringify(nodeB?.params)) {
+						changes.params = { from: nodeA?.params, to: nodeB?.params }
 					}
-					if (JSON.stringify(nodeA.config) !== JSON.stringify(nodeB.config)) {
-						changes.config = { from: nodeA.config, to: nodeB.config }
+					if (JSON.stringify(nodeA?.config) !== JSON.stringify(nodeB?.config)) {
+						changes.config = { from: nodeA?.config, to: nodeB?.config }
 					}
 
 					if (Object.keys(changes).length > 0) {
@@ -78,33 +70,27 @@ export function createGetBlueprintDiffTool(): WorkflowTool<typeof getBlueprintDi
 					}
 				}
 
-				const edgeKeysA = new Set(
-					bpA.edges.map((e) => edgeKey(e as unknown as Record<string, unknown>)),
-				)
-				const edgeKeysB = new Set(
-					bpB.edges.map((e) => edgeKey(e as unknown as Record<string, unknown>)),
-				)
+				const edgeKeysA = new Set(bpA.edges.map((e) => edgeKey(e)))
+				const edgeKeysB = new Set(bpB.edges.map((e) => edgeKey(e)))
 
 				const addedEdges: Array<{ source: string; target: string }> = []
-				for (const edge of bpB.edges) {
-					const e = edge as unknown as Record<string, unknown>
+				for (const e of bpB.edges) {
 					const key = edgeKey(e)
 					if (!edgeKeysA.has(key)) {
 						addedEdges.push({
-							source: e.source as string,
-							target: e.target as string,
+							source: e.source,
+							target: e.target,
 						})
 					}
 				}
 
 				const removedEdges: Array<{ source: string; target: string }> = []
-				for (const edge of bpA.edges) {
-					const e = edge as unknown as Record<string, unknown>
+				for (const e of bpA.edges) {
 					const key = edgeKey(e)
 					if (!edgeKeysB.has(key)) {
 						removedEdges.push({
-							source: e.source as string,
-							target: e.target as string,
+							source: e.source,
+							target: e.target,
 						})
 					}
 				}

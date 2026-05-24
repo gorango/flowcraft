@@ -23,8 +23,7 @@ export function createDescribeBlueprintTool(): WorkflowTool<typeof describeBluep
 			const start = Date.now()
 			const blueprint = params.blueprint as unknown as WorkflowBlueprint
 
-			const nodeDescriptions = blueprint.nodes.map((n) => {
-				const node = n as unknown as Record<string, unknown>
+			const nodeDescriptions = blueprint.nodes.map((node) => {
 				const incoming = blueprint.edges.filter((e) => edgeTarget(e) === node.id)
 				const outgoing = blueprint.edges.filter((e) => edgeSource(e) === node.id)
 				return {

@@ -30,7 +30,7 @@ export function createCheckNodeImplementationsTool(config?: {
 				const registry = config?.registry
 
 				const nodeChecks = blueprint.nodes.map((n) => {
-					const uses = (n as unknown as Record<string, unknown>).uses as string
+					const uses = n.uses
 					const internal = isInternalNode(uses)
 					let implemented: boolean | null
 
@@ -77,7 +77,7 @@ export function createCheckNodeImplementationsTool(config?: {
 					metadata: {
 						duration: Date.now() - start,
 						affectedNodes: [],
-						blueprintId: (params.blueprint as Record<string, unknown>).id as string,
+						blueprintId: params.blueprint.id,
 					},
 				}
 			}

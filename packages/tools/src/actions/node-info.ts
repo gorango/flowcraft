@@ -59,14 +59,14 @@ export function createGetNodeInfoTool(config: {
 						condition: e.condition,
 					}))
 
-				const nodeRecord = node as unknown as Record<string, unknown>
+				const nodeRecord = node
 
 				return {
 					status: 'completed',
 					data: {
 						id: node.id,
 						uses: node.uses,
-						params: nodeRecord.params as Record<string, unknown> | undefined,
+						params: nodeRecord.params,
 						inputs: node.inputs,
 						config: node.config,
 						incomingEdges,

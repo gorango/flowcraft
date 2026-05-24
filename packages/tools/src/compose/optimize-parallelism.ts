@@ -31,10 +31,9 @@ export function createOptimizeForParallelismTool(): WorkflowTool<
 				for (const node of blueprint.nodes) {
 					adjList.set(nodeId(node), new Set())
 				}
-				for (const edge of blueprint.edges) {
-					const e = edge as unknown as Record<string, unknown>
-					const source = e.source as string
-					const target = e.target as string
+				for (const e of blueprint.edges) {
+					const source = e.source
+					const target = e.target
 					adjList.get(target)?.add(source)
 				}
 
@@ -73,8 +72,8 @@ export function createOptimizeForParallelismTool(): WorkflowTool<
 
 				for (const id of order) {
 					const successors = blueprint.edges
-						.filter((e) => (e as unknown as Record<string, unknown>).source === id)
-						.map((e) => (e as unknown as Record<string, unknown>).target as string)
+						.filter((e) => e.source === id)
+						.map((e) => e.target)
 					if (successors.length > 1) {
 						fanOutNodes.push({ nodeId: id, branchCount: successors.length })
 					}

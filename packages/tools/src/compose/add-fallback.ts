@@ -62,9 +62,9 @@ export function createAddFallbackNodeTool(): WorkflowTool<typeof addFallbackNode
 					}
 				}
 
-				const targetRecord = targetNode as unknown as Record<string, unknown>
+				const targetRecord = targetNode
 				const targetInputs = targetNode.inputs
-				const existingConfig = (targetRecord.config as Record<string, unknown>) ?? {}
+				const existingConfig = targetRecord.config ?? {}
 
 				const fallbackNode = {
 					id: fallbackNodeId,
@@ -84,7 +84,7 @@ export function createAddFallbackNodeTool(): WorkflowTool<typeof addFallbackNode
 				const modifiedNodes = blueprint.nodes.map((n) =>
 					nodeId(n) === params.nodeId ? updatedTarget : n,
 				)
-				modifiedNodes.push(fallbackNode as (typeof blueprint.nodes)[number])
+				modifiedNodes.push(fallbackNode)
 
 				const fallbackEdge = {
 					source: params.nodeId,
@@ -93,12 +93,12 @@ export function createAddFallbackNodeTool(): WorkflowTool<typeof addFallbackNode
 				}
 
 				const modifiedEdges = [...blueprint.edges]
-				modifiedEdges.push(fallbackEdge as (typeof blueprint.edges)[number])
+				modifiedEdges.push(fallbackEdge)
 
 				const modified: WorkflowBlueprint = {
 					...blueprint,
-					nodes: modifiedNodes as WorkflowBlueprint['nodes'],
-					edges: modifiedEdges as WorkflowBlueprint['edges'],
+					nodes: modifiedNodes,
+					edges: modifiedEdges,
 				}
 
 				return {

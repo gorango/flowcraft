@@ -45,8 +45,8 @@ export function createAddRetryConfigTool(): WorkflowTool<typeof addRetryConfigSc
 				const modifiedNodes = blueprint.nodes.map((n) => {
 					const id = nodeId(n)
 					if (!params.nodeIds.includes(id)) return n
-					const node = n as unknown as Record<string, unknown>
-					const existingConfig = (node.config as Record<string, unknown>) ?? {}
+					const node = n
+					const existingConfig = node.config ?? {}
 					return {
 						...n,
 						config: {
@@ -59,7 +59,7 @@ export function createAddRetryConfigTool(): WorkflowTool<typeof addRetryConfigSc
 
 				const modified: WorkflowBlueprint = {
 					...blueprint,
-					nodes: modifiedNodes as WorkflowBlueprint['nodes'],
+					nodes: modifiedNodes,
 				}
 
 				return {

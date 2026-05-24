@@ -36,26 +36,18 @@ export function createSimulateExecutionTool(): WorkflowTool<typeof simulateExecu
 				const nodesThatWillBeSkipped = new Set<string>()
 
 				for (const nid of order) {
-					const predecessorEdges = blueprint.edges.filter(
-						(e) => (e as unknown as Record<string, unknown>).target === nid,
-					)
+					const predecessorEdges = blueprint.edges.filter((e) => e.target === nid)
 
-					const node = blueprint.nodes.find(
-						(n) => (n as unknown as Record<string, unknown>).id === nid,
-					)
-					const nodeConfig = (node as unknown as Record<string, unknown>)?.config as
-						| Record<string, unknown>
-						| undefined
-					const joinStrategy = (nodeConfig?.joinStrategy as string) ?? 'all'
+					const node = blueprint.nodes.find((n) => n.id === nid)
+					const nodeConfig = node?.config as Record<string, unknown> | undefined
+					const joinStrategy = nodeConfig?.joinStrategy ?? 'all'
 
 					const allPredecessorsExecuted = predecessorEdges.every((e) => {
-						const source = (e as unknown as Record<string, unknown>).source as string
-						return nodesThatWillExecute.has(source)
+						return nodesThatWillExecute.has(e.source)
 					})
 
 					const anyPredecessorExecuted = predecessorEdges.some((e) => {
-						const source = (e as unknown as Record<string, unknown>).source as string
-						return nodesThatWillExecute.has(source)
+						return nodesThatWillExecute.has(e.source)
 					})
 
 					const shouldExecute =
