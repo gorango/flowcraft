@@ -1,24 +1,10 @@
-'use client'
-
 import { Position } from '@xyflow/react'
 import { createFlow } from 'flowcraft'
-import { FlowDemo, type HandlePositions } from '@/components/flow/FlowDemo'
+import { FlowDemo, type HandlePositions } from './components/FlowDemo'
 
 const LAG = 800
 
-/**
- * Expense Report Processing Pipeline
- *
- * A real-world workflow that showcases all of flowcraft's advanced primitives:
- *
- *  - Batch   → validate each line item in parallel
- *  - Loop    → retry OCR enhancement until confidence ≥ 0.9 (max 3 attempts)
- *  - Conditional → route by total: auto-approve / HITL / auto-reject
- *  - HITL    → pause and wait for a manager decision
- *  - Converge → join all branches before sending a notification
- */
 const expenseFlow = createFlow('expense-report-pipeline')
-	// 1. Fetch expense report line items (array output → batch input)
 	.node('fetch-report', async ({ context }) => {
 		await new Promise((r) => setTimeout(r, LAG))
 		await context.set('reportId', 'EXP-001')
@@ -27,11 +13,10 @@ const expenseFlow = createFlow('expense-report-pipeline')
 			output: [
 				{ amount: 45, type: 'meals', receipt: 'receipt-1.jpg' },
 				{ amount: 120, type: 'travel', receipt: 'receipt-2.jpg' },
-				{ amount: 1500, type: 'equipment', receipt: 'receipt-3.jpg' }
-			]
+				{ amount: 1500, type: 'equipment', receipt: 'receipt-3.jpg' },
+			],
 		}
 	})
-	// 2. Batch: validate each line item in parallel
 	.batch(
 		'validate-items',
 		async ({ input }) => {
@@ -40,9 +25,8 @@ const expenseFlow = createFlow('expense-report-pipeline')
 			const ocrConfidence = item.amount > 1000 ? 0.7 : 0.95
 			return { output: { ...item, ocrConfidence, status: 'validated' } }
 		},
-		{ inputKey: 'fetch-report', outputKey: 'validated' }
+		{ inputKey: 'fetch-report', outputKey: 'validated' },
 	)
-	// 3. Aggregate totals from validated items
 	.node(
 		'compute-total',
 		async ({ input, context }) => {
@@ -54,11 +38,10 @@ const expenseFlow = createFlow('expense-report-pipeline')
 			await context.set('ocrAttempts', 0)
 			return { output: { total, minConfidence } }
 		},
-		{ inputs: 'validated' }
+		{ inputs: 'validated' },
 	)
 	.edge('fetch-report', 'validate-items')
 	.edge('validate-items', 'compute-total')
-	// 4. Loop: re-scan receipts if OCR confidence is below threshold
 	.node('enhance-ocr', async ({ context }) => {
 		await new Promise((r) => setTimeout(r, LAG))
 		const attempts = ((await context.get('ocrAttempts')) as number) || 0
@@ -72,76 +55,69 @@ const expenseFlow = createFlow('expense-report-pipeline')
 	.loop('ocrRetry', {
 		startNodeId: 'enhance-ocr',
 		endNodeId: 'enhance-ocr',
-		condition: 'minConfidence < 0.9 && ocrAttempts < 3'
+		condition: 'minConfidence < 0.9 && ocrAttempts < 3',
 	})
 	.edge('compute-total', 'ocrRetry')
 	.edge('ocrRetry', 'route-by-total')
-	// 5. Conditional routing based on total amount
 	.node('route-by-total', async ({ context }) => {
 		await new Promise((r) => setTimeout(r, LAG))
 		const total = ((await context.get('total')) as number) || 0
 		return { output: { total } }
 	})
 	.edge('route-by-total', 'wait-manager', {
-		condition: 'route-by-total.total >= 500 && route-by-total.total <= 2000'
+		condition: 'route-by-total.total >= 500 && route-by-total.total <= 2000',
 	})
 	.edge('route-by-total', 'auto-approve', { condition: 'route-by-total.total < 500' })
 	.edge('route-by-total', 'auto-reject', { condition: 'route-by-total.total > 2000' })
-	// 5a. HITL: pause for manager approval ($500–$2000)
 	.wait('wait-manager')
-	// 5b. Auto-approve (under $500)
 	.node('auto-approve', async () => ({ output: { status: 'approved', method: 'auto' } }))
-	// 5c. Auto-reject (over $2000)
 	.node('auto-reject', async () => ({
-		output: { status: 'rejected', reason: 'Exceeds single-report limit' }
+		output: { status: 'rejected', reason: 'Exceeds single-report limit' },
 	}))
-	// 6. Converge all paths and notify
 	.node(
 		'send-notification',
 		async ({ input }) => {
 			await new Promise((r) => setTimeout(r, LAG))
 			return { output: { message: `Notification sent: ${(input as any).status}` } }
 		},
-		{ config: { joinStrategy: 'any' } }
+		{ config: { joinStrategy: 'any' } },
 	)
 	.edge('wait-manager', 'send-notification')
 	.edge('auto-approve', 'send-notification')
 	.edge('auto-reject', 'send-notification')
 
 const positionsMap = {
-	'fetch-report':      { x: 0,    y: 150 },
-	'validate-items':    { x: 0,    y: 300 },
-	'compute-total':     { x: 0,    y: 450 },
-	'enhance-ocr':       { x: 150,  y: 650 },
-	'route-by-total':    { x: 430,  y: 500 },
-	'wait-manager':      { x: 700,  y: 300 },
-	'auto-approve':      { x: 700,  y: 430 },
-	'auto-reject':       { x: 700,  y: 540 },
-	'send-notification': { x: 1000, y: 430 }
+	'fetch-report': { x: 0, y: 150 },
+	'validate-items': { x: 0, y: 300 },
+	'compute-total': { x: 0, y: 450 },
+	'enhance-ocr': { x: 150, y: 650 },
+	'route-by-total': { x: 430, y: 500 },
+	'wait-manager': { x: 700, y: 300 },
+	'auto-approve': { x: 700, y: 430 },
+	'auto-reject': { x: 700, y: 540 },
+	'send-notification': { x: 1000, y: 430 },
 }
 
 const typesMap: Record<string, 'input' | 'default' | 'output'> = {
-	'fetch-report':      'input',
-	'validate-items':    'default',
-	'compute-total':     'default',
-	'enhance-ocr':       'default',
-	'route-by-total':    'default',
-	'wait-manager':      'default',
-	'auto-approve':      'default',
-	'auto-reject':       'default',
-	'send-notification': 'output'
+	'fetch-report': 'input',
+	'validate-items': 'default',
+	'compute-total': 'default',
+	'enhance-ocr': 'default',
+	'route-by-total': 'default',
+	'wait-manager': 'default',
+	'auto-approve': 'default',
+	'auto-reject': 'default',
+	'send-notification': 'output',
 }
 
-// The first three nodes are stacked vertically, so they use Top/Bottom handles.
-// The rest of the graph flows left-to-right (default Right/Left handles).
 const handlesMap: Record<string, HandlePositions> = {
-	'fetch-report':   { source: Position.Bottom },
+	'fetch-report': { source: Position.Bottom },
 	'validate-items': { target: Position.Top, source: Position.Bottom },
-	'compute-total':  { target: Position.Top, source: Position.Bottom },
-	'enhance-ocr':    { target: Position.Top, source: Position.Right }
+	'compute-total': { target: Position.Top, source: Position.Bottom },
+	'enhance-ocr': { target: Position.Top, source: Position.Right },
 }
 
-export default function Home() {
+export default function App() {
 	return (
 		<main className="flex flex-col h-screen bg-background p-4 gap-4">
 			<div className="flex flex-col gap-1">

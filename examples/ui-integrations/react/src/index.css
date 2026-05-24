@@ -1,0 +1,103 @@
+@import 'tailwindcss';
+
+@theme {
+	--color-border: hsl(var(--border));
+	--color-input: hsl(var(--input));
+	--color-ring: hsl(var(--ring));
+	--color-background: hsl(var(--background));
+	--color-foreground: hsl(var(--foreground));
+	--color-primary: hsl(var(--primary));
+	--color-primary-foreground: hsl(var(--primary-foreground));
+	--color-secondary: hsl(var(--secondary));
+	--color-secondary-foreground: hsl(var(--secondary-foreground));
+	--color-muted: hsl(var(--muted));
+	--color-muted-foreground: hsl(var(--muted-foreground));
+	--color-accent: hsl(var(--accent));
+	--color-accent-foreground: hsl(var(--accent-foreground));
+	--color-card: hsl(var(--card));
+	--color-card-foreground: hsl(var(--card-foreground));
+	--radius-sm: calc(var(--radius) - 4px);
+	--radius-md: calc(var(--radius) - 2px);
+	--radius-lg: var(--radius);
+}
+
+:root {
+	--background: 0 0% 100%;
+	--foreground: 0 0% 10%;
+	--card: 0 0% 100%;
+	--card-foreground: 0 0% 10%;
+	--muted: 0 0% 97%;
+	--muted-foreground: 0 0% 50%;
+	--accent: 0 0% 92%;
+	--accent-foreground: 0 0% 30%;
+	--primary: 222.2 47.4% 11.2%;
+	--primary-foreground: 210 40% 98%;
+	--secondary: 0 0% 90%;
+	--secondary-foreground: 0 0% 30%;
+	--border: 0 0% 86%;
+	--input: 0 0% 86%;
+	--ring: 0 0% 10%;
+	--radius: 0.5rem;
+}
+
+.dark {
+	--background: 0 0% 8%;
+	--foreground: 0 0% 95%;
+	--card: 0 0% 12%;
+	--card-foreground: 0 0% 95%;
+	--muted: 0 0% 15%;
+	--muted-foreground: 0 0% 70%;
+	--accent: 0 0% 30%;
+	--accent-foreground: 0 0% 95%;
+	--primary: 0 0% 30%;
+	--primary-foreground: 0 0% 95%;
+	--secondary: 0 0% 20%;
+	--secondary-foreground: 0 0% 80%;
+	--border: 0 0% 18%;
+	--input: 0 0% 18%;
+	--ring: 0 0% 95%;
+}
+
+@media (prefers-color-scheme: dark) {
+	:root {
+		--background: 0 0% 8%;
+		--foreground: 0 0% 95%;
+		--card: 0 0% 12%;
+		--card-foreground: 0 0% 95%;
+		--muted: 0 0% 15%;
+		--muted-foreground: 0 0% 70%;
+		--accent: 0 0% 30%;
+		--accent-foreground: 0 0% 95%;
+		--primary: 0 0% 30%;
+		--primary-foreground: 0 0% 95%;
+		--secondary: 0 0% 20%;
+		--secondary-foreground: 0 0% 80%;
+		--border: 0 0% 18%;
+		--input: 0 0% 18%;
+		--ring: 0 0% 95%;
+	}
+}
+
+* {
+	border-color: hsl(var(--border));
+}
+
+body {
+	background-color: hsl(var(--background));
+	color: hsl(var(--foreground));
+	margin: 0;
+}
+
+.react-flow__node-input,
+.react-flow__node-default,
+.react-flow__node-output,
+.react-flow__node-group {
+	padding: none !important;
+	border-radius: var(--radius-lg) !important;
+	width: auto !important;
+	font-size: inherit !important;
+	color: inherit !important;
+	text-align: auto !important;
+	border: none !important;
+	background-color: transparent !important;
+}

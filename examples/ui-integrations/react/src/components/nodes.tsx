@@ -1,5 +1,3 @@
-'use client'
-
 import { Handle, Position, type NodeProps } from '@xyflow/react'
 import { FlowNode, type NodeData } from './FlowNode'
 

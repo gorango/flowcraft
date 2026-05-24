@@ -8,26 +8,26 @@ const fillColors: Record<NodeDataStatus, string> = {
 	idle: 'rgba(107,114,128,0.15)',
 	pending: 'rgba(234,179,8,0.5)',
 	completed: 'rgba(34,197,94,0.5)',
-	failed: 'rgba(239,68,68,0.5)'
+	failed: 'rgba(239,68,68,0.5)',
 }
 
 const strokeColors: Record<NodeDataStatus, string> = {
 	idle: 'transparent',
 	pending: '#eab308',
 	completed: '#22c55e',
-	failed: '#ef4444'
+	failed: '#ef4444',
 }
 
 const dashOffset: Record<NodeDataStatus, number> = {
 	idle: CIRCUMFERENCE,
 	pending: CIRCUMFERENCE * 0.75,
 	completed: 0,
-	failed: 0
+	failed: 0,
 }
 
 export function StatusIndicator({
 	status = 'idle',
-	size = 14
+	size = 14,
 }: {
 	status?: NodeDataStatus
 	size?: number
@@ -43,7 +43,7 @@ export function StatusIndicator({
 			style={{
 				transform: 'rotate(-90deg)',
 				flexShrink: 0,
-				animation: status === 'pending' ? 'spin 1.2s linear infinite' : 'none'
+				animation: status === 'pending' ? 'spin 1.2s linear infinite' : 'none',
 			}}
 		>
 			<style>{`@keyframes spin { to { transform: rotate(270deg) } }`}</style>

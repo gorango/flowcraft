@@ -41,7 +41,7 @@ export function FlowNode({ label, nodeData }: { label: string; nodeData: NodeDat
 			)}
 
 			{!hasInputs && !hasOutputs && (
-				<div className="text-[11px] text-muted-foreground italic">Waiting for data…</div>
+				<div className="text-[11px] text-muted-foreground italic">Waiting for data...</div>
 			)}
 		</div>
 	)

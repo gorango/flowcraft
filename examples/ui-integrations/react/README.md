@@ -1,18 +1,18 @@
 # React Flow Demo
 
-A Next.js application that renders a flowcraft workflow as an interactive canvas using [@xyflow/react](https://reactflow.dev).
+A Vite + React application that renders a flowcraft workflow as an interactive canvas using [@xyflow/react](https://reactflow.dev).
 
 ## Overview
 
 This example builds an **Expense Report Processing Pipeline** that showcases flowcraft's advanced primitives:
 
-| Primitive | Where |
-|---|---|
-| **Batch** | `validate-items` — validate each receipt in parallel |
-| **Loop** | `ocrRetry` — re-scan until OCR confidence ≥ 0.9 (max 3 attempts) |
-| **Conditional** | `route-by-total` — auto-approve / HITL / auto-reject by total |
-| **HITL** | `wait-manager` — pause for a human approval decision |
-| **Converge** | `send-notification` — join all branches with `joinStrategy: 'any'` |
+| Primitive       | Where                                                              |
+| --------------- | ------------------------------------------------------------------ |
+| **Batch**       | `validate-items` — validate each receipt in parallel               |
+| **Loop**        | `ocrRetry` — re-scan until OCR confidence ≥ 0.9 (max 3 attempts)   |
+| **Conditional** | `route-by-total` — auto-approve / HITL / auto-reject by total      |
+| **HITL**        | `wait-manager` — pause for a human approval decision               |
+| **Converge**    | `send-notification` — join all branches with `joinStrategy: 'any'` |
 
 ## Running the Example
 
@@ -24,14 +24,14 @@ pnpm install
 pnpm --filter @example/react-flow-demo dev
 ```
 
-Then open [http://localhost:3000](http://localhost:3000).
+Then open the URL shown by Vite (typically http://localhost:5173).
 
 Press **Run** to execute the workflow. Because the total ($1,665) falls in the $500–$2,000 range, the flow pauses at the `wait-manager` HITL node — use **Approve** or **Deny** to resume it.
 
 ## Architecture
 
 ```
-components/flow/
+src/components/flow/
 ├── EventBus.ts        # IEventBus impl with typed .on() subscriptions
 ├── FlowDemo.tsx       # Main component: runtime setup + ReactFlow canvas
 ├── FlowNode.tsx       # Base node card (status + label + inputs/outputs)
@@ -48,8 +48,12 @@ The key integration point is the `EventBus` class, which satisfies flowcraft's `
 import type { IEventBus, FlowcraftEvent } from 'flowcraft'
 
 class EventBus implements IEventBus {
-  emit(event: FlowcraftEvent) { /* fan out to listeners */ }
-  on(type, handler): () => void { /* subscribe, returns unsubscribe */ }
+	emit(event: FlowcraftEvent) {
+		/* fan out to listeners */
+	}
+	on(type, handler): () => void {
+		/* subscribe, returns unsubscribe */
+	}
 }
 ```
 
@@ -59,11 +63,12 @@ Inside `FlowDemo`, the bus is passed to `FlowRuntime` and the component subscrib
 const eventBus = new EventBus()
 const runtime = new FlowRuntime({ eventBus, evaluator: new UnsafeEvaluator() })
 
-// Mirror runtime events → React Flow node data
-bus.on('node:start',  (e) => updateNodeData(e.payload.nodeId, { status: 'pending', inputs: e.payload.input }))
-bus.on('node:finish', (e) => updateNodeData(e.payload.nodeId, { status: 'completed', outputs: e.payload.result.output }))
-bus.on('batch:start', (e) => updateNodeData(e.payload.batchId, { status: 'pending' }))
-bus.on('batch:finish',(e) => updateNodeData(e.payload.batchId, { status: 'completed', outputs: e.payload.results }))
+bus.on('node:start', (e) =>
+	updateNodeData(e.payload.nodeId, { status: 'pending', inputs: e.payload.input }),
+)
+bus.on('node:finish', (e) =>
+	updateNodeData(e.payload.nodeId, { status: 'completed', outputs: e.payload.result.output }),
+)
 ```
 
 Node data is stored inside each React Flow node's `data` object so updates flow through naturally without a separate state store.
@@ -76,9 +81,13 @@ When the runtime returns `status: 'awaiting'`, the toolbar shows **Approve / Den
 const result = await runtime.run(blueprint, init, { functionRegistry })
 
 if (result.status === 'awaiting') {
-  // Show resume buttons in the UI
-  // On button click:
-  await runtime.resume(blueprint, result.serializedContext, { output: { approved: true } }, nodeId)
+	// Show resume buttons in the UI
+	await runtime.resume(
+		blueprint,
+		result.serializedContext,
+		{ output: { approved: true } },
+		nodeId,
+	)
 }
 ```
 

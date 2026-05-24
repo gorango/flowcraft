@@ -1,5 +1,3 @@
-'use client'
-
 import '@xyflow/react/dist/style.css'
 
 import {
@@ -12,7 +10,7 @@ import {
 	ReactFlowProvider,
 	useEdgesState,
 	useNodesState,
-	useReactFlow
+	useReactFlow,
 } from '@xyflow/react'
 import type { FlowBuilder, WorkflowResult } from 'flowcraft'
 import { ConsoleLogger, FlowRuntime, UnsafeEvaluator } from 'flowcraft'
@@ -22,16 +20,14 @@ import type { NodeData } from './FlowNode'
 import { LoopbackEdge } from './LoopbackEdge'
 import { DefaultNode, InputNode, OutputNode } from './nodes'
 
-// Node and edge type maps must be stable (defined outside components) to
-// prevent React Flow from unmounting/remounting nodes on every render.
 const nodeTypes = {
 	input: InputNode,
 	default: DefaultNode,
-	output: OutputNode
+	output: OutputNode,
 }
 
 const edgeTypes = {
-	loopback: LoopbackEdge
+	loopback: LoopbackEdge,
 }
 
 function formatLabel(id: string): string {
@@ -47,24 +43,22 @@ export interface HandlePositions {
 }
 
 export interface FlowDemoProps {
-	/** A flowcraft FlowBuilder instance (result of `createFlow(...)`). */
 	flow: FlowBuilder<Record<string, any>, Record<string, any>>
-	/** Maps node IDs to their (x, y) canvas positions. */
 	positionsMap: Record<string, { x: number; y: number }>
-	/** Maps node IDs to their React Flow node type ('input' | 'default' | 'output'). */
 	typesMap: Record<string, 'input' | 'default' | 'output'>
-	/** Optional per-node handle position overrides. Defaults to Right (source) / Left (target). */
 	handlesMap?: Record<string, HandlePositions>
-	/** Optional initial workflow context passed to FlowRuntime.run(). */
 	init?: Record<string, any>
 }
 
-// ─── Inner component — lives inside ReactFlowProvider ────────────────────────
-
-function FlowDemoInner({ flow, positionsMap, typesMap, handlesMap = {}, init = {} }: FlowDemoProps) {
+function FlowDemoInner({
+	flow,
+	positionsMap,
+	typesMap,
+	handlesMap = {},
+	init = {},
+}: FlowDemoProps) {
 	const { fitView } = useReactFlow()
 
-	// Create the event bus and runtime once, on first render.
 	const eventBusRef = useRef<EventBus>(null as any)
 	const runtimeRef = useRef<FlowRuntime<any, any>>(null as any)
 	if (!eventBusRef.current) {
@@ -72,11 +66,10 @@ function FlowDemoInner({ flow, positionsMap, typesMap, handlesMap = {}, init = {
 		runtimeRef.current = new FlowRuntime({
 			logger: new ConsoleLogger(),
 			eventBus: eventBusRef.current,
-			evaluator: new UnsafeEvaluator()
+			evaluator: new UnsafeEvaluator(),
 		})
 	}
 
-	// Convert the flowcraft graph to React Flow nodes/edges once.
 	const uiGraph = useMemo(() => flow.toGraphRepresentation(), [flow])
 	const blueprint = useMemo(() => flow.toBlueprint(), [flow])
 	const functionRegistry = useMemo(() => flow.getFunctionRegistry(), [flow])
@@ -90,14 +83,13 @@ function FlowDemoInner({ flow, positionsMap, typesMap, handlesMap = {}, init = {
 					label: formatLabel(node.id),
 					nodeData: { status: 'idle' } as NodeData,
 					sourcePosition: handlesMap[node.id]?.source ?? Position.Right,
-					targetPosition: handlesMap[node.id]?.target ?? Position.Left
+					targetPosition: handlesMap[node.id]?.target ?? Position.Left,
 				},
 				type: typesMap[node.id] || 'default',
 				sourcePosition: handlesMap[node.id]?.source ?? Position.Right,
-				targetPosition: handlesMap[node.id]?.target ?? Position.Left
+				targetPosition: handlesMap[node.id]?.target ?? Position.Left,
 			})),
-		// eslint-disable-next-line react-hooks/exhaustive-deps
-		[] // Static — positions and handles don't change after mount
+		[],
 	)
 
 	const initialEdges: Edge[] = useMemo(
@@ -110,18 +102,14 @@ function FlowDemoInner({ flow, positionsMap, typesMap, handlesMap = {}, init = {
 				animated: true,
 				...(edge.data?.isLoopback
 					? { type: 'loopback', data: { pathType: 'bezier' }, animated: false }
-					: {})
+					: {}),
 			})),
-		// eslint-disable-next-line react-hooks/exhaustive-deps
-		[]
+		[],
 	)
 
-	// useNodesState hands drag/position management to React Flow internally,
-	// avoiding a full re-render of this component on every drag event.
 	const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes)
 	const [edges] = useEdgesState(initialEdges)
 
-	// Execution state
 	const [isRunning, setIsRunning] = useState(false)
 	const [viewContext, setViewContext] = useState(false)
 	const [executionResult, setExecutionResult] = useState<WorkflowResult<any> | null>(null)
@@ -129,25 +117,31 @@ function FlowDemoInner({ flow, positionsMap, typesMap, handlesMap = {}, init = {
 	const [awaitingNodes, setAwaitingNodes] = useState<string[]>([])
 	const [serializedContext, setSerializedContext] = useState<string | null>(null)
 
-	// Patch a single node's data.nodeData without touching positions or other data.
 	const updateNodeData = useCallback(
 		(nodeId: string, patch: Partial<NodeData>) => {
 			setNodes((nds) =>
 				nds.map((n) =>
 					n.id === nodeId
-						? { ...n, data: { ...n.data, nodeData: { ...(n.data.nodeData as NodeData), ...patch } } }
-						: n
-				)
+						? {
+								...n,
+								data: {
+									...n.data,
+									nodeData: { ...(n.data.nodeData as NodeData), ...patch },
+								},
+							}
+						: n,
+				),
 			)
 		},
-		[setNodes]
+		[setNodes],
 	)
 
 	const resetNodeData = useCallback(() => {
-		setNodes((nds) => nds.map((n) => ({ ...n, data: { ...n.data, nodeData: { status: 'idle' } } })))
+		setNodes((nds) =>
+			nds.map((n) => ({ ...n, data: { ...n.data, nodeData: { status: 'idle' } } })),
+		)
 	}, [setNodes])
 
-	// Subscribe to flowcraft runtime events and mirror them into node state.
 	useEffect(() => {
 		const bus = eventBusRef.current
 		const off = [
@@ -157,7 +151,7 @@ function FlowDemoInner({ flow, positionsMap, typesMap, handlesMap = {}, init = {
 			bus.on('node:finish', (e) => {
 				updateNodeData(e.payload.nodeId, {
 					status: 'completed',
-					outputs: (e.payload.result as any).output
+					outputs: (e.payload.result as any).output,
 				})
 			}),
 			bus.on('context:change', (e) => {
@@ -173,11 +167,11 @@ function FlowDemoInner({ flow, positionsMap, typesMap, handlesMap = {}, init = {
 								nodeData: {
 									...cur,
 									status: 'completed',
-									contextChanges: { ...cur.contextChanges, [key]: value }
-								}
-							}
+									contextChanges: { ...cur.contextChanges, [key]: value },
+								},
+							},
 						}
-					})
+					}),
 				)
 				setAwaitingNodes((prev) => prev.filter((id) => id !== sourceNode))
 			}),
@@ -185,13 +179,14 @@ function FlowDemoInner({ flow, positionsMap, typesMap, handlesMap = {}, init = {
 				updateNodeData(e.payload.batchId, { status: 'pending' })
 			}),
 			bus.on('batch:finish', (e) => {
-				updateNodeData(e.payload.batchId, { status: 'completed', outputs: e.payload.results })
-			})
+				updateNodeData(e.payload.batchId, {
+					status: 'completed',
+					outputs: e.payload.results,
+				})
+			}),
 		]
 		return () => off.forEach((fn) => fn())
 	}, [updateNodeData, setNodes])
-
-	// ── Workflow actions ────────────────────────────────────────────────────────
 
 	const clearWorkflow = useCallback(() => {
 		setViewContext(false)
@@ -227,7 +222,16 @@ function FlowDemoInner({ flow, positionsMap, typesMap, handlesMap = {}, init = {
 			await new Promise((r) => setTimeout(r))
 			fitView({ duration: 800 })
 		}
-	}, [executionResult, clearWorkflow, resetNodeData, blueprint, init, functionRegistry, updateNodeData, fitView])
+	}, [
+		executionResult,
+		clearWorkflow,
+		resetNodeData,
+		blueprint,
+		init,
+		functionRegistry,
+		updateNodeData,
+		fitView,
+	])
 
 	const resumeWorkflow = useCallback(
 		async (nodeId: string, payload: { output: any }) => {
@@ -235,9 +239,15 @@ function FlowDemoInner({ flow, positionsMap, typesMap, handlesMap = {}, init = {
 			setIsRunning(true)
 			setExecutionError(null)
 			try {
-				const result = await runtimeRef.current.resume(blueprint, serializedContext, payload, nodeId, {
-					functionRegistry
-				})
+				const result = await runtimeRef.current.resume(
+					blueprint,
+					serializedContext,
+					payload,
+					nodeId,
+					{
+						functionRegistry,
+					},
+				)
 				setExecutionResult(result)
 				if (result.status === 'awaiting') {
 					const waiting: string[] = (result.context as any)._awaitingNodeIds || []
@@ -257,21 +267,18 @@ function FlowDemoInner({ flow, positionsMap, typesMap, handlesMap = {}, init = {
 				fitView({ duration: 800 })
 			}
 		},
-		[serializedContext, blueprint, functionRegistry, updateNodeData, fitView]
+		[serializedContext, blueprint, functionRegistry, updateNodeData, fitView],
 	)
-
-	// ── Render ─────────────────────────────────────────────────────────────────
 
 	return (
 		<div className="relative flex flex-col h-full rounded-xl overflow-hidden border border-border bg-background shadow-sm">
-			{/* Toolbar */}
 			<header className="relative z-10 flex flex-wrap items-center gap-2 px-3 py-2 bg-card border-b border-border flex-shrink-0">
 				<button
 					onClick={runWorkflow}
 					disabled={isRunning}
 					className="px-3 py-1 text-sm font-medium rounded-md bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
 				>
-					{isRunning ? 'Running…' : executionResult ? 'Restart' : 'Run'}
+					{isRunning ? 'Running...' : executionResult ? 'Restart' : 'Run'}
 				</button>
 
 				{awaitingNodes.length > 0 && (
@@ -281,13 +288,17 @@ function FlowDemoInner({ flow, positionsMap, typesMap, handlesMap = {}, init = {
 						{awaitingNodes.map((nodeId) => (
 							<div key={nodeId} className="flex gap-1.5">
 								<button
-									onClick={() => resumeWorkflow(nodeId, { output: { approved: true } })}
+									onClick={() =>
+										resumeWorkflow(nodeId, { output: { approved: true } })
+									}
 									className="px-3 py-1 text-sm font-medium rounded-md bg-green-600 text-white hover:bg-green-700 transition-colors"
 								>
 									Approve
 								</button>
 								<button
-									onClick={() => resumeWorkflow(nodeId, { output: { approved: false } })}
+									onClick={() =>
+										resumeWorkflow(nodeId, { output: { approved: false } })
+									}
 									className="px-3 py-1 text-sm font-medium rounded-md bg-red-600 text-white hover:bg-red-700 transition-colors"
 								>
 									Deny
@@ -315,7 +326,6 @@ function FlowDemoInner({ flow, positionsMap, typesMap, handlesMap = {}, init = {
 				)}
 			</header>
 
-			{/* Final context overlay */}
 			{viewContext && executionResult && (
 				<div className="absolute inset-0 top-[41px] z-20 overflow-auto bg-card/95 backdrop-blur-sm">
 					<pre className="p-4 text-xs font-mono text-foreground">
@@ -324,7 +334,6 @@ function FlowDemoInner({ flow, positionsMap, typesMap, handlesMap = {}, init = {
 				</div>
 			)}
 
-			{/* React Flow canvas */}
 			<div className="flex-1 min-h-0">
 				<ReactFlow
 					nodes={nodes}
@@ -345,15 +354,6 @@ function FlowDemoInner({ flow, positionsMap, typesMap, handlesMap = {}, init = {
 	)
 }
 
-// ─── Public export — wraps with ReactFlowProvider ────────────────────────────
-
-/**
- * Renders a flowcraft workflow as an interactive @xyflow/react canvas.
- *
- * Wrap your page with this component and pass a `FlowBuilder` instance
- * (from `createFlow()`). The component creates a `FlowRuntime` internally,
- * connects it to the event bus, and animates each node as it executes.
- */
 export function FlowDemo(props: FlowDemoProps) {
 	return (
 		<ReactFlowProvider>

@@ -1,16 +1,5 @@
-'use client'
-
 import { getBezierPath, Position, type EdgeProps } from '@xyflow/react'
 
-/**
- * Custom edge that draws an arc for loopback connections (e.g. loop retries).
- *
- * Flowcraft marks these edges with `data.isLoopback = true` and
- * `data.pathType = 'bezier'` in the UIGraph output. The arc direction is
- * inferred from the source/target handle positions:
- *  - Top/Bottom handles → horizontal arc
- *  - Left/Right handles → vertical arc
- */
 export function LoopbackEdge({
 	id,
 	sourceX,
@@ -19,7 +8,7 @@ export function LoopbackEdge({
 	targetY,
 	sourcePosition,
 	targetPosition,
-	data
+	data,
 }: EdgeProps) {
 	let d: string
 
@@ -34,13 +23,19 @@ export function LoopbackEdge({
 			const radiusY = Math.abs(sourceY - targetY) || 80
 			d = `M ${sourceX} ${sourceY} A ${radiusX} ${radiusY} 0 1 0 ${targetX} ${targetY}`
 		} else {
-			// LR layout — arc curves around behind the node
 			const radiusX = Math.abs(sourceX - targetX) * 0.6 || 80
 			const radiusY = 50
 			d = `M ${sourceX} ${sourceY} A ${radiusX} ${radiusY} 0 1 0 ${targetX} ${targetY}`
 		}
 	} else {
-		const [path] = getBezierPath({ sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition })
+		const [path] = getBezierPath({
+			sourceX,
+			sourceY,
+			targetX,
+			targetY,
+			sourcePosition,
+			targetPosition,
+		})
 		d = path
 	}
 
