@@ -1,12 +1,11 @@
 {
-	"name": "@example/tldraw-integration",
-	"version": "0.0.0",
-	"private": true,
+	"name": "@example/tldraw",
+	"version": "0.1.0",
 	"type": "module",
 	"scripts": {
 		"dev": "vite",
 		"build": "tsc && vite build",
-		"preview": "vite preview"
+		"typecheck": "tsc --noEmit"
 	},
 	"dependencies": {
 		"@flowcraft/tldraw": "workspace:*",
