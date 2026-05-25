@@ -5,9 +5,13 @@ import type { NodeDefinition, WorkflowBlueprint } from 'flowcraft'
 import { Compiler } from './compiler'
 import type { CompilationDiagnostic, CompilationOutput } from './types'
 
-export function compileProject(entryFilePaths: string[], tsConfigPath: string): CompilationOutput {
-	const compiler = new Compiler(tsConfigPath)
-	return compiler.compileProject(entryFilePaths)
+export function compileProject(
+	entryFilePaths: string[],
+	tsConfigPath: string,
+	manifestPath?: string,
+): CompilationOutput {
+	const compiler = new Compiler(tsConfigPath, manifestPath)
+	return compiler.compileProject(entryFilePaths, manifestPath)
 }
 
 interface CompileCodeResult {

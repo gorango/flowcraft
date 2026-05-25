@@ -9,18 +9,26 @@ export class Compiler {
 	private typeChecker: ts.TypeChecker
 	public fileCache: Map<string, FileAnalysis> = new Map()
 	private projectRoot: string
+	private manifestPath: string
 
-	constructor(tsConfigPath: string) {
+	constructor(tsConfigPath: string, manifestPath?: string) {
 		const resolvedConfigPath = path.resolve(tsConfigPath)
 		this.projectRoot = path.dirname(resolvedConfigPath)
+		this.manifestPath = manifestPath
+			? path.resolve(manifestPath)
+			: path.resolve('./dist/flowcraft.manifest.ts')
 		const config = ts.readConfigFile(resolvedConfigPath, ts.sys.readFile)
 		const parsed = ts.parseJsonConfigFileContent(config.config, ts.sys, this.projectRoot)
 		this.program = ts.createProgram(parsed.fileNames, parsed.options)
 		this.typeChecker = this.program.getTypeChecker()
 	}
 
-	compileProject(entryFilePaths: string[]): CompilationOutput {
+	compileProject(entryFilePaths: string[], manifestPath?: string): CompilationOutput {
 		this.discoveryPass()
+
+		if (manifestPath) {
+			this.manifestPath = path.resolve(manifestPath)
+		}
 
 		const blueprints: Record<string, WorkflowBlueprint> = {}
 		const registry: Record<string, { importPath: string; exportName: string }> = {}
@@ -29,7 +37,16 @@ export class Compiler {
 		for (const entryFilePath of entryFilePaths) {
 			const resolvedPath = path.resolve(this.projectRoot, entryFilePath)
 			const fileAnalysis = this.fileCache.get(resolvedPath)
-			if (!fileAnalysis) continue
+			if (!fileAnalysis) {
+				diagnostics.push({
+					file: resolvedPath,
+					line: 1,
+					column: 1,
+					message: `Entry file '${entryFilePath}' was not found in the TypeScript program or contains no @flow/@step exports.`,
+					severity: 'warning',
+				})
+				continue
+			}
 			for (const [exportName, { type, node }] of fileAnalysis.exports) {
 				if (type === 'flow') {
 					const analyzer = new FlowAnalyzer(
@@ -48,7 +65,13 @@ export class Compiler {
 
 		const manifestSource = this.generateManifest(blueprints, registry)
 
-		return { blueprints, registry, diagnostics, manifestSource }
+		return {
+			blueprints,
+			registry,
+			diagnostics,
+			manifestSource,
+			manifestPath: this.manifestPath,
+		}
 	}
 
 	private discoveryPass(): void {
@@ -125,7 +148,7 @@ export class Compiler {
 		const imports: string[] = []
 		const registryEntries: string[] = []
 
-		const manifestDir = path.dirname(path.resolve('./dist/flowcraft.manifest.ts'))
+		const manifestDir = path.dirname(this.manifestPath)
 		for (const [uses, { importPath, exportName }] of Object.entries(registry)) {
 			const relativePath = path.relative(manifestDir, importPath).replace(/\.ts$/, '')
 			imports.push(

@@ -11,6 +11,11 @@ export interface CompilationOutput {
 	registry: Record<string, { importPath: string; exportName: string }>
 	diagnostics: CompilationDiagnostic[]
 	manifestSource: string
+	/**
+	 * The resolved path to the manifest file that was used for import path computation.
+	 * Empty string if no manifest path was configured (default: './dist/flowcraft.manifest.ts').
+	 */
+	manifestPath?: string
 }
 
 export interface CompilationDiagnostic {

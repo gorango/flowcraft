@@ -28,17 +28,40 @@ export async function buildFlows(pluginOptions: CompileFlowsOptions = {}) {
 	console.log('Compiling Flowcraft workflows...')
 
 	try {
-		const { diagnostics, manifestSource } = compileProject(entryPoints, tsConfigPath)
+		const { diagnostics, manifestSource } = compileProject(
+			entryPoints,
+			tsConfigPath,
+			manifestPath,
+		)
 
-		if (diagnostics.some((d) => d.severity === 'error')) {
+		const errors = diagnostics.filter((d) => d.severity === 'error')
+		const warnings = diagnostics.filter((d) => d.severity === 'warning')
+		const infos = diagnostics.filter((d) => d.severity === 'info')
+
+		if (warnings.length > 0) {
+			console.warn('⚠️  Flowcraft compilation warnings:')
+			warnings.forEach((d) => {
+				console.warn(
+					`  - ${path.relative(projectRoot, d.file)}:${d.line}:${d.column} - ${d.message}`,
+				)
+			})
+		}
+
+		if (infos.length > 0) {
+			infos.forEach((d) => {
+				console.info(
+					`  ℹ️  ${path.relative(projectRoot, d.file)}:${d.line}:${d.column} - ${d.message}`,
+				)
+			})
+		}
+
+		if (errors.length > 0) {
 			console.error('❌ Flowcraft compilation failed:')
-			diagnostics
-				.filter((d) => d.severity === 'error')
-				.forEach((d) => {
-					console.error(
-						`  - ${path.relative(projectRoot, d.file)}:${d.line}:${d.column} - ${d.message}`,
-					)
-				})
+			errors.forEach((d) => {
+				console.error(
+					`  - ${path.relative(projectRoot, d.file)}:${d.line}:${d.column} - ${d.message}`,
+				)
+			})
 			throw new Error('Flowcraft compilation failed.')
 		}
 

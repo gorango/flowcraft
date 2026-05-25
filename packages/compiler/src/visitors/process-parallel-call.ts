@@ -15,12 +15,11 @@ export function processParallelCall(
 		if (originalSymbol?.valueDeclaration) {
 			const decl = originalSymbol.valueDeclaration
 			const filePath = decl.getSourceFile().fileName
+			const exportName = originalSymbol.name
 			const fileAnalysis = analyzer.compiler.fileCache.get(filePath)
 			if (fileAnalysis) {
-				const exportName = originalSymbol.name
 				const exportInfo = fileAnalysis.exports.get(exportName)
 				if (exportInfo) {
-					// this is exported function (from another file or this one)
 					const count = analyzer.state.incrementUsageCount(exportName)
 
 					let nodeDef: NodeDefinition
@@ -39,6 +38,11 @@ export function processParallelCall(
 							_sourceLocation: analyzer.getSourceLocation(callNode),
 						}
 					} else {
+						analyzer.addDiagnostic(
+							callNode,
+							'warning',
+							`The function '${exportName}' has an unknown export type and will be ignored in Promise.all.`,
+						)
 						return null
 					}
 
@@ -50,6 +54,12 @@ export function processParallelCall(
 					ts.isArrowFunction(decl)
 				) {
 					// this is a local function declaration in the same file
+					analyzer.addDiagnostic(
+						callNode,
+						'warning',
+						`The function '${exportName}' used in Promise.all is not annotated with /** @step */ or /** @flow */. It will be treated as a step, but this may cause unexpected behavior.`,
+					)
+
 					const count = analyzer.state.incrementUsageCount(exportName)
 
 					const nodeDef: NodeDefinition = {
@@ -64,9 +74,27 @@ export function processParallelCall(
 					analyzer.registry[exportName] = { importPath: filePath, exportName }
 					analyzer.state.addNode(nodeDef)
 					return nodeDef.id
+				} else {
+					analyzer.addDiagnostic(
+						callNode,
+						'error',
+						`The function '${exportName}' used in Promise.all is not a step or flow. Add a \`/** @step */\` annotation to make it a durable operation.`,
+					)
 				}
+			} else {
+				analyzer.addDiagnostic(
+					callNode,
+					'warning',
+					`The function '${exportName}' is defined in '${filePath}' which was not scanned by the discovery pass. The call in Promise.all will be ignored.`,
+				)
 			}
 		}
+	} else {
+		analyzer.addDiagnostic(
+			callNode,
+			'error',
+			`Could not resolve symbol for '${callNode.expression.getText()}' in Promise.all.`,
+		)
 	}
 	return null
 }

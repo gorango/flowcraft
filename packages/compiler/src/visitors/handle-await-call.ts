@@ -16,9 +16,9 @@ export function handleAwaitCall(
 		if (originalSymbol?.valueDeclaration) {
 			const decl = originalSymbol.valueDeclaration
 			const filePath = decl.getSourceFile().fileName
+			const exportName = originalSymbol.name
 			const fileAnalysis = analyzer.compiler.fileCache.get(filePath)
 			if (fileAnalysis) {
-				const exportName = originalSymbol.name
 				const exportInfo = fileAnalysis.exports.get(exportName)
 				if (exportInfo) {
 					let nodeDef: NodeDefinition
@@ -46,7 +46,12 @@ export function handleAwaitCall(
 							nodeDef.config = { fallback }
 						}
 					} else {
-						return // unknown type
+						analyzer.addDiagnostic(
+							node,
+							'warning',
+							`The function '${exportName}' has an unknown export type and will be ignored.`,
+						)
+						return
 					}
 					analyzer.state.addNodeAndWire(
 						nodeDef,
@@ -61,6 +66,12 @@ export function handleAwaitCall(
 						`The function '${exportName}' is being awaited but is not a durable step or flow. To make it a durable operation, add a \`/** @step */\` JSDoc tag to its definition.`,
 					)
 				}
+			} else {
+				analyzer.addDiagnostic(
+					node,
+					'warning',
+					`The function '${exportName}' is defined in '${filePath}' which was not scanned by the discovery pass. The call will be ignored.`,
+				)
 			}
 		}
 	}

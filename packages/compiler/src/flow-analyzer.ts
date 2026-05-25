@@ -158,33 +158,64 @@ export class FlowAnalyzer {
 			return null
 		}
 
-		let originalSymbol: ts.Symbol
+		// Check the original symbol's declarations FIRST (these are the import specifiers)
+		// before alias resolution. If the symbol IS an alias, we still check the original
+		// symbol's declarations since the import specifier is on the non-aliased symbol.
+		const originalDeclarations = symbol.getDeclarations()
+		if (originalDeclarations) {
+			for (const declaration of originalDeclarations) {
+				if (ts.isImportSpecifier(declaration)) {
+					const importDeclaration = declaration.parent.parent.parent
+					if (
+						ts.isImportDeclaration(importDeclaration) &&
+						ts.isStringLiteral(importDeclaration.moduleSpecifier)
+					) {
+						const moduleSpecifier = importDeclaration.moduleSpecifier.text
+						if (moduleSpecifier === 'flowcraft/sdk') {
+							const primitiveName = declaration.name.text
+							if (
+								['sleep', 'waitForEvent', 'createWebhook'].includes(primitiveName)
+							) {
+								return { primitiveName }
+							}
+						}
+					}
+				}
+			}
+		}
+
+		// Also check the aliased symbol's declarations for re-exports
+		let aliasedSymbol: ts.Symbol | undefined
 		try {
-			originalSymbol =
+			aliasedSymbol =
 				symbol.flags & ts.SymbolFlags.Alias
 					? this.typeChecker.getAliasedSymbol(symbol)
-					: symbol
+					: undefined
 		} catch {
-			return null
+			aliasedSymbol = undefined
 		}
 
-		const declarations = originalSymbol.getDeclarations()
-		if (!declarations || declarations.length === 0) {
-			return null
-		}
-
-		for (const declaration of declarations) {
-			if (ts.isImportSpecifier(declaration)) {
-				const importDeclaration = declaration.parent.parent.parent
-				if (
-					ts.isImportDeclaration(importDeclaration) &&
-					ts.isStringLiteral(importDeclaration.moduleSpecifier)
-				) {
-					const moduleSpecifier = importDeclaration.moduleSpecifier.text
-					if (moduleSpecifier === 'flowcraft/sdk') {
-						const primitiveName = declaration.name.text
-						if (['sleep', 'waitForEvent', 'createWebhook'].includes(primitiveName)) {
-							return { primitiveName }
+		if (aliasedSymbol) {
+			const aliasedDeclarations = aliasedSymbol.getDeclarations()
+			if (aliasedDeclarations) {
+				for (const declaration of aliasedDeclarations) {
+					if (ts.isImportSpecifier(declaration)) {
+						const importDeclaration = declaration.parent.parent.parent
+						if (
+							ts.isImportDeclaration(importDeclaration) &&
+							ts.isStringLiteral(importDeclaration.moduleSpecifier)
+						) {
+							const moduleSpecifier = importDeclaration.moduleSpecifier.text
+							if (moduleSpecifier === 'flowcraft/sdk') {
+								const primitiveName = declaration.name.text
+								if (
+									['sleep', 'waitForEvent', 'createWebhook'].includes(
+										primitiveName,
+									)
+								) {
+									return { primitiveName }
+								}
+							}
 						}
 					}
 				}

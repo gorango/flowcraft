@@ -618,6 +618,50 @@ export async function typeErrorFlow() {
     - `diagnostics: CompilationDiagnostic[]`: An array of errors or warnings found during compilation.
     - `manifestSource: string`: The generated source code for the manifest file.
 
+## Known Limitations
+
+The compiler is currently in **alpha** and has the following known limitations:
+
+### Syntax Support
+
+- **`switch/case`**, **`do...while`**, and **`for...in`** statements are not supported inside `@flow` functions.
+- **`finally`** blocks are not supported and produce a compile-time error.
+- **`return`**, **`throw`**, and **`label`** statements inside flow functions are silently ignored and may produce unexpected graphs.
+- **Generator functions** (`function*`, `async function*`) are not handled.
+- Only `Promise.all()` is recognized for parallelism; `Promise.allSettled()` and `Promise.race()` are not.
+- Only `async function` declarations are detected. Arrow functions, function expressions, and default exports with `@flow`/`@step` annotations are not discovered.
+
+### Export Detection
+
+- The discovery pass only finds `export async function` and `export { name }` forms. `export const foo = async () => {}` and `export default async function` are silently missed.
+- Re-exports (`export * from`) are not followed.
+
+### Parameter Handling
+
+- Parameters passed to step calls are captured as raw source text (e.g., `"myVar"` instead of its runtime value). The runtime receives the variable name as a string, not its value.
+- Object literal arguments (e.g., `await step({ key: value })`) have their parameters extracted as text, but nested expressions may not survive the compilation pipeline intact.
+
+### Configuration
+
+- `.ts` config files that `import` from other modules will fail to load, as the esbuild transform only strips types without resolving imports.
+- The config file is re-read and re-transpiled on every call to `loadConfig()`.
+- The `manifestPath` in `flowcraft.config` is used for the output file location, and import paths in the generated manifest are now computed relative to it (fixed in v1.0.0-alpha.4).
+
+### Type Checking
+
+- Type checking only occurs for explicit `await step()` calls. Bare (non-awaited) step calls and calls inside `Promise.all` do not receive argument type validation.
+- The `context.*` method calls are silently allowed regardless of whether the method exists, since the compiler cannot validate runtime context methods.
+
+### Error Handling
+
+- `try/catch` blocks do not track the catch clause variable.
+- Errors occurring inside the `catch` block itself are not protected by the fallback scope.
+
+### Loops
+
+- `for...of` iteration variables are not tracked in the graph; the runtime is expected to handle iteration semantics.
+- Loop bodies with no step calls produce minimal graph nodes.
+
 ## License
 
 This package is licensed under the [MIT License](https://github.com/gorango/flowcraft/blob/master/LICENSE).

@@ -115,5 +115,17 @@ export function handleAwaitExpression(analyzer: FlowAnalyzer, node: ts.AwaitExpr
 		analyzer.checkFunctionCallTypes(callee)
 
 		handleAwaitCall(analyzer, callee, node)
+	} else if (ts.isIdentifier(expression)) {
+		analyzer.addDiagnostic(
+			node,
+			'error',
+			`Awaiting a non-call expression '${expression.getText()}'. Only function calls can be awaited in a flow function.`,
+		)
+	} else {
+		analyzer.addDiagnostic(
+			node,
+			'warning',
+			`Unrecognized await expression '${expression.getText()}'. This may not produce the expected workflow behavior.`,
+		)
 	}
 }
