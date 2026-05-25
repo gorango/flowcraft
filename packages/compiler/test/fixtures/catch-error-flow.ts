@@ -12,7 +12,7 @@ export async function logError(params: { msg: string }) {
 export async function catchErrorFlow() {
 	try {
 		await riskyAction()
-	} catch (e) {
+	} catch (e: any) {
 		await logError({ msg: e.message })
 	}
 }

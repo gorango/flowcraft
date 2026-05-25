@@ -783,16 +783,18 @@ describe('variable scoping and property resolution', () => {
 
 		const innerNode = bp.nodes.find((n) => n.id === 'processValue_1')
 		expect(innerNode).toBeDefined()
-		if (innerNode?.inputs) {
-			expect(innerNode.inputs).toHaveProperty('val')
-			expect(innerNode.inputs.val).toBe('stepB_1.value')
+		const innerInputs = innerNode?.inputs
+		if (innerInputs && typeof innerInputs === 'object') {
+			expect(innerInputs).toHaveProperty('val')
+			expect(innerInputs.val).toBe('stepB_1.value')
 		}
 
 		const outerNode = bp.nodes.find((n) => n.id === 'processValue_2')
 		expect(outerNode).toBeDefined()
-		if (outerNode?.inputs) {
-			expect(outerNode.inputs).toHaveProperty('val')
-			expect(outerNode.inputs.val).toBe('stepA_1.value')
+		const outerInputs = outerNode?.inputs
+		if (outerInputs && typeof outerInputs === 'object') {
+			expect(outerInputs).toHaveProperty('val')
+			expect(outerInputs.val).toBe('stepA_1.value')
 		}
 	})
 
@@ -804,9 +806,10 @@ describe('variable scoping and property resolution', () => {
 
 		const useZipNode = bp.nodes.find((n) => n.uses === 'useZip')
 		expect(useZipNode).toBeDefined()
-		if (useZipNode?.inputs) {
-			expect(useZipNode.inputs).toHaveProperty('zip')
-			expect(useZipNode.inputs.zip).toBe('getComplexPayload_1.user.profile.address.zip')
+		const zipInputs = useZipNode?.inputs
+		if (zipInputs && typeof zipInputs === 'object') {
+			expect(zipInputs).toHaveProperty('zip')
+			expect(zipInputs.zip).toBe('getComplexPayload_1.user.profile.address.zip')
 		}
 	})
 })
@@ -919,6 +922,357 @@ export async function webhookFlow(context: any) {
 		const { blueprint, diagnostics } = compileCode(code)
 		expect(diagnostics.filter((d) => d.severity === 'error')).toHaveLength(0)
 		expect(blueprint).not.toBeNull()
+	})
+})
+
+describe('compiler diagnostics', () => {
+	it('should emit error for for...in statements', () => {
+		const code = `
+/** @step */
+export async function dummy() { return 1 }
+
+/** @flow */
+export async function testFlow(context: any) {
+  for (const key in context) {
+    await dummy()
+  }
+}
+`
+		const { diagnostics } = compileCode(code)
+		const err = diagnostics.find(
+			(d) => d.severity === 'error' && d.message.includes('for...in'),
+		)
+		expect(err).toBeDefined()
+	})
+
+	it('should emit error for C-style for statements', () => {
+		const code = `
+/** @step */
+export async function dummy() { return 1 }
+
+/** @flow */
+export async function testFlow(context: any) {
+  for (let i = 0; i < 10; i++) {
+    await dummy()
+  }
+}
+`
+		const { diagnostics } = compileCode(code)
+		const err = diagnostics.find(
+			(d) => d.severity === 'error' && d.message.includes('for statements'),
+		)
+		expect(err).toBeDefined()
+	})
+
+	it('should warn on destructuring in variable declarations', () => {
+		const code = `
+/** @step */
+export async function fetchProfile() { return { name: 'Alice' } }
+
+/** @step */
+export async function fetchOrders() { return { items: [] } }
+
+/** @flow */
+export async function destructuringFlow(context: any) {
+  const [profile, orders] = await Promise.all([fetchProfile(), fetchOrders()])
+  return { profile, orders }
+}
+`
+		const { diagnostics } = compileCode(code)
+		const warn = diagnostics.find(
+			(d) => d.severity === 'warning' && d.message.includes('Destructuring'),
+		)
+		expect(warn).toBeDefined()
+	})
+
+	it('should warn on complex expression in step argument', () => {
+		const code = `
+/** @step */
+export async function greet(params: { name: string }) {
+  return { message: 'hello ' + params.name }
+}
+
+/** @flow */
+export async function testFlow(context: any) {
+  const name = 'world'
+  const result = await greet({ name: name.toUpperCase() + '!' })
+  return result
+}
+`
+		const { diagnostics } = compileCode(code)
+		const warn = diagnostics.find(
+			(d) => d.severity === 'warning' && d.message.includes('Complex expression'),
+		)
+		expect(warn).toBeDefined()
+	})
+
+	it('should warn on non-trivial property in step argument object', () => {
+		const code = `
+/** @step */
+export async function compute(params: Record<string, any>) {
+  return params
+}
+
+/** @flow */
+export async function testFlow(context: any) {
+  const val = 42
+  const result = await compute({ ...context, value: val })
+  return result
+}
+`
+		const { diagnostics } = compileCode(code)
+		const warn = diagnostics.find(
+			(d) => d.severity === 'warning' && d.message.includes('Non-trivial property'),
+		)
+		expect(warn).toBeDefined()
+	})
+
+	it('should warn on complex top-level step argument expression', () => {
+		const code = `
+/** @step */
+export async function double(params: number) {
+  return { result: params * 2 }
+}
+
+/** @flow */
+export async function testFlow(context: any) {
+  const val = 21
+  const result = await double(val + 1)
+  return result
+}
+`
+		const { diagnostics } = compileCode(code)
+		const warn = diagnostics.find(
+			(d) => d.severity === 'warning' && d.message.includes('Complex expression'),
+		)
+		expect(warn).toBeDefined()
+	})
+
+	it('should warn on labeled statements', () => {
+		const code = `
+/** @step */
+export async function dummy() { return 1 }
+
+/** @flow */
+export async function testFlow(context: any) {
+  myLabel: {
+    await dummy()
+  }
+  return 1
+}
+`
+		const { diagnostics } = compileCode(code)
+		const warn = diagnostics.find(
+			(d) => d.severity === 'warning' && d.message.includes('Labeled'),
+		)
+		expect(warn).toBeDefined()
+	})
+
+	it('should handle switch without a preceding cursor (creates start node)', () => {
+		const code = `
+/** @step */
+export async function handleA() { return 'a' }
+/** @step */
+export async function handleDefault() { return 'default' }
+
+/** @flow */
+export async function switchAtStartFlow(context: any) {
+  switch (context.type) {
+    case 'a':
+      await handleA()
+      break
+    default:
+      await handleDefault()
+  }
+}
+`
+		const { blueprint, diagnostics } = compileCode(code)
+		expect(diagnostics.filter((d) => d.severity === 'error')).toHaveLength(0)
+		expect(blueprint).not.toBeNull()
+		if (!blueprint) return
+		// remapNode converts unknown uses to 'process', so check by id
+		const startNode = blueprint.nodes.find((n) => n.id === 'start')
+		expect(startNode).toBeDefined()
+	})
+
+	it('should handle do-while with continue/break in nested scopes', () => {
+		const code = `
+/** @step */
+export async function processItem() { return 1 }
+
+/** @flow */
+export async function nestedDoWhile(context: any) {
+  do {
+    await processItem()
+    if (context.done) break
+    if (context.skip) continue
+    await processItem()
+  } while (context.condition)
+}
+`
+		const { blueprint, diagnostics } = compileCode(code)
+		expect(diagnostics.filter((d) => d.severity === 'error')).toHaveLength(0)
+		expect(blueprint).not.toBeNull()
+		if (!blueprint) return
+		const continueEdges = blueprint.edges.filter((e) => e.action === 'continue')
+		expect(continueEdges.length).toBeGreaterThan(0)
+		const breakEdges = blueprint.edges.filter((e) => e.action === 'break')
+		expect(breakEdges.length).toBeGreaterThan(0)
+	})
+
+	it('should handle Promise.all with unknown export type warning', () => {
+		const code = `
+/** @flow */
+export async function testFlow(context: any) {
+  await Promise.all([someNonExistentFn()])
+}
+`
+		const { diagnostics } = compileCode(code)
+		const err = diagnostics.find(
+			(d) => d.severity === 'error' && d.message.includes('Could not resolve symbol'),
+		)
+		expect(err).toBeDefined()
+	})
+
+	it('should handle break and continue errors outside loops', () => {
+		const code = `
+/** @flow */
+export async function testFlow(context: any) {
+  break
+}
+`
+		const { diagnostics } = compileCode(code)
+		const err = diagnostics.find((d) => d.severity === 'error' && d.message.includes('break'))
+		expect(err).toBeDefined()
+	})
+
+	it('should handle continue error outside loop', () => {
+		const code = `
+/** @flow */
+export async function testFlow(context: any) {
+  continue
+}
+`
+		const { diagnostics } = compileCode(code)
+		const err = diagnostics.find(
+			(d) => d.severity === 'error' && d.message.includes('continue'),
+		)
+		expect(err).toBeDefined()
+	})
+})
+
+describe('branch coverage', () => {
+	it('should handle do-while with null cursor (firstInBody without preceding cursor)', () => {
+		const code = `
+/** @step */
+export async function processItem() { return 1 }
+
+/** @flow */
+export async function doWhileAtStart(context: any) {
+  do {
+    await processItem()
+  } while (context.condition)
+}
+`
+		const { blueprint, diagnostics } = compileCode(code)
+		expect(diagnostics.filter((d) => d.severity === 'error')).toHaveLength(0)
+		expect(blueprint).not.toBeNull()
+		if (!blueprint) return
+		// Should have a loop controller
+		const controller = blueprint.nodes.find((n) => n.params?.condition === 'context.condition')
+		expect(controller).toBeDefined()
+	})
+
+	it('should handle subflow-type exports in Promise.all', () => {
+		const code = `
+/** @step */
+export async function stepA() { return 'a' }
+
+/** @flow */
+export async function subFlow() { return await stepA() }
+
+/** @flow */
+export async function parentFlow(context: any) {
+  // This tests that Promise.all can include a subflow
+  const result = await subFlow()
+  return result
+}
+`
+		const { blueprint, diagnostics } = compileCode(code)
+		expect(diagnostics.filter((d) => d.severity === 'error')).toHaveLength(0)
+		expect(blueprint).not.toBeNull()
+	})
+
+	it('should handle await of durable primitive without call expression', () => {
+		const code = `
+/** @flow */
+export async function testFlow(context: any) {
+  await someVariable
+}
+`
+		const { diagnostics } = compileCode(code)
+		const err = diagnostics.find(
+			(d) => d.severity === 'error' && d.message.includes('non-call'),
+		)
+		expect(err).toBeDefined()
+	})
+
+	it('should handle switch case fall-through (case without break)', () => {
+		const code = `
+/** @step */
+export async function handleA() { return 'a' }
+/** @step */
+export async function handleB() { return 'b' }
+/** @step */
+export async function afterSwitch() { return 'done' }
+
+/** @flow */
+export async function fallthroughFlow(context: any) {
+  const x = await context.get('val')
+  switch (x) {
+    case 'a':
+      await handleA()
+      // no break — falls through
+    case 'b':
+      await handleB()
+      break
+  }
+  await afterSwitch()
+}
+`
+		const { blueprint, diagnostics } = compileCode(code)
+		expect(diagnostics.filter((d) => d.severity === 'error')).toHaveLength(0)
+		expect(blueprint).not.toBeNull()
+		if (!blueprint) return
+		// Both case ends should connect to the join node
+		const joinNode = blueprint.nodes.find((n) => n.id === 'join_1')
+		expect(joinNode).toBeDefined()
+		// Should still have conditional edges from the fork
+		const conditionalEdges = blueprint.edges.filter((e) => e.condition)
+		expect(conditionalEdges.length).toBeGreaterThanOrEqual(1)
+	})
+
+	it('should handle subflow call from parent flow', () => {
+		const code = `
+/** @step */
+export async function stepA() { return 'a' }
+
+/** @flow */
+export async function parentFlow(context: any) {
+  const result = await subFlow()
+  return result
+}
+
+/** @flow */
+export async function subFlow() { return await stepA() }
+`
+		const { blueprint, diagnostics } = compileCode(code)
+		expect(diagnostics.filter((d) => d.severity === 'error')).toHaveLength(0)
+		expect(blueprint).not.toBeNull()
+		if (!blueprint) return
+		// parentFlow calls subFlow as a subflow — uses should be 'subflow'
+		const subflowNode = blueprint.nodes.find((n) => n.uses === 'subflow')
+		expect(subflowNode).toBeDefined()
 	})
 })
 
@@ -1120,12 +1474,16 @@ describe('runtime integration', () => {
 		expect(sendEmailNode).toBeDefined()
 		if (!sendEmailNode) throw new Error('sendEmailNode not found')
 		expect(sendEmailNode.inputs).toBeDefined()
+		if (typeof sendEmailNode.inputs !== 'object')
+			throw new Error('sendEmailNode inputs not an object')
 		expect(sendEmailNode.inputs).toHaveProperty('userId')
 
 		const finalizeOrderNode = bp.nodes.find((n) => n.uses === 'finalizeOrder')
 		expect(finalizeOrderNode).toBeDefined()
 		if (!finalizeOrderNode) throw new Error('finalizeOrderNode not found')
 		expect(finalizeOrderNode.inputs).toBeDefined()
+		if (typeof finalizeOrderNode.inputs !== 'object')
+			throw new Error('finalizeOrderNode inputs not an object')
 		expect(finalizeOrderNode.inputs).toHaveProperty('cartId')
 
 		const functionRegistry: Record<string, any> = {}

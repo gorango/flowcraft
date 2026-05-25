@@ -67,6 +67,13 @@ function extractInputsMap(
 								inputs[propName] = `${varInfo.nodeId}.${dotted.path}`
 							}
 						}
+					} else {
+						const exprText = init.getText().slice(0, 80)
+						analyzer.addDiagnostic(
+							init,
+							'warning',
+							`Complex expression '${exprText}${exprText.length >= 80 ? '...' : ''}' in step argument '${propName}' cannot be statically resolved. The value may not flow correctly at runtime. Use a simple variable or property reference instead.`,
+						)
 					}
 				} else if (ts.isShorthandPropertyAssignment(prop)) {
 					const propName = prop.name.text
@@ -74,7 +81,22 @@ function extractInputsMap(
 					if (varInfo) {
 						inputs[propName] = varInfo.nodeId
 					}
+				} else {
+					analyzer.addDiagnostic(
+						prop,
+						'warning',
+						`Non-trivial property in step argument object cannot be statically resolved. The value may not flow correctly at runtime.`,
+					)
 				}
+			}
+		} else {
+			const argText = arg.getText().slice(0, 80)
+			if (argText.length > 0) {
+				analyzer.addDiagnostic(
+					arg,
+					'warning',
+					`Complex expression '${argText}${argText.length >= 80 ? '...' : ''}' passed as step argument cannot be statically resolved. The value may not flow correctly at runtime. Use a simple variable or property reference instead.`,
+				)
 			}
 		}
 	}

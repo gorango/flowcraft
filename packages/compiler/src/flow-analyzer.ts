@@ -83,6 +83,13 @@ export class FlowAnalyzer {
 			return this.visit(node.expression)
 		} else if (ts.isVariableStatement(node)) {
 			for (const declaration of node.declarationList.declarations) {
+				if (!ts.isIdentifier(declaration.name)) {
+					this.addDiagnostic(
+						declaration,
+						'warning',
+						`Destructuring patterns in variable declarations are not fully supported in flow functions. The variables may not be tracked for input mapping. Access properties from the result directly.`,
+					)
+				}
 				if (declaration.initializer) {
 					this.visit(declaration.initializer)
 				}
@@ -185,6 +192,27 @@ export class FlowAnalyzer {
 			return null
 		} else if (ts.isBlock(node)) {
 			return this.traverse(node)
+		} else if (ts.isForInStatement(node)) {
+			this.addDiagnostic(
+				node,
+				'error',
+				`for...in statements are not supported in flow functions. Use for...of with Object.keys() or Object.entries() instead.`,
+			)
+			return this.state.getCursor()
+		} else if (ts.isForStatement(node)) {
+			this.addDiagnostic(
+				node,
+				'error',
+				`C-style for statements are not supported in flow functions. Use for...of with an array instead.`,
+			)
+			return this.state.getCursor()
+		} else if (ts.isDebuggerStatement(node)) {
+			this.addDiagnostic(
+				node,
+				'warning',
+				`debugger statements have no effect in flow function compilation.`,
+			)
+			return this.state.getCursor()
 		} else {
 			ts.forEachChild(node, (child) => {
 				this.visit(child)

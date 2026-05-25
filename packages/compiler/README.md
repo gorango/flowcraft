@@ -486,9 +486,73 @@ The compiler translates the following standard JavaScript syntax into graph stru
 
 #### 4. Unsupported Syntax
 
-> **Note:** To ensure predictable graph generation, some imperative features are not supported inside a flow function. Using them will result in a compile-time error.
+> **Note:** To ensure predictable graph generation, some imperative features are not supported inside a flow function. Using them will result in a compile-time error with a clear diagnostic message.
 
-- **Complex Assignments**: Variable assignments from `await` calls must be simple `const` or `let` declarations. Re-assigning variables from multiple branches can lead to unpredictable graphs and is disallowed.
+| Syntax                            | Behavior                                                                                                                   |
+| :-------------------------------- | :------------------------------------------------------------------------------------------------------------------------- |
+| `for...in`                        | **Error** — Use `for...of` with `Object.keys()` or `Object.entries()` instead.                                             |
+| C-style `for (;;)`                | **Error** — Use `for...of` with an array instead.                                                                          |
+| Generator functions (`function*`) | **Error** — Use an `async` function instead.                                                                               |
+| Destructuring patterns            | **Warning** — Variables are not tracked for input mapping. Use simple `const` declarations and access properties directly. |
+| `debugger` statement              | **Warning** — Ignored in workflow compilation.                                                                             |
+
+#### 5. Step Arguments and Expression Capture
+
+The compiler resolves step arguments at compile time by tracing variables back to predecessor node outputs. Simple identifiers and property access expressions (e.g., `cart.cartId`) are resolved to the correct data flow. However, complex runtime expressions in step arguments may not resolve correctly.
+
+**Safe patterns (resolved at compile time):**
+
+```typescript
+// Identifier — resolved to predecessor node output
+await step({ userId })
+
+// Property access — resolved to predecessor node property path
+await step({ cartId: cart.cartId })
+
+// Object literal with simple values — each property resolved individually
+await step({ userId, cartId: cart.cartId })
+```
+
+**Unsafe patterns (compile-time warning):**
+
+```typescript
+// Computed expressions — captured as raw text, may fail at runtime
+await step({ name: name.toUpperCase() + '!' })
+
+// Spread operator — non-trivial property warning
+await step({ ...context, value: val })
+
+// Non-identifier argument — captured as raw text
+await step(val + 1)
+```
+
+When a complex expression is detected, the compiler emits a **compile-time warning** with the source location. The value will be captured as raw text, and a `PropertyEvaluator` (the default runtime evaluator) will not be able to resolve it at runtime. For such cases, configure the runtime with an `UnsafeEvaluator` or a custom evaluator.
+
+#### 6. Runtime Expression Evaluation
+
+The generated blueprint edges contain conditions and transform expressions as strings. At runtime, the `FlowRuntime` uses an `IEvaluator` to evaluate these expressions.
+
+```typescript
+import { FlowRuntime, PropertyEvaluator, UnsafeEvaluator } from 'flowcraft'
+
+// Default: safe evaluator for simple property access (e.g., "result.status")
+const runtime = new FlowRuntime({
+	registry,
+	blueprints,
+	evaluator: new PropertyEvaluator(),
+})
+
+// For complex expressions: uses new Function() — sandboxed but not fully isolated
+const runtime = new FlowRuntime({
+	registry,
+	blueprints,
+	evaluator: new UnsafeEvaluator(),
+})
+```
+
+- **`PropertyEvaluator`** (default): Safe for untrusted inputs. Only resolves simple dot-separated property paths (e.g., `result.output.status`).
+- **`UnsafeEvaluator`**: Uses `new Function()` to evaluate JavaScript expressions. Arbitrary code execution is possible; only use in controlled environments with trusted workflow definitions.
+- **Custom evaluator**: Implement the `IEvaluator` interface with a sandboxed evaluator like `jsep` for a balance of safety and flexibility.
 
 ## Advanced Concepts
 
@@ -637,11 +701,12 @@ The compiler is currently in **alpha** and has the following known limitations:
 
 ### Syntax Support
 
-- **`for...in`** statements are not supported inside `@flow` functions.
-- **`return`**, **`throw`**, and **`label`** statements inside flow functions are silently ignored and may produce unexpected graphs.
-- **Generator functions** (`function*`, `async function*`) are not handled.
-- Only `Promise.all()` is recognized for parallelism; `Promise.allSettled()` and `Promise.race()` are not.
-- Only `async function` declarations are detected. Arrow functions, function expressions, and default exports with `@flow`/`@step` annotations are not discovered.
+- **`for...in`** statements produce a compile-time error (use `for...of` with `Object.keys()`/`Object.entries()` instead).
+- **C-style `for (;;)`** statements produce a compile-time error.
+- **Generator functions** (`function*`, `async function*`) produce a compile-time error.
+- **Labeled statements** produce a compile-time warning (the label is ignored).
+- `Promise.allSettled()` and `Promise.race()` are supported for parallelism alongside `Promise.all()`.
+- Arrow functions, function expressions, and default exports with `@flow`/`@step` annotations are fully discovered and supported.
 
 ### Export Detection
 
@@ -650,8 +715,9 @@ The compiler is currently in **alpha** and has the following known limitations:
 
 ### Parameter Handling
 
-- Parameters passed to step calls are captured as raw source text (e.g., `"myVar"` instead of its runtime value). The runtime receives the variable name as a string, not its value.
-- Object literal arguments (e.g., `await step({ key: value })`) have their parameters extracted as text, but nested expressions may not survive the compilation pipeline intact.
+- Simple identifiers and property access expressions in step arguments are resolved to predecessor node outputs (data-flow tracking).
+- Complex runtime expressions (e.g., `name.toUpperCase() + '!'`) produce a **compile-time warning**. The value is captured as raw text and may fail to resolve with the default `PropertyEvaluator`. Use simple variable references or configure a custom evaluator for complex expressions.
+- Object literal arguments (e.g., `await step({ key: value })`) have their properties resolved individually. Non-trivial properties (spread, computed keys) produce a compile-time warning.
 
 ### Configuration
 
