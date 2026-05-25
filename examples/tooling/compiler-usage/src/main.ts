@@ -1,84 +1,77 @@
-import {
-	type ContextImplementation,
-	FlowRuntime,
-	type Middleware,
-	type NodeResult,
-} from 'flowcraft'
-import { createCompilerUsageWorkflow } from './workflow.js'
-
-class CompilerMiddleware implements Middleware {
-	async aroundNode(
-		_ctx: ContextImplementation<Record<string, any>>,
-		nodeId: string,
-		next: () => Promise<NodeResult>,
-	): Promise<NodeResult> {
-		console.log(`[COMPILER] Processing ${nodeId}`)
-		try {
-			const result = await next()
-			console.log(`[COMPILER] ${nodeId} compiled successfully`)
-			return result
-		} catch (error: any) {
-			console.log(`[COMPILER] ${nodeId} compilation failed: ${error.message}`)
-			throw error
-		}
-	}
-}
+import * as path from 'node:path'
+import { compileProject } from '@flowcraft/compiler'
+import { FlowRuntime } from 'flowcraft'
 
 async function main() {
 	console.log('🚀 Flowcraft Compiler Usage Example\n')
-
-	// ============================================================================
-	// COMPILER USAGE WORKFLOW
-	// ============================================================================
-	console.log('='.repeat(60))
-	console.log('🔧 COMPILER USAGE WORKFLOW')
-	console.log('='.repeat(60))
-
-	const runtime = new FlowRuntime({
-		middleware: [new CompilerMiddleware()],
-	})
-
-	// Create a sample workflow to analyze
-	const sampleWorkflow = createCompilerUsageWorkflow()
-	const sampleBlueprint = sampleWorkflow.toBlueprint()
-
-	console.log('📋 Sample Workflow to Analyze:')
-	console.log(`   ID: ${sampleBlueprint.id}`)
-	console.log(`   Nodes: ${sampleBlueprint.nodes.map((n) => n.id).join(', ')}`)
-	console.log()
+	console.log('Starting...')
 
 	try {
-		const workflow = createCompilerUsageWorkflow()
-		const result = await runtime.run(
-			workflow.toBlueprint(),
-			{ workflow: sampleBlueprint },
-			{ functionRegistry: workflow.getFunctionRegistry() },
-		)
+		const projectRoot = path.resolve('.')
+		const flowFiles = [
+			path.join(projectRoot, 'src/flows/steps.ts'),
+			path.join(projectRoot, 'src/flows/parallel-flow.ts'),
+			path.join(projectRoot, 'src/flows/sleep-flow.ts'),
+			path.join(projectRoot, 'src/flows/wait-flow.ts'),
+			path.join(projectRoot, 'src/flows/subflow-example.ts'),
+		]
+		const tsConfigPath = path.join(projectRoot, 'tsconfig.json')
 
-		console.log('\n✅ Compiler usage completed successfully!')
-		console.log('\n📊 Compilation Results:')
-		console.log(`   Status: ${result.status}`)
-		console.log(`   Execution ID: ${result.context._executionId}`)
+		console.log('🔨 Compiling workflows...')
+		const { blueprints, registry } = compileProject(flowFiles, tsConfigPath)
+		console.log('✅ Compilation successful!')
+		console.log(`   📊 Found ${Object.keys(blueprints).length} blueprint(s)`)
+		console.log(`   🔧 Functions: ${Object.keys(registry).length}`)
 
-		const analysis = result.context.analysis
-		if (analysis) {
-			console.log(`   Analysis: ${analysis.nodeCount} nodes, ${analysis.edgeCount} edges`)
+		console.log('▶️  Running the compiled workflows...')
+
+		const functionRegistry: Record<string, any> = {}
+		for (const [uses, { importPath, exportName }] of Object.entries(registry)) {
+			const mod = await import(importPath)
+			functionRegistry[uses] = mod[exportName]
+		}
+		functionRegistry.start = async (context: any) => {
+			return { output: context.input }
 		}
 
-		const generatedCode = result.context.generatedCode
-		if (generatedCode) {
-			console.log('\n📝 Generated Code Preview:')
-			console.log(generatedCode)
+		const runtime = new FlowRuntime({
+			blueprints,
+			registry: functionRegistry,
+		})
+
+		const workflowsToRun = [
+			{ name: 'Parallel Flow', blueprint: blueprints.parallelFlow, input: { userId: 123 } },
+			{ name: 'Sleep Flow', blueprint: blueprints.sleepFlow, input: {} },
+			{
+				name: 'Subflow Example',
+				blueprint: blueprints.subflowExample,
+				input: { userId: 456 },
+			},
+			{ name: 'Wait Flow', blueprint: blueprints.waitFlow, input: {} },
+		]
+
+		for (const { name, blueprint, input } of workflowsToRun) {
+			console.log(`\n--- Running ${name} ---`)
+			try {
+				const startTime = Date.now()
+				const result = await runtime.run(blueprint, input)
+				const duration = Date.now() - startTime
+				console.log(`${name} completed with status: ${result.status} (${duration}ms)`)
+				if (result.status === 'completed') {
+					console.log('Final context:', JSON.stringify(result.context, null, 2))
+				} else if (result.status === 'failed' && result.errors) {
+					console.log('Error details:', result.errors.map((e) => e.message).join(', '))
+				}
+			} catch (error) {
+				console.log(`${name} failed:`, (error as Error).message)
+			}
 		}
+
+		console.log('\n✅ All workflow executions completed!')
+		console.log('Example completed')
 	} catch (error) {
-		console.error('\n❌ Compiler usage failed:', (error as Error).message)
-		process.exit(1)
+		console.error('❌ Error:', (error as Error).message)
 	}
-
-	console.log('\n🎉 Compiler usage example completed!')
 }
 
-main().catch((error) => {
-	console.error('💥 An error occurred:', error)
-	process.exit(1)
-})
+main()

@@ -1,22 +1,29 @@
 # Compiler Usage Example
 
-This example demonstrates how to use Flowcraft's compiler for workflow analysis and code generation.
+This example demonstrates how to use Flowcraft's `@flowcraft/compiler` to transform imperative TypeScript code into declarative workflow blueprints.
 
 ## Overview
 
-The workflow simulates a compiler pipeline that:
+The `@flowcraft/compiler` allows you to write workflows using familiar imperative constructs like `if/else`, loops, and `Promise.all`, while automatically generating optimized workflow graphs. This gives you the best of both worlds: natural developer experience and powerful, serializable execution models.
 
-1. Analyzes workflow structure and metadata
-2. Validates node implementations
-3. Generates optimized code from the workflow blueprint
+## What This Example Does
+
+1. **Defines Step Functions**: Atomic operations marked with `/** @step */` JSDoc tags
+2. **Creates Multiple Flow Functions**: Various workflow patterns including parallel execution, sleep, event waiting, and subflows
+3. **Compiles the Code**: Uses `compileProject()` to transform the imperative code into blueprints
+4. **Loads Functions**: Dynamically imports step functions using the compiled registry
+5. **Executes Multiple Workflows**: Runs different generated blueprints using FlowRuntime to demonstrate various features
 
 ## Features Demonstrated
 
-- **Workflow Analysis**: Extracting structural information from workflow blueprints
-- **Node Validation**: Checking workflow configuration for correctness
-- **Code Generation**: Creating optimized code representations
-- **Compiler Middleware**: Custom processing pipeline for workflow compilation
-- **Blueprint Inspection**: Working with serialized workflow definitions
+- **Step Functions**: Simple parameter-based functions for workflow operations
+- **Parallel Execution**: `Promise.all` creates concurrent branches in the workflow graph
+- **Sequential Processing**: Results from parallel steps are aggregated sequentially
+- **Durable Primitives**: `sleep()` and `waitForEvent()` from 'flowcraft/sdk'
+- **Subflows**: Nested workflow execution with blueprint composition
+- **Blueprint Generation**: Automatic transformation to workflow graphs
+- **Dynamic Function Loading**: Leveraging compiled registry to import functions at runtime
+- **Runtime Execution**: Using compiled blueprints with FlowRuntime
 
 ## Running the Example
 
@@ -28,10 +35,24 @@ pnpm start
 
 ## Expected Output
 
-The example analyzes its own workflow structure:
+The example will:
 
-- **Analysis Phase**: Counts nodes and edges in the workflow
-- **Validation Phase**: Ensures all nodes have proper configuration
-- **Code Generation**: Produces a code template with workflow statistics
+1. Compile the TypeScript workflow code into blueprints
+2. Display compilation statistics (blueprints and functions found)
+3. Dynamically load the step functions from the compiled registry
+4. Execute multiple workflows demonstrating different features:
+    - **Parallel Flow**: Concurrent data fetching with `Promise.all`
+    - **Sleep Flow**: Simulated sleep operation
+    - **Subflow Example**: Nested workflow execution
+    - **Wait Flow**: Simulated event waiting
+5. Show step execution logs and completion status with timing for each workflow
 
-Shows how compiler tools can introspect and transform workflow definitions into other representations.
+## Key Concepts
+
+- **`/** @step \*/`\*\*: Marks functions as workflow step operations
+- **`/** @flow \*/`\*\*: Marks functions to be compiled into workflow blueprints
+- **Promise.all Support**: Compiler transforms parallel execution into graph branches
+- **Durable Primitives**: SDK functions for sleep, events, and webhooks
+- **Subflows**: Composable workflow blueprints for complex orchestration
+- **Compiled Registry**: Metadata for dynamic function loading at runtime
+- **Blueprint Execution**: Serializable graphs executed by FlowRuntime
