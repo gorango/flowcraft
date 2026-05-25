@@ -38,8 +38,9 @@ export function handleAwaitExpression(analyzer: FlowAnalyzer, node: ts.AwaitExpr
 
 	if (ts.isCallExpression(expression)) {
 		const callee = expression
-		if (analyzer.isPromiseAllCall(callee)) {
-			handlePromiseAll(analyzer, callee, node)
+		const parallelInfo = analyzer.isPromiseParallelCall(callee)
+		if (parallelInfo) {
+			handlePromiseAll(analyzer, callee, node, parallelInfo.method)
 			return
 		}
 

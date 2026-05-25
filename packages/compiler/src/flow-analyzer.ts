@@ -7,6 +7,8 @@ import { handleForOfStatement } from './visitors/handle-for-of-statement'
 import { handleIfStatement } from './visitors/handle-if-statement'
 import { handleTryStatement } from './visitors/handle-try-statement'
 import { handleWhileStatement } from './visitors/handle-while-statement'
+import { handleSwitchStatement } from './visitors/handle-switch-statement'
+import { handleDoStatement } from './visitors/handle-do-statement'
 
 export class FlowAnalyzer {
 	registry: Record<string, { importPath: string; exportName: string }> = {}
@@ -16,7 +18,7 @@ export class FlowAnalyzer {
 	constructor(
 		public compiler: Compiler,
 		public sourceFile: ts.SourceFile,
-		public functionNode: ts.FunctionDeclaration,
+		public functionNode: ts.FunctionDeclaration | ts.ArrowFunction,
 		public typeChecker: ts.TypeChecker,
 	) {
 		this.state = new CompilerState()
@@ -27,8 +29,11 @@ export class FlowAnalyzer {
 		registry: Record<string, { importPath: string; exportName: string }>
 		diagnostics: import('./types').CompilationDiagnostic[]
 	} {
-		if (this.functionNode.body) {
-			this.traverse(this.functionNode.body)
+		this.checkGeneratorFunction()
+
+		const body = this.functionNode.body
+		if (body && ts.isBlock(body)) {
+			this.traverse(body)
 		}
 		if (this.state.getNodes().length === 0) {
 			const startNode: NodeDefinition = {
@@ -39,8 +44,11 @@ export class FlowAnalyzer {
 			this.state.addNode(startNode)
 			this.state.setCursor('start')
 		}
+		const name = ts.isFunctionDeclaration(this.functionNode)
+			? this.functionNode.name?.text || 'anonymous'
+			: 'anonymous'
 		const blueprint: WorkflowBlueprint = {
-			id: this.functionNode.name?.text || 'anonymous',
+			id: name,
 			nodes: this.state.getNodes(),
 			edges: this.state.getEdges(),
 		}
@@ -85,12 +93,51 @@ export class FlowAnalyzer {
 			return this.state.getCursor()
 		} else if (ts.isWhileStatement(node)) {
 			return handleWhileStatement(this, node)
+		} else if (ts.isDoStatement(node)) {
+			return handleDoStatement(this, node)
 		} else if (ts.isForOfStatement(node)) {
 			return handleForOfStatement(this, node)
 		} else if (ts.isIfStatement(node)) {
 			return handleIfStatement(this, node)
+		} else if (ts.isSwitchStatement(node)) {
+			return handleSwitchStatement(this, node)
 		} else if (ts.isTryStatement(node)) {
 			return handleTryStatement(this, node)
+		} else if (ts.isReturnStatement(node)) {
+			// Visit the return expression first (e.g., `return await step()`)
+			if (node.expression) {
+				this.visit(node.expression)
+			}
+			// Terminate further edge propagation from this point.
+			this.state.setCursor(null)
+			return null
+		} else if (ts.isThrowStatement(node)) {
+			const cursor = this.state.getCursor()
+			const errorNodeName = 'error'
+			const errorCount = this.state.incrementUsageCount(errorNodeName)
+			const errorNodeId = `${errorNodeName}_${errorCount}`
+			const errorNode: NodeDefinition = {
+				id: errorNodeId,
+				uses: 'error',
+				_sourceLocation: this.getSourceLocation(node),
+			}
+			this.state.addNode(errorNode)
+			if (cursor) {
+				this.state.addEdge({
+					source: cursor,
+					target: errorNodeId,
+					_sourceLocation: this.getSourceLocation(node),
+				})
+			}
+			this.state.setCursor(null)
+			return null
+		} else if (ts.isLabeledStatement(node)) {
+			this.addDiagnostic(
+				node,
+				'warning',
+				`Labeled statements are not fully supported in flow functions. The label '${node.label.text}' will be ignored.`,
+			)
+			return this.visit(node.statement)
 		} else if (ts.isContinueStatement(node)) {
 			const cursor = this.state.getCursor()
 			const loopScope = this.state.getCurrentLoopScope()
@@ -119,12 +166,41 @@ export class FlowAnalyzer {
 					_sourceLocation: this.getSourceLocation(node),
 				})
 			} else {
-				this.addDiagnostic(node, 'error', `break statement can only be used inside a loop.`)
+				const switchBreakTarget = this.state.getCurrentSwitchBreakTarget()
+				if (switchBreakTarget && cursor) {
+					this.state.addEdge({
+						source: cursor,
+						target: switchBreakTarget,
+						_sourceLocation: this.getSourceLocation(node),
+					})
+				} else {
+					this.addDiagnostic(
+						node,
+						'error',
+						`break statement can only be used inside a loop or switch statement.`,
+					)
+				}
 			}
 			this.state.setCursor(null)
 			return null
+		} else if (ts.isBlock(node)) {
+			return this.traverse(node)
 		} else {
 			return this.state.getCursor()
+		}
+	}
+
+	/**
+	 * Checks if the flow function is a generator — emit a clear error if so.
+	 */
+	private checkGeneratorFunction(): void {
+		if (this.functionNode.asteriskToken) {
+			this.addDiagnostic(
+				this.functionNode,
+				'error',
+				`Generator functions (function*) cannot be used as flow functions. ` +
+					`State generator functions cannot be safely represented as declarative graph-based blueprints. Use an async function instead.`,
+			)
 		}
 	}
 
@@ -172,7 +248,9 @@ export class FlowAnalyzer {
 					) {
 						const moduleSpecifier = importDeclaration.moduleSpecifier.text
 						if (moduleSpecifier === 'flowcraft/sdk') {
-							const primitiveName = declaration.name.text
+							const primitiveName = declaration.propertyName
+								? declaration.propertyName.text
+								: declaration.name.text
 							if (
 								['sleep', 'waitForEvent', 'createWebhook'].includes(primitiveName)
 							) {
@@ -207,7 +285,9 @@ export class FlowAnalyzer {
 						) {
 							const moduleSpecifier = importDeclaration.moduleSpecifier.text
 							if (moduleSpecifier === 'flowcraft/sdk') {
-								const primitiveName = declaration.name.text
+								const primitiveName = declaration.propertyName
+									? declaration.propertyName.text
+									: declaration.name.text
 								if (
 									['sleep', 'waitForEvent', 'createWebhook'].includes(
 										primitiveName,
@@ -275,12 +355,19 @@ export class FlowAnalyzer {
 		}
 	}
 
-	isPromiseAllCall(node: ts.CallExpression): boolean {
+	isPromiseParallelCall(
+		node: ts.CallExpression,
+	): false | { method: 'all' | 'allSettled' | 'race' } {
 		if (ts.isPropertyAccessExpression(node.expression)) {
 			const propAccess = node.expression
 			const objectText = propAccess.expression.getText()
 			const propertyText = propAccess.name.text
-			return objectText === 'Promise' && propertyText === 'all'
+			if (
+				objectText === 'Promise' &&
+				(propertyText === 'all' || propertyText === 'allSettled' || propertyText === 'race')
+			) {
+				return { method: propertyText as 'all' | 'allSettled' | 'race' }
+			}
 		}
 		return false
 	}

@@ -1,22 +1,29 @@
 import fs from 'node:fs'
 import path from 'node:path'
-import { transformSync } from 'esbuild'
+import * as esbuild from 'esbuild'
 import type { FlowcraftConfig } from './types'
+
+interface CacheEntry {
+	mtimeMs: number
+	config: FlowcraftConfig
+}
+
+const configCache = new Map<string, CacheEntry>()
 
 /**
  * Finds and loads the Flowcraft configuration file from the project root.
  * Supports flowcraft.config.ts and flowcraft.config.js.
+ * Uses esbuild.build with bundling to handle external imports, and caches
+ * the result based on file modification time.
  */
 export async function loadConfig(root: string = process.cwd()): Promise<FlowcraftConfig> {
 	const tsConfigPath = path.resolve(root, 'flowcraft.config.ts')
 	const jsConfigPath = path.resolve(root, 'flowcraft.config.js')
 
 	let configPath: string | undefined
-	let isTs = false
 
 	if (fs.existsSync(tsConfigPath)) {
 		configPath = tsConfigPath
-		isTs = true
 	} else if (fs.existsSync(jsConfigPath)) {
 		configPath = jsConfigPath
 	}
@@ -25,20 +32,39 @@ export async function loadConfig(root: string = process.cwd()): Promise<Flowcraf
 		return {}
 	}
 
-	try {
-		if (isTs) {
-			const tsContent = fs.readFileSync(configPath, 'utf-8')
-			const { code } = transformSync(tsContent, {
-				loader: 'ts',
-				format: 'esm',
-			})
+	// mtime-based cache: skip transpilation if file hasn't changed
+	const stat = fs.statSync(configPath)
+	const mtimeMs = stat.mtimeMs
+	const cached = configCache.get(configPath)
+	if (cached && cached.mtimeMs === mtimeMs) {
+		return cached.config
+	}
 
-			const dataUri = `data:text/javascript;base64,${Buffer.from(code).toString('base64')}`
+	try {
+		const isTs = configPath.endsWith('.ts')
+
+		if (isTs) {
+			const result = await esbuild.build({
+				entryPoints: [configPath],
+				bundle: true,
+				write: false,
+				format: 'esm',
+				platform: 'node',
+				external: ['@flowcraft/compiler', 'flowcraft'],
+				loader: { '.ts': 'ts' },
+			})
+			const bundledCode = result.outputFiles[0].text
+
+			const dataUri = `data:text/javascript;base64,${Buffer.from(bundledCode).toString('base64')}`
 			const module = await import(dataUri)
-			return module.default || {}
+			const config: FlowcraftConfig = module.default || {}
+			configCache.set(configPath, { mtimeMs, config })
+			return config
 		} else {
 			const module = await import(configPath)
-			return module.default || {}
+			const config: FlowcraftConfig = module.default || {}
+			configCache.set(configPath, { mtimeMs, config })
+			return config
 		}
 	} catch (e) {
 		console.error(`Error loading Flowcraft config file: ${configPath}`)

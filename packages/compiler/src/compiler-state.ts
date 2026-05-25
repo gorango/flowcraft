@@ -12,6 +12,7 @@ export class CompilerState {
 	private pendingBranches: { ends: string[]; joinStrategy: 'any' | 'all' } | null = null
 	private pendingForkEdges: { source: string; condition: string }[] = []
 	private loopScopeStack: { controllerId: string; breakTargetId: string }[] = []
+	private switchScopeStack: string[] = []
 
 	constructor() {
 		this.scopes.push({ variables: new Map() })
@@ -67,6 +68,18 @@ export class CompilerState {
 
 	popScope(): Scope | undefined {
 		return this.scopes.pop()
+	}
+
+	pushSwitchScope(breakTargetId: string): void {
+		this.switchScopeStack.push(breakTargetId)
+	}
+
+	popSwitchScope(): void {
+		this.switchScopeStack.pop()
+	}
+
+	getCurrentSwitchBreakTarget(): string | undefined {
+		return this.switchScopeStack[this.switchScopeStack.length - 1]
 	}
 
 	addNodeAndWire(

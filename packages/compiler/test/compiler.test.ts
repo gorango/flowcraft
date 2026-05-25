@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { beforeAll, describe, expect, it } from 'vitest'
 import { Compiler } from '../src/compiler'
 import { compileCode } from '../src/index'
 import { loadConfig } from '../src/config-loader'
@@ -7,9 +7,14 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 
+let compiler: Compiler
+
+beforeAll(() => {
+	compiler = new Compiler('tsconfig.json')
+})
+
 describe('Compiler', () => {
 	it('should compile a simple project', () => {
-		const compiler = new Compiler('tsconfig.json')
 		const result = compiler.compileProject(['src/index.ts'])
 		expect(result.blueprints).toBeDefined()
 		expect(result.registry).toBeDefined()
@@ -17,7 +22,6 @@ describe('Compiler', () => {
 	})
 
 	it('should compile all test fixtures', () => {
-		const compiler = new Compiler('tsconfig.json')
 		const result = compiler.compileProject([
 			'test/fixtures/simple-flow.ts',
 			'test/fixtures/parallel-flow.ts',
@@ -43,7 +47,6 @@ describe('Compiler', () => {
 	})
 
 	it('should preserve source locations in blueprints', () => {
-		const compiler = new Compiler('tsconfig.json')
 		const result = compiler.compileProject(['test/fixtures/simple-flow.ts'])
 
 		const simpleFlow = result.blueprints.simpleFlow
@@ -60,7 +63,6 @@ describe('Compiler', () => {
 	})
 
 	it('should handle conditional edges correctly', () => {
-		const compiler = new Compiler('tsconfig.json')
 		const result = compiler.compileProject(['test/fixtures/simple-if-else.ts'])
 
 		const ifElseFlow = result.blueprints.simpleIfElseFlow
@@ -71,7 +73,6 @@ describe('Compiler', () => {
 	})
 
 	it('should handle loop constructs correctly', () => {
-		const compiler = new Compiler('tsconfig.json')
 		const result = compiler.compileProject(['test/fixtures/loop-control-flow.ts'])
 
 		const whileLoop = result.blueprints.whileLoopWithBreak
@@ -87,7 +88,6 @@ describe('Compiler', () => {
 	})
 
 	it('should handle parallel execution correctly', () => {
-		const compiler = new Compiler('tsconfig.json')
 		const result = compiler.compileProject(['test/fixtures/parallel-flow.ts'])
 
 		const parallelFlow = result.blueprints.parallelFlow
@@ -103,7 +103,6 @@ describe('Compiler', () => {
 	})
 
 	it('should compile complex control flow with loops and error handling', () => {
-		const compiler = new Compiler('tsconfig.json')
 		const result = compiler.compileProject(['test/fixtures/complex-control-flow.ts'])
 
 		expect(result.blueprints.complexControlFlow).toBeDefined()
@@ -123,7 +122,6 @@ describe('Compiler', () => {
 	})
 
 	it('should handle subflows correctly', () => {
-		const compiler = new Compiler('tsconfig.json')
 		const result = compiler.compileProject(['test/fixtures/main-flow.ts'])
 
 		const mainFlow = result.blueprints.mainFlow
@@ -136,7 +134,6 @@ describe('Compiler', () => {
 	})
 
 	it('should handle for-of loops with break/continue', () => {
-		const compiler = new Compiler('tsconfig.json')
 		const result = compiler.compileProject(['test/fixtures/loop-control-flow.ts'])
 
 		const forOfWithBreak = result.blueprints.forOfLoopWithBreak
@@ -150,7 +147,6 @@ describe('Compiler', () => {
 	})
 
 	it('should handle while loops with continue', () => {
-		const compiler = new Compiler('tsconfig.json')
 		const result = compiler.compileProject(['test/fixtures/loop-control-flow.ts'])
 
 		const whileContinue = result.blueprints.whileLoopWithContinue
@@ -161,7 +157,6 @@ describe('Compiler', () => {
 	})
 
 	it('should register all step functions in registry', () => {
-		const compiler = new Compiler('tsconfig.json')
 		const result = compiler.compileProject(['test/fixtures/simple-flow.ts'])
 
 		expect(result.registry.fetchUser).toBeDefined()
@@ -172,7 +167,6 @@ describe('Compiler', () => {
 	})
 
 	it('should generate valid manifest source code', () => {
-		const compiler = new Compiler('tsconfig.json')
 		const result = compiler.compileProject(['test/fixtures/simple-flow.ts'])
 
 		expect(result.manifestSource).toContain('import { fetchUser }')
@@ -182,7 +176,6 @@ describe('Compiler', () => {
 	})
 
 	it('should handle type mismatch errors in diagnostics', () => {
-		const compiler = new Compiler('tsconfig.json')
 		const result = compiler.compileProject(['test/fixtures/type-mismatch.ts'])
 
 		expect(result.diagnostics.length).toBeGreaterThan(0)
@@ -191,13 +184,129 @@ describe('Compiler', () => {
 	})
 
 	it('should handle invalid await errors', () => {
-		const compiler = new Compiler('tsconfig.json')
 		const result = compiler.compileProject(['test/fixtures/invalid-await.ts'])
 
 		const awaitError = result.diagnostics.find((d) => d.severity === 'error')
 		expect(awaitError).toBeDefined()
 		if (!awaitError) throw new Error('awaitError not found')
 		expect(awaitError.message).toContain('await')
+	})
+
+	it('should discover arrow function steps and flows', () => {
+		const result = compiler.compileProject(['test/fixtures/arrow-flow.ts'])
+
+		expect(result.blueprints.sayHelloFlow).toBeDefined()
+		expect(result.registry.greet).toBeDefined()
+		expect(result.registry.greet.exportName).toBe('greet')
+	})
+
+	it('should discover default export flows', () => {
+		const result = compiler.compileProject(['test/fixtures/export-default-flow.ts'])
+
+		// Default export uses file basename as blueprint key
+		const blueprintNames = Object.keys(result.blueprints)
+		expect(blueprintNames.length).toBeGreaterThan(0)
+		// Should have processItem in registry
+		expect(result.registry.processItem).toBeDefined()
+	})
+
+	it('should compile switch/case flow correctly', () => {
+		const result = compiler.compileProject(['test/fixtures/switch-flow.ts'])
+
+		const bp = result.blueprints.switchFlow
+		expect(bp).toBeDefined()
+		if (!bp) return
+
+		// Should have a join node (break target)
+		const joinNodes = bp.nodes.filter((n) => n.uses === 'join')
+		expect(joinNodes.length).toBeGreaterThan(0)
+
+		// Should have conditional edges from switch cases (2 cases + default is unconditional)
+		const conditionalEdges = bp.edges.filter((e) => e.condition)
+		expect(conditionalEdges.length).toBeGreaterThanOrEqual(1)
+
+		// Should have a start node (created because cursor was null)
+		const startNode = bp.nodes.find((n) => n.uses === 'start')
+		expect(startNode).toBeDefined()
+	})
+
+	it('should compile do-while flow correctly', () => {
+		const result = compiler.compileProject(['test/fixtures/do-while-flow.ts'])
+
+		const bp = result.blueprints.doWhileFlow
+		expect(bp).toBeDefined()
+		if (!bp) return
+
+		// Should have a loop-controller
+		const controller = bp.nodes.find((n) => n.uses === 'loop-controller')
+		expect(controller).toBeDefined()
+
+		// Should have continue and break edges
+		const continueEdges = bp.edges.filter((e) => e.action === 'continue')
+		expect(continueEdges.length).toBeGreaterThan(0)
+		const breakEdges = bp.edges.filter((e) => e.action === 'break')
+		expect(breakEdges.length).toBeGreaterThan(0)
+	})
+
+	it('should compile try/catch/finally flow correctly', () => {
+		const result = compiler.compileProject(['test/fixtures/try-finally-flow.ts'])
+
+		// tryFinallyFlow should compile without finally-block error diagnostic
+		const tryFinally = result.blueprints.tryFinallyFlow
+		expect(tryFinally).toBeDefined()
+
+		const finallyErrors = result.diagnostics.filter(
+			(d) => d.severity === 'error' && d.message.includes('finally'),
+		)
+		expect(finallyErrors).toHaveLength(0)
+
+		const tryCatchFinally = result.blueprints.tryCatchFinallyFlow
+		expect(tryCatchFinally).toBeDefined()
+
+		// Finally block wiring: try and catch exits route through finally node
+		const edgesToCleanup = tryFinally.edges.filter((e) => e.target === 'cleanup_1')
+		expect(edgesToCleanup.length).toBeGreaterThanOrEqual(1)
+
+		// No errors about unsupported finally blocks
+		expect(finallyErrors).toHaveLength(0)
+	})
+
+	it('should emit error for generator function flows', () => {
+		const result = compiler.compileProject(['test/fixtures/generator-flow.ts'])
+
+		const genError = result.diagnostics.find(
+			(d) => d.severity === 'error' && d.message.includes('Generator'),
+		)
+		expect(genError).toBeDefined()
+	})
+
+	it('should compile Promise.allSettled and Promise.race flows', () => {
+		const result = compiler.compileProject(['test/fixtures/promise-all-settled-flow.ts'])
+
+		const allSettled = result.blueprints.allSettledFlow
+		expect(allSettled).toBeDefined()
+		if (!allSettled) return
+		// Should have parallel nodes
+		const parallelNodes = allSettled.nodes.filter((n) => n.id?.includes('_parallel_'))
+		expect(parallelNodes.length).toBe(2)
+
+		const raceFlow = result.blueprints.raceFlow
+		expect(raceFlow).toBeDefined()
+		// raceFlow should have parallel nodes from Promise.race
+		const raceParallelNodes = raceFlow.nodes.filter((n) => n.id?.includes('_parallel_'))
+		expect(raceParallelNodes.length).toBe(2)
+	})
+
+	it('should compile throw statement flows', () => {
+		const result = compiler.compileProject(['test/fixtures/throw-in-flow.ts'])
+
+		const bp = result.blueprints.throwInFlow
+		expect(bp).toBeDefined()
+		if (!bp) return
+
+		// Should have an error node from the throw statement
+		const errorNode = bp.nodes.find((n) => n.uses === 'error')
+		expect(errorNode).toBeDefined()
 	})
 })
 
@@ -423,7 +532,6 @@ export async function myFlow(context: any) {
 
 describe('durable primitives', () => {
 	it('should compile sleep, waitForEvent, and createWebhook', () => {
-		const compiler = new Compiler('tsconfig.json')
 		const result = compiler.compileProject(['test/fixtures/durable-primitives.ts'])
 
 		const bp = result.blueprints.durablePrimitivesFlow
@@ -444,7 +552,6 @@ describe('durable primitives', () => {
 	})
 
 	it('should compile simple parallel flow with Promise.all', () => {
-		const compiler = new Compiler('tsconfig.json')
 		const result = compiler.compileProject(['test/fixtures/simple-parallel.ts'])
 
 		const bp = result.blueprints.simpleParallelFlow
@@ -459,7 +566,6 @@ describe('durable primitives', () => {
 	})
 
 	it('should compile subflow and steps across files', () => {
-		const compiler = new Compiler('tsconfig.json')
 		const result = compiler.compileProject(['test/fixtures/main-flow.ts'])
 
 		const bp = result.blueprints.mainFlow
@@ -475,7 +581,6 @@ describe('durable primitives', () => {
 	})
 
 	it('should compile subflow entry directly to discover its steps', () => {
-		const compiler = new Compiler('tsconfig.json')
 		const result = compiler.compileProject(['test/fixtures/sub-flow.ts'])
 
 		const bp = result.blueprints.subFlow
@@ -484,7 +589,6 @@ describe('durable primitives', () => {
 	})
 
 	it('should emit warning for entry file not found', () => {
-		const compiler = new Compiler('tsconfig.json')
 		const result = compiler.compileProject(['test/fixtures/non-existent-file.ts'])
 
 		const warning = result.diagnostics.find(
@@ -495,8 +599,8 @@ describe('durable primitives', () => {
 
 	it('should use custom manifestPath for import resolution', () => {
 		const manifestPath = path.resolve('./dist/custom-manifest.js')
-		const compiler = new Compiler('tsconfig.json', manifestPath)
-		const result = compiler.compileProject(['test/fixtures/simple-flow.ts'], manifestPath)
+		const customCompiler = new Compiler('tsconfig.json', manifestPath)
+		const result = customCompiler.compileProject(['test/fixtures/simple-flow.ts'], manifestPath)
 
 		expect(result.manifestPath).toBe(manifestPath)
 		expect(result.manifestSource).toContain('export const registry')
@@ -660,7 +764,6 @@ function notAStep() {
 
 describe('runtime integration', () => {
 	it('should compile and execute a simple sequential blueprint via FlowRuntime', async () => {
-		const compiler = new Compiler('tsconfig.json')
 		const result = compiler.compileProject(['test/fixtures/simple-flow.ts'])
 
 		const { FlowRuntime } = await import('flowcraft')
@@ -682,7 +785,6 @@ describe('runtime integration', () => {
 	})
 
 	it('should compile and execute a blueprint with if/else branching', async () => {
-		const compiler = new Compiler('tsconfig.json')
 		const result = compiler.compileProject(['test/fixtures/simple-if-else.ts'])
 
 		const { FlowRuntime } = await import('flowcraft')
@@ -704,7 +806,6 @@ describe('runtime integration', () => {
 	})
 
 	it('should compile and execute parallel blueprint via FlowRuntime', async () => {
-		const compiler = new Compiler('tsconfig.json')
 		const result = compiler.compileProject(['test/fixtures/simple-parallel.ts'])
 
 		const { FlowRuntime } = await import('flowcraft')
@@ -721,6 +822,89 @@ describe('runtime integration', () => {
 
 		const runtime = new FlowRuntime({ registry: functionRegistry })
 		const runResult = await runtime.run(bp, { userId: 42 })
+
+		expect(runResult.status).toBe('completed')
+	}, 30000)
+
+	it('should compile and execute early return flow via FlowRuntime', async () => {
+		const result = compiler.compileProject(['test/fixtures/return-early-flow.ts'])
+
+		const { FlowRuntime } = await import('flowcraft')
+
+		const bp = result.blueprints.returnEarlyFlow
+		expect(bp).toBeDefined()
+
+		const functionRegistry: Record<string, any> = {}
+		for (const [uses, { importPath, exportName }] of Object.entries(result.registry)) {
+			const mod = await import(importPath)
+			functionRegistry[uses] = mod[exportName]
+		}
+		functionRegistry.start = async (ctx: any) => ({ output: ctx.input })
+
+		const runtime = new FlowRuntime({ registry: functionRegistry })
+
+		// branch with return
+		const resultNull = await runtime.run(bp, { input: null })
+		expect(resultNull.status).toBe('completed')
+
+		// branch without return
+		const resultValid = await runtime.run(bp, { input: 'hello' })
+		expect(resultValid.status).toBe('completed')
+	}, 30000)
+
+	it('should compile and execute try/catch/finally flow via FlowRuntime', async () => {
+		const result = compiler.compileProject(['test/fixtures/try-finally-flow.ts'])
+
+		const { FlowRuntime } = await import('flowcraft')
+
+		const bp = result.blueprints.tryCatchFinallyFlow
+		expect(bp).toBeDefined()
+
+		const functionRegistry: Record<string, any> = {}
+		for (const [uses, { importPath, exportName }] of Object.entries(result.registry)) {
+			const mod = await import(importPath)
+			functionRegistry[uses] = mod[exportName]
+		}
+		functionRegistry.start = async (ctx: any) => ({ output: ctx.input })
+		// Skip the dynamic require for step functions used inside try/catch flow
+		// The catch block and finally block wiring should still compile to valid graph
+
+		const runtime = new FlowRuntime({ registry: functionRegistry })
+		const runResult = await runtime.run(bp, { input: 'test' })
+
+		expect(runResult.status).toBe('completed')
+	}, 30000)
+
+	it('should compile and execute argument mapping flow via FlowRuntime', async () => {
+		const result = compiler.compileProject(['test/fixtures/argument-mapping-flow.ts'])
+
+		const { FlowRuntime } = await import('flowcraft')
+
+		const bp = result.blueprints.argumentMappingFlow
+		expect(bp).toBeDefined()
+
+		// Verify inputs are mapped on the sendEmail and finalizeOrder nodes
+		const sendEmailNode = bp.nodes.find((n) => n.uses === 'sendEmail')
+		expect(sendEmailNode).toBeDefined()
+		if (!sendEmailNode) throw new Error('sendEmailNode not found')
+		expect(sendEmailNode.inputs).toBeDefined()
+		expect(sendEmailNode.inputs).toHaveProperty('userId')
+
+		const finalizeOrderNode = bp.nodes.find((n) => n.uses === 'finalizeOrder')
+		expect(finalizeOrderNode).toBeDefined()
+		if (!finalizeOrderNode) throw new Error('finalizeOrderNode not found')
+		expect(finalizeOrderNode.inputs).toBeDefined()
+		expect(finalizeOrderNode.inputs).toHaveProperty('cartId')
+
+		const functionRegistry: Record<string, any> = {}
+		for (const [uses, { importPath, exportName }] of Object.entries(result.registry)) {
+			const mod = await import(importPath)
+			functionRegistry[uses] = mod[exportName]
+		}
+		functionRegistry.start = async (ctx: any) => ({ output: ctx.input })
+
+		const runtime = new FlowRuntime({ registry: functionRegistry })
+		const runResult = await runtime.run(bp, {})
 
 		expect(runResult.status).toBe('completed')
 	}, 30000)

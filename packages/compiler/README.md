@@ -488,7 +488,6 @@ The compiler translates the following standard JavaScript syntax into graph stru
 
 > **Note:** To ensure predictable graph generation, some imperative features are not supported inside a flow function. Using them will result in a compile-time error.
 
-- **`finally`**: The `finally` block in a `try/catch/finally` statement is not supported.
 - **Complex Assignments**: Variable assignments from `await` calls must be simple `const` or `let` declarations. Re-assigning variables from multiple branches can lead to unpredictable graphs and is disallowed.
 
 ## Advanced Concepts
@@ -618,14 +617,27 @@ export async function typeErrorFlow() {
     - `diagnostics: CompilationDiagnostic[]`: An array of errors or warnings found during compilation.
     - `manifestSource: string`: The generated source code for the manifest file.
 
+#### `compileCode(code, options?)`
+
+Compiles a raw TypeScript source string containing `@flow`/`@step` annotations into a single `WorkflowBlueprint`. This is useful for local testing, REPL environments, or low-frequency runtime configuration.
+
+```typescript
+const { blueprint, diagnostics } = compileCode(code, { id: 'myFlow' })
+```
+
+- `code: string`: TypeScript source code with `/** @flow */` and `/** @step */` JSDoc (or `@flow`/`@step` decorator-style) annotations.
+- `options?: { id?: string }`: Optional blueprint ID override (defaults to the flow function name).
+- **Returns:** `{ blueprint: WorkflowBlueprint | null, diagnostics: CompilationDiagnostic[] }`
+
+> **⚠️ Performance Note:** `compileCode()` writes temporary files to disk and spins up a full Compiler instance (including the TypeScript program) for each invocation. It is intended for **local testing or low-frequency configuration only**. For production use, always use the pre-compiled build step via `compileProject()`, the CLI, or one of the framework integrations (Vite, Next.js, etc.).
+
 ## Known Limitations
 
 The compiler is currently in **alpha** and has the following known limitations:
 
 ### Syntax Support
 
-- **`switch/case`**, **`do...while`**, and **`for...in`** statements are not supported inside `@flow` functions.
-- **`finally`** blocks are not supported and produce a compile-time error.
+- **`for...in`** statements are not supported inside `@flow` functions.
 - **`return`**, **`throw`**, and **`label`** statements inside flow functions are silently ignored and may produce unexpected graphs.
 - **Generator functions** (`function*`, `async function*`) are not handled.
 - Only `Promise.all()` is recognized for parallelism; `Promise.allSettled()` and `Promise.race()` are not.

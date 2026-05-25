@@ -3,7 +3,13 @@ import type { WorkflowBlueprint } from 'flowcraft'
 export interface FileAnalysis {
 	filePath: string
 	sourceFile: import('typescript').SourceFile
-	exports: Map<string, { type: 'flow' | 'step'; node: import('typescript').FunctionDeclaration }>
+	exports: Map<
+		string,
+		{
+			type: 'flow' | 'step'
+			node: import('typescript').FunctionDeclaration | import('typescript').ArrowFunction
+		}
+	>
 }
 
 export interface CompilationOutput {

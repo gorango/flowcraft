@@ -2,6 +2,72 @@ import type { NodeDefinition } from 'flowcraft'
 import ts from 'typescript'
 import type { FlowAnalyzer } from '../flow-analyzer'
 
+function extractInputsMap(
+	analyzer: FlowAnalyzer,
+	callee: ts.CallExpression,
+	funcDecl: ts.FunctionDeclaration | ts.ArrowFunction,
+): Record<string, string> | undefined {
+	const args = callee.arguments
+	if (args.length === 0) return undefined
+
+	const params = funcDecl.parameters
+	const inputs: Record<string, string> = {}
+
+	for (let i = 0; i < args.length; i++) {
+		const arg = args[i]
+		const paramDecl = params[i]
+		let paramName: string
+		if (paramDecl?.name && ts.isIdentifier(paramDecl.name)) {
+			paramName = paramDecl.name.text
+		} else {
+			paramName = `_${i}`
+		}
+
+		if (ts.isIdentifier(arg)) {
+			const varInfo = analyzer.state.getVariableInScope(arg.text)
+			if (varInfo) {
+				inputs[paramName] = varInfo.nodeId
+			}
+		} else if (ts.isPropertyAccessExpression(arg)) {
+			const propAccess = arg
+			if (ts.isIdentifier(propAccess.expression)) {
+				const varInfo = analyzer.state.getVariableInScope(propAccess.expression.text)
+				if (varInfo) {
+					inputs[paramName] = `${varInfo.nodeId}.${propAccess.name.text}`
+				}
+			}
+		} else if (ts.isObjectLiteralExpression(arg)) {
+			for (const prop of arg.properties) {
+				if (ts.isPropertyAssignment(prop) && ts.isIdentifier(prop.name)) {
+					const propName = prop.name.text
+					const init = prop.initializer
+					if (ts.isIdentifier(init)) {
+						const varInfo = analyzer.state.getVariableInScope(init.text)
+						if (varInfo) {
+							inputs[propName] = varInfo.nodeId
+						}
+					} else if (ts.isPropertyAccessExpression(init)) {
+						if (ts.isIdentifier(init.expression)) {
+							const varInfo = analyzer.state.getVariableInScope(init.expression.text)
+							if (varInfo) {
+								inputs[propName] = `${varInfo.nodeId}.${init.name.text}`
+							}
+						}
+					}
+				} else if (ts.isShorthandPropertyAssignment(prop)) {
+					const propName = prop.name.text
+					const varInfo = analyzer.state.getVariableInScope(propName)
+					if (varInfo) {
+						inputs[propName] = varInfo.nodeId
+					}
+				}
+			}
+		}
+	}
+
+	return Object.keys(inputs).length > 0 ? inputs : undefined
+}
+
 export function handleAwaitCall(
 	analyzer: FlowAnalyzer,
 	callee: ts.CallExpression,
@@ -23,10 +89,15 @@ export function handleAwaitCall(
 				if (exportInfo) {
 					let nodeDef: NodeDefinition
 					const count = analyzer.state.incrementUsageCount(exportName)
+
+					// extract argument-to-predecessor mappings
+					const inputs = extractInputsMap(analyzer, callee, exportInfo.node)
+
 					if (exportInfo.type === 'step') {
 						nodeDef = {
 							id: `${exportName}_${count}`,
 							uses: exportName,
+							inputs,
 							_sourceLocation: analyzer.getSourceLocation(node),
 						}
 						const fallback = analyzer.state.getFallbackScope()
@@ -39,6 +110,7 @@ export function handleAwaitCall(
 							id: `${exportName}_${count}`,
 							uses: 'subflow',
 							params: { blueprintId: exportName },
+							inputs,
 							_sourceLocation: analyzer.getSourceLocation(node),
 						}
 						const fallback = analyzer.state.getFallbackScope()

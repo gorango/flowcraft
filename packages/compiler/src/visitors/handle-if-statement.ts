@@ -17,21 +17,22 @@ export function handleIfStatement(analyzer: FlowAnalyzer, node: ts.IfStatement):
 	analyzer.state.pushScope({ variables: new Map() })
 
 	const prevCursor = analyzer.state.getCursor()
-	analyzer.state.setCursor(null) // prevent unconditional edges in branch
-	const nodesBeforeIf = analyzer.state.getNodes().length
-	const lastInIf = analyzer.traverse(node.thenStatement)
-	const firstInIf =
-		analyzer.state.getNodes().length > nodesBeforeIf
-			? analyzer.state.getNodes()[nodesBeforeIf].id
+	analyzer.state.setCursor(null)
+
+	const nodesBeforeThen = analyzer.state.getNodes().length
+	const lastInThen = analyzer.traverse(node.thenStatement)
+	const firstInThen =
+		analyzer.state.getNodes().length > nodesBeforeThen
+			? analyzer.state.getNodes()[nodesBeforeThen].id
 			: null
-	analyzer.state.setCursor(prevCursor)
+	const thenContinued = lastInThen !== null
 
 	analyzer.state.popScope()
 
-	if (firstInIf && forkNodeId) {
+	if (firstInThen && forkNodeId) {
 		analyzer.state.addEdge({
 			source: forkNodeId,
-			target: firstInIf,
+			target: firstInThen,
 			condition,
 			_sourceLocation: analyzer.getSourceLocation(node),
 		})
@@ -39,17 +40,18 @@ export function handleIfStatement(analyzer: FlowAnalyzer, node: ts.IfStatement):
 
 	let firstInElse: string | null = null
 	let lastInElse: string | null = null
+	let elseContinued = false
 	if (node.elseStatement) {
 		analyzer.state.pushScope({ variables: new Map() })
 
-		analyzer.state.setCursor(null) // prevent unconditional edges in branch
+		analyzer.state.setCursor(null)
 		const nodesBeforeElse = analyzer.state.getNodes().length
 		lastInElse = analyzer.traverse(node.elseStatement)
 		firstInElse =
 			analyzer.state.getNodes().length > nodesBeforeElse
 				? analyzer.state.getNodes()[nodesBeforeElse].id
 				: null
-		analyzer.state.setCursor(prevCursor)
+		elseContinued = lastInElse !== null
 
 		analyzer.state.popScope()
 
@@ -67,12 +69,22 @@ export function handleIfStatement(analyzer: FlowAnalyzer, node: ts.IfStatement):
 		}
 	}
 
+	// Only include continuing branches (skip terminated branches like throw/return)
 	const ends: string[] = []
-	if (lastInIf) ends.push(lastInIf)
-	else if (firstInIf) ends.push(firstInIf)
+	if (lastInThen) ends.push(lastInThen)
 	if (lastInElse) ends.push(lastInElse)
-	else if (firstInElse) ends.push(firstInElse)
-	analyzer.state.setPendingBranches({ ends, joinStrategy: 'any' })
+
+	if (ends.length > 0) {
+		// At least one branch continues past the if — use join mechanism
+		analyzer.state.setCursor(prevCursor)
+		analyzer.state.setPendingBranches({ ends, joinStrategy: 'any' })
+	} else if (thenContinued || elseContinued) {
+		// Both are continuing (unlikely given check above)
+		analyzer.state.setCursor(prevCursor)
+	} else {
+		// All branches terminated — set cursor to null
+		analyzer.state.setCursor(null)
+	}
 
 	return null
 }
