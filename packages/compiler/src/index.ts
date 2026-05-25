@@ -76,7 +76,7 @@ export function compileCode(code: string, options?: { id?: string }): CompileCod
 function extractStepMetas(code: string): Map<string, Record<string, unknown>> {
 	const metas = new Map<string, Record<string, unknown>>()
 	const regex =
-		/@step[ \t]*\(\s*({[^}]*})\s*\)[ \t]*\n(?:export\s+)?(?:async\s+)?function\s+(\w+)/g
+		/@step[ \t]*\(\s*({[^}]*})\s*\)[ \t]*\r?\n(?:export\s+)?(?:async\s+)?function\s+(\w+)/g
 	let m: RegExpExecArray | null
 	m = regex.exec(code)
 	while (m) {

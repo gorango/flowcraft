@@ -138,6 +138,26 @@ export class CompilerState {
 				type: returnType,
 				variableType,
 			})
+		} else if (
+			ts.isBinaryExpression(parent) &&
+			parent.operatorToken.kind === ts.SyntaxKind.EqualsToken &&
+			ts.isIdentifier(parent.left)
+		) {
+			const varName = parent.left.text
+			const returnType = typeChecker.getTypeAtLocation(node)
+			const variableType = nodeDef.uses === 'webhook' ? 'webhook' : 'normal'
+			const variableInfo = this.getVariableInScope(varName)
+			if (variableInfo) {
+				variableInfo.nodeId = nodeDef.id
+				variableInfo.type = returnType
+				variableInfo.variableType = variableType
+			} else {
+				this.scopes[this.scopes.length - 1].variables.set(varName, {
+					nodeId: nodeDef.id,
+					type: returnType,
+					variableType,
+				})
+			}
 		}
 	}
 

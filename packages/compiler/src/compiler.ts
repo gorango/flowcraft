@@ -233,10 +233,14 @@ export class Compiler {
 		for (const [uses, { importPath, exportName }] of Object.entries(registry)) {
 			const relative = path.relative(manifestDir, importPath)
 			const parsed = path.parse(relative)
-			const relativePath = path.join(parsed.dir, parsed.name)
-			imports.push(
-				`import { ${exportName} } from '${relativePath.split(path.sep).join(path.posix.sep)}'`,
-			)
+			let relativePath = path
+				.join(parsed.dir, parsed.name)
+				.split(path.sep)
+				.join(path.posix.sep)
+			if (!relativePath.startsWith('.') && !relativePath.startsWith('..')) {
+				relativePath = './' + relativePath
+			}
+			imports.push(`import { ${exportName} } from '${relativePath}'`)
 			registryEntries.push(`  '${uses}': ${exportName}`)
 		}
 

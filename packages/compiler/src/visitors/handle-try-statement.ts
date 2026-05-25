@@ -88,7 +88,7 @@ export function handleTryStatement(analyzer: FlowAnalyzer, node: ts.TryStatement
 		const lastInFinally = analyzer.traverse(node.finallyBlock)
 		analyzer.state.popScope()
 		analyzer.state.setPendingBranches({
-			ends: lastInFinally ? [lastInFinally] : [],
+			ends: lastInFinally ? [lastInFinally] : ends.filter((e): e is string => e !== null),
 			joinStrategy: 'any',
 		})
 		return null

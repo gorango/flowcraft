@@ -1,4 +1,4 @@
-import { beforeAll, describe, expect, it } from 'vitest'
+import { beforeAll, describe, expect, it, vi } from 'vitest'
 import { Compiler } from '../src/compiler'
 import { compileCode } from '../src/index'
 import { loadConfig } from '../src/config-loader'
@@ -208,6 +208,33 @@ describe('Compiler', () => {
 		expect(blueprintNames.length).toBeGreaterThan(0)
 		// Should have processItem in registry
 		expect(result.registry.processItem).toBeDefined()
+	})
+
+	it('should discover default export arrow function flows', () => {
+		const result = compiler.compileProject(['test/fixtures/export-default-arrow-flow.ts'])
+
+		// Default arrow export uses file basename as blueprint key
+		const bp = result.blueprints['export-default-arrow-flow']
+		expect(bp).toBeDefined()
+	})
+
+	it('should discover function expression steps with JSDoc annotations', () => {
+		const result = compiler.compileProject(['test/fixtures/function-expr-flow.ts'])
+
+		expect(result.blueprints.mainFlow).toBeDefined()
+		expect(result.registry.processItem).toBeDefined()
+	})
+
+	it('should compile a flow with re-exported step in Promise.all', () => {
+		const result = compiler.compileProject(['test/fixtures/parallel-flow.ts'])
+
+		// parallelFlow uses Promise.all — verify blueprint is valid
+		const bp = result.blueprints.parallelFlow
+		expect(bp).toBeDefined()
+		if (!bp) return
+
+		const joinNode = bp.nodes.find((n) => n.config?.joinStrategy === 'all')
+		expect(joinNode).toBeDefined()
 	})
 
 	it('should compile switch/case flow correctly', () => {
@@ -445,6 +472,41 @@ export default {
 		}
 	})
 
+	it('should return cached config when mtime is unchanged', async () => {
+		const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'flowcraft-cache-test-'))
+		try {
+			fs.writeFileSync(
+				path.join(tmpDir, 'flowcraft.config.js'),
+				`export default { entryPoints: ['first'] }`,
+			)
+
+			const first = await loadConfig(tmpDir)
+			expect(first.entryPoints).toEqual(['first'])
+
+			// Second call should hit cache (same mtime)
+			const second = await loadConfig(tmpDir)
+			expect(second.entryPoints).toEqual(['first'])
+		} finally {
+			fs.rmSync(tmpDir, { recursive: true, force: true })
+		}
+	})
+
+	it('should log error and throw on malformed TypeScript config', async () => {
+		const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'flowcraft-err-config-'))
+		const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+		try {
+			fs.writeFileSync(
+				path.join(tmpDir, 'flowcraft.config.ts'),
+				'export default { { invalid }',
+			)
+			await expect(loadConfig(tmpDir)).rejects.toThrow()
+			expect(errorSpy).toHaveBeenCalled()
+		} finally {
+			errorSpy.mockRestore()
+			fs.rmSync(tmpDir, { recursive: true, force: true })
+		}
+	})
+
 	it('should load a TS config file', async () => {
 		const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'flowcraft-test-'))
 		try {
@@ -465,6 +527,63 @@ export default config
 			expect(config.manifestPath).toBe('./out/manifest.js')
 			expect(config.tsConfigPath).toBe('./tsconfig.json')
 		} finally {
+			fs.rmSync(tmpDir, { recursive: true, force: true })
+		}
+	})
+})
+
+describe('buildFlows diagnostic logging', () => {
+	it('should print warning diagnostics via console.warn', async () => {
+		const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'flowcraft-warn-test-'))
+		const originalCwd = process.cwd()
+		const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+
+		try {
+			const srcDir = path.join(tmpDir, 'src')
+			fs.mkdirSync(srcDir, { recursive: true })
+
+			// Flow with an unawaited durable primitive to trigger a compiler warning
+			fs.writeFileSync(
+				path.join(srcDir, 'warn-workflow.ts'),
+				`
+import { sleep } from 'flowcraft/sdk'
+
+/** @flow */
+export async function warnFlow(context: any) {
+  sleep('5s')
+}
+`,
+			)
+
+			fs.writeFileSync(
+				path.join(tmpDir, 'tsconfig.json'),
+				JSON.stringify({
+					compilerOptions: {
+						target: 'ESNext',
+						module: 'ESNext',
+						moduleResolution: 'bundler',
+						strict: true,
+					},
+					include: ['src'],
+				}),
+			)
+
+			process.chdir(tmpDir)
+
+			await buildFlows({
+				entryPoints: [path.join(srcDir, 'warn-workflow.ts')],
+				tsConfigPath: path.join(tmpDir, 'tsconfig.json'),
+				manifestPath: path.join(tmpDir, 'dist/flowcraft.manifest.js'),
+			})
+
+			expect(warnSpy).toHaveBeenCalled()
+			const warnCall = warnSpy.mock.calls.find((args) =>
+				String(args[0]).includes('compilation warning'),
+			)
+			expect(warnCall).toBeDefined()
+		} finally {
+			warnSpy.mockRestore()
+			process.chdir(originalCwd)
 			fs.rmSync(tmpDir, { recursive: true, force: true })
 		}
 	})
@@ -606,6 +725,31 @@ describe('durable primitives', () => {
 		expect(result.manifestSource).toContain('export const registry')
 	})
 
+	it('should prefix bare relative paths in manifest when source and manifest share directory', () => {
+		// When manifest is in the same dir as the source, path.relative returns
+		// a bare path like 'simple-flow' instead of '../simple-flow'.
+		const fixturesDir = path.resolve('./test/fixtures')
+		const manifestPath = path.join(fixturesDir, 'flowcraft.manifest.js')
+		const customCompiler = new Compiler('tsconfig.json', manifestPath)
+		const result = customCompiler.compileProject(['test/fixtures/simple-flow.ts'], manifestPath)
+
+		expect(result.manifestSource).toContain("from './simple-flow'")
+	})
+
+	it('should error on unresolvable symbol reference in Promise.all', () => {
+		const code = `
+/** @flow */
+export async function parentFlow(context: any) {
+  await Promise.all([undefinedFunction()]);
+}
+`
+		const { diagnostics } = compileCode(code)
+		const err = diagnostics.find(
+			(d) => d.severity === 'error' && d.message.includes('Could not resolve symbol'),
+		)
+		expect(err).toBeDefined()
+	})
+
 	it('should emit warning without @step annotation in Promise.all local function', () => {
 		const code = `
 /** @flow */
@@ -619,11 +763,51 @@ export async function helperFunc() {
 }
 `
 		const { diagnostics } = compileCode(code)
-		// const hasWarning = diagnostics.some(
-		// 	(d) => d.severity === 'warning' && d.message.includes('Promise.all'),
-		// )
-		// Note: may or may not produce warning depending on how the compiler handles local fns
+		const warning = diagnostics.find(
+			(d) => d.severity === 'warning' && d.message.includes('not annotated'),
+		)
+		expect(warning).toBeDefined()
 		expect(diagnostics.filter((d) => d.severity === 'error')).toHaveLength(0)
+	})
+})
+
+describe('variable scoping and property resolution', () => {
+	it('should correctly map shadowed variables across nested block scopes', () => {
+		const result = compiler.compileProject(['test/fixtures/shadowing-flow.ts'])
+		const bp = result.blueprints.shadowingFlow
+		expect(bp).toBeDefined()
+		if (!bp) return
+
+		const processValueNodes = bp.nodes.filter((n) => n.uses === 'processValue')
+		expect(processValueNodes.length).toBe(2)
+
+		const innerNode = bp.nodes.find((n) => n.id === 'processValue_1')
+		expect(innerNode).toBeDefined()
+		if (innerNode?.inputs) {
+			expect(innerNode.inputs).toHaveProperty('val')
+			expect(innerNode.inputs.val).toBe('stepB_1.value')
+		}
+
+		const outerNode = bp.nodes.find((n) => n.id === 'processValue_2')
+		expect(outerNode).toBeDefined()
+		if (outerNode?.inputs) {
+			expect(outerNode.inputs).toHaveProperty('val')
+			expect(outerNode.inputs.val).toBe('stepA_1.value')
+		}
+	})
+
+	it('should compile and map deeply nested property references', () => {
+		const result = compiler.compileProject(['test/fixtures/deep-property-flow.ts'])
+		const bp = result.blueprints.deepPropertyFlow
+		expect(bp).toBeDefined()
+		if (!bp) return
+
+		const useZipNode = bp.nodes.find((n) => n.uses === 'useZip')
+		expect(useZipNode).toBeDefined()
+		if (useZipNode?.inputs) {
+			expect(useZipNode.inputs).toHaveProperty('zip')
+			expect(useZipNode.inputs.zip).toBe('getComplexPayload_1.user.profile.address.zip')
+		}
 	})
 })
 
@@ -691,6 +875,34 @@ export async function emptyFlow(context: any) {
 		if (blueprint) {
 			expect(blueprint.nodes.length).toBeGreaterThan(0)
 		}
+	})
+
+	it('should maintain edge pathways past empty finally block with no durable steps', () => {
+		const code = `
+/** @step */
+export async function operation() { return 1 }
+
+/** @step */
+export async function postProcess() { return 2 }
+
+/** @flow */
+export async function emptyFinallyFlow() {
+  try {
+    await operation()
+  } finally {
+    console.log('no steps in finally')
+  }
+  await postProcess()
+}
+`
+		const { blueprint, diagnostics } = compileCode(code)
+		expect(diagnostics.filter((d) => d.severity === 'error')).toHaveLength(0)
+		expect(blueprint).not.toBeNull()
+		if (!blueprint) return
+
+		const postProcessEdge = blueprint.edges.find((e) => e.target === 'postProcess_1')
+		expect(postProcessEdge).toBeDefined()
+		expect(postProcessEdge?.source).toBe('operation_1')
 	})
 
 	it('should handle webhook.request pattern via compileCode', () => {
@@ -874,6 +1086,26 @@ describe('runtime integration', () => {
 
 		expect(runResult.status).toBe('completed')
 	}, 30000)
+
+	it('should compile catch block with fallback config on the risky node', () => {
+		const result = compiler.compileProject(['test/fixtures/catch-error-flow.ts'])
+
+		const bp = result.blueprints.catchErrorFlow
+		expect(bp).toBeDefined()
+		if (!bp) return
+
+		// Verify the fallback (riskyAction) node has config.fallback pointing to the catch node
+		const riskyNode = bp.nodes.find((n) => n.uses === 'riskyAction')
+		expect(riskyNode).toBeDefined()
+		if (!riskyNode) return
+		expect(riskyNode.config?.fallback).toBeDefined()
+
+		// Edge should connect riskyAction to the fallback node (the first node in catch block)
+		const fallbackEdge = bp.edges.find(
+			(e) => e.source === riskyNode.id && e.target === riskyNode.config?.fallback,
+		)
+		expect(fallbackEdge).toBeDefined()
+	})
 
 	it('should compile and execute argument mapping flow via FlowRuntime', async () => {
 		const result = compiler.compileProject(['test/fixtures/argument-mapping-flow.ts'])

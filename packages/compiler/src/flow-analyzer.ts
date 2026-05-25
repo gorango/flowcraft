@@ -186,6 +186,9 @@ export class FlowAnalyzer {
 		} else if (ts.isBlock(node)) {
 			return this.traverse(node)
 		} else {
+			ts.forEachChild(node, (child) => {
+				this.visit(child)
+			})
 			return this.state.getCursor()
 		}
 	}

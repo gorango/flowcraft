@@ -2,6 +2,19 @@ import type { NodeDefinition } from 'flowcraft'
 import ts from 'typescript'
 import type { FlowAnalyzer } from '../flow-analyzer'
 
+function getDottedPath(node: ts.PropertyAccessExpression): { base: string; path: string } | null {
+	let current: ts.Expression = node
+	const parts: string[] = []
+	while (ts.isPropertyAccessExpression(current)) {
+		parts.unshift(current.name.text)
+		current = current.expression
+	}
+	if (ts.isIdentifier(current)) {
+		return { base: current.text, path: parts.join('.') }
+	}
+	return null
+}
+
 function extractInputsMap(
 	analyzer: FlowAnalyzer,
 	callee: ts.CallExpression,
@@ -29,11 +42,11 @@ function extractInputsMap(
 				inputs[paramName] = varInfo.nodeId
 			}
 		} else if (ts.isPropertyAccessExpression(arg)) {
-			const propAccess = arg
-			if (ts.isIdentifier(propAccess.expression)) {
-				const varInfo = analyzer.state.getVariableInScope(propAccess.expression.text)
+			const dotted = getDottedPath(arg)
+			if (dotted) {
+				const varInfo = analyzer.state.getVariableInScope(dotted.base)
 				if (varInfo) {
-					inputs[paramName] = `${varInfo.nodeId}.${propAccess.name.text}`
+					inputs[paramName] = `${varInfo.nodeId}.${dotted.path}`
 				}
 			}
 		} else if (ts.isObjectLiteralExpression(arg)) {
@@ -47,10 +60,11 @@ function extractInputsMap(
 							inputs[propName] = varInfo.nodeId
 						}
 					} else if (ts.isPropertyAccessExpression(init)) {
-						if (ts.isIdentifier(init.expression)) {
-							const varInfo = analyzer.state.getVariableInScope(init.expression.text)
+						const dotted = getDottedPath(init)
+						if (dotted) {
+							const varInfo = analyzer.state.getVariableInScope(dotted.base)
 							if (varInfo) {
-								inputs[propName] = `${varInfo.nodeId}.${init.name.text}`
+								inputs[propName] = `${varInfo.nodeId}.${dotted.path}`
 							}
 						}
 					}
