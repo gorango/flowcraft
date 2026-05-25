@@ -142,21 +142,31 @@ export class FlowAnalyzer {
 	/**
 	 * Checks if a call expression is calling a durable primitive from 'flowcraft/sdk'
 	 */
-	private isDurablePrimitiveCall(
-		callExpression: ts.CallExpression,
-	): { primitiveName: string } | null {
+	isDurablePrimitiveCall(callExpression: ts.CallExpression): { primitiveName: string } | null {
 		const callee = callExpression.expression
 		if (!ts.isIdentifier(callee)) {
 			return null
 		}
 
-		const symbol = this.typeChecker.getSymbolAtLocation(callee)
+		let symbol: ts.Symbol | undefined
+		try {
+			symbol = this.typeChecker.getSymbolAtLocation(callee)
+		} catch {
+			return null
+		}
 		if (!symbol) {
 			return null
 		}
 
-		const originalSymbol =
-			symbol.flags & ts.SymbolFlags.Alias ? this.typeChecker.getAliasedSymbol(symbol) : symbol
+		let originalSymbol: ts.Symbol
+		try {
+			originalSymbol =
+				symbol.flags & ts.SymbolFlags.Alias
+					? this.typeChecker.getAliasedSymbol(symbol)
+					: symbol
+		} catch {
+			return null
+		}
 
 		const declarations = originalSymbol.getDeclarations()
 		if (!declarations || declarations.length === 0) {

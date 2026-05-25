@@ -8,22 +8,28 @@ export class Compiler {
 	private program: ts.Program
 	private typeChecker: ts.TypeChecker
 	public fileCache: Map<string, FileAnalysis> = new Map()
+	private projectRoot: string
 
 	constructor(tsConfigPath: string) {
-		const config = ts.readConfigFile(tsConfigPath, ts.sys.readFile)
-		const parsed = ts.parseJsonConfigFileContent(config.config, ts.sys, process.cwd())
+		const resolvedConfigPath = path.resolve(tsConfigPath)
+		this.projectRoot = path.dirname(resolvedConfigPath)
+		const config = ts.readConfigFile(resolvedConfigPath, ts.sys.readFile)
+		const parsed = ts.parseJsonConfigFileContent(config.config, ts.sys, this.projectRoot)
 		this.program = ts.createProgram(parsed.fileNames, parsed.options)
 		this.typeChecker = this.program.getTypeChecker()
 	}
 
-	compileProject(_entryFilePaths: string[]): CompilationOutput {
+	compileProject(entryFilePaths: string[]): CompilationOutput {
 		this.discoveryPass()
 
 		const blueprints: Record<string, WorkflowBlueprint> = {}
 		const registry: Record<string, { importPath: string; exportName: string }> = {}
 		const diagnostics: import('./types').CompilationDiagnostic[] = []
 
-		for (const [_filePath, fileAnalysis] of this.fileCache) {
+		for (const entryFilePath of entryFilePaths) {
+			const resolvedPath = path.resolve(this.projectRoot, entryFilePath)
+			const fileAnalysis = this.fileCache.get(resolvedPath)
+			if (!fileAnalysis) continue
 			for (const [exportName, { type, node }] of fileAnalysis.exports) {
 				if (type === 'flow') {
 					const analyzer = new FlowAnalyzer(
@@ -48,7 +54,7 @@ export class Compiler {
 	private discoveryPass(): void {
 		for (const sourceFile of this.program.getSourceFiles()) {
 			if (sourceFile.isDeclarationFile) continue
-			const filePath = sourceFile.fileName
+			const filePath = path.resolve(sourceFile.fileName)
 			const exports = new Map<
 				string,
 				{ type: 'flow' | 'step'; node: ts.FunctionDeclaration }

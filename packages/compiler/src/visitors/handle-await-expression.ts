@@ -3,63 +3,6 @@ import type { FlowAnalyzer } from '../flow-analyzer'
 import { handleAwaitCall } from './handle-await-call'
 import { handlePromiseAll } from './handle-promise-all'
 
-/**
- * Checks if a call expression is calling a durable primitive from 'flowcraft/sdk'
- */
-function isDurablePrimitiveCall(
-	typeChecker: ts.TypeChecker,
-	callExpression: ts.CallExpression,
-): { primitiveName: string } | null {
-	const callee = callExpression.expression
-	if (!ts.isIdentifier(callee)) {
-		return null
-	}
-
-	let symbol: ts.Symbol | undefined
-	try {
-		symbol = typeChecker.getSymbolAtLocation(callee)
-	} catch {
-		return null
-	}
-	if (!symbol) {
-		return null
-	}
-
-	// original symbol (in case of aliases)
-	let originalSymbol: ts.Symbol
-	try {
-		originalSymbol =
-			symbol.flags & ts.SymbolFlags.Alias ? typeChecker.getAliasedSymbol(symbol) : symbol
-	} catch {
-		return null
-	}
-
-	const declarations = originalSymbol.getDeclarations()
-	if (!declarations || declarations.length === 0) {
-		return null
-	}
-
-	for (const declaration of declarations) {
-		if (ts.isImportSpecifier(declaration)) {
-			const importDeclaration = declaration.parent.parent.parent
-			if (
-				ts.isImportDeclaration(importDeclaration) &&
-				ts.isStringLiteral(importDeclaration.moduleSpecifier)
-			) {
-				const moduleSpecifier = importDeclaration.moduleSpecifier.text
-				if (moduleSpecifier === 'flowcraft/sdk') {
-					const primitiveName = declaration.name.text
-					if (['sleep', 'waitForEvent', 'createWebhook'].includes(primitiveName)) {
-						return { primitiveName }
-					}
-				}
-			}
-		}
-	}
-
-	return null
-}
-
 export function handleAwaitExpression(analyzer: FlowAnalyzer, node: ts.AwaitExpression): void {
 	const expression = node.expression
 
@@ -100,7 +43,7 @@ export function handleAwaitExpression(analyzer: FlowAnalyzer, node: ts.AwaitExpr
 			return
 		}
 
-		const primitiveCall = isDurablePrimitiveCall(analyzer.typeChecker, callee)
+		const primitiveCall = analyzer.isDurablePrimitiveCall(callee)
 		if (primitiveCall) {
 			const { primitiveName } = primitiveCall
 			const count = analyzer.state.incrementUsageCount(primitiveName)

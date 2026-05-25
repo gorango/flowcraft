@@ -973,9 +973,6 @@ importers:
       esbuild:
         specifier: ^0.28.0
         version: 0.28.0
-      flowcraft:
-        specifier: ^2.10.1
-        version: 2.10.1
       resolve:
         specifier: ^1.22.12
         version: 1.22.12
@@ -992,6 +989,9 @@ importers:
       '@vitest/coverage-v8':
         specifier: ^4.1.7
         version: 4.1.7(vitest@4.1.7)
+      flowcraft:
+        specifier: ^2.10.1
+        version: 2.10.1
       tsdown:
         specifier: ^0.22.0
         version: 0.22.0(tsx@4.22.3)(typescript@6.0.3)

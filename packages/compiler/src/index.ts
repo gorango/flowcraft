@@ -71,12 +71,13 @@ export function compileCode(code: string, options?: { id?: string }): CompileCod
 
 function extractStepMetas(code: string): Map<string, Record<string, unknown>> {
 	const metas = new Map<string, Record<string, unknown>>()
-	const regex = /@step[ \t]*\(\s*({[^}]*})\s*\)[ \t]*\n(?:export\s+)?(?:async\s+)?function\s+(\w+)/g
+	const regex =
+		/@step[ \t]*\(\s*({[^}]*})\s*\)[ \t]*\n(?:export\s+)?(?:async\s+)?function\s+(\w+)/g
 	let m: RegExpExecArray | null
 	m = regex.exec(code)
 	while (m) {
 		try {
-			const params = JSON.parse(m[1].replace(/(\w+):/g, '"$1":'))
+			const params = JSON.parse(m[1].replace(/(\w+):/g, '"$1":').replace(/'/g, '"'))
 			metas.set(m[2], params)
 		} catch {
 			// ignore malformed JSON in step decorator

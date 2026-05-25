@@ -9,7 +9,9 @@
 		"outDir": "dist",
 		"sourceMap": true,
 		"esModuleInterop": true,
-		"skipLibCheck": true
+		"skipLibCheck": true,
+		"types": ["node"],
+		"lib": ["ESNext"]
 	},
 	"include": ["./src", "./test"],
 	"exclude": ["node_modules", "dist"]
