@@ -199,28 +199,12 @@ export class WorkflowLogicHandler {
 		const asyncContext = context.type === 'sync' ? new AsyncContextView(context) : context
 		if (nodeDef.inputs) {
 			if (typeof nodeDef.inputs === 'string') {
-				const key = nodeDef.inputs
-				if (key.startsWith('_')) return await asyncContext.get(key as any)
-				const outputKey = `_outputs.${key}`
-				if (await asyncContext.has(outputKey as any)) {
-					return await asyncContext.get(outputKey as any)
-				}
-				return await asyncContext.get(key as any)
+				return await this.resolveInputValue(nodeDef.inputs, asyncContext)
 			}
 			if (typeof nodeDef.inputs === 'object') {
 				const input: Record<string, any> = {}
 				for (const key in nodeDef.inputs) {
-					const contextKey = nodeDef.inputs[key]
-					if (contextKey.startsWith('_')) {
-						input[key] = await asyncContext.get(contextKey as any)
-					} else {
-						const outputKey = `_outputs.${contextKey}`
-						if (await asyncContext.has(outputKey as any)) {
-							input[key] = await asyncContext.get(outputKey as any)
-						} else {
-							input[key] = await asyncContext.get(contextKey as any)
-						}
-					}
+					input[key] = await this.resolveInputValue(nodeDef.inputs[key], asyncContext)
 				}
 				return input
 			}
@@ -228,5 +212,48 @@ export class WorkflowLogicHandler {
 		// Default to standardized input key
 		const inputKey = `_inputs.${nodeDef.id}`
 		return await asyncContext.get(inputKey as any)
+	}
+
+	/**
+	 * Resolves a single input value string.
+	 * Supports:
+	 *   - "_contextKey"         → direct context lookup
+	 *   - "nodeId.prop.sub"    → fetch node output, resolve nested property
+	 *   - "nodeId"             → fetch entire node output
+	 *   - "key"                → fallback context lookup
+	 */
+	private async resolveInputValue(
+		value: string,
+		context: ContextImplementation<any>,
+	): Promise<any> {
+		if (value.startsWith('_')) {
+			return await context.get(value as any)
+		}
+
+		const dotIndex = value.indexOf('.')
+		if (dotIndex !== -1) {
+			const baseKey = value.slice(0, dotIndex)
+			const propertyPath = value.slice(dotIndex + 1)
+			const outputKey = `_outputs.${baseKey}`
+			if (await context.has(outputKey as any)) {
+				const baseOutput = await context.get(outputKey as any)
+				if (baseOutput !== undefined && baseOutput !== null) {
+					const parts = propertyPath.split('.')
+					let current = baseOutput
+					for (const part of parts) {
+						if (current === null || current === undefined) return undefined
+						current = current[part]
+					}
+					return current
+				}
+			}
+			return undefined
+		}
+
+		const outputKey = `_outputs.${value}`
+		if (await context.has(outputKey as any)) {
+			return await context.get(outputKey as any)
+		}
+		return await context.get(value as any)
 	}
 }

@@ -1527,3 +1527,110 @@ describe('Flowcraft Runtime - Integration Tests', () => {
 		})
 	})
 })
+
+describe('resolveNodeInput dotted property resolution', () => {
+	it('should resolve dotted property paths from predecessor outputs', async () => {
+		const { WorkflowLogicHandler } = await import('../src/runtime/workflow-logic-handler')
+		const { Context } = await import('../src/context')
+		const { PropertyEvaluator } = await import('../src/evaluator')
+
+		const handler = new WorkflowLogicHandler(new PropertyEvaluator(), {
+			emit: async () => {},
+		})
+
+		const blueprint = {
+			id: 'test',
+			nodes: [
+				{ id: 'start', uses: 'start' },
+				{
+					id: 'createCart_1',
+					uses: 'createCart',
+				},
+				{
+					id: 'finalizeOrder_1',
+					uses: 'finalizeOrder',
+					inputs: { cartId: 'createCart_1.cartId' },
+				},
+			],
+			edges: [
+				{ source: 'start', target: 'createCart_1' },
+				{ source: 'createCart_1', target: 'finalizeOrder_1' },
+			],
+		} as any
+
+		const context = new Context({})
+		await context.set('_outputs.createCart_1' as any, { cartId: 456, items: [] })
+
+		const result = await handler.resolveNodeInput('finalizeOrder_1', blueprint, context)
+
+		expect(result).toEqual({ cartId: 456 })
+	})
+
+	it('should resolve deeply nested property paths', async () => {
+		const { WorkflowLogicHandler } = await import('../src/runtime/workflow-logic-handler')
+		const { Context } = await import('../src/context')
+		const { PropertyEvaluator } = await import('../src/evaluator')
+
+		const handler = new WorkflowLogicHandler(new PropertyEvaluator(), {
+			emit: async () => {},
+		})
+
+		const blueprint = {
+			id: 'test',
+			nodes: [
+				{
+					id: 'fetchUser_1',
+					uses: 'fetchUser',
+				},
+				{
+					id: 'processData_1',
+					uses: 'processData',
+					inputs: { nestedValue: 'fetchUser_1.profile.address.city' },
+				},
+			],
+			edges: [{ source: 'fetchUser_1', target: 'processData_1' }],
+		} as any
+
+		const context = new Context({})
+		await context.set('_outputs.fetchUser_1' as any, {
+			profile: { address: { city: 'Portland' } },
+		})
+
+		const result = await handler.resolveNodeInput('processData_1', blueprint, context)
+
+		expect(result).toEqual({ nestedValue: 'Portland' })
+	})
+
+	it('should return undefined for non-existent nested properties', async () => {
+		const { WorkflowLogicHandler } = await import('../src/runtime/workflow-logic-handler')
+		const { Context } = await import('../src/context')
+		const { PropertyEvaluator } = await import('../src/evaluator')
+
+		const handler = new WorkflowLogicHandler(new PropertyEvaluator(), {
+			emit: async () => {},
+		})
+
+		const blueprint = {
+			id: 'test',
+			nodes: [
+				{
+					id: 'createCart_1',
+					uses: 'createCart',
+				},
+				{
+					id: 'finalizeOrder_1',
+					uses: 'finalizeOrder',
+					inputs: { missing: 'createCart_1.doesNotExist' },
+				},
+			],
+			edges: [{ source: 'createCart_1', target: 'finalizeOrder_1' }],
+		} as any
+
+		const context = new Context({})
+		await context.set('_outputs.createCart_1' as any, { cartId: 456 })
+
+		const result = await handler.resolveNodeInput('finalizeOrder_1', blueprint, context)
+
+		expect(result).toEqual({ missing: undefined })
+	})
+})
