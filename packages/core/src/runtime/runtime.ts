@@ -667,6 +667,13 @@ export class FlowRuntime<
 				)
 			}
 
+			// Populate _catch_error context for catch block variable resolution
+			await asyncContext.set('_catch_error' as any, {
+				message: executionResult.error.message,
+				nodeId: nodeDef.id,
+				blueprintId: blueprint.id,
+			})
+
 			const fallbackInput = await this.resolveNodeInput(
 				fallbackNode.id,
 				blueprint,
