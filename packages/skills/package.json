@@ -1,12 +1,17 @@
 {
 	"name": "@flowcraft/skills",
-	"version": "0.1.0",
-	"private": true,
-	"description": "AI assistant skills for Flowcraft workflow development. Provides contextual knowledge for building, debugging, and scaling workflows.",
+	"version": "0.1.2",
+	"description": "Skills for Flowcraft workflow development. Contextual knowledge for building, debugging, and scaling workflows.",
 	"license": "MIT",
 	"repository": {
 		"type": "git",
 		"url": "https://github.com/gorango/flowcraft.git",
 		"directory": "packages/skills"
+	},
+	"bin": {
+		"flowcraft-skills": "./install.mjs"
+	},
+	"scripts": {
+		"test": "echo \"Error: no test specified\" && exit 0"
 	}
 }

@@ -2,6 +2,14 @@
 
 AI assistant skills for Flowcraft workflow development. This package provides structured, contextual knowledge that AI assistants can use to help developers build, debug, and scale workflows.
 
+## Installation
+
+```sh
+npx @flowcraft/skills
+```
+
+Creates a `.agents/skills/flowcraft` directory with all skills installed.
+
 ## Structure
 
 Each skill module is a self-contained knowledge domain with a `SKILL.md` entry point and supporting reference documents.
