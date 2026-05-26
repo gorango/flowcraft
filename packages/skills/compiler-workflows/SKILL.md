@@ -59,14 +59,15 @@ const result = await runtime.run(manifest['myWorkflow'], { input: 'hello' })
 
 ## Supported Control Flow
 
-| Pattern     | Syntax                         | Compiles to                    |
-| ----------- | ------------------------------ | ------------------------------ |
-| Sequential  | `await stepA(); await stepB()` | Linear nodes with edges        |
-| Conditional | `if/else` with `@step` calls   | Conditional edges with actions |
-| Loops       | `for/while` with `@step` calls | Loop controller node           |
-| Fallbacks   | `try/catch` with `@step` calls | Fallback node routing          |
-| Parallelism | `Promise.all([@step, @step])`  | Fan-out/fan-in with join       |
-| Subflows    | `await otherFlow(input)`       | Subflow node                   |
+| Pattern     | Syntax                                                                   | Compiles to                    |
+| ----------- | ------------------------------------------------------------------------ | ------------------------------ |
+| Sequential  | `await stepA(); await stepB()`                                           | Linear nodes with edges        |
+| Conditional | `if/else` with `@step` calls                                             | Conditional edges with actions |
+| Switch      | `switch(val) { case ... }` with `@step` calls                            | Conditional multi-branch       |
+| Loops       | `for/while/do-while` with `@step` calls                                  | Loop controller node           |
+| Fallbacks   | `try/catch/finally` with `@step` calls                                   | Fallback/finally node routing  |
+| Parallelism | `Promise.all([...])`, `Promise.allSettled([...])`, `Promise.race([...])` | Fan-out/fan-in with join       |
+| Subflows    | `await otherFlow(input)`                                                 | Subflow node                   |
 
 ## Configuration
 
@@ -99,11 +100,37 @@ Available plugins: Vite, Next.js, Nuxt, Astro, esbuild, tsup.
 
 ## Unsupported Syntax
 
-- `finally` blocks in try/catch
 - Complex variable re-assignments within loops
 - Dynamic function calls or `eval`
 - Generator functions or async generators
 - Class methods as steps (use standalone functions)
+
+## Runtime compilation (`compileCode`)
+
+For testing, REPL environments, or low-frequency runtime configuration, use `compileCode()` to compile raw TypeScript strings into blueprints:
+
+```typescript
+import { compileCode } from '@flowcraft/compiler'
+
+const { blueprint, diagnostics } = compileCode(
+	`
+  /** @flow */
+  export async function myFlow() {
+    const data = await fetchData()
+    return await processData(data)
+  }
+
+  /** @step */
+  async function fetchData() { return { value: 42 } }
+
+  /** @step */
+  async function processData(d: any) { return { result: d.value * 2 } }
+`,
+	{ id: 'myFlow' },
+)
+```
+
+> **Note:** `compileCode()` writes temporary files and spins up a full compiler instance per call. For production, always use pre-compiled builds via `compileProject()` or framework plugins.
 
 ## Advanced topics
 

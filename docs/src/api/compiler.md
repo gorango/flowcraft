@@ -31,6 +31,29 @@ interface CompilationOutput {
 - **`diagnostics`**: Array of compilation errors or warnings
 - **`manifestSource`**: Generated TypeScript code that exports all blueprints
 
+## `compileCode()`
+
+Compiles a raw TypeScript source string containing `@flow`/`@step` annotations into a blueprint. Useful for testing, REPL environments, or low-frequency runtime configuration.
+
+```typescript
+function compileCode(code: string, options?: { id?: string }): {
+	blueprint: Blueprint | null
+	diagnostics: CompilationDiagnostic[]
+}
+```
+
+### Parameters
+
+- **`code`**: `string` — TypeScript source code with `/** @flow */` and `/** @step */` annotations
+- **`options.id?`**: `string` — Optional blueprint ID override (defaults to the flow function name)
+
+### Returns
+
+- **`blueprint`**: The compiled blueprint, or `null` if compilation failed
+- **`diagnostics`**: Array of compilation errors or warnings
+
+> **Note:** `compileCode()` writes temporary files and spins up a full compiler instance per call. For production, always use pre-compiled builds via `compileProject()` or framework plugins.
+
 ## `buildFlows()`
 
 Convenience function that loads configuration from `flowcraft.config.ts` and writes the manifest file.

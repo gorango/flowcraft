@@ -119,7 +119,30 @@ async function handleSmallInput(input: number) {
 }
 ```
 
-### Fallbacks with Try/Catch
+### Switch Statements
+
+```typescript
+/** @flow */
+export async function switchWorkflow(status: string) {
+	switch (status) {
+		case 'pending':
+			return await handlePending()
+		case 'approved':
+			return await handleApproved()
+		case 'rejected':
+			return await handleRejected()
+		default:
+			return await handleUnknown()
+	}
+}
+
+/** @step */ async function handlePending() { /* ... */ }
+/** @step */ async function handleApproved() { /* ... */ }
+/** @step */ async function handleRejected() { /* ... */ }
+/** @step */ async function handleUnknown() { /* ... */ }
+```
+
+### Fallbacks with Try/Catch/Finally
 
 ```typescript
 /** @flow */
@@ -140,6 +163,36 @@ async function riskyOperation() {
 async function fallbackOperation(error: any) {
 	// Implementation
 }
+```
+
+### Finally Blocks
+
+The `finally` block runs regardless of success or failure — useful for cleanup:
+
+```typescript
+/** @flow */
+export async function cleanupWorkflow() {
+	try {
+		return await riskyOperation()
+	} finally {
+		await cleanup()
+	}
+}
+
+/** @flow */
+export async function tryCatchFinallyWorkflow() {
+	try {
+		return await riskyOperation()
+	} catch (error) {
+		return await fallbackOperation(error)
+	} finally {
+		await cleanup()
+	}
+}
+
+/** @step */ async function riskyOperation() { /* ... */ }
+/** @step */ async function fallbackOperation(error: any) { /* ... */ }
+/** @step */ async function cleanup() { /* ... */ }
 ```
 
 ### Loops
@@ -165,6 +218,15 @@ export async function whileWorkflow() {
 		await incrementCounter()
 		count++
 	}
+}
+
+/** @flow */
+export async function doWhileWorkflow() {
+	let count = 0
+	do {
+		await incrementCounter()
+		count++
+	} while (count < 10)
 }
 
 /** @step */
@@ -198,7 +260,7 @@ async function processItem(item: number) {
 }
 ```
 
-### Parallelism with Promise.all
+### Parallelism with Promise.all / Promise.allSettled / Promise.race
 
 ```typescript
 /** @flow */
@@ -206,6 +268,20 @@ export async function parallelWorkflow(items: string[]) {
 	const promises = items.map((item) => processItem(item))
 
 	return await Promise.all(promises)
+}
+
+/** @flow */
+export async function parallelAllSettled(items: string[]) {
+	const promises = items.map((item) => processItem(item))
+
+	return await Promise.allSettled(promises)
+}
+
+/** @flow */
+export async function parallelRace(items: string[]) {
+	const promises = items.map((item) => processItem(item))
+
+	return await Promise.race(promises)
 }
 
 /** @step */
@@ -265,7 +341,6 @@ async function saveResult(processed: any) {
 
 The compiler currently does not support:
 
-- `finally` blocks in try/catch statements
 - Complex variable re-assignments within loops
 - Dynamic function calls or eval
 - Generator functions or async generators

@@ -54,7 +54,7 @@ This imperative code compiles to the same declarative graph as the Fluent API ex
 
 ## Key Features
 
-- **Imperative DX**: Write workflows using familiar control flow (loops, conditionals, try/catch)
+- **Imperative DX**: Write workflows using familiar control flow (loops, conditionals, switch, try/catch/finally)
 - **Zero-Syntax**: No special DSL - just TypeScript with JSDoc annotations
 - **Type Safety**: Full TypeScript support with compile-time validation
 - **Composability**: Import and compose subflows naturally
