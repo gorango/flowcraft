@@ -21,6 +21,14 @@ export function createCreateBlueprintTool(config: {
 		description:
 			'Generate a workflow blueprint from a natural language description of what the workflow should do',
 		parameters: createBlueprintSchema,
+		triggers: [
+			'create workflow',
+			'new workflow',
+			'design workflow',
+			'build pipeline',
+			'generate blueprint',
+			'author flow',
+		],
 		execute: async (params) => {
 			const start = Date.now()
 			try {

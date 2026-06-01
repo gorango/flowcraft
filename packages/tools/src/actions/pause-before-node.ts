@@ -19,6 +19,7 @@ export function createPauseBeforeNodeTool(config: {
 		name: 'pause_before_node',
 		description: 'Set a breakpoint before a specific node to pause the workflow for inspection',
 		parameters: pauseBeforeNodeSchema,
+		triggers: ['breakpoint', 'pause before', 'debug node', 'stop before', 'inspect before'],
 		execute: async (params) => {
 			const start = Date.now()
 

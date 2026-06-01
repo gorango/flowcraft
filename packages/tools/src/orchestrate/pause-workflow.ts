@@ -14,6 +14,7 @@ export function createPauseWorkflowTool(config: {
 		name: 'pause_workflow',
 		description: 'Pause a running workflow execution at the next safe checkpoint',
 		parameters: pauseWorkflowSchema,
+		triggers: ['pause', 'hold', 'suspend', 'pause execution'],
 		execute: async (params) => {
 			const start = Date.now()
 

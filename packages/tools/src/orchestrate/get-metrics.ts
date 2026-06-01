@@ -17,6 +17,7 @@ export function createGetExecutionMetricsTool(config: {
 		description:
 			'Get aggregate execution metrics including timing, error counts, retry counts, and node performance',
 		parameters: getExecutionMetricsSchema,
+		triggers: ['metrics', 'stats', 'success rate', 'duration', 'cost', 'performance'],
 		execute: async (params) => {
 			const start = Date.now()
 

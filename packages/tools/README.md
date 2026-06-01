@@ -60,6 +60,46 @@ Three layers of abstraction:
 2. **Tool Groups** — Curated sets for each use case (`compose`, `orchestrate`, `actions`, `discover`)
 3. **Framework Adapters** — Thin bridges to Vercel AI SDK, LangChain, OpenAI, Anthropic
 
+## Triggers
+
+Every curated tool carries an optional `triggers?: string[]` field — a curated list of natural-language phrases and synonyms (e.g. `'run'`, `'execute'`, `'kick off'`, `'launch workflow'` for `run_workflow`) that help agents and orchestrators select the right tool from free-form input.
+
+```typescript
+import { createRunWorkflowTool } from '@flowcraft/tools'
+
+const run = createRunWorkflowTool({ resolver, runtime })
+console.log(run.triggers)
+// => ['run', 'execute', 'start', 'kick off', 'launch workflow', ...]
+```
+
+Adapters do **not** surface `triggers` on the framework-specific tool shape. Read the field directly off the `WorkflowTool` before passing it through an adapter if you need it.
+
+Custom tools you build with `createWorkflowTool` can declare their own `triggers` in the config:
+
+```typescript
+import { createWorkflowTool } from '@flowcraft/tools'
+import { z } from 'zod'
+
+const myTool = createWorkflowTool({
+	name: 'send_invoice',
+	description: 'Send an invoice to a customer',
+	parameters: z.object({ customerId: z.string() }),
+	triggers: ['send invoice', 'bill customer', 'invoice'],
+	execute: async (params) => ({ status: 'completed' }),
+})
+```
+
+For per-node generated tools (`createNodeActionTools`), pass `triggers` on each `NodeActionConfig` to opt in:
+
+```typescript
+import { createNodeActionTools } from '@flowcraft/tools'
+
+const tools = createNodeActionTools(blueprint, {
+	runtime,
+	nodes: [{ nodeId: 'charge-card', triggers: ['charge', 'bill card', 'take payment'] }],
+})
+```
+
 ## Tool Groups
 
 ### Compose

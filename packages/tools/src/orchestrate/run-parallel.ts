@@ -24,6 +24,13 @@ export function createRunWorkflowsParallelTool(config: {
 		name: 'run_workflows_parallel',
 		description: 'Run multiple workflow blueprints concurrently for maximum throughput',
 		parameters: runWorkflowsParallelSchema,
+		triggers: [
+			'run in parallel',
+			'fan out',
+			'concurrent workflows',
+			'parallel run',
+			'run concurrently',
+		],
 		execute: async (params) => {
 			const start = Date.now()
 

@@ -18,6 +18,7 @@ export function createListExecutionsTool(config: {
 		name: 'list_executions',
 		description: 'List recent workflow executions with their status and metadata',
 		parameters: listExecutionsSchema,
+		triggers: ['list executions', 'recent runs', 'show executions', 'execution history list'],
 		execute: async (params) => {
 			const start = Date.now()
 

@@ -39,12 +39,14 @@ export interface WorkflowToolConfig<TParams extends z.ZodType = z.ZodType> {
 	description: string
 	parameters: TParams
 	resolver?: BlueprintResolver
+	triggers?: string[]
 }
 
 export interface WorkflowTool<TParams extends z.ZodType = z.ZodType> {
 	name: string
 	description: string
 	parameters: TParams
+	triggers?: string[]
 	execute(params: z.infer<TParams>): Promise<ToolResult>
 }
 

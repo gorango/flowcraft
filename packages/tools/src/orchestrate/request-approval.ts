@@ -21,6 +21,13 @@ export function createRequestApprovalTool(config: {
 		description:
 			'Request human approval for a workflow execution, pausing it until approval is granted',
 		parameters: requestApprovalSchema,
+		triggers: [
+			'request approval',
+			'human approval',
+			'ask for approval',
+			'need signoff',
+			'request signoff',
+		],
 		execute: async (params) => {
 			const start = Date.now()
 

@@ -16,6 +16,7 @@ export function createGetAwaitingNodesTool(config: {
 		description:
 			'List all nodes in a workflow execution that are waiting for human input or an external event',
 		parameters: getAwaitingNodesSchema,
+		triggers: ['awaiting', 'waiting', 'pending nodes', 'what is waiting', 'stuck nodes'],
 		execute: async (params) => {
 			const start = Date.now()
 

@@ -25,6 +25,13 @@ export function createGenerateFromTemplateTool(config: {
 		description:
 			'Create a workflow blueprint from a named template, with optional parameter overrides and AI refinement',
 		parameters: generateFromTemplateSchema,
+		triggers: [
+			'from template',
+			'use template',
+			'scaffold',
+			'starter workflow',
+			'template blueprint',
+		],
 		execute: async (params) => {
 			const start = Date.now()
 

@@ -14,6 +14,7 @@ export function createGetExecutionTool(config: {
 		description:
 			'Get detailed information about a specific workflow execution including events and final state',
 		parameters: getExecutionSchema,
+		triggers: ['get execution', 'execution details', 'show execution', 'inspect execution'],
 		execute: async (params) => {
 			const start = Date.now()
 

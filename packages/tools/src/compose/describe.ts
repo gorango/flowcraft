@@ -19,6 +19,13 @@ export function createDescribeBlueprintTool(): WorkflowTool<typeof describeBluep
 		name: 'describe_workflow',
 		description: 'Get a human-readable description of a workflow blueprint structure',
 		parameters: describeBlueprintSchema,
+		triggers: [
+			'describe',
+			'explain workflow',
+			'summarize',
+			'what does this do',
+			'workflow summary',
+		],
 		execute: async (params) => {
 			const start = Date.now()
 			const blueprint = params.blueprint as unknown as WorkflowBlueprint

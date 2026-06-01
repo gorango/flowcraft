@@ -13,6 +13,7 @@ export function createCheckStatusTool(config: {
 		name: 'check_workflow_status',
 		description: 'Check the current status of a running or completed workflow execution',
 		parameters: checkStatusSchema,
+		triggers: ['status', 'progress', 'poll', 'is it done', 'check execution', 'check status'],
 		execute: async (params) => {
 			const start = Date.now()
 

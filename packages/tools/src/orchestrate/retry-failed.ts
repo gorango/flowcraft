@@ -27,6 +27,13 @@ export function createRetryFailedNodesTool(config: {
 		description:
 			'Retry all failed nodes in a workflow execution, or specific nodes if provided',
 		parameters: retryFailedNodesSchema,
+		triggers: [
+			'retry failed',
+			'rerun failed',
+			'retry errors',
+			'recover failures',
+			'retry all failed',
+		],
 		execute: async (params) => {
 			const start = Date.now()
 

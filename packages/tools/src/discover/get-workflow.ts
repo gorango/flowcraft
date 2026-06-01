@@ -19,6 +19,7 @@ export function createGetWorkflowTool(config: {
 		name: 'get_workflow',
 		description: 'Get details about a specific workflow blueprint by ID',
 		parameters: getWorkflowSchema,
+		triggers: ['get workflow', 'show workflow', 'workflow details', 'inspect workflow'],
 		execute: async (params) => {
 			const start = Date.now()
 

@@ -20,6 +20,7 @@ export function createSimulateExecutionTool(): WorkflowTool<typeof simulateExecu
 		description:
 			'Perform a dry-run simulation of workflow execution to predict execution path and branching decisions',
 		parameters: simulateExecutionSchema,
+		triggers: ['simulate', 'dry run', 'test workflow', 'preview execution', 'predict path'],
 		execute: async (params) => {
 			const start = Date.now()
 

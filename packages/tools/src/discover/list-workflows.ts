@@ -14,6 +14,13 @@ export function createListWorkflowsTool(config: {
 		name: 'list_workflows',
 		description: 'List available workflow blueprints with their IDs, versions, and metadata',
 		parameters: listWorkflowsSchema,
+		triggers: [
+			'list workflows',
+			'show workflows',
+			'all workflows',
+			'browse workflows',
+			'available workflows',
+		],
 		execute: async (params) => {
 			const start = Date.now()
 

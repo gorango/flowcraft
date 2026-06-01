@@ -22,6 +22,13 @@ export function createCheckNodeImplementationsTool(config?: {
 		description:
 			'Verify that all nodes in a workflow blueprint have registered implementations',
 		parameters: checkImplementationsSchema,
+		triggers: [
+			'check implementations',
+			'verify nodes',
+			'missing implementations',
+			'node coverage',
+			'are nodes implemented',
+		],
 		execute: async (params) => {
 			const start = Date.now()
 

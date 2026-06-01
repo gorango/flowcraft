@@ -26,6 +26,7 @@ export function createResumeWorkflowTool(config: {
 		name: 'resume_workflow',
 		description: 'Resume a workflow that is waiting for human input or an external event',
 		parameters: resumeWorkflowSchema,
+		triggers: ['resume', 'continue', 'pick up', 'unpause', 'proceed', 'continue execution'],
 		execute: async (params) => {
 			const start = Date.now()
 

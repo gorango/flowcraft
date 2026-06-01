@@ -8,6 +8,7 @@ export interface NodeActionConfig {
 	nodeId: string
 	description?: string
 	includeParams?: boolean
+	triggers?: string[]
 }
 
 export function createNodeActionTools(
@@ -47,6 +48,7 @@ export function createNodeActionTools(
 				name: `${blueprint.id}__${node.id}`,
 				description,
 				parameters: paramsSchema,
+				triggers: nodeConfig?.triggers,
 				execute: async (params) => {
 					const start = Date.now()
 

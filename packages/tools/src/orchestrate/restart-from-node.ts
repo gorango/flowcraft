@@ -25,6 +25,13 @@ export function createRestartFromNodeTool(config: {
 		description:
 			'Restart a workflow execution from a specific node, replaying state up to that point',
 		parameters: restartFromNodeSchema,
+		triggers: [
+			'restart from',
+			'replay from',
+			'rerun from node',
+			'start over from',
+			'restart at',
+		],
 		execute: async (params) => {
 			const start = Date.now()
 

@@ -18,6 +18,13 @@ export function createGetNodeInfoTool(config: {
 		description:
 			'Get the definition, configuration, and metadata for a specific node in a workflow blueprint',
 		parameters: getNodeInfoSchema,
+		triggers: [
+			'node info',
+			'node definition',
+			'what is this node',
+			'inspect node',
+			'show node details',
+		],
 		execute: async (params) => {
 			const start = Date.now()
 

@@ -17,6 +17,7 @@ export function createGetExecutionTimelineTool(config: {
 		description:
 			'Get a detailed timeline of node execution events with timestamps and durations',
 		parameters: getExecutionTimelineSchema,
+		triggers: ['timeline', 'history', 'execution history', 'audit trail', 'show timeline'],
 		execute: async (params) => {
 			const start = Date.now()
 

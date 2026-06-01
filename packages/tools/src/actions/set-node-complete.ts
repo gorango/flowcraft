@@ -22,6 +22,13 @@ export function createSetNodeCompleteTool(config: {
 		description:
 			'Manually mark a node as completed with a provided output, without executing its logic',
 		parameters: setNodeCompleteSchema,
+		triggers: [
+			'mark complete',
+			'set complete',
+			'manual complete',
+			'mark as done',
+			'force complete',
+		],
 		execute: async (params) => {
 			const start = Date.now()
 

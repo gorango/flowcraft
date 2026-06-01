@@ -25,6 +25,7 @@ export function createSkipFailedNodeTool(config: {
 		description:
 			'Mark a failed node as skipped with optional mock output so downstream nodes can proceed',
 		parameters: skipFailedNodeSchema,
+		triggers: ['skip failed', 'ignore failure', 'continue past error', 'bypass failure'],
 		execute: async (params) => {
 			const start = Date.now()
 

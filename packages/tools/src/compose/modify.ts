@@ -23,6 +23,14 @@ export function createModifyBlueprintTool(): WorkflowTool<typeof modifyBlueprint
 		name: 'modify_workflow',
 		description: 'Add, remove, or edit nodes and edges in an existing workflow blueprint',
 		parameters: modifyBlueprintSchema,
+		triggers: [
+			'edit workflow',
+			'change workflow',
+			'update blueprint',
+			'add node',
+			'remove node',
+			'modify graph',
+		],
 		execute: async (params) => {
 			const start = Date.now()
 			try {

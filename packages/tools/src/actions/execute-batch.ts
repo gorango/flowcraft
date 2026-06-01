@@ -24,6 +24,13 @@ export function createExecuteNodeBatchTool(config: {
 		description:
 			'Execute a workflow targeting specific nodes, running all required predecessors to reach them',
 		parameters: executeNodeBatchSchema,
+		triggers: [
+			'run nodes in parallel',
+			'parallel nodes',
+			'fan out nodes',
+			'batch run nodes',
+			'run subset of nodes',
+		],
 		execute: async (params) => {
 			const start = Date.now()
 

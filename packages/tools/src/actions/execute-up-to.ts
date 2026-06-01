@@ -18,6 +18,7 @@ export function createExecuteNodesUpToTool(config: {
 		name: 'execute_nodes_up_to',
 		description: 'Execute a workflow up to a specific node, pausing after that node completes',
 		parameters: executeNodesUpToSchema,
+		triggers: ['run until', 'execute up to', 'run through', 'execute to', 'partial run'],
 		execute: async (params) => {
 			const start = Date.now()
 

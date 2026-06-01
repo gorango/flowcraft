@@ -14,6 +14,7 @@ export function createCancelWorkflowTool(config: {
 		name: 'cancel_workflow',
 		description: 'Cancel a running workflow by execution ID',
 		parameters: cancelWorkflowSchema,
+		triggers: ['cancel', 'abort', 'stop', 'kill', 'terminate', 'cancel execution'],
 		execute: async (params) => {
 			const start = Date.now()
 			const controller = config.controllers.get(params.executionId)

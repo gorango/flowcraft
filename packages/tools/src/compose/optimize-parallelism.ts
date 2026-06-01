@@ -19,6 +19,7 @@ export function createOptimizeForParallelismTool(): WorkflowTool<
 		description:
 			'Analyze a blueprint for parallelism opportunities and suggest structural improvements',
 		parameters: optimizeForParallelismSchema,
+		triggers: ['parallelize', 'optimize', 'speed up', 'parallel execution', 'find parallelism'],
 		execute: async (params) => {
 			const start = Date.now()
 

@@ -21,6 +21,7 @@ export function createGetErrorDiagnosisTool(config: {
 		description:
 			'Get AI-friendly error analysis including root cause classification and failure patterns',
 		parameters: getErrorDiagnosisSchema,
+		triggers: ['diagnose error', 'why failed', 'error analysis', 'explain error', 'root cause'],
 		execute: async (params) => {
 			const start = Date.now()
 

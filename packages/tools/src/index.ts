@@ -14,6 +14,8 @@ export type {
 	BlueprintGeneratorFn,
 	ExecutionMode,
 	AsyncExecutionStore,
+	NodeImplementationRegistry,
+	TemplateStore,
 } from './types'
 export { isInternalNode, INTERNAL_NODE_USES } from './types'
 export { normalizeResult, createAsyncExecutionStore } from './utils'

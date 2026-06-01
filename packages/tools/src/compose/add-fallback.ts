@@ -23,6 +23,13 @@ export function createAddFallbackNodeTool(): WorkflowTool<typeof addFallbackNode
 		description:
 			"Add a fallback node with error recovery routing to a workflow node. The fallback node is a terminal error handler — it does not wire its output to the original node's successors.",
 		parameters: addFallbackNodeSchema,
+		triggers: [
+			'add fallback',
+			'fallback handler',
+			'error fallback',
+			'fallback routing',
+			'on error handler',
+		],
 		execute: async (params) => {
 			const start = Date.now()
 

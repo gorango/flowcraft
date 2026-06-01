@@ -10,6 +10,7 @@ export function createWorkflowTool<TParams extends z.ZodType>(
 		name: config.name,
 		description: config.description,
 		parameters: config.parameters,
+		triggers: config.triggers,
 		execute: config.execute,
 	}
 }

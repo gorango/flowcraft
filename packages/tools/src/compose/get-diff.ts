@@ -23,6 +23,7 @@ export function createGetBlueprintDiffTool(): WorkflowTool<typeof getBlueprintDi
 		description:
 			'Compare two workflow blueprint versions and identify all structural differences',
 		parameters: getBlueprintDiffSchema,
+		triggers: ['diff', 'compare blueprints', 'blueprint diff', 'what changed', 'show changes'],
 		execute: async (params) => {
 			const start = Date.now()
 

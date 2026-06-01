@@ -31,6 +31,15 @@ export function createRunWorkflowTool(config: {
 		description:
 			'Execute a workflow by ID with the given parameters. Use sync mode to wait for completion, or async to start in the background.',
 		parameters: runWorkflowSchema,
+		triggers: [
+			'run',
+			'execute',
+			'start',
+			'kick off',
+			'launch workflow',
+			'begin execution',
+			'run the workflow',
+		],
 		execute: async (params) => {
 			const start = Date.now()
 			const executionId = crypto.randomUUID()

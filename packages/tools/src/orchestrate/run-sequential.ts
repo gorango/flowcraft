@@ -25,6 +25,13 @@ export function createRunWorkflowsSequentialTool(config: {
 		description:
 			'Run multiple workflow blueprints in sequence, optionally passing context between them',
 		parameters: runWorkflowsSequentialSchema,
+		triggers: [
+			'run sequentially',
+			'run in order',
+			'chain workflows',
+			'run after',
+			'sequence workflows',
+		],
 		execute: async (params) => {
 			const start = Date.now()
 			const results: Array<Record<string, unknown>> = []

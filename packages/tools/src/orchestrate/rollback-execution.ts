@@ -21,6 +21,7 @@ export function createRollbackExecutionTool(config: {
 		description:
 			'Undo completion of nodes after a target point to enable re-execution from that point',
 		parameters: rollbackExecutionSchema,
+		triggers: ['rollback', 'undo', 'revert', 'restore state', 'roll back'],
 		execute: async (params) => {
 			const start = Date.now()
 

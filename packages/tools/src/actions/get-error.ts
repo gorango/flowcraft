@@ -16,6 +16,7 @@ export function createGetNodeErrorTool(config: {
 		name: 'get_node_error',
 		description: 'Get detailed error information from a failed node in a workflow execution',
 		parameters: getNodeErrorSchema,
+		triggers: ['node error', 'node failure', 'why did node fail', 'node error details'],
 		execute: async (params) => {
 			const start = Date.now()
 

@@ -20,6 +20,12 @@ export function createRequestNodeApprovalTool(config: {
 		description:
 			'Request human approval before executing a specific node by pausing the workflow',
 		parameters: requestNodeApprovalSchema,
+		triggers: [
+			'approve node',
+			'node approval',
+			'request node approval',
+			'approve before running',
+		],
 		execute: async (params) => {
 			const start = Date.now()
 

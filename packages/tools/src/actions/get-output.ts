@@ -16,6 +16,7 @@ export function createGetNodeOutputTool(config: {
 		name: 'get_node_output',
 		description: 'Retrieve the output produced by a completed node in a workflow execution',
 		parameters: getNodeOutputSchema,
+		triggers: ['node output', 'get result', 'output value', 'node result', 'read output'],
 		execute: async (params) => {
 			const start = Date.now()
 

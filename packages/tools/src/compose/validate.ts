@@ -20,6 +20,14 @@ export function createValidateBlueprintTool(): WorkflowTool<typeof validateBluep
 		description:
 			'Check a workflow blueprint for errors, cycles, unreachable nodes, and structural issues',
 		parameters: validateBlueprintSchema,
+		triggers: [
+			'validate',
+			'check workflow',
+			'lint blueprint',
+			'verify graph',
+			'check errors',
+			'is workflow valid',
+		],
 		execute: async (params) => {
 			const start = Date.now()
 			try {

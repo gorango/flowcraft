@@ -25,6 +25,7 @@ export function createSkipNodeTool(config: {
 		description:
 			'Mark a node as skipped without execution, optionally providing a synthetic output',
 		parameters: skipNodeSchema,
+		triggers: ['skip node', 'bypass node', 'mark skipped', 'skip this step'],
 		execute: async (params) => {
 			const start = Date.now()
 

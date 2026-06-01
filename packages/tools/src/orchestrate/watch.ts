@@ -30,6 +30,7 @@ export function createWatchExecutionTool(config: {
 		description:
 			'Monitor a running workflow execution by polling for new events at intervals. NOTE: This tool blocks synchronously for up to maxPolls * interval milliseconds (default 60s). It will hold the LLM tool call open during this time. For long-running workflows, use lower maxPolls and poll repeatedly, or set a timeout.',
 		parameters: watchExecutionSchema,
+		triggers: ['watch', 'stream', 'live', 'subscribe', 'real-time', 'monitor execution'],
 		execute: async (params) => {
 			const start = Date.now()
 			const timeline: Array<Record<string, unknown>> = []

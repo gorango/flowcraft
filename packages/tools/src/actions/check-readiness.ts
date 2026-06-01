@@ -24,6 +24,7 @@ export function createCheckNodeReadinessTool(config: {
 		description:
 			'Check if a node is ready to execute by verifying all predecessors have completed',
 		parameters: checkNodeReadinessSchema,
+		triggers: ['ready', 'can run', 'predecessors done', 'prereqs', 'is node ready'],
 		execute: async (params) => {
 			const start = Date.now()
 

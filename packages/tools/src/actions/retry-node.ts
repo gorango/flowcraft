@@ -25,6 +25,7 @@ export function createRetryNodeTool(config: {
 		description:
 			'Re-execute a failed node in a workflow execution to recover from transient errors',
 		parameters: retryNodeSchema,
+		triggers: ['retry node', 'rerun node', 'retry single node', 'recover node'],
 		execute: async (params) => {
 			const start = Date.now()
 

@@ -21,6 +21,13 @@ export function createTransformNodeInputTool(config: {
 		name: 'transform_node_input',
 		description: 'Modify the input data that a specific node will receive before it executes',
 		parameters: transformNodeInputSchema,
+		triggers: [
+			'transform input',
+			'modify input',
+			'remap input',
+			'change node input',
+			'set input',
+		],
 		execute: async (params) => {
 			const start = Date.now()
 

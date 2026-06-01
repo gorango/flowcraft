@@ -29,6 +29,13 @@ export function createPatchNodeContextTool(config: {
 		description:
 			'Modify context values mid-execution to correct or enrich workflow state for a specific node',
 		parameters: patchNodeContextSchema,
+		triggers: [
+			'patch context',
+			'edit context',
+			'change context',
+			'set context value',
+			'update context',
+		],
 		execute: async (params) => {
 			const start = Date.now()
 

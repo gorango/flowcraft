@@ -16,6 +16,7 @@ export function createCheckDataFlowTool(): WorkflowTool<typeof checkDataFlowSche
 		description:
 			'Validate input/output data compatibility between connected nodes in a blueprint',
 		parameters: checkDataFlowSchema,
+		triggers: ['data flow', 'check data', 'input output', 'data validation', 'validate wiring'],
 		execute: async (params) => {
 			const start = Date.now()
 
