@@ -1,22 +1,16 @@
-import * as z from 'zod'
-import type { WorkflowTool, ToolResult } from '../types'
+import { tool, type Tool } from 'ai'
+import type { WorkflowTool } from '../types'
 
-export interface VercelTool {
-	name: string
-	description: string
-	parameters: Record<string, unknown>
-	execute: (params: Record<string, unknown>) => Promise<ToolResult>
+export type VercelTool = Tool<any, any>
+
+export function toVercelTool(workflowTool: WorkflowTool): VercelTool {
+	return tool({
+		description: workflowTool.description,
+		inputSchema: workflowTool.parameters,
+		execute: async (args) => workflowTool.execute(args as never),
+	})
 }
 
-export function toVercelTool(tool: WorkflowTool): VercelTool {
-	return {
-		name: tool.name,
-		description: tool.description,
-		parameters: z.toJSONSchema(tool.parameters) as Record<string, unknown>,
-		execute: async (params: Record<string, unknown>) => tool.execute(params),
-	}
-}
-
-export function toVercelTools(tools: WorkflowTool[]): VercelTool[] {
-	return tools.map(toVercelTool)
+export function toVercelTools(workflowTools: WorkflowTool[]): VercelTool[] {
+	return workflowTools.map(toVercelTool)
 }
