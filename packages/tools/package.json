@@ -28,26 +28,6 @@
 			"types": "./dist/index.d.mts",
 			"import": "./dist/index.mjs"
 		},
-		"./compose": {
-			"types": "./dist/compose/index.d.mts",
-			"import": "./dist/compose/index.mjs"
-		},
-		"./orchestrate": {
-			"types": "./dist/orchestrate/index.d.mts",
-			"import": "./dist/orchestrate/index.mjs"
-		},
-		"./actions": {
-			"types": "./dist/actions/index.d.mts",
-			"import": "./dist/actions/index.mjs"
-		},
-		"./discover": {
-			"types": "./dist/discover/index.d.mts",
-			"import": "./dist/discover/index.mjs"
-		},
-		"./resolve": {
-			"types": "./dist/resolve/index.d.mts",
-			"import": "./dist/resolve/index.mjs"
-		},
 		"./adapters": {
 			"types": "./dist/adapters/index.d.mts",
 			"import": "./dist/adapters/index.mjs"

@@ -1,9 +1,9 @@
 import type { z } from 'zod'
-import type { WorkflowTool, WorkflowToolConfig } from './types'
+import type { ToolResult, WorkflowTool, WorkflowToolConfig } from './types'
 
 export function createWorkflowTool<TParams extends z.ZodType>(
 	config: WorkflowToolConfig<TParams> & {
-		execute: (params: z.infer<TParams>) => Promise<import('./types').ToolResult>
+		execute: (params: z.infer<TParams>) => Promise<ToolResult>
 	},
 ): WorkflowTool<TParams> {
 	return {

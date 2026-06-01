@@ -2,6 +2,8 @@
 
 AI agent tools for composing, orchestrating, and executing Flowcraft workflows. Framework-agnostic Zod-based tool definitions with thin adapters for Vercel AI SDK, LangChain, OpenAI, and Anthropic.
 
+All tools are importable from the root entry point. Adapters are available at `@flowcraft/tools/adapters`.
+
 ## Installation
 
 ```bash
@@ -14,8 +16,7 @@ npm install @flowcraft/tools
 
 ```typescript
 import { FlowRuntime } from 'flowcraft'
-import { DirectResolver } from '@flowcraft/tools/resolve'
-import { createRunWorkflowTool, createCheckStatusTool } from '@flowcraft/tools/orchestrate'
+import { DirectResolver, createRunWorkflowTool, createCheckStatusTool } from '@flowcraft/tools'
 import { toVercelTools } from '@flowcraft/tools/adapters'
 import { generateText } from 'ai'
 import { openai } from '@ai-sdk/openai'
@@ -39,7 +40,7 @@ const result = await generateText({
 
 ```typescript
 import { toLangChainTools } from '@flowcraft/tools/adapters'
-import { createListWorkflowsTool, createGetWorkflowTool } from '@flowcraft/tools/discover'
+import { createListWorkflowsTool, createGetWorkflowTool } from '@flowcraft/tools'
 
 const tools = toLangChainTools([
 	createListWorkflowsTool({ resolver: dbResolver }),
@@ -61,7 +62,7 @@ Three layers of abstraction:
 
 ## Tool Groups
 
-### Compose (`@flowcraft/tools/compose`)
+### Compose
 
 Tools for creating, modifying, and analyzing workflow blueprints:
 
@@ -86,7 +87,7 @@ import {
 	createValidateBlueprintTool,
 	createCheckNodeImplementationsTool,
 	createGenerateFromTemplateTool,
-} from '@flowcraft/tools/compose'
+} from '@flowcraft/tools'
 
 const tools = [
 	createCreateBlueprintTool({ generate: myBlueprintGenerator }),
@@ -96,7 +97,7 @@ const tools = [
 ]
 ```
 
-### Orchestrate (`@flowcraft/tools/orchestrate`)
+### Orchestrate
 
 Tools for executing and monitoring workflows:
 
@@ -128,7 +129,7 @@ import {
 	createResumeWorkflowTool,
 	createRetryFailedNodesTool,
 	createGetExecutionTimelineTool,
-} from '@flowcraft/tools/orchestrate'
+} from '@flowcraft/tools'
 
 const tools = [
 	createRunWorkflowTool({ resolver, runtime, asyncStore }),
@@ -138,21 +139,93 @@ const tools = [
 ]
 ```
 
-### Actions (`@flowcraft/tools/actions`)
+### Actions
 
 Generate per-node tools from a blueprint (opt-in):
 
 ```typescript
-import { createNodeActionTools } from '@flowcraft/tools/actions'
+import { createNodeActionTools } from '@flowcraft/tools'
+```
 
-const tools = createNodeActionTools(orderBlueprint, {
-	runtime,
-	nodes: [
-		{ nodeId: 'validate-order', description: 'Validate an order before processing' },
-		{ nodeId: 'process-payment', description: 'Charge the customer payment' },
-	],
-})
-// Returns tools: order-processing__validate-order, order-processing__process-payment
+| Tool                    | Description                               |
+| ----------------------- | ----------------------------------------- |
+| `get_node_info`         | Get node definition, config, and metadata |
+| `check_node_readiness`  | Check if node's predecessors completed    |
+| `get_node_output`       | Get a completed node's output             |
+| `get_node_error`        | Get detailed error from failed node       |
+| `retry_node`            | Re-execute a failed node                  |
+| `skip_node`             | Mark node as skipped without execution    |
+| `set_node_complete`     | Manually mark node as done with output    |
+| `pause_before_node`     | Set breakpoint before node execution      |
+| `request_node_approval` | Pause and wait for human approval         |
+| `transform_node_input`  | Modify input before node execution        |
+| `patch_node_context`    | Modify context keys for a node            |
+| `execute_nodes_up_to`   | Run workflow until specific node          |
+| `execute_node_batch`    | Run multiple nodes in parallel            |
+
+### Discover
+
+Tools for discovering workflows and executions:
+
+| Tool              | Description                           |
+| ----------------- | ------------------------------------- |
+| `list_workflows`  | List available workflow blueprints    |
+| `get_workflow`    | Get details about a specific workflow |
+| `list_executions` | List recent executions                |
+| `get_execution`   | Get detailed execution info           |
+
+```typescript
+import {
+	createListWorkflowsTool,
+	createGetWorkflowTool,
+	createListExecutionsTool,
+	createGetExecutionTool,
+} from '@flowcraft/tools'
+
+const tools = [
+	createListWorkflowsTool({ resolver: dbResolver }),
+	createGetWorkflowTool({ resolver: dbResolver }),
+	createListExecutionsTool({ eventStore }),
+	createGetExecutionTool({ eventStore }),
+]
+```
+
+### Resolve
+
+Blueprint resolution strategies:
+
+```typescript
+import {
+	DirectResolver,
+	RegistryResolver,
+	DatabaseResolver,
+	CompositeResolver,
+} from '@flowcraft/tools'
+```
+
+### Utilities
+
+Shared utilities for event parsing and graph analysis:
+
+```typescript
+import {
+	getCompletedNodes,
+	getNodeErrors,
+	reconstructContext,
+	getExecutionStatus,
+	getAwaitingNodes,
+	normalizeResult,
+	createAsyncExecutionStore,
+} from '@flowcraft/tools'
+
+import {
+	getPredecessors,
+	getSuccessors,
+	haveAllPredecessorsCompleted,
+	getExecutionOrder,
+	findOrphanNodes,
+	getDataFlow,
+} from '@flowcraft/tools'
 ```
 
 Additional per-node action tools available:
@@ -200,7 +273,7 @@ const tools = [
 ]
 ```
 
-### Resolve (`@flowcraft/tools/resolve`)
+### Resolve
 
 Blueprint resolution strategies:
 
@@ -210,7 +283,7 @@ import {
 	RegistryResolver,
 	DatabaseResolver,
 	CompositeResolver,
-} from '@flowcraft/tools/resolve'
+} from '@flowcraft/tools'
 
 // Direct: blueprint provided directly
 const direct = new DirectResolver({ 'my-flow': myBlueprint })
@@ -228,7 +301,7 @@ const db = new DatabaseResolver({
 const composite = new CompositeResolver([registry, db])
 ```
 
-### Utilities (`@flowcraft/tools/utils`)
+### Utilities
 
 Shared utilities for event parsing and graph analysis:
 
@@ -239,7 +312,7 @@ import {
 	reconstructContext,
 	getExecutionStatus,
 	getAwaitingNodes,
-} from '@flowcraft/tools/utils/events'
+} from '@flowcraft/tools'
 
 import {
 	getPredecessors,
@@ -248,12 +321,12 @@ import {
 	getExecutionOrder,
 	findOrphanNodes,
 	getDataFlow,
-} from '@flowcraft/tools/utils/graph'
+} from '@flowcraft/tools'
 ```
 
-### Adapters (`@flowcraft/tools/adapters`)
+### Adapters
 
-Framework-specific tool conversion:
+Framework-specific tool conversion (separate entrypoint to avoid pulling in peer deps):
 
 ```typescript
 import {
@@ -269,12 +342,49 @@ const openaiSchemas = toOpenAISchemas(workflowTools)
 const anthropicTools = toAnthropicTools(workflowTools)
 ```
 
+### Helpers
+
+Factory functions that create all tools for a group — or all groups at once — from a single config bag. Tools are automatically excluded when their required dependencies are missing.
+
+```typescript
+import { createAllTools, createOrchestrateTools } from '@flowcraft/tools'
+
+const deps = {
+	resolver,
+	runtime,
+	eventStore,
+	generate: myBlueprintGenerator,
+	templates: myTemplateStore,
+}
+
+// All tools from every group
+const allTools = createAllTools(deps)
+
+// Tools from a single group
+const orchestrateTools = createOrchestrateTools(deps)
+```
+
+Each helper accepts a `ToolsDeps` object where every field is optional:
+
+| Dep              | Required by                             |
+| ---------------- | --------------------------------------- |
+| `resolver`       | Compose, Actions, Discover, Orchestrate |
+| `runtime`        | Actions, Orchestrate                    |
+| `eventStore`     | Actions, Discover, Orchestrate          |
+| `generate`       | `createCreateBlueprintTool`             |
+| `templates`      | `createGenerateFromTemplateTool`        |
+| `registry`       | `createCheckNodeImplementationsTool`    |
+| `asyncStore`     | `createRunWorkflowTool` (async mode)    |
+| `controllers`    | `createCancelWorkflowTool`              |
+| `database`       | `createListWorkflowsTool`               |
+| `executionIndex` | `createListExecutionsTool`              |
+
 ## Blueprint Generation
 
 The `create_workflow` tool needs a blueprint generator function. You can provide your own or use the default:
 
 ```typescript
-import { createCreateBlueprintTool } from '@flowcraft/tools/compose'
+import { createCreateBlueprintTool } from '@flowcraft/tools'
 
 // Custom generator using your preferred LLM
 const tool = createCreateBlueprintTool({
