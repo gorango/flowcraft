@@ -12,6 +12,9 @@ defineProps({
 		required: true,
 	},
 })
+
+const minZoom = 0.1
+const maxZoom = 1.5
 </script>
 
 <template>
@@ -25,6 +28,8 @@ defineProps({
 			:pan-on-drag="true"
 			:zoom-on-scroll="true"
 			:zoom-on-double-click="true"
+			:min-zoom="minZoom"
+			:max-zoom="maxZoom"
 		>
 			<Background />
 		</VueFlow>
@@ -33,7 +38,7 @@ defineProps({
 
 <style>
 .vue-flow-diagram {
-	height: 400px;
+	height: 100%;
 	width: 100%;
 	border-radius: 8px;
 	overflow: hidden;

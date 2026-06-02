@@ -13,6 +13,7 @@ declare module 'vue' {
   export interface GlobalComponents {
     DemoBasic: typeof import('./.vitepress/theme/components/Demo/Basic.vue')['default']
     DemoBatch: typeof import('./.vitepress/theme/components/Demo/Batch.vue')['default']
+    DemoCompiler: typeof import('./.vitepress/theme/components/Demo/Compiler.vue')['default']
     DemoDeclarative: typeof import('./.vitepress/theme/components/Demo/Declarative.vue')['default']
     DemoFallback: typeof import('./.vitepress/theme/components/Demo/Fallback.vue')['default']
     DemoGettingStarted: typeof import('./.vitepress/theme/components/Demo/GettingStarted.vue')['default']
@@ -27,6 +28,7 @@ declare module 'vue' {
     Diagram: typeof import('./.vitepress/theme/components/Diagram.vue')['default']
     EdgeLoopback: typeof import('./.vitepress/theme/components/Edge/Loopback.vue')['default']
     Flow: typeof import('./.vitepress/theme/components/Flow.vue')['default']
+    MonacoEditor: typeof import('./.vitepress/theme/components/MonacoEditor.vue')['default']
     NodeDefault: typeof import('./.vitepress/theme/components/Node/Default.vue')['default']
     NodeInput: typeof import('./.vitepress/theme/components/Node/Input.vue')['default']
     NodeNode: typeof import('./.vitepress/theme/components/Node/Node.vue')['default']

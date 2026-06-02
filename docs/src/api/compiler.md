@@ -36,7 +36,10 @@ interface CompilationOutput {
 Compiles a raw TypeScript source string containing `@flow`/`@step` annotations into a blueprint. Useful for testing, REPL environments, or low-frequency runtime configuration.
 
 ```typescript
-function compileCode(code: string, options?: { id?: string }): {
+function compileCode(
+	code: string,
+	options?: { id?: string },
+): {
 	blueprint: Blueprint | null
 	diagnostics: CompilationDiagnostic[]
 }

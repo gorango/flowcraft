@@ -23,6 +23,10 @@
 		".": {
 			"types": "./dist/index.d.mts",
 			"import": "./dist/index.mjs"
+		},
+		"./browser": {
+			"types": "./dist/browser.d.mts",
+			"import": "./dist/browser.mjs"
 		}
 	},
 	"scripts": {
@@ -42,7 +46,7 @@
 		"@types/node": "^25.9.1",
 		"@types/resolve": "^1.20.6",
 		"@vitest/coverage-v8": "^4.1.7",
-		"flowcraft": "^2.10.1",
+		"flowcraft": "workspace:^2.10.1",
 		"tsdown": "^0.22.0",
 		"vitest": "^4.1.7"
 	},

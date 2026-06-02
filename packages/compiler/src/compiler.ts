@@ -241,7 +241,7 @@ export class Compiler {
 				relativePath = './' + relativePath
 			}
 			imports.push(`import { ${exportName} } from '${relativePath}'`)
-			registryEntries.push(`  '${uses}': ${exportName}`)
+			registryEntries.push(`  '${uses}': (ctx) => ${exportName}(ctx.input)`)
 		}
 
 		const blueprintEntries = Object.entries(blueprints)

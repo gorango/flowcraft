@@ -1,6 +1,7 @@
 import { beforeAll, describe, expect, it, vi } from 'vitest'
 import { Compiler } from '../src/compiler'
 import { compileCode } from '../src/index'
+import { compileCodeBrowser } from '../src/browser'
 import { loadConfig } from '../src/config-loader'
 import { buildFlows } from '../src/build'
 import fs from 'node:fs'
@@ -356,9 +357,7 @@ export async function myFlow(context: any) {
 		expect(blueprint).not.toBeNull()
 		if (!blueprint) throw new Error('blueprint is null')
 		expect(blueprint.nodes.length).toBeGreaterThan(0)
-		const greetNode = blueprint.nodes.find(
-			(n) => n.uses === 'process' && n.params?.uses === 'greet',
-		)
+		const greetNode = blueprint.nodes.find((n) => n.uses === 'greet')
 		expect(greetNode).toBeDefined()
 	})
 
@@ -397,7 +396,7 @@ export async function myFlow(context: any) {
 		expect(blueprint).not.toBeNull()
 		if (!blueprint) throw new Error('blueprint is null')
 		expect(blueprint.id).toBe('customFlow')
-		const greetNode = blueprint.nodes.find((n) => n.uses === 'process')
+		const greetNode = blueprint.nodes.find((n) => n.uses === 'greet')
 		expect(greetNode).toBeDefined()
 		if (!greetNode?.params) throw new Error('greetNode params not found')
 		expect(greetNode.params.label).toBe('Custom Greeting')
@@ -438,6 +437,53 @@ export async function badFlow(context: any) {
 			(d) => d.severity === 'error' && d.message.includes('await'),
 		)
 		expect(awaitError).toBeDefined()
+	})
+})
+
+describe('compileCodeBrowser', () => {
+	it('should compile and execute via FlowRuntime, verifying output values', async () => {
+		const code = `@step
+export async function loadConfig() {
+  return { name: 'Flowcraft', value: 21 }
+}
+
+@step
+export async function greet(params: { name: string; value: number }) {
+  return { message: 'Hello, ' + params.name + '!', value: params.value }
+}
+
+@step
+export async function double(params: { value: number }) {
+  return params.value * 2
+}
+
+@flow
+export async function demoFlow(context: any) {
+  const config = await loadConfig()
+  const msg = await greet({ name: config.name, value: config.value })
+  const doubled = await double({ value: config.value })
+  return { greeting: msg.message, result: doubled }
+}`
+
+		const { blueprint, diagnostics, registry } = compileCodeBrowser(code)
+
+		expect(diagnostics.filter((d) => d.severity === 'error')).toHaveLength(0)
+		expect(blueprint).not.toBeNull()
+		if (!blueprint) return
+
+		const functionRegistry = new Map(Object.entries(registry))
+
+		const { FlowRuntime } = await import('flowcraft')
+		const runtime = new FlowRuntime({ registry: functionRegistry })
+		const result = await runtime.run(blueprint, {}, { functionRegistry })
+
+		expect(result.status).toBe('completed')
+		expect(result.context['_outputs.loadConfig_1']).toEqual({ name: 'Flowcraft', value: 21 })
+		expect(result.context['_outputs.greet_1']).toEqual({
+			message: 'Hello, Flowcraft!',
+			value: 21,
+		})
+		expect(result.context['_outputs.double_1']).toBe(42)
 	})
 })
 
@@ -1090,7 +1136,7 @@ export async function switchAtStartFlow(context: any) {
 		expect(diagnostics.filter((d) => d.severity === 'error')).toHaveLength(0)
 		expect(blueprint).not.toBeNull()
 		if (!blueprint) return
-		// remapNode converts unknown uses to 'process', so check by id
+		// step nodes keep their original uses (step name), check by id
 		const startNode = blueprint.nodes.find((n) => n.id === 'start')
 		expect(startNode).toBeDefined()
 	})

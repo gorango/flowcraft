@@ -136,10 +136,18 @@ export async function switchWorkflow(status: string) {
 	}
 }
 
-/** @step */ async function handlePending() { /* ... */ }
-/** @step */ async function handleApproved() { /* ... */ }
-/** @step */ async function handleRejected() { /* ... */ }
-/** @step */ async function handleUnknown() { /* ... */ }
+/** @step */ async function handlePending() {
+	/* ... */
+}
+/** @step */ async function handleApproved() {
+	/* ... */
+}
+/** @step */ async function handleRejected() {
+	/* ... */
+}
+/** @step */ async function handleUnknown() {
+	/* ... */
+}
 ```
 
 ### Fallbacks with Try/Catch/Finally
@@ -190,9 +198,15 @@ export async function tryCatchFinallyWorkflow() {
 	}
 }
 
-/** @step */ async function riskyOperation() { /* ... */ }
-/** @step */ async function fallbackOperation(error: any) { /* ... */ }
-/** @step */ async function cleanup() { /* ... */ }
+/** @step */ async function riskyOperation() {
+	/* ... */
+}
+/** @step */ async function fallbackOperation(error: any) {
+	/* ... */
+}
+/** @step */ async function cleanup() {
+	/* ... */
+}
 ```
 
 ### Loops

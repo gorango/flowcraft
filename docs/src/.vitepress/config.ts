@@ -5,11 +5,28 @@ import Components from 'unplugin-vue-components/vite'
 import { defineConfig } from 'vitepress'
 import { MermaidMarkdown, MermaidPlugin } from 'vitepress-plugin-mermaid'
 
+const logger = {
+	warn(msg: string) {
+		if (msg.includes('cannot be analyzed by Vite')) return
+		console.warn(msg)
+	},
+	warnOnce(msg: string) {
+		this.warn(msg)
+	},
+	error(msg: string) {
+		console.error(msg)
+	},
+	info(msg: string) {
+		console.info(msg)
+	},
+}
+
 export default defineConfig({
 	cleanUrls: true,
 	title: 'flowcraft',
 	description: 'A lightweight, unopinionated workflow engine for executing declarative graphs',
 	vite: {
+		customLogger: logger,
 		optimizeDeps: {
 			include: ['mermaid'],
 		},
@@ -100,6 +117,10 @@ export default defineConfig({
 								{
 									text: 'Build Tool Integration',
 									link: '/guide/compiler/build-tools',
+								},
+								{
+									text: 'Playground',
+									link: '/guide/compiler/playground',
 								},
 							],
 						},

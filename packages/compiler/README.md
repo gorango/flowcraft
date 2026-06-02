@@ -227,9 +227,9 @@ import { createCart, addItems, processPayment } from '../src/steps';
 import type { NodeImplementation, WorkflowBlueprint } from 'flowcraft';
 
 export const registry = {
-  'createCart': createCart,
-  'addItems': addItems,
-  'processPayment': processPayment
+  'createCart': (ctx) => createCart(ctx.input),
+  'addItems': (ctx) => addItems(ctx.input),
+  'processPayment': (ctx) => processPayment(ctx.input)
 };
 
 export const blueprints = {
