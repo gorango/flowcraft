@@ -190,10 +190,10 @@ try {
 1. **Pre-processing**: The mapper builds a lookup table from the compiled manifest, mapping node IDs to their source locations (`file`, `line`, `column`).
 
 2. **Error Enhancement**: When an error occurs, the mapper:
-    - Checks if the error is a `FlowcraftError` with a `nodeId` property
-    - Falls back to extracting node IDs from error messages using regex patterns
-    - Looks up the source location for the identified node
-    - Returns a new error with the source location prepended to the original message
+   - Checks if the error is a `FlowcraftError` with a `nodeId` property
+   - Falls back to extracting node IDs from error messages using regex patterns
+   - Looks up the source location for the identified node
+   - Returns a new error with the source location prepended to the original message
 
 3. **Fallback**: If no node ID can be identified or no source location is found, the original error is returned unchanged.
 

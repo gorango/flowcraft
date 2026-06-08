@@ -30,9 +30,7 @@ export function createActionTools(deps: ToolsDeps): WorkflowTool[] {
 		tools.push(createExecuteNodeBatchTool({ runtime: deps.runtime, resolver: deps.resolver }))
 		tools.push(createExecuteNodesUpToTool({ runtime: deps.runtime, resolver: deps.resolver }))
 		tools.push(createPauseBeforeNodeTool({ runtime: deps.runtime, resolver: deps.resolver }))
-		tools.push(
-			createRequestNodeApprovalTool({ runtime: deps.runtime, resolver: deps.resolver }),
-		)
+		tools.push(createRequestNodeApprovalTool({ runtime: deps.runtime, resolver: deps.resolver }))
 	}
 
 	if (deps.eventStore && deps.resolver) {

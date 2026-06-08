@@ -28,27 +28,27 @@ export interface Middleware<TContext extends Record<string, any> = Record<string
 Runs before a node executes. Useful for setup or logging.
 
 - **Parameters:**
-    - `ctx`: The workflow context
-    - `nodeId`: The ID of the node about to execute
+  - `ctx`: The workflow context
+  - `nodeId`: The ID of the node about to execute
 
 ### `afterNode`
 
 Runs after a node executes, regardless of success or failure.
 
 - **Parameters:**
-    - `ctx`: The workflow context
-    - `nodeId`: The ID of the executed node
-    - `result`: The result of the node execution (undefined if error)
-    - `error`: The error thrown (undefined if success)
+  - `ctx`: The workflow context
+  - `nodeId`: The ID of the executed node
+  - `result`: The result of the node execution (undefined if error)
+  - `error`: The error thrown (undefined if success)
 
 ### `aroundNode`
 
 Wraps the entire node execution. This is the most powerful hook as it can control the execution flow.
 
 - **Parameters:**
-    - `ctx`: The workflow context
-    - `nodeId`: The ID of the node being executed
-    - `next`: Function to call to proceed with execution
+  - `ctx`: The workflow context
+  - `nodeId`: The ID of the node being executed
+  - `next`: Function to call to proceed with execution
 - **Returns:** The [`NodeResult`](/api/nodes-and-edges#noderesult-interface) from the node or modified result
 
 ## Usage with FlowRuntime

@@ -256,9 +256,7 @@ describe('BullMQAdapter - Retry Mode', () => {
 				blueprints: {
 					'test-bp-2': {
 						id: 'test-bp-2',
-						nodes: [
-							{ id: 'A', uses: 'test', config: { maxRetries: 4, retryDelay: 500 } },
-						],
+						nodes: [{ id: 'A', uses: 'test', config: { maxRetries: 4, retryDelay: 500 } }],
 						edges: [],
 					},
 				},

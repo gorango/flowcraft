@@ -542,10 +542,7 @@ export default {
 		const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'flowcraft-err-config-'))
 		const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
 		try {
-			fs.writeFileSync(
-				path.join(tmpDir, 'flowcraft.config.ts'),
-				'export default { { invalid }',
-			)
+			fs.writeFileSync(path.join(tmpDir, 'flowcraft.config.ts'), 'export default { { invalid }')
 			await expect(loadConfig(tmpDir)).rejects.toThrow()
 			expect(errorSpy).toHaveBeenCalled()
 		} finally {
@@ -890,9 +887,7 @@ export async function testFlow(context: any) {
 }
 `
 		const { diagnostics } = compileCode(code)
-		const warn = diagnostics.find(
-			(d) => d.severity === 'error' && d.message.includes('non-call'),
-		)
+		const warn = diagnostics.find((d) => d.severity === 'error' && d.message.includes('non-call'))
 		expect(warn).toBeDefined()
 	})
 
@@ -986,9 +981,7 @@ export async function testFlow(context: any) {
 }
 `
 		const { diagnostics } = compileCode(code)
-		const err = diagnostics.find(
-			(d) => d.severity === 'error' && d.message.includes('for...in'),
-		)
+		const err = diagnostics.find((d) => d.severity === 'error' && d.message.includes('for...in'))
 		expect(err).toBeDefined()
 	})
 
@@ -1109,9 +1102,7 @@ export async function testFlow(context: any) {
 }
 `
 		const { diagnostics } = compileCode(code)
-		const warn = diagnostics.find(
-			(d) => d.severity === 'warning' && d.message.includes('Labeled'),
-		)
+		const warn = diagnostics.find((d) => d.severity === 'warning' && d.message.includes('Labeled'))
 		expect(warn).toBeDefined()
 	})
 
@@ -1201,9 +1192,7 @@ export async function testFlow(context: any) {
 }
 `
 		const { diagnostics } = compileCode(code)
-		const err = diagnostics.find(
-			(d) => d.severity === 'error' && d.message.includes('continue'),
-		)
+		const err = diagnostics.find((d) => d.severity === 'error' && d.message.includes('continue'))
 		expect(err).toBeDefined()
 	})
 })
@@ -1258,9 +1247,7 @@ export async function testFlow(context: any) {
 }
 `
 		const { diagnostics } = compileCode(code)
-		const err = diagnostics.find(
-			(d) => d.severity === 'error' && d.message.includes('non-call'),
-		)
+		const err = diagnostics.find((d) => d.severity === 'error' && d.message.includes('non-call'))
 		expect(err).toBeDefined()
 	})
 

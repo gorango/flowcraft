@@ -161,12 +161,7 @@ export function handleAwaitCall(
 						)
 						return
 					}
-					analyzer.state.addNodeAndWire(
-						nodeDef,
-						node,
-						analyzer.sourceFile,
-						analyzer.typeChecker,
-					)
+					analyzer.state.addNodeAndWire(nodeDef, node, analyzer.sourceFile, analyzer.typeChecker)
 				} else {
 					analyzer.addDiagnostic(
 						node,

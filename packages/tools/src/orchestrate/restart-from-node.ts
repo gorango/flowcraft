@@ -25,13 +25,7 @@ export function createRestartFromNodeTool(config: {
 		description:
 			'Restart a workflow execution from a specific node, replaying state up to that point',
 		parameters: restartFromNodeSchema,
-		triggers: [
-			'restart from',
-			'replay from',
-			'rerun from node',
-			'start over from',
-			'restart at',
-		],
+		triggers: ['restart from', 'replay from', 'rerun from node', 'start over from', 'restart at'],
 		execute: async (params) => {
 			const start = Date.now()
 
@@ -92,21 +86,15 @@ export function createRestartFromNodeTool(config: {
 					status: result.status as 'completed' | 'failed' | 'awaiting',
 					data: {
 						restartedFrom: params.nodeId,
-						inputOverrides: params.inputOverrides
-							? Object.keys(params.inputOverrides)
-							: [],
+						inputOverrides: params.inputOverrides ? Object.keys(params.inputOverrides) : [],
 						context: result.context,
 					},
 					executionId: result.context._executionId as string | undefined,
 					awaitingNodeIds: result.context._awaitingNodeIds as string[] | undefined,
-					awaitingDetails: result.context._awaitingDetails as
-						| Record<string, unknown>
-						| undefined,
+					awaitingDetails: result.context._awaitingDetails as Record<string, unknown> | undefined,
 					metadata: {
 						duration: Date.now() - start,
-						affectedNodes: Object.keys(
-							(result.context._outputs as Record<string, unknown>) ?? {},
-						),
+						affectedNodes: Object.keys((result.context._outputs as Record<string, unknown>) ?? {}),
 						blueprintId: blueprint.id,
 						blueprintVersion: blueprint.metadata?.version,
 					},

@@ -1,260 +1,260 @@
 name: Coverage
 
 on:
-    push:
-        tags:
-            - 'flowcraft*'
-    workflow_dispatch:
+  push:
+    tags:
+      - 'flowcraft*'
+  workflow_dispatch:
 
 jobs:
-    test-core:
-        runs-on: ubuntu-latest
-        steps:
-            - uses: actions/checkout@v4
-            - uses: pnpm/action-setup@v4
-            - name: Setup Node
-              uses: actions/setup-node@v4
-              with:
-                  node-version: 22
-                  cache: pnpm
-            - run: pnpm install
-            - run: pnpm --filter flowcraft test:coverage
-            - uses: codecov/codecov-action@v5
-              with:
-                  token: ${{ secrets.CODECOV_TOKEN }}
-                  files: ./packages/core/coverage/lcov.info
-                  flags: core
+  test-core:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install
+      - run: pnpm --filter flowcraft test:coverage
+      - uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: ./packages/core/coverage/lcov.info
+          flags: core
 
-    test-adapter-azure:
-        runs-on: ubuntu-latest
-        steps:
-            - uses: actions/checkout@v4
-            - uses: pnpm/action-setup@v4
-            - name: Setup Node
-              uses: actions/setup-node@v4
-              with:
-                  node-version: 22
-                  cache: pnpm
-            - run: pnpm install
-            - run: pnpm --filter @flowcraft/azure-adapter test:coverage
-            - uses: codecov/codecov-action@v5
-              with:
-                  token: ${{ secrets.CODECOV_TOKEN }}
-                  files: ./packages/adapter-azure/coverage/lcov.info
-                  flags: adapter-azure
+  test-adapter-azure:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install
+      - run: pnpm --filter @flowcraft/azure-adapter test:coverage
+      - uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: ./packages/adapter-azure/coverage/lcov.info
+          flags: adapter-azure
 
-    test-adapter-bullmq:
-        runs-on: ubuntu-latest
-        steps:
-            - uses: actions/checkout@v4
-            - uses: pnpm/action-setup@v4
-            - name: Setup Node
-              uses: actions/setup-node@v4
-              with:
-                  node-version: 22
-                  cache: pnpm
-            - run: pnpm install
-            - run: pnpm --filter @flowcraft/bullmq-adapter test:coverage
-            - uses: codecov/codecov-action@v5
-              with:
-                  token: ${{ secrets.CODECOV_TOKEN }}
-                  files: ./packages/adapter-bullmq/coverage/lcov.info
-                  flags: adapter-bullmq
+  test-adapter-bullmq:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install
+      - run: pnpm --filter @flowcraft/bullmq-adapter test:coverage
+      - uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: ./packages/adapter-bullmq/coverage/lcov.info
+          flags: adapter-bullmq
 
-    test-adapter-cloudflare:
-        runs-on: ubuntu-latest
-        steps:
-            - uses: actions/checkout@v4
-            - uses: pnpm/action-setup@v4
-            - name: Setup Node
-              uses: actions/setup-node@v4
-              with:
-                  node-version: 22
-                  cache: pnpm
-            - run: pnpm install
-            - run: pnpm --filter @flowcraft/cloudflare-adapter test:coverage
-            - uses: codecov/codecov-action@v5
-              with:
-                  token: ${{ secrets.CODECOV_TOKEN }}
-                  files: ./packages/adapter-cloudflare/coverage/lcov.info
-                  flags: adapter-cloudflare
+  test-adapter-cloudflare:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install
+      - run: pnpm --filter @flowcraft/cloudflare-adapter test:coverage
+      - uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: ./packages/adapter-cloudflare/coverage/lcov.info
+          flags: adapter-cloudflare
 
-    test-adapter-gcp:
-        runs-on: ubuntu-latest
-        steps:
-            - uses: actions/checkout@v4
-            - uses: pnpm/action-setup@v4
-            - name: Setup Node
-              uses: actions/setup-node@v4
-              with:
-                  node-version: 22
-                  cache: pnpm
-            - run: pnpm install
-            - run: pnpm --filter @flowcraft/gcp-adapter test:coverage
-            - uses: codecov/codecov-action@v5
-              with:
-                  token: ${{ secrets.CODECOV_TOKEN }}
-                  files: ./packages/adapter-gcp/coverage/lcov.info
-                  flags: adapter-gcp
+  test-adapter-gcp:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install
+      - run: pnpm --filter @flowcraft/gcp-adapter test:coverage
+      - uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: ./packages/adapter-gcp/coverage/lcov.info
+          flags: adapter-gcp
 
-    test-adapter-kafka:
-        runs-on: ubuntu-latest
-        steps:
-            - uses: actions/checkout@v4
-            - uses: pnpm/action-setup@v4
-            - name: Setup Node
-              uses: actions/setup-node@v4
-              with:
-                  node-version: 22
-                  cache: pnpm
-            - run: pnpm install
-            - run: pnpm --filter @flowcraft/kafka-adapter test:coverage
-            - uses: codecov/codecov-action@v5
-              with:
-                  token: ${{ secrets.CODECOV_TOKEN }}
-                  files: ./packages/adapter-kafka/coverage/lcov.info
-                  flags: adapter-kafka
+  test-adapter-kafka:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install
+      - run: pnpm --filter @flowcraft/kafka-adapter test:coverage
+      - uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: ./packages/adapter-kafka/coverage/lcov.info
+          flags: adapter-kafka
 
-    test-adapter-rabbitmq:
-        runs-on: ubuntu-latest
-        steps:
-            - uses: actions/checkout@v4
-            - uses: pnpm/action-setup@v4
-            - name: Setup Node
-              uses: actions/setup-node@v4
-              with:
-                  node-version: 22
-                  cache: pnpm
-            - run: pnpm install
-            - run: pnpm --filter @flowcraft/rabbitmq-adapter test:coverage
-            - uses: codecov/codecov-action@v5
-              with:
-                  token: ${{ secrets.CODECOV_TOKEN }}
-                  files: ./packages/adapter-rabbitmq/coverage/lcov.info
-                  flags: adapter-rabbitmq
+  test-adapter-rabbitmq:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install
+      - run: pnpm --filter @flowcraft/rabbitmq-adapter test:coverage
+      - uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: ./packages/adapter-rabbitmq/coverage/lcov.info
+          flags: adapter-rabbitmq
 
-    test-adapter-sqs:
-        runs-on: ubuntu-latest
-        steps:
-            - uses: actions/checkout@v4
-            - uses: pnpm/action-setup@v4
-            - name: Setup Node
-              uses: actions/setup-node@v4
-              with:
-                  node-version: 22
-                  cache: pnpm
-            - run: pnpm install
-            - run: pnpm --filter @flowcraft/sqs-adapter test:coverage
-            - uses: codecov/codecov-action@v5
-              with:
-                  token: ${{ secrets.CODECOV_TOKEN }}
-                  files: ./packages/adapter-sqs/coverage/lcov.info
-                  flags: adapter-sqs
+  test-adapter-sqs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install
+      - run: pnpm --filter @flowcraft/sqs-adapter test:coverage
+      - uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: ./packages/adapter-sqs/coverage/lcov.info
+          flags: adapter-sqs
 
-    test-adapter-vercel:
-        runs-on: ubuntu-latest
-        steps:
-            - uses: actions/checkout@v4
-            - uses: pnpm/action-setup@v4
-            - name: Setup Node
-              uses: actions/setup-node@v4
-              with:
-                  node-version: 22
-                  cache: pnpm
-            - run: pnpm install
-            - run: pnpm --filter @flowcraft/vercel-adapter test:coverage
-            - uses: codecov/codecov-action@v5
-              with:
-                  token: ${{ secrets.CODECOV_TOKEN }}
-                  files: ./packages/adapter-vercel/coverage/lcov.info
-                  flags: adapter-vercel
+  test-adapter-vercel:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install
+      - run: pnpm --filter @flowcraft/vercel-adapter test:coverage
+      - uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: ./packages/adapter-vercel/coverage/lcov.info
+          flags: adapter-vercel
 
-    test-middleware-opentelemetry:
-        runs-on: ubuntu-latest
-        steps:
-            - uses: actions/checkout@v4
-            - uses: pnpm/action-setup@v4
-            - name: Setup Node
-              uses: actions/setup-node@v4
-              with:
-                  node-version: 22
-                  cache: pnpm
-            - run: pnpm install
-            - run: pnpm --filter @flowcraft/opentelemetry-middleware test:coverage
-            - uses: codecov/codecov-action@v5
-              with:
-                  token: ${{ secrets.CODECOV_TOKEN }}
-                  files: ./packages/middleware-opentelemetry/coverage/lcov.info
-                  flags: middleware-opentelemetry
+  test-middleware-opentelemetry:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install
+      - run: pnpm --filter @flowcraft/opentelemetry-middleware test:coverage
+      - uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: ./packages/middleware-opentelemetry/coverage/lcov.info
+          flags: middleware-opentelemetry
 
-    test-history-postgres:
-        runs-on: ubuntu-latest
-        steps:
-            - uses: actions/checkout@v4
-            - uses: pnpm/action-setup@v4
-            - name: Setup Node
-              uses: actions/setup-node@v4
-              with:
-                  node-version: 22
-                  cache: pnpm
-            - run: pnpm install
-            - run: pnpm --filter @flowcraft/postgres-history test:coverage
-            - uses: codecov/codecov-action@v5
-              with:
-                  token: ${{ secrets.CODECOV_TOKEN }}
-                  files: ./packages/history-postgres/coverage/lcov.info
-                  flags: history-postgres
+  test-history-postgres:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install
+      - run: pnpm --filter @flowcraft/postgres-history test:coverage
+      - uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: ./packages/history-postgres/coverage/lcov.info
+          flags: history-postgres
 
-    test-history-sqlite:
-        runs-on: ubuntu-latest
-        steps:
-            - uses: actions/checkout@v4
-            - uses: pnpm/action-setup@v4
-            - name: Setup Node
-              uses: actions/setup-node@v4
-              with:
-                  node-version: 22
-                  cache: pnpm
-            - run: pnpm install
-            - run: pnpm --filter @flowcraft/sqlite-history test:coverage
-            - uses: codecov/codecov-action@v5
-              with:
-                  token: ${{ secrets.CODECOV_TOKEN }}
-                  files: ./packages/history-sqlite/coverage/lcov.info
-                  flags: history-sqlite
+  test-history-sqlite:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install
+      - run: pnpm --filter @flowcraft/sqlite-history test:coverage
+      - uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: ./packages/history-sqlite/coverage/lcov.info
+          flags: history-sqlite
 
-    test-cli:
-        runs-on: ubuntu-latest
-        steps:
-            - uses: actions/checkout@v4
-            - uses: pnpm/action-setup@v4
-            - name: Setup Node
-              uses: actions/setup-node@v4
-              with:
-                  node-version: 22
-                  cache: pnpm
-            - run: pnpm install
-            - run: pnpm --filter @flowcraft/cli test:coverage
-            - uses: codecov/codecov-action@v5
-              with:
-                  token: ${{ secrets.CODECOV_TOKEN }}
-                  files: ./packages/cli/coverage/lcov.info
-                  flags: cli
+  test-cli:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install
+      - run: pnpm --filter @flowcraft/cli test:coverage
+      - uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: ./packages/cli/coverage/lcov.info
+          flags: cli
 
-    test-compiler:
-        runs-on: ubuntu-latest
-        steps:
-            - uses: actions/checkout@v4
-            - uses: pnpm/action-setup@v4
-            - name: Setup Node
-              uses: actions/setup-node@v4
-              with:
-                  node-version: 22
-                  cache: pnpm
-            - run: pnpm install
-            - run: pnpm --filter @flowcraft/compiler test:coverage
-            - uses: codecov/codecov-action@v5
-              with:
-                  token: ${{ secrets.CODECOV_TOKEN }}
-                  files: ./packages/compiler/coverage/lcov.info
-                  flags: compiler
+  test-compiler:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install
+      - run: pnpm --filter @flowcraft/compiler test:coverage
+      - uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: ./packages/compiler/coverage/lcov.info
+          flags: compiler

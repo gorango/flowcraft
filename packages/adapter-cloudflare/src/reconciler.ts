@@ -52,10 +52,9 @@ export function createCloudflareReconciler(options: CloudflareReconcilerOptions)
 						stalledRunIds.push(runId)
 					}
 				} catch (parseError) {
-					logger?.warn(
-						`[CloudflareReconciler] Failed to parse status for run ${runId}:`,
-						{ parseError },
-					)
+					logger?.warn(`[CloudflareReconciler] Failed to parse status for run ${runId}:`, {
+						parseError,
+					})
 				}
 			}
 

@@ -202,9 +202,9 @@ When a workflow contains cycles and is run in non-strict mode, the runtime arbit
 
 2. **Enable strict mode**: Run workflows in strict mode (`strict: true`) to prevent execution of non-DAG graphs entirely:
 
-    ```typescript
-    const result = await runtime.run(blueprint, initialContext, { strict: true })
-    ```
+   ```typescript
+   const result = await runtime.run(blueprint, initialContext, { strict: true })
+   ```
 
 3. **Design for predictability**: If you must use cycles, ensure they have clear entry and exit points, and test thoroughly in various scenarios.
 

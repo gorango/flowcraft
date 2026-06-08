@@ -50,11 +50,7 @@ export class KafkaAdapter extends BaseDistributedAdapter {
 		})
 	}
 
-	protected async onJobStart(
-		_runId: string,
-		_blueprintId: string,
-		_nodeId: string,
-	): Promise<void> {
+	protected async onJobStart(_runId: string, _blueprintId: string, _nodeId: string): Promise<void> {
 		// Touch the status table to update the 'updated_at' timestamp.
 		try {
 			// Using an INSERT as an UPSERT. This only sets status if it's the first touch.
@@ -140,10 +136,9 @@ export class KafkaAdapter extends BaseDistributedAdapter {
 							await handler(job)
 							// kafka handles offsets automatically on success
 						} catch (error) {
-							this.logger.error(
-								`[KafkaAdapter] Error processing message on topic ${topic}:`,
-								{ error },
-							)
+							this.logger.error(`[KafkaAdapter] Error processing message on topic ${topic}:`, {
+								error,
+							})
 							// throwing - kafka will not commit the offset and the message will be re-consumed based on policy
 							throw error
 						}

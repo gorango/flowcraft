@@ -18,9 +18,7 @@ export class CosmosDbContext implements IAsyncContext<Record<string, any>> {
 
 	constructor(runId: string, options: CosmosDbContextOptions) {
 		this.runId = runId
-		this.container = options.client
-			.database(options.databaseName)
-			.container(options.containerName)
+		this.container = options.client.database(options.databaseName).container(options.containerName)
 	}
 
 	private async readItem(): Promise<Record<string, any> | null> {
@@ -58,9 +56,7 @@ export class CosmosDbContext implements IAsyncContext<Record<string, any>> {
 
 	async delete<K extends string>(key: K): Promise<boolean> {
 		try {
-			await this.container
-				.item(this.runId, this.runId)
-				.patch([{ op: 'remove', path: `/${key}` }])
+			await this.container.item(this.runId, this.runId).patch([{ op: 'remove', path: `/${key}` }])
 			return true
 		} catch (error: any) {
 			// patch will fail if the path doesn't exist, which is a valid outcome for delete
@@ -74,16 +70,7 @@ export class CosmosDbContext implements IAsyncContext<Record<string, any>> {
 	async toJSON(): Promise<Record<string, any>> {
 		const item = await this.readItem()
 		if (item) {
-			const {
-				id: _id,
-				runId: _runId,
-				_rid,
-				_self,
-				_etag,
-				_attachments,
-				_ts,
-				...contextData
-			} = item
+			const { id: _id, runId: _runId, _rid, _self, _etag, _attachments, _ts, ...contextData } = item
 			return contextData
 		}
 		return {}

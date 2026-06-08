@@ -31,12 +31,8 @@ export function createOrchestrateTools(deps: ToolsDeps): WorkflowTool[] {
 				asyncStore: deps.asyncStore,
 			}),
 		)
-		tools.push(
-			createRunWorkflowsSequentialTool({ resolver: deps.resolver, runtime: deps.runtime }),
-		)
-		tools.push(
-			createRunWorkflowsParallelTool({ resolver: deps.resolver, runtime: deps.runtime }),
-		)
+		tools.push(createRunWorkflowsSequentialTool({ resolver: deps.resolver, runtime: deps.runtime }))
+		tools.push(createRunWorkflowsParallelTool({ resolver: deps.resolver, runtime: deps.runtime }))
 		tools.push(createBatchExecuteTool({ resolver: deps.resolver, runtime: deps.runtime }))
 	}
 

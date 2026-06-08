@@ -46,9 +46,7 @@ async function sendNotification(ctx: NodeContext<WorkflowContext>) {
 	const processedUser = await context.get('processedUser')
 
 	// Simulate sending a notification
-	console.log(
-		`📧 Notification sent to ${processedUser?.email}: "Welcome ${processedUser?.name}!"`,
-	)
+	console.log(`📧 Notification sent to ${processedUser?.email}: "Welcome ${processedUser?.name}!"`)
 
 	return { output: 'Notification sent successfully' }
 }

@@ -10,11 +10,7 @@ export function handlePromiseAll(
 ): string | null {
 	const arrayArg = node.arguments[0]
 	if (!arrayArg || !ts.isArrayLiteralExpression(arrayArg)) {
-		analyzer.addDiagnostic(
-			node,
-			'error',
-			`Promise.${method} requires an array literal argument`,
-		)
+		analyzer.addDiagnostic(node, 'error', `Promise.${method} requires an array literal argument`)
 		return analyzer.state.getCursor()
 	}
 

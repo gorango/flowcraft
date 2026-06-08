@@ -64,17 +64,14 @@ export function createOptimizeForParallelismTool(): WorkflowTool<
 				}
 
 				const maxParallelism = Math.max(...levels.map((l) => l.length))
-				const avgParallelism =
-					levels.reduce((sum, l) => sum + l.length, 0) / (levels.length || 1)
+				const avgParallelism = levels.reduce((sum, l) => sum + l.length, 0) / (levels.length || 1)
 				const fanOutNodes: Array<{
 					nodeId: string
 					branchCount: number
 				}> = []
 
 				for (const id of order) {
-					const successors = blueprint.edges
-						.filter((e) => e.source === id)
-						.map((e) => e.target)
+					const successors = blueprint.edges.filter((e) => e.source === id).map((e) => e.target)
 					if (successors.length > 1) {
 						fanOutNodes.push({ nodeId: id, branchCount: successors.length })
 					}

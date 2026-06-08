@@ -176,10 +176,7 @@ async function main() {
 		console.log('   • Create clean output interfaces')
 		console.log('='.repeat(60))
 	} catch (error) {
-		console.error(
-			'\n❌ Example failed:',
-			error instanceof Error ? error.message : String(error),
-		)
+		console.error('\n❌ Example failed:', error instanceof Error ? error.message : String(error))
 		process.exit(1)
 	}
 }

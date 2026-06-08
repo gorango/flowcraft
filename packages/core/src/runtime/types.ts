@@ -39,10 +39,7 @@ export interface ExecutionServices {
 }
 
 export interface IOrchestrator {
-	run(
-		context: ExecutionContext<any, any>,
-		traverser: GraphTraverser,
-	): Promise<WorkflowResult<any>>
+	run(context: ExecutionContext<any, any>, traverser: GraphTraverser): Promise<WorkflowResult<any>>
 }
 
 export type { NodeExecutionResult, NodeExecutor }

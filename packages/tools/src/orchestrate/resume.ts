@@ -47,9 +47,7 @@ export function createResumeWorkflowTool(config: {
 						(e) => e.type === 'workflow:start',
 					)
 					if (!startEvent?.blueprintId) {
-						throw new Error(
-							'Cannot determine blueprint from events. Provide workflowId.',
-						)
+						throw new Error('Cannot determine blueprint from events. Provide workflowId.')
 					}
 					const resolved = await config.resolver.resolve({
 						id: startEvent.blueprintId as string,

@@ -43,8 +43,8 @@ You must have the following Cloudflare resources provisioned:
 - A **Cloudflare Queue** to handle jobs.
 - A **KV Namespace** for workflow **status** tracking.
 - A **Durable Object** class for:
-    - Context persistence (workflow state survives restarts)
-    - Atomic coordination (fan-in join counters, locks)
+  - Context persistence (workflow state survives restarts)
+  - Atomic coordination (fan-in join counters, locks)
 
 ### Using Wrangler CLI
 

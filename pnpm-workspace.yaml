@@ -1,23 +1,23 @@
 packages:
-    - docs
-    - examples/**/*
-    - packages/*
+  - docs
+  - examples/**/*
+  - packages/*
 
 allowBuilds:
-    '@parcel/watcher': true
-    better-sqlite3: true
-    cpu-features: true
-    esbuild: true
-    msgpackr-extract: true
-    protobufjs: true
-    sharp: true
-    ssh2: true
-    vue-demi: true
-    workerd: true
+  '@parcel/watcher': true
+  better-sqlite3: true
+  cpu-features: true
+  esbuild: true
+  msgpackr-extract: true
+  protobufjs: true
+  sharp: true
+  ssh2: true
+  vue-demi: true
+  workerd: true
 
 minimumReleaseAgeExclude:
-    - '@cloudflare/workers-types@4.20260524.1'
-    - bullmq@5.77.2
+  - '@cloudflare/workers-types@4.20260524.1'
+  - bullmq@5.77.2
 
 onlyBuiltDependencies:
-    - better-sqlite3
+  - better-sqlite3

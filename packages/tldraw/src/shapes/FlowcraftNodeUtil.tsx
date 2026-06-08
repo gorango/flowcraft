@@ -75,11 +75,7 @@ export class FlowcraftNodeUtil extends ShapeUtil<FlowcraftNodeShape> {
 						width: shape.props.w,
 						height: shape.props.h,
 						background:
-							status === 'failed'
-								? '#fef2f2'
-								: status === 'pending'
-									? '#fefce8'
-									: '#ffffff',
+							status === 'failed' ? '#fef2f2' : status === 'pending' ? '#fefce8' : '#ffffff',
 						border: `1.5px solid ${status === 'failed' ? '#ef4444' : status === 'completed' ? '#22c55e' : status === 'pending' ? '#eab308' : '#e5e7eb'}`,
 						borderRadius: 8,
 						boxSizing: 'border-box',
@@ -106,9 +102,7 @@ export class FlowcraftNodeUtil extends ShapeUtil<FlowcraftNodeShape> {
 					</div>
 					{hasInputs && (
 						<div style={{ fontSize: 10, color: '#374151' }}>
-							<div style={{ fontWeight: 500, color: '#9ca3af', marginBottom: 2 }}>
-								Inputs
-							</div>
+							<div style={{ fontWeight: 500, color: '#9ca3af', marginBottom: 2 }}>Inputs</div>
 							<pre
 								style={{
 									margin: 0,
@@ -126,9 +120,7 @@ export class FlowcraftNodeUtil extends ShapeUtil<FlowcraftNodeShape> {
 					)}
 					{hasOutputs && (
 						<div style={{ fontSize: 10, color: '#374151' }}>
-							<div style={{ fontWeight: 500, color: '#9ca3af', marginBottom: 2 }}>
-								Outputs
-							</div>
+							<div style={{ fontWeight: 500, color: '#9ca3af', marginBottom: 2 }}>Outputs</div>
 							<pre
 								style={{
 									margin: 0,

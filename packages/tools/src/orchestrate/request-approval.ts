@@ -71,9 +71,7 @@ export function createRequestApprovalTool(config: {
 						awaitingDetails: result.context._awaitingDetails,
 						metadata: {
 							duration: Date.now() - start,
-							affectedNodes: Object.keys(
-								(ctx._outputs as Record<string, unknown>) ?? {},
-							),
+							affectedNodes: Object.keys((ctx._outputs as Record<string, unknown>) ?? {}),
 							blueprintId: blueprint.id,
 							blueprintVersion: resolvedVersion,
 						},

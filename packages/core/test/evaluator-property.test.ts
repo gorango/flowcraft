@@ -143,9 +143,9 @@ describe('Evaluator Property Tests', () => {
 				},
 			}
 
-			expect(
-				evaluator.evaluate('level1.level2.level3.level4.level5.value', deepContext),
-			).toBe('deep')
+			expect(evaluator.evaluate('level1.level2.level3.level4.level5.value', deepContext)).toBe(
+				'deep',
+			)
 		})
 
 		it('handles arrays of objects', () => {

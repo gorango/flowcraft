@@ -156,11 +156,7 @@ export class FlowAnalyzer {
 					_sourceLocation: this.getSourceLocation(node),
 				})
 			} else {
-				this.addDiagnostic(
-					node,
-					'error',
-					`continue statement can only be used inside a loop.`,
-				)
+				this.addDiagnostic(node, 'error', `continue statement can only be used inside a loop.`)
 			}
 			this.state.setCursor(null)
 			return null
@@ -283,9 +279,7 @@ export class FlowAnalyzer {
 							const primitiveName = declaration.propertyName
 								? declaration.propertyName.text
 								: declaration.name.text
-							if (
-								['sleep', 'waitForEvent', 'createWebhook'].includes(primitiveName)
-							) {
+							if (['sleep', 'waitForEvent', 'createWebhook'].includes(primitiveName)) {
 								return { primitiveName }
 							}
 						}
@@ -298,9 +292,7 @@ export class FlowAnalyzer {
 		let aliasedSymbol: ts.Symbol | undefined
 		try {
 			aliasedSymbol =
-				symbol.flags & ts.SymbolFlags.Alias
-					? this.typeChecker.getAliasedSymbol(symbol)
-					: undefined
+				symbol.flags & ts.SymbolFlags.Alias ? this.typeChecker.getAliasedSymbol(symbol) : undefined
 		} catch {
 			aliasedSymbol = undefined
 		}
@@ -320,11 +312,7 @@ export class FlowAnalyzer {
 								const primitiveName = declaration.propertyName
 									? declaration.propertyName.text
 									: declaration.name.text
-								if (
-									['sleep', 'waitForEvent', 'createWebhook'].includes(
-										primitiveName,
-									)
-								) {
+								if (['sleep', 'waitForEvent', 'createWebhook'].includes(primitiveName)) {
 									return { primitiveName }
 								}
 							}
@@ -362,10 +350,7 @@ export class FlowAnalyzer {
 			const arg = args[i]
 
 			if (!param.valueDeclaration) continue
-			const paramType = this.typeChecker.getTypeOfSymbolAtLocation(
-				param,
-				param.valueDeclaration,
-			)
+			const paramType = this.typeChecker.getTypeOfSymbolAtLocation(param, param.valueDeclaration)
 			if (!paramType) continue
 
 			const argType = this.typeChecker.getTypeAtLocation(arg)

@@ -60,14 +60,14 @@ Predefined symbolic tokens for core services:
 Creates a pre-configured container with default services. This is the recommended way to set up a container for most use cases, as it provides sensible defaults while allowing customization.
 
 - **`options?`** `ContainerOptions<TDependencies>`: Optional overrides for default services.
-    - **`logger?`**: Custom logger (defaults to `NullLogger`).
-    - **`serializer?`**: Custom serializer (defaults to `JsonSerializer`).
-    - **`evaluator?`**: Custom evaluator (defaults to `PropertyEvaluator`).
-    - **`eventBus?`**: Custom event bus (defaults to no-op).
-    - **`middleware?`**: Custom middleware array (defaults to empty).
-    - **`registry?`**: Node registry (defaults to empty).
-    - **`blueprints?`**: Blueprint registry (defaults to empty).
-    - **`dependencies?`**: Custom dependencies (defaults to empty).
+  - **`logger?`**: Custom logger (defaults to `NullLogger`).
+  - **`serializer?`**: Custom serializer (defaults to `JsonSerializer`).
+  - **`evaluator?`**: Custom evaluator (defaults to `PropertyEvaluator`).
+  - **`eventBus?`**: Custom event bus (defaults to no-op).
+  - **`middleware?`**: Custom middleware array (defaults to empty).
+  - **`registry?`**: Node registry (defaults to empty).
+  - **`blueprints?`**: Blueprint registry (defaults to empty).
+  - **`dependencies?`**: Custom dependencies (defaults to empty).
 - **Returns** `DIContainer`: A configured container.
 
 ### Usage Examples

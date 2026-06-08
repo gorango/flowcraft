@@ -46,10 +46,7 @@ async function main() {
 		)
 		console.log(JSON.stringify(finalContext, null, 2))
 	} catch (error) {
-		console.error(
-			'\n❌ Workflow failed:',
-			error instanceof Error ? error.message : String(error),
-		)
+		console.error('\n❌ Workflow failed:', error instanceof Error ? error.message : String(error))
 		process.exit(1)
 	}
 }

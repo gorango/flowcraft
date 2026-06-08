@@ -342,13 +342,9 @@ describe('Security Boundaries', () => {
 		})
 
 		it('validates node parameters', async () => {
-			const flow = createFlow('invalid-params').node(
-				'test',
-				async () => ({ output: 'test' }),
-				{
-					config: { maxRetries: -1 }, // Invalid negative retries
-				},
-			)
+			const flow = createFlow('invalid-params').node('test', async () => ({ output: 'test' }), {
+				config: { maxRetries: -1 }, // Invalid negative retries
+			})
 
 			const runtime = new FlowRuntime()
 

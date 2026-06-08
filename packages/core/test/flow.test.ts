@@ -314,9 +314,7 @@ describe('Flow Builder', () => {
 			const graph = flow.toGraphRepresentation()
 			expect(graph.nodes).toHaveLength(3) // start, end, exit
 			expect(graph.edges).toHaveLength(3) // original, loopback, break edge
-			const breakEdge = graph.edges.find(
-				(edge) => edge.source === 'end' && edge.target === 'exit',
-			)
+			const breakEdge = graph.edges.find((edge) => edge.source === 'end' && edge.target === 'exit')
 			expect(breakEdge).toBeDefined()
 		})
 

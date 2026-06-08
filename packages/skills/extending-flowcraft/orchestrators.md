@@ -6,10 +6,7 @@ Orchestrators define how a workflow is executed. By default, Flowcraft uses `Def
 
 ```typescript
 interface IOrchestrator {
-	run(
-		context: ExecutionContext<any, any>,
-		traverser: GraphTraverser,
-	): Promise<WorkflowResult<any>>
+	run(context: ExecutionContext<any, any>, traverser: GraphTraverser): Promise<WorkflowResult<any>>
 }
 ```
 

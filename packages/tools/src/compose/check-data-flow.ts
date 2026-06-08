@@ -13,8 +13,7 @@ const checkDataFlowSchema = z.object({
 export function createCheckDataFlowTool(): WorkflowTool<typeof checkDataFlowSchema> {
 	return createWorkflowTool({
 		name: 'check_data_flow',
-		description:
-			'Validate input/output data compatibility between connected nodes in a blueprint',
+		description: 'Validate input/output data compatibility between connected nodes in a blueprint',
 		parameters: checkDataFlowSchema,
 		triggers: ['data flow', 'check data', 'input output', 'data validation', 'validate wiring'],
 		execute: async (params) => {
@@ -45,11 +44,7 @@ export function createCheckDataFlowTool(): WorkflowTool<typeof checkDataFlowSche
 					const targetInputs = targetNode?.inputs
 
 					let inputMapping: Record<string, string> = {}
-					if (
-						targetInputs &&
-						typeof targetInputs === 'object' &&
-						!Array.isArray(targetInputs)
-					) {
+					if (targetInputs && typeof targetInputs === 'object' && !Array.isArray(targetInputs)) {
 						inputMapping = targetInputs
 					} else if (typeof targetInputs === 'string') {
 						inputMapping = { default: targetInputs }
@@ -69,9 +64,7 @@ export function createCheckDataFlowTool(): WorkflowTool<typeof checkDataFlowSche
 						//   - context: the full workflow context (_outputs.*, etc.)
 						// The regex supports nested property access like context.foo.bar
 						const refs =
-							transform.match(
-								/\b(input(?:\.[a-zA-Z0-9_]+)*|context(?:\.[a-zA-Z0-9_]+)+)\b/g,
-							) ?? []
+							transform.match(/\b(input(?:\.[a-zA-Z0-9_]+)*|context(?:\.[a-zA-Z0-9_]+)+)\b/g) ?? []
 						let valid = true
 						for (const ref of refs) {
 							if (ref === 'input') continue

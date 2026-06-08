@@ -73,13 +73,14 @@ async function answer(ctx: NodeContext<ResearchAgentContext>): Promise<NodeResul
 export function createAgentFlow() {
 	const flow = createFlow<ResearchAgentContext>('research-agent')
 
-	flow.node('initialize', async ({ context }) => {
-		// Set up the initial state for the loop
-		await context.set('search_context', '')
-		await context.set('loop_count', 0)
-		await context.set('last_action', undefined) // Initialize last_action
-		return { output: 'Initialized' }
-	})
+	flow
+		.node('initialize', async ({ context }) => {
+			// Set up the initial state for the loop
+			await context.set('search_context', '')
+			await context.set('loop_count', 0)
+			await context.set('last_action', undefined) // Initialize last_action
+			return { output: 'Initialized' }
+		})
 		.node('decide', decide, { config: { joinStrategy: 'any' } }) // 'any' allows re-execution
 		.node('search', search)
 		.node('answer', answer)

@@ -59,9 +59,7 @@ export class InMemoryEventLogger implements IEventBus {
 	 * @param type The event type to filter by.
 	 * @returns An array of matching events.
 	 */
-	public filter<T extends FlowcraftEvent['type']>(
-		type: T,
-	): Extract<FlowcraftEvent, { type: T }>[] {
+	public filter<T extends FlowcraftEvent['type']>(type: T): Extract<FlowcraftEvent, { type: T }>[] {
 		return this.events.filter((e) => e.type === type) as Extract<FlowcraftEvent, { type: T }>[]
 	}
 
@@ -85,15 +83,11 @@ export class InMemoryEventLogger implements IEventBus {
 			// Custom formatting for a more intuitive trace
 			switch (type) {
 				case 'node:start':
-					console.log(
-						`  - Node: "${payload.nodeId}" | Input: ${JSON.stringify(payload.input)}`,
-					)
+					console.log(`  - Node: "${payload.nodeId}" | Input: ${JSON.stringify(payload.input)}`)
 					break
 				case 'edge:evaluate':
 					console.log(`  - Edge: "${payload.source}" -> "${payload.target}"`)
-					console.log(
-						`  - Condition: ${payload.condition || 'N/A'} | Result: ${payload.result}`,
-					)
+					console.log(`  - Condition: ${payload.condition || 'N/A'} | Result: ${payload.result}`)
 					break
 				case 'context:change':
 					if (payload.op === 'set') {
@@ -107,9 +101,7 @@ export class InMemoryEventLogger implements IEventBus {
 					}
 					break
 				case 'node:finish':
-					console.log(
-						`  - Node: "${payload.nodeId}" | Result: ${JSON.stringify(payload.result)}`,
-					)
+					console.log(`  - Node: "${payload.nodeId}" | Result: ${JSON.stringify(payload.result)}`)
 					break
 				case 'node:error':
 					console.log(`  - Node: "${payload.nodeId}"`)

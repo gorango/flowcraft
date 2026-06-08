@@ -50,11 +50,7 @@ export class VercelQueueAdapter extends BaseDistributedAdapter {
 		})
 	}
 
-	protected async onJobStart(
-		_runId: string,
-		_blueprintId: string,
-		_nodeId: string,
-	): Promise<void> {
+	protected async onJobStart(_runId: string, _blueprintId: string, _nodeId: string): Promise<void> {
 		try {
 			const statusKey = getStatusKey(_runId, this.statusKeyPrefix)
 			const current = await this.redis.get(statusKey)

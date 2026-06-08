@@ -17,24 +17,24 @@ This project serves two main purposes:
 
 1. **Install dependencies**:
 
-    ```bash
-    npm install
-    ```
+   ```bash
+   npm install
+   ```
 
 2. **Set your OpenAI API key**:
    Create a `.env` file in this project's root directory:
 
-    ```
-    OPENAI_API_KEY="your-api-key-here"
-    ```
+   ```
+   OPENAI_API_KEY="your-api-key-here"
+   ```
 
 3. **Run the application**:
 
-    ```bash
-    npm start
-    ```
+   ```bash
+   npm start
+   ```
 
-    The application will process the `documents/sample.md` file and answer a hard-coded question. You can change the question in `src/main.ts`.
+   The application will process the `documents/sample.md` file and answer a hard-coded question. You can change the question in `src/main.ts`.
 
 ## How It Works
 

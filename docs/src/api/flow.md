@@ -131,8 +131,8 @@ Creates a scatter-gather batch processing pattern with full type safety.
 - **`id`** `string`: A base ID for the batch operation. This will be used to create `_scatter` and `_gather` nodes.
 - **`worker`** `NodeFunction<TContext, TDependencies, TInput, TOutput, TAction> | NodeClass<TContext, TDependencies, TInput, TOutput, TAction>`: The node implementation to run on each item in the input array.
 - **`options`** `{ inputKey: keyof TContext, outputKey?: keyof TContext }`:
-    - `inputKey`: The key in the context that holds the input array.
-    - `outputKey` (optional): The key in the context where the array of results will be stored. Defaults to the gather node ID (`${id}_gather`).
+  - `inputKey`: The key in the context that holds the input array.
+  - `outputKey` (optional): The key in the context where the array of results will be stored. Defaults to the gather node ID (`${id}_gather`).
 - **Returns**: `this` (for chaining).
 
 ### `.wait(id, options?)`
@@ -149,7 +149,7 @@ Creates a sleep node that pauses workflow execution for a specified duration.
 
 - **`id`** `string`: A unique identifier for the sleep node.
 - **`options`** `{ duration: number }`:
-    - `duration`: The duration to sleep in milliseconds.
+  - `duration`: The duration to sleep in milliseconds.
 - **Returns**: `this` (for chaining).
 
 ### `.loop(id, options)`
@@ -158,9 +158,9 @@ Creates an iterative loop in the workflow graph.
 
 - **`id`** `string`: A unique identifier for the loop construct.
 - **`options`** `{ startNodeId: string, endNodeId: string, condition: string }`:
-    - `startNodeId`: The ID of the first node inside the loop body.
-    - `endNodeId`: The ID of the last node inside the loop body.
-    - `condition`: An expression that, if `true`, causes the loop to run again.
+  - `startNodeId`: The ID of the first node inside the loop body.
+  - `endNodeId`: The ID of the last node inside the loop body.
+  - `condition`: An expression that, if `true`, causes the loop to run again.
 - **Returns**: `this` (for chaining).
 
 ### `.toBlueprint()`
@@ -268,9 +268,7 @@ A graph representation of a workflow blueprint for visualization purposes.
 
 ```typescript
 interface UIGraph {
-	nodes: Array<
-		Partial<NodeDefinition> & { id: string; data?: Record<string, any>; type?: string }
-	>
+	nodes: Array<Partial<NodeDefinition> & { id: string; data?: Record<string, any>; type?: string }>
 	edges: Array<
 		Partial<EdgeDefinition> & { source: string; target: string; data?: Record<string, any> }
 	>

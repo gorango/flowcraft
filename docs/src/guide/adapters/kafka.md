@@ -42,26 +42,26 @@ Create a `docker-compose.yml` file:
 ```yaml
 version: '3.8'
 services:
-    zookeeper:
-        image: confluentinc/cp-zookeeper:7.9.4
-        ports: ['2181:2181']
-        environment:
-            ZOOKEEPER_CLIENT_PORT: 2181
-    kafka:
-        image: confluentinc/cp-kafka:7.9.4
-        ports: ['9092:9092']
-        depends_on: [zookeeper]
-        environment:
-            KAFKA_BROKER_ID: 1
-            KAFKA_ZOOKEEPER_CONNECT: 'zookeeper:2181'
-            KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
-            KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-    cassandra:
-        image: cassandra:5.0.5
-        ports: ['9042:9042']
-    redis:
-        image: redis:8-alpine
-        ports: ['6379:6379']
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.9.4
+    ports: ['2181:2181']
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+  kafka:
+    image: confluentinc/cp-kafka:7.9.4
+    ports: ['9092:9092']
+    depends_on: [zookeeper]
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: 'zookeeper:2181'
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+  cassandra:
+    image: cassandra:5.0.5
+    ports: ['9042:9042']
+  redis:
+    image: redis:8-alpine
+    ports: ['6379:6379']
 ```
 
 After running `docker-compose up -d`, create the Kafka topic and Cassandra schema:

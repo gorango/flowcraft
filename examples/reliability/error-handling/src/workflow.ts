@@ -41,10 +41,7 @@ async function recoveryOperation(ctx: NodeContext<WorkflowContext>) {
 
 /** Creates a workflow with retry logic */
 export function createRetryWorkflow() {
-	return createFlow<WorkflowContext>('retry-workflow').node(
-		'unstableOperation',
-		unstableOperation,
-	)
+	return createFlow<WorkflowContext>('retry-workflow').node('unstableOperation', unstableOperation)
 }
 
 /** Creates a workflow with error handling */

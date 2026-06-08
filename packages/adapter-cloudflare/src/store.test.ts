@@ -69,9 +69,7 @@ describe('DurableObjectCoordinationStore', () => {
 
 		it('should return false when put throws (key already existed)', async () => {
 			vi.mocked(mockStorage.get).mockResolvedValue(undefined)
-			vi.mocked(mockStorage.put).mockRejectedValue(
-				new Error('ConditionalCheckFailedException'),
-			)
+			vi.mocked(mockStorage.put).mockRejectedValue(new Error('ConditionalCheckFailedException'))
 
 			const result = await store.setIfNotExist('new-key', 'new-value', 3600)
 

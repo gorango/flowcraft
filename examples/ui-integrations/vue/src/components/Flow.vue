@@ -262,25 +262,13 @@ async function clearWorkflow() {
 		<VueFlow fit-view-on-init :max-zoom="1.25" class="flex-1 min-h-0">
 			<Background />
 			<template #node-input="nodeProps">
-				<NodeInput
-					v-bind="nodeProps"
-					:flow="vueFlow"
-					:node-data="getNodeData(nodeProps.id)"
-				/>
+				<NodeInput v-bind="nodeProps" :flow="vueFlow" :node-data="getNodeData(nodeProps.id)" />
 			</template>
 			<template #node-default="nodeProps">
-				<NodeDefault
-					v-bind="nodeProps"
-					:flow="vueFlow"
-					:node-data="getNodeData(nodeProps.id)"
-				/>
+				<NodeDefault v-bind="nodeProps" :flow="vueFlow" :node-data="getNodeData(nodeProps.id)" />
 			</template>
 			<template #node-output="nodeProps">
-				<NodeOutput
-					v-bind="nodeProps"
-					:flow="vueFlow"
-					:node-data="getNodeData(nodeProps.id)"
-				/>
+				<NodeOutput v-bind="nodeProps" :flow="vueFlow" :node-data="getNodeData(nodeProps.id)" />
 			</template>
 			<template #edge-loopback="edgeProps">
 				<EdgeLoopback v-bind="edgeProps" />

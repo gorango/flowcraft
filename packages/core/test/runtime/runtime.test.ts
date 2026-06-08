@@ -854,9 +854,9 @@ describe('FlowRuntime - rollbackExecution', () => {
 
 		const blueprint = flow.toBlueprint()
 
-		await expect(
-			runtime.rollbackExecution(blueprint, 'test-exec', events, 'B'),
-		).rejects.toThrow("target node 'B' has not completed")
+		await expect(runtime.rollbackExecution(blueprint, 'test-exec', events, 'B')).rejects.toThrow(
+			"target node 'B' has not completed",
+		)
 	})
 
 	it('should remove edge inputs for rolled-back nodes', async () => {

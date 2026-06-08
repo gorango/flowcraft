@@ -150,11 +150,7 @@ export abstract class BaseDistributedAdapter {
 	 * Hook called at the start of job processing. Subclasses can override this
 	 * to perform additional setup (e.g., timestamp tracking for reconciliation).
 	 */
-	protected async onJobStart(
-		_runId: string,
-		_blueprintId: string,
-		_nodeId: string,
-	): Promise<void> {
+	protected async onJobStart(_runId: string, _blueprintId: string, _nodeId: string): Promise<void> {
 		// default implementation does nothing
 	}
 
@@ -181,9 +177,7 @@ export abstract class BaseDistributedAdapter {
 		const currentVersion = blueprint.metadata?.version || null
 		if (storedVersion !== currentVersion) {
 			const reason = `Blueprint version mismatch: stored version '${storedVersion}', current version '${currentVersion}'. Rejecting job to prevent state corruption.`
-			this.logger.warn(
-				`[Adapter] Version mismatch for run ${runId}, node ${nodeId}: ${reason}`,
-			)
+			this.logger.warn(`[Adapter] Version mismatch for run ${runId}, node ${nodeId}: ${reason}`)
 			return
 		}
 
@@ -218,9 +212,7 @@ export abstract class BaseDistributedAdapter {
 			const alreadyCompleted = await context.has(`_outputs.${nodeId}` as any)
 
 			if (alreadyCompleted) {
-				this.logger.info(
-					`[Adapter] Node '${nodeId}' already completed, skipping re-execution.`,
-				)
+				this.logger.info(`[Adapter] Node '${nodeId}' already completed, skipping re-execution.`)
 				result = { output: await context.get(`_outputs.${nodeId}` as any) }
 			} else {
 				const nodeDef = blueprint.nodes.find((n) => n.id === nodeId)
@@ -294,16 +286,8 @@ export abstract class BaseDistributedAdapter {
 		startTime: number
 		heartbeatInterval: ReturnType<typeof setInterval>
 	}): Promise<void> {
-		const {
-			runId,
-			blueprintId,
-			nodeId,
-			blueprint,
-			result,
-			context,
-			startTime,
-			heartbeatInterval,
-		} = params
+		const { runId, blueprintId, nodeId, blueprint, result, context, startTime, heartbeatInterval } =
+			params
 
 		const analysis = analyzeBlueprint(blueprint)
 		const isTerminalNode = analysis.terminalNodeIds.includes(nodeId)
@@ -361,14 +345,7 @@ export abstract class BaseDistributedAdapter {
 		}
 
 		for (const { node: nextNodeDef, edge } of nextNodes) {
-			await this.runtime.applyEdgeTransform(
-				edge,
-				result,
-				nextNodeDef,
-				context,
-				undefined,
-				runId,
-			)
+			await this.runtime.applyEdgeTransform(edge, result, nextNodeDef, context, undefined, runId)
 			const isReady = await this.isReadyForFanIn(runId, blueprint, nextNodeDef.id)
 			if (isReady) {
 				this.logger.info(`[Adapter] Node '${nextNodeDef.id}' is ready. Enqueuing job.`)
@@ -420,9 +397,7 @@ export abstract class BaseDistributedAdapter {
 			this.logger.info(
 				`[Adapter] Node '${targetNodeId}' is poisoned due to failed predecessor. Failing immediately.`,
 			)
-			throw new Error(
-				`Node '${targetNodeId}' failed due to poisoned predecessor in run '${runId}'`,
-			)
+			throw new Error(`Node '${targetNodeId}' failed due to poisoned predecessor in run '${runId}'`)
 		}
 
 		if (joinStrategy === 'any') {
@@ -540,10 +515,9 @@ export abstract class BaseDistributedAdapter {
 			}
 
 			if (shouldEnqueue) {
-				this.logger.info(
-					`[Adapter] Reconciling: Enqueuing ready job for node '${nodeId}'`,
-					{ runId },
-				)
+				this.logger.info(`[Adapter] Reconciling: Enqueuing ready job for node '${nodeId}'`, {
+					runId,
+				})
 				await this.enqueueJob({ runId, blueprintId: blueprint.id, nodeId })
 				enqueuedNodes.add(nodeId)
 			}
@@ -574,9 +548,7 @@ export abstract class BaseDistributedAdapter {
 	): Promise<Set<string>> {
 		const context = this.createContext(runId)
 
-		const awaitingNodeIds = (await context.get('_awaitingNodeIds' as any)) as
-			| string[]
-			| undefined
+		const awaitingNodeIds = (await context.get('_awaitingNodeIds' as any)) as string[] | undefined
 
 		await context.set('_resume.action' as any, action)
 		if (output !== undefined) {

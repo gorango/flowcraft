@@ -39,9 +39,9 @@ You must have the following AWS resources provisioned:
 
 - An **SQS Queue** to handle jobs.
 - Three **DynamoDB Tables**:
-    1.  For workflow **context** (Primary Key: `runId`).
-    2.  For workflow **status** (Primary Key: `runId`).
-    3.  For **coordination** (Primary Key: `key`). This table should have TTL enabled on a `ttl` attribute for automatic cleanup of locks.
+  1.  For workflow **context** (Primary Key: `runId`).
+  2.  For workflow **status** (Primary Key: `runId`).
+  3.  For **coordination** (Primary Key: `key`). This table should have TTL enabled on a `ttl` attribute for automatic cleanup of locks.
 
 ### Using AWS CLI
 

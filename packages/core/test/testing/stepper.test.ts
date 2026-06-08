@@ -14,12 +14,7 @@ describe('createStepper', () => {
 			.edge('A', 'B')
 
 		const runtime = new FlowRuntime()
-		const stepper = await createStepper(
-			runtime,
-			flow.toBlueprint(),
-			flow.getFunctionRegistry(),
-			{},
-		)
+		const stepper = await createStepper(runtime, flow.toBlueprint(), flow.getFunctionRegistry(), {})
 
 		expect(stepper.state).toBeDefined()
 		expect(stepper.traverser).toBeDefined()
@@ -33,12 +28,7 @@ describe('createStepper', () => {
 			.edge('A', 'B')
 
 		const runtime = new FlowRuntime()
-		const stepper = await createStepper(
-			runtime,
-			flow.toBlueprint(),
-			flow.getFunctionRegistry(),
-			{},
-		)
+		const stepper = await createStepper(runtime, flow.toBlueprint(), flow.getFunctionRegistry(), {})
 
 		// First step: execute node A
 		const result1 = await stepper.next()
@@ -67,12 +57,7 @@ describe('createStepper', () => {
 			.node('B', async () => ({ output: 'resultB' }))
 
 		const runtime = new FlowRuntime()
-		const stepper = await createStepper(
-			runtime,
-			flow.toBlueprint(),
-			flow.getFunctionRegistry(),
-			{},
-		)
+		const stepper = await createStepper(runtime, flow.toBlueprint(), flow.getFunctionRegistry(), {})
 
 		// First step: execute both A and B in parallel
 		const result1 = await stepper.next()
@@ -99,12 +84,7 @@ describe('createStepper', () => {
 			.edge('C', 'D')
 
 		const runtime = new FlowRuntime()
-		const stepper = await createStepper(
-			runtime,
-			flow.toBlueprint(),
-			flow.getFunctionRegistry(),
-			{},
-		)
+		const stepper = await createStepper(runtime, flow.toBlueprint(), flow.getFunctionRegistry(), {})
 		const getOutputs = () => stepper.state.getContext().toJSON()
 
 		// First step with concurrency 1
@@ -142,12 +122,9 @@ describe('createStepper', () => {
 		}))
 
 		const runtime = new FlowRuntime()
-		const stepper = await createStepper(
-			runtime,
-			flow.toBlueprint(),
-			flow.getFunctionRegistry(),
-			{ value: 'initial' },
-		)
+		const stepper = await createStepper(runtime, flow.toBlueprint(), flow.getFunctionRegistry(), {
+			value: 'initial',
+		})
 
 		const result = await stepper.next()
 		expect(result?.status).toBe('completed')
@@ -235,12 +212,7 @@ describe('createStepper', () => {
 			.edge('B', 'C')
 
 		const runtime = new FlowRuntime()
-		const stepper = await createStepper(
-			runtime,
-			flow.toBlueprint(),
-			flow.getFunctionRegistry(),
-			{},
-		)
+		const stepper = await createStepper(runtime, flow.toBlueprint(), flow.getFunctionRegistry(), {})
 
 		// Step 1: Execute A
 		await stepper.next()
@@ -251,8 +223,7 @@ describe('createStepper', () => {
 		expect(result2?.status).toBe('failed')
 		expect(
 			result2?.errors?.some(
-				(e) =>
-					e.message?.includes('Node B failed') || e.message?.includes('execution failed'),
+				(e) => e.message?.includes('Node B failed') || e.message?.includes('execution failed'),
 			),
 		).toBe(true)
 	})
@@ -280,12 +251,7 @@ describe('createStepper', () => {
 		const runtime = new FlowRuntime({
 			evaluator: new UnsafeEvaluator(),
 		})
-		const stepper = await createStepper(
-			runtime,
-			flow.toBlueprint(),
-			flow.getFunctionRegistry(),
-			{},
-		)
+		const stepper = await createStepper(runtime, flow.toBlueprint(), flow.getFunctionRegistry(), {})
 
 		// Execute steps
 		await stepper.next() // init
@@ -304,12 +270,7 @@ describe('createStepper', () => {
 			params: { duration: '5m' },
 		})
 
-		const stepper = await createStepper(
-			runtime,
-			flow.toBlueprint(),
-			flow.getFunctionRegistry(),
-			{},
-		)
+		const stepper = await createStepper(runtime, flow.toBlueprint(), flow.getFunctionRegistry(), {})
 		const sleepResult = await stepper.next()
 		expect(sleepResult?.status).toBe('awaiting')
 		expect(stepper.isDone()).toBe(false)
@@ -319,12 +280,7 @@ describe('createStepper', () => {
 		const runtime = new FlowRuntime()
 		const flow = createFlow('wait-test').wait('wait', { params: { eventName: 'test_event' } })
 
-		const stepper = await createStepper(
-			runtime,
-			flow.toBlueprint(),
-			flow.getFunctionRegistry(),
-			{},
-		)
+		const stepper = await createStepper(runtime, flow.toBlueprint(), flow.getFunctionRegistry(), {})
 		const waitResult = await stepper.next()
 		expect(waitResult?.status).toBe('awaiting')
 		expect(stepper.isDone()).toBe(false)
@@ -344,12 +300,7 @@ describe('createStepper', () => {
 
 		const flow = createFlow('webhook-test').node('webhook', WebhookNode)
 
-		const stepper = await createStepper(
-			runtime,
-			flow.toBlueprint(),
-			flow.getFunctionRegistry(),
-			{},
-		)
+		const stepper = await createStepper(runtime, flow.toBlueprint(), flow.getFunctionRegistry(), {})
 		const webhookResult = await stepper.next()
 
 		// Webhook node should complete (not await) and call registerWebhookEndpoint
@@ -367,12 +318,7 @@ describe('createStepper', () => {
 			params: { eventName: 'webhook:webhook_1' },
 		})
 
-		const stepper = await createStepper(
-			runtime,
-			flow.toBlueprint(),
-			flow.getFunctionRegistry(),
-			{},
-		)
+		const stepper = await createStepper(runtime, flow.toBlueprint(), flow.getFunctionRegistry(), {})
 		const waitWebhookResult = await stepper.next()
 		expect(waitWebhookResult?.status).toBe('awaiting')
 		expect(stepper.isDone()).toBe(false)

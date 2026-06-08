@@ -16,15 +16,15 @@ Creates a new runtime instance using a Dependency Injection (DI) container or le
 #### Legacy Constructor (Backward Compatible)
 
 - **`options`** `RuntimeOptions<TDependencies>`: Configuration for the runtime.
-    - **`registry?`**: A record of globally available node implementations.
-    - **`blueprints?`**: A record of all available blueprints, required for subflow execution.
-    - **`dependencies?`**: Shared dependencies to be injected into every node's context.
-    - **`logger?`**: A pluggable logger instance (defaults to `NullLogger`).
-    - **`eventBus?`**: A pluggable event bus for observability. See [Event Bus](#event-bus) for details on available events.
-    - **`evaluator?`**: A pluggable expression evaluator (defaults to `PropertyEvaluator`).
-    - **`middleware?`**: An array of middleware to wrap node execution.
-    - **`serializer?`**: A pluggable serializer (defaults to `JsonSerializer`).
-    - **`strict?`**: If `true`, the runtime will throw an error if a workflow contains cycles.
+  - **`registry?`**: A record of globally available node implementations.
+  - **`blueprints?`**: A record of all available blueprints, required for subflow execution.
+  - **`dependencies?`**: Shared dependencies to be injected into every node's context.
+  - **`logger?`**: A pluggable logger instance (defaults to `NullLogger`).
+  - **`eventBus?`**: A pluggable event bus for observability. See [Event Bus](#event-bus) for details on available events.
+  - **`evaluator?`**: A pluggable expression evaluator (defaults to `PropertyEvaluator`).
+  - **`middleware?`**: An array of middleware to wrap node execution.
+  - **`serializer?`**: A pluggable serializer (defaults to `JsonSerializer`).
+  - **`strict?`**: If `true`, the runtime will throw an error if a workflow contains cycles.
 
 **Note:** The legacy constructor is maintained for backward compatibility. For new code, use the DI container approach for better modularity and testability.
 
@@ -156,10 +156,10 @@ Executes a workflow using the `DefaultOrchestrator`, which can handle both stand
 - **`blueprint`** [`WorkflowBlueprint`](/api/flow#workflowblueprint-interface): The workflow to execute.
 - **`initialState?`** `Partial<TContext> | string`: The initial state for the workflow's context. Can be an object or a serialized string.
 - **`options?`**:
-    - **`functionRegistry?`**: A `Map` of node implementations, typically from `flow.getFunctionRegistry()`.
-    - **`strict?`**: Overrides the runtime's strict mode setting for this run.
-    - **`signal?`**: An `AbortSignal` to gracefully cancel the workflow execution.
-    - **`concurrency?`**: Limits the number of nodes that can execute simultaneously.
+  - **`functionRegistry?`**: A `Map` of node implementations, typically from `flow.getFunctionRegistry()`.
+  - **`strict?`**: Overrides the runtime's strict mode setting for this run.
+  - **`signal?`**: An `AbortSignal` to gracefully cancel the workflow execution.
+  - **`concurrency?`**: Limits the number of nodes that can execute simultaneously.
 - **Returns**: `Promise<WorkflowResult<TContext>>`
 
 ### `.resume(blueprint, serializedContext, resumeData, options?)`
@@ -199,9 +199,9 @@ Executes a specific set of nodes within a workflow, reconstructing state from a 
 - **`nodeIds`** `string[]`: An array of node IDs to execute in order.
 - **`events`** `FlowcraftEvent[]`: Historical events to reconstruct initial context from.
 - **`options?`**:
-    - **`inputOverrides?`**: A record of node ID to input value overrides.
-    - **`signal?`**: An `AbortSignal` to cancel execution.
-    - **`functionRegistry?`**: A `Map` of node implementations.
+  - **`inputOverrides?`**: A record of node ID to input value overrides.
+  - **`signal?`**: An `AbortSignal` to cancel execution.
+  - **`functionRegistry?`**: A `Map` of node implementations.
 - **Returns**: `Promise<WorkflowResult<TContext>>`
 
 This method: 1) Reconstructs context from `context:change` events; 2) builds a predecessor map for edge transform resolution; 3) Executes each node sequentially; 4) Propagates outputs through edge transforms; 5) Emits `node:start`, `node:finish`, and `node:error` events
@@ -288,9 +288,9 @@ Replays execution from a specific node with optional input overrides. Reconstruc
 - **`events`** `FlowcraftEvent[]`: The full event history.
 - **`fromNodeId`** `string`: The node to replay from (must exist in the blueprint).
 - **`options?`**:
-    - **`inputOverrides?`**: `Record<string, unknown>` — values to inject into the initial context.
-    - **`functionRegistry?`**: A `Map` of node implementations.
-    - **`signal?`**: An `AbortSignal` to cancel execution.
+  - **`inputOverrides?`**: `Record<string, unknown>` — values to inject into the initial context.
+  - **`functionRegistry?`**: A `Map` of node implementations.
+  - **`signal?`**: An `AbortSignal` to cancel execution.
 - **Returns**: `Promise<WorkflowResult<TContext>>`
 
 Throws `FlowcraftError` if the node does not exist in the blueprint. Ancestor outputs (nodes that are predecessors of `fromNodeId`) are pre-populated so downstream nodes receive correct inputs.

@@ -20,8 +20,7 @@ export function createBatchExecuteTool(config: {
 }): WorkflowTool<typeof batchExecuteSchema> {
 	return createWorkflowTool({
 		name: 'batch_execute',
-		description:
-			'Execute the same workflow blueprint multiple times with different parameter sets',
+		description: 'Execute the same workflow blueprint multiple times with different parameter sets',
 		parameters: batchExecuteSchema,
 		triggers: ['batch', 'bulk execute', 'for each', 'map over inputs', 'run many'],
 		execute: async (params) => {

@@ -79,9 +79,7 @@ export class DefaultOrchestrator implements IOrchestrator {
 
 			if (context.targetNodeIds && context.targetNodeIds.size > 0) {
 				const completed = context.state.getCompletedNodes()
-				const allTargetsReached = [...context.targetNodeIds].every((id) =>
-					completed.has(id),
-				)
+				const allTargetsReached = [...context.targetNodeIds].every((id) => completed.has(id))
 				if (allTargetsReached) {
 					break
 				}
@@ -102,10 +100,7 @@ export class DefaultOrchestrator implements IOrchestrator {
 
 		const isTraversalComplete = !traverser.hasMoreWork()
 		const status = context.state.getStatus(isTraversalComplete)
-		const result = await context.state.toResult(
-			context.services.serializer,
-			context.executionId,
-		)
+		const result = await context.state.toResult(context.services.serializer, context.executionId)
 		result.status = status
 		return result
 	}

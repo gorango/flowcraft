@@ -63,9 +63,7 @@ export function createValidateBlueprintTool(): WorkflowTool<typeof validateBluep
 					(n) => !blueprint.edges.some((e) => edgeTarget(e) === nodeId(n)),
 				)
 				if (startNodes.length === 0 && blueprint.nodes.length > 0) {
-					issues.push(
-						'No start node found (all nodes have incoming edges, possible cycle)',
-					)
+					issues.push('No start node found (all nodes have incoming edges, possible cycle)')
 				}
 
 				const isValid = issues.length === 0

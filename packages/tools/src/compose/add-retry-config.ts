@@ -19,13 +19,7 @@ export function createAddRetryConfigTool(): WorkflowTool<typeof addRetryConfigSc
 		name: 'add_retry_config',
 		description: 'Add retry configuration to specific nodes in a workflow blueprint',
 		parameters: addRetryConfigSchema,
-		triggers: [
-			'add retry',
-			'retry policy',
-			'set retries',
-			'configure retries',
-			'enable retries',
-		],
+		triggers: ['add retry', 'retry policy', 'set retries', 'configure retries', 'enable retries'],
 		execute: async (params) => {
 			const start = Date.now()
 

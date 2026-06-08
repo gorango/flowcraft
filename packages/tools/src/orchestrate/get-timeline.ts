@@ -14,8 +14,7 @@ export function createGetExecutionTimelineTool(config: {
 }): WorkflowTool<typeof getExecutionTimelineSchema> {
 	return createWorkflowTool({
 		name: 'get_execution_timeline',
-		description:
-			'Get a detailed timeline of node execution events with timestamps and durations',
+		description: 'Get a detailed timeline of node execution events with timestamps and durations',
 		parameters: getExecutionTimelineSchema,
 		triggers: ['timeline', 'history', 'execution history', 'audit trail', 'show timeline'],
 		execute: async (params) => {
@@ -57,26 +56,17 @@ export function createGetExecutionTimelineTool(config: {
 					if (type === 'node:start') {
 						const timestamp = getEventProp<string | number>(event, 'timestamp')
 						if (!nodeStartTimes.has(nodeId)) {
-							nodeStartTimes.set(
-								nodeId,
-								typeof timestamp === 'number' ? timestamp : Date.now(),
-							)
+							nodeStartTimes.set(nodeId, typeof timestamp === 'number' ? timestamp : Date.now())
 						}
 						nodeRetries.set(nodeId, (nodeRetries.get(nodeId) ?? -1) + 1)
 					}
 
 					if (type === 'node:finish' || type === 'node:error') {
 						const timestamp = getEventProp<string | number>(event, 'timestamp')
-						nodeEndTimes.set(
-							nodeId,
-							typeof timestamp === 'number' ? timestamp : Date.now(),
-						)
+						nodeEndTimes.set(nodeId, typeof timestamp === 'number' ? timestamp : Date.now())
 						if (type === 'node:error') {
 							const error = getEventProp<Record<string, unknown>>(event, 'error')
-							nodeErrors.set(
-								nodeId,
-								error?.message ? String(error.message) : 'Unknown error',
-							)
+							nodeErrors.set(nodeId, error?.message ? String(error.message) : 'Unknown error')
 						}
 					}
 				}
@@ -109,9 +99,7 @@ export function createGetExecutionTimelineTool(config: {
 						executionId: params.executionId,
 						status: status.status,
 						startedAt: startTs
-							? new Date(
-									typeof startTs === 'number' ? startTs : Date.now(),
-								).toISOString()
+							? new Date(typeof startTs === 'number' ? startTs : Date.now()).toISOString()
 							: undefined,
 						finishedAt: endTs
 							? new Date(typeof endTs === 'number' ? endTs : Date.now()).toISOString()

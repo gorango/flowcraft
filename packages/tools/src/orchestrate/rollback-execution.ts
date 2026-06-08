@@ -92,9 +92,7 @@ export function createRollbackExecutionTool(config: {
 					},
 					metadata: {
 						duration: Date.now() - start,
-						affectedNodes: Object.keys(
-							(result.context._outputs as Record<string, unknown>) ?? {},
-						),
+						affectedNodes: Object.keys((result.context._outputs as Record<string, unknown>) ?? {}),
 						blueprintId: blueprint.id,
 						blueprintVersion: blueprint.metadata?.version,
 					},

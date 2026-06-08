@@ -73,8 +73,7 @@ function NodeTypesSidebar() {
 							<div className="type-desc">{def.description}</div>
 							<div className="type-ports">
 								Inputs: {def.inputs.map((p) => p.label).join(', ') || 'none'}
-								&nbsp;|&nbsp; Outputs:{' '}
-								{def.outputs.map((p) => p.label).join(', ') || 'none'}
+								&nbsp;|&nbsp; Outputs: {def.outputs.map((p) => p.label).join(', ') || 'none'}
 							</div>
 						</div>
 					))}
@@ -124,10 +123,7 @@ export default function App() {
 			) : mode === 'edit' ? (
 				<main id="editor-split">
 					<div id="editor-canvas">
-						<FlowcraftEditor
-							blueprint={blueprint}
-							onBlueprintChange={(bp) => setBlueprint(bp)}
-						/>
+						<FlowcraftEditor blueprint={blueprint} onBlueprintChange={(bp) => setBlueprint(bp)} />
 					</div>
 					<aside id="editor-json">
 						<pre>{JSON.stringify(blueprint, null, 2)}</pre>
@@ -137,10 +133,7 @@ export default function App() {
 				<main id="crud-split">
 					<NodeTypesSidebar />
 					<div id="crud-canvas">
-						<FlowcraftEditor
-							blueprint={blueprint}
-							onBlueprintChange={(bp) => setBlueprint(bp)}
-						/>
+						<FlowcraftEditor blueprint={blueprint} onBlueprintChange={(bp) => setBlueprint(bp)} />
 					</div>
 					<aside id="crud-info">
 						<h3>Canvas Info</h3>
@@ -172,8 +165,7 @@ export default function App() {
 								<strong>Update</strong>: Select a node or connection to edit
 							</li>
 							<li>
-								<strong>Delete</strong>: Select + Delete key (cascade removes
-								connections)
+								<strong>Delete</strong>: Select + Delete key (cascade removes connections)
 							</li>
 						</ul>
 						<hr
@@ -184,9 +176,7 @@ export default function App() {
 							}}
 						/>
 						<h4>Blueprint</h4>
-						<pre
-							style={{ fontSize: 10, whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}
-						>
+						<pre style={{ fontSize: 10, whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>
 							{JSON.stringify(blueprint, null, 1)}
 						</pre>
 					</aside>
@@ -201,8 +191,8 @@ export default function App() {
 				)}
 				{mode === 'crud-demo' && (
 					<span>
-						CRUD Demo &mdash; Ports &middot; Connections &middot; Structured Editing
-						&middot; Cascade Delete
+						CRUD Demo &mdash; Ports &middot; Connections &middot; Structured Editing &middot;
+						Cascade Delete
 					</span>
 				)}
 			</footer>

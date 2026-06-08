@@ -208,9 +208,7 @@ function toggleLayout() {
 
 <template>
 	<div class="relative flex flex-col h-full rounded-lg overflow-hidden">
-		<header
-			class="flex items-center gap-2 p-2 bg-(--vp-c-bg-alt) border-b border-(--vp-c-divider)"
-		>
+		<header class="flex items-center gap-2 p-2 bg-(--vp-c-bg-alt) border-b border-(--vp-c-divider)">
 			<button @click="runWorkflow" class="brand">
 				{{ executionResult ? 'Restart' : 'Run' }}
 			</button>
@@ -254,28 +252,13 @@ function toggleLayout() {
 		<VueFlow fit-view-on-init :max-zoom="1.25">
 			<Background />
 			<template #node-input="nodeProps">
-				<NodeInput
-					v-bind="nodeProps"
-					:flow
-					:node-data="getNodeData(nodeProps.id)"
-					:direction
-				/>
+				<NodeInput v-bind="nodeProps" :flow :node-data="getNodeData(nodeProps.id)" :direction />
 			</template>
 			<template #node-default="nodeProps">
-				<NodeDefault
-					v-bind="nodeProps"
-					:flow
-					:node-data="getNodeData(nodeProps.id)"
-					:direction
-				/>
+				<NodeDefault v-bind="nodeProps" :flow :node-data="getNodeData(nodeProps.id)" :direction />
 			</template>
 			<template #node-output="nodeProps">
-				<NodeOutput
-					v-bind="nodeProps"
-					:flow
-					:node-data="getNodeData(nodeProps.id)"
-					:direction
-				/>
+				<NodeOutput v-bind="nodeProps" :flow :node-data="getNodeData(nodeProps.id)" :direction />
 			</template>
 			<template #edge-loopback="edgeProps">
 				<EdgeLoopback v-bind="edgeProps" />

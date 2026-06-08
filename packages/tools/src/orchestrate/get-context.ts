@@ -26,13 +26,7 @@ export function createGetExecutionContextTool(config: {
 		description:
 			'Retrieve the full context state of a workflow execution, reconstructed from events',
 		parameters: getExecutionContextSchema,
-		triggers: [
-			'get context',
-			'current state',
-			'execution context',
-			'show context',
-			'get state',
-		],
+		triggers: ['get context', 'current state', 'execution context', 'show context', 'get state'],
 		execute: async (params) => {
 			const start = Date.now()
 

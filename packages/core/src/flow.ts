@@ -83,11 +83,7 @@ export class FlowBuilder<
 		return this
 	}
 
-	edge(
-		source: string,
-		target: string,
-		options?: Omit<EdgeDefinition, 'source' | 'target'>,
-	): this {
+	edge(source: string, target: string, options?: Omit<EdgeDefinition, 'source' | 'target'>): this {
 		const edgeDef: EdgeDefinition = { source, target, ...options }
 		this.blueprint.edges?.push(edgeDef)
 		return this
@@ -457,10 +453,7 @@ export class FlowBuilder<
 		for (const edge of blueprint.edges) {
 			if (!ignoredNodeIds.has(edge.source) && !ignoredNodeIds.has(edge.target)) {
 				const alreadyAdded = uiEdges.some(
-					(e) =>
-						e.source === edge.source &&
-						e.target === edge.target &&
-						e.action === edge.action,
+					(e) => e.source === edge.source && e.target === edge.target && e.action === edge.action,
 				)
 				if (!alreadyAdded) {
 					uiEdges.push(edge)

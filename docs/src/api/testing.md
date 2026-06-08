@@ -93,9 +93,9 @@ function runWithTrace<
 - **`runtime`**: The runtime instance.
 - **`blueprint`**: The workflow blueprint.
 - **`options`** (optional):
-    - **`functionRegistry`**: Node implementations.
-    - **`initialState`**: Initial context.
-    - **`signal`**: AbortSignal.
+  - **`functionRegistry`**: Node implementations.
+  - **`initialState`**: Initial context.
+  - **`signal`**: AbortSignal.
 
 ### Returns
 
@@ -121,9 +121,7 @@ class InMemoryEventLogger implements IEventBus {
 	constructor()
 	emit(event: FlowcraftEvent): Promise<void>
 	clear(): void
-	find<T extends FlowcraftEvent['type']>(
-		type: T,
-	): Extract<FlowcraftEvent, { type: T }> | undefined
+	find<T extends FlowcraftEvent['type']>(type: T): Extract<FlowcraftEvent, { type: T }> | undefined
 	filter<T extends FlowcraftEvent['type']>(type: T): Extract<FlowcraftEvent, { type: T }>[]
 	printLog(title?: string): void
 }

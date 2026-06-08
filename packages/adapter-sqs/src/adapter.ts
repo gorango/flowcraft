@@ -47,11 +47,7 @@ export class SqsAdapter extends BaseDistributedAdapter {
 	/**
 	 * Hook called at the start of job processing to update lastUpdated timestamp.
 	 */
-	protected async onJobStart(
-		_runId: string,
-		_blueprintId: string,
-		_nodeId: string,
-	): Promise<void> {
+	protected async onJobStart(_runId: string, _blueprintId: string, _nodeId: string): Promise<void> {
 		// Touch the status table to update the 'lastUpdated' timestamp.
 		// This is critical for the reconciler to find stalled workflows.
 		try {

@@ -77,8 +77,7 @@ export function createRetryNodeTool(config: {
 						return {
 							status: 'failed',
 							error: {
-								message:
-									'Cannot determine blueprint from events. Provide workflowId.',
+								message: 'Cannot determine blueprint from events. Provide workflowId.',
 								code: ErrorCodes.BLUEPRINT_NOT_FOUND,
 							},
 							metadata: {
@@ -95,9 +94,7 @@ export function createRetryNodeTool(config: {
 					version: params.version,
 				})
 
-				const inputOverrides = params.inputs
-					? { [params.nodeId]: params.inputs }
-					: undefined
+				const inputOverrides = params.inputs ? { [params.nodeId]: params.inputs } : undefined
 
 				const result = await config.runtime.executeNodes(
 					blueprint,

@@ -82,12 +82,7 @@ const result = await runtime.run(blueprint, init, { functionRegistry })
 
 if (result.status === 'awaiting') {
 	// Show resume buttons in the UI
-	await runtime.resume(
-		blueprint,
-		result.serializedContext,
-		{ output: { approved: true } },
-		nodeId,
-	)
+	await runtime.resume(blueprint, result.serializedContext, { output: { approved: true } }, nodeId)
 }
 ```
 

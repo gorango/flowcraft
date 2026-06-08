@@ -76,10 +76,7 @@ describe('BaseNode', () => {
 			return { output: 'execResult' }
 		}
 
-		async post(
-			_execResult: Omit<NodeResult, 'error'>,
-			_context: NodeContext,
-		): Promise<NodeResult> {
+		async post(_execResult: Omit<NodeResult, 'error'>, _context: NodeContext): Promise<NodeResult> {
 			this.postCalled = true
 			return _execResult
 		}
@@ -101,10 +98,7 @@ describe('BaseNode', () => {
 			return { output: 'exec' }
 		}
 
-		async post(
-			_execResult: Omit<NodeResult, 'error'>,
-			_context: NodeContext,
-		): Promise<NodeResult> {
+		async post(_execResult: Omit<NodeResult, 'error'>, _context: NodeContext): Promise<NodeResult> {
 			this.postCalled = true
 			throw new Error('Should not be called')
 		}
@@ -121,10 +115,7 @@ describe('BaseNode', () => {
 			throw new Error('Exec failed')
 		}
 
-		async post(
-			_execResult: Omit<NodeResult, 'error'>,
-			_context: NodeContext,
-		): Promise<NodeResult> {
+		async post(_execResult: Omit<NodeResult, 'error'>, _context: NodeContext): Promise<NodeResult> {
 			this.postCalled = true
 			throw new Error('Should not be called')
 		}
@@ -141,10 +132,7 @@ describe('BaseNode', () => {
 			throw new Error('Exec failed')
 		}
 
-		async post(
-			_execResult: Omit<NodeResult, 'error'>,
-			_context: NodeContext,
-		): Promise<NodeResult> {
+		async post(_execResult: Omit<NodeResult, 'error'>, _context: NodeContext): Promise<NodeResult> {
 			return _execResult
 		}
 
@@ -246,9 +234,7 @@ describe('BaseNode', () => {
 		}
 		const prepResult = await node.prep(context)
 		await expect(node.exec(prepResult, context)).rejects.toThrow('Exec failed')
-		await expect(node.fallback(new Error('Exec failed'), context)).rejects.toThrow(
-			'Exec failed',
-		)
+		await expect(node.fallback(new Error('Exec failed'), context)).rejects.toThrow('Exec failed')
 	})
 
 	it('should call constructor with params', () => {

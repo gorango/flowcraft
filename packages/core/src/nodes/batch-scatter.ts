@@ -16,9 +16,7 @@ export class BatchScatterNode extends BaseNode {
 			gatherNodeId,
 		} = (this.params as any) || {}
 		if (!workerUsesKey || !gatherNodeId) {
-			throw new Error(
-				`BatchScatterNode requires 'workerUsesKey' and 'gatherNodeId' parameters.`,
-			)
+			throw new Error(`BatchScatterNode requires 'workerUsesKey' and 'gatherNodeId' parameters.`)
 		}
 		const batchId = globalThis.crypto.randomUUID()
 		const currentIndex = (await context.context.get(`${this.nodeId}_currentIndex`)) || 0

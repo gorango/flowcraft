@@ -21,12 +21,7 @@ export function handleAwaitExpression(analyzer: FlowAnalyzer, node: ts.AwaitExpr
 					uses: 'wait',
 					params: { eventName: `webhook:${variableInfo.nodeId}` },
 				}
-				analyzer.state.addNodeAndWire(
-					waitNode,
-					node,
-					analyzer.sourceFile,
-					analyzer.typeChecker,
-				)
+				analyzer.state.addNodeAndWire(waitNode, node, analyzer.sourceFile, analyzer.typeChecker)
 				return
 			}
 		}
@@ -57,12 +52,7 @@ export function handleAwaitExpression(analyzer: FlowAnalyzer, node: ts.AwaitExpr
 						uses: 'sleep',
 						params: { duration: callee.arguments[0].getText() },
 					}
-					analyzer.state.addNodeAndWire(
-						nodeDef,
-						node,
-						analyzer.sourceFile,
-						analyzer.typeChecker,
-					)
+					analyzer.state.addNodeAndWire(nodeDef, node, analyzer.sourceFile, analyzer.typeChecker)
 					break
 
 				case 'waitForEvent':
@@ -71,12 +61,7 @@ export function handleAwaitExpression(analyzer: FlowAnalyzer, node: ts.AwaitExpr
 						uses: 'wait',
 						params: { eventName: callee.arguments[0].getText() },
 					}
-					analyzer.state.addNodeAndWire(
-						nodeDef,
-						node,
-						analyzer.sourceFile,
-						analyzer.typeChecker,
-					)
+					analyzer.state.addNodeAndWire(nodeDef, node, analyzer.sourceFile, analyzer.typeChecker)
 					break
 
 				case 'createWebhook': {
@@ -97,11 +82,7 @@ export function handleAwaitExpression(analyzer: FlowAnalyzer, node: ts.AwaitExpr
 				}
 
 				default:
-					analyzer.addDiagnostic(
-						node,
-						'error',
-						`Unknown durable primitive '${primitiveName}'.`,
-					)
+					analyzer.addDiagnostic(node, 'error', `Unknown durable primitive '${primitiveName}'.`)
 			}
 			return
 		}

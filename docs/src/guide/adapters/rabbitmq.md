@@ -42,19 +42,19 @@ Create a `docker-compose.yml` file:
 ```yaml
 version: '3.8'
 services:
-    rabbitmq:
-        image: rabbitmq:3.13.0-management-alpine
-        ports: ['5672:5672', '15672:15672'] # App & Management UI
-    postgres:
-        image: postgres:16-alpine
-        ports: ['5432:5432']
-        environment:
-            POSTGRES_DB: flowcraft_db
-            POSTGRES_USER: user
-            POSTGRES_PASSWORD: password
-    redis:
-        image: redis:8-alpine
-        ports: ['6379:6379']
+  rabbitmq:
+    image: rabbitmq:3.13.0-management-alpine
+    ports: ['5672:5672', '15672:15672'] # App & Management UI
+  postgres:
+    image: postgres:16-alpine
+    ports: ['5432:5432']
+    environment:
+      POSTGRES_DB: flowcraft_db
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+  redis:
+    image: redis:8-alpine
+    ports: ['6379:6379']
 ```
 
 After running `docker-compose up -d`, connect to PostgreSQL and create the required tables:

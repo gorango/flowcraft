@@ -7,15 +7,15 @@ This workflow demonstrates a sophisticated "router" pattern. It performs multipl
 ### Description
 
 1. **Parallel Analysis**: The workflow begins by performing three independent checks on the `userPost` in parallel:
-    - `check_for_pii`: Looks for Personally Identifiable Information.
-    - `check_for_hate_speech`: Analyzes the severity of any hate speech.
-    - `check_for_spam`: Detects if the post is commercial spam.
+   - `check_for_pii`: Looks for Personally Identifiable Information.
+   - `check_for_hate_speech`: Analyzes the severity of any hate speech.
+   - `check_for_spam`: Detects if the post is commercial spam.
 2. **Router Node**: All three analysis results are fed into the `triage_post` node. This special `llm-router` node uses an LLM to evaluate the combined inputs against a set of rules and returns a single action string (e.g., `action_ban`, `action_redact`).
 3. **Multi-Way Branching**: The action string from the router determines which of the four possible paths is executed.
-    - `action_ban` -> Sub-Workflow 401 (Ban User)
-    - `action_redact` -> Sub-Workflow 402 (Redact Post)
-    - `action_delete_spam` -> Sub-Workflow 403 (Delete Spam)
-    - `action_approve` -> A simple node to log the approval.
+   - `action_ban` -> Sub-Workflow 401 (Ban User)
+   - `action_redact` -> Sub-Workflow 402 (Redact Post)
+   - `action_delete_spam` -> Sub-Workflow 403 (Delete Spam)
+   - `action_approve` -> A simple node to log the approval.
 4. **Convergence**: The result from the chosen moderation path is captured in the `final_log` node.
 
 ### Visual Graph

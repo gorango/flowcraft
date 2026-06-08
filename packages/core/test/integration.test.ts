@@ -71,9 +71,7 @@ describe('Integration Tests - End-to-End Workflow Scenarios', () => {
 						orderId: order.id,
 						paymentId,
 						status: 'confirmed',
-						estimatedDelivery: new Date(
-							Date.now() + 3 * 24 * 60 * 60 * 1000,
-						).toISOString(),
+						estimatedDelivery: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(),
 					},
 				}
 			})
@@ -603,9 +601,7 @@ describe('Integration Tests - End-to-End Workflow Scenarios', () => {
 
 			expect(result.status).toBe('completed')
 			expect(result.context['_outputs.make-decision']).toBeDefined()
-			expect(['hire', 'reject']).toContain(
-				result.context['_outputs.make-decision'].finalDecision,
-			)
+			expect(['hire', 'reject']).toContain(result.context['_outputs.make-decision'].finalDecision)
 		})
 	})
 })

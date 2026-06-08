@@ -76,8 +76,7 @@ export class VercelKvContext implements IAsyncContext<Record<string, any>> {
 		const pipeline = this.client.pipeline()
 		for (const op of operations) {
 			if (op.op === 'set') {
-				const serialized =
-					typeof op.value === 'string' ? op.value : JSON.stringify(op.value)
+				const serialized = typeof op.value === 'string' ? op.value : JSON.stringify(op.value)
 				pipeline.set(this.getKey(op.key), serialized, 'EX', this.ttlSeconds)
 			} else if (op.op === 'delete') {
 				pipeline.del(this.getKey(op.key))

@@ -40,9 +40,7 @@ export class RabbitMqAdapter extends BaseDistributedAdapter {
 
 	protected async enqueueJob(job: JobPayload): Promise<void> {
 		if (!this.channel) {
-			throw new Error(
-				'RabbitMQ channel is not available. Ensure the worker has been started.',
-			)
+			throw new Error('RabbitMQ channel is not available. Ensure the worker has been started.')
 		}
 		const jobBuffer = Buffer.from(JSON.stringify(job), 'utf-8')
 		this.channel.sendToQueue(this.queueName, jobBuffer, { persistent: true })
@@ -81,9 +79,7 @@ export class RabbitMqAdapter extends BaseDistributedAdapter {
 			await this.channel.assertQueue(this.queueName, { durable: true })
 			await this.channel.prefetch(1)
 
-			this.logger.info(
-				`[RabbitMqAdapter] Worker listening for jobs on queue: "${this.queueName}"`,
-			)
+			this.logger.info(`[RabbitMqAdapter] Worker listening for jobs on queue: "${this.queueName}"`)
 
 			await this.channel.consume(this.queueName, async (msg: ConsumeMessage | null) => {
 				// Add a guard to ensure the channel hasn't been closed by a concurrent stop() call

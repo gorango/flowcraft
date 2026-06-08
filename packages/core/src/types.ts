@@ -381,9 +381,7 @@ export interface WorkflowResult<TContext = Record<string, any>> {
 
 /** A graph representation of a workflow blueprint. */
 export interface UIGraph {
-	nodes: Array<
-		Partial<NodeDefinition> & { id: string; data?: Record<string, any>; type?: string }
-	>
+	nodes: Array<Partial<NodeDefinition> & { id: string; data?: Record<string, any>; type?: string }>
 	edges: Array<
 		Partial<EdgeDefinition> & { source: string; target: string; data?: Record<string, any> }
 	>

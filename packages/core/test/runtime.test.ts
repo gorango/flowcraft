@@ -26,7 +26,8 @@ describe('Flowcraft Runtime - Integration Tests', () => {
 	describe('Core Execution', () => {
 		it('should execute a simple linear blueprint', async () => {
 			const flow = createFlow('linear')
-			flow.node('A', async () => ({ output: 'resultA' }))
+			flow
+				.node('A', async () => ({ output: 'resultA' }))
 				.node('B', async (ctx) => ({ output: `${ctx.input}_B` }))
 				.edge('A', 'B')
 
@@ -43,7 +44,8 @@ describe('Flowcraft Runtime - Integration Tests', () => {
 
 		it('should correctly traverse a DAG with fan-out and fan-in', async () => {
 			const flow = createFlow('fan')
-			flow.node('A', async () => ({ output: 'A' }))
+			flow
+				.node('A', async () => ({ output: 'A' }))
 				.node('B', async () => ({ output: 'B' }))
 				.node('C', async () => ({ output: 'C' }))
 				.node('D', async (ctx) => ({
@@ -67,7 +69,8 @@ describe('Flowcraft Runtime - Integration Tests', () => {
 
 		it('should fail the workflow if a branch fails in a fan-in scenario', async () => {
 			const flow = createFlow('stall')
-			flow.node('A', async () => ({ output: 'A' }))
+			flow
+				.node('A', async () => ({ output: 'A' }))
 				.node('B', async () => {
 					throw new Error('Fail')
 				})
@@ -92,7 +95,8 @@ describe('Flowcraft Runtime - Integration Tests', () => {
 
 		it('should handle a blueprint with multiple start nodes', async () => {
 			const flow = createFlow('multi')
-			flow.node('A', async () => ({ output: 'A' }))
+			flow
+				.node('A', async () => ({ output: 'A' }))
 				.node('B', async () => ({ output: 'B' }))
 				.node('C', async (ctx) => ({
 					output: `input was ${String(ctx.input)}`,
@@ -114,7 +118,8 @@ describe('Flowcraft Runtime - Integration Tests', () => {
 
 		it('should correctly execute a graph with a cycle when strict mode is off', async () => {
 			const flow = createFlow('cycle')
-			flow.node('A', async () => ({ output: 'A' }))
+			flow
+				.node('A', async () => ({ output: 'A' }))
 				.node('B', async () => ({ output: 'B' }))
 				.edge('A', 'B')
 				.edge('B', 'A')
@@ -244,13 +249,15 @@ describe('Flowcraft Runtime - Integration Tests', () => {
 
 		it('should execute fallback node when main node fails', async () => {
 			const flow = createFlow('fallback-test')
-			flow.node(
-				'A',
-				async () => {
-					throw new Error('Main failed')
-				},
-				{ config: { fallback: 'B' } },
-			).node('B', async () => ({ output: 'fallback success' }))
+			flow
+				.node(
+					'A',
+					async () => {
+						throw new Error('Main failed')
+					},
+					{ config: { fallback: 'B' } },
+				)
+				.node('B', async () => ({ output: 'fallback success' }))
 
 			const blueprint = flow.toBlueprint()
 			const runtime = new FlowRuntime()
@@ -295,7 +302,8 @@ describe('Flowcraft Runtime - Integration Tests', () => {
 
 		it('should throw an error on a graph with a cycle when strict mode is on', async () => {
 			const flow = createFlow('cycle')
-			flow.node('A', async () => ({ output: 'A' }))
+			flow
+				.node('A', async () => ({ output: 'A' }))
 				.node('B', async () => ({ output: 'B' }))
 				.edge('A', 'B')
 				.edge('B', 'A')
@@ -438,7 +446,8 @@ describe('Flowcraft Runtime - Integration Tests', () => {
 
 		it('should correctly resolve a simple string `inputs` mapping', async () => {
 			const flow = createFlow('input')
-			flow.node('A', async () => ({ output: 'data' }))
+			flow
+				.node('A', async () => ({ output: 'data' }))
 				.node('B', async (ctx) => ({ output: `${ctx.input}_B` }), {
 					inputs: 'A',
 				})
@@ -456,7 +465,8 @@ describe('Flowcraft Runtime - Integration Tests', () => {
 
 		it('should correctly resolve a complex object `inputs` mapping', async () => {
 			const flow = createFlow('complex')
-			flow.node('A', async () => ({ output: { key: 'value' } }))
+			flow
+				.node('A', async () => ({ output: { key: 'value' } }))
 				.node('B', async (ctx) => ({ output: `${ctx.input.data.key}_B` }), {
 					inputs: { data: 'A' },
 				})
@@ -474,7 +484,8 @@ describe('Flowcraft Runtime - Integration Tests', () => {
 
 		it('should use the single-predecessor output as `input` if no mapping is provided', async () => {
 			const flow = createFlow('single')
-			flow.node('A', async () => ({ output: 'data' }))
+			flow
+				.node('A', async () => ({ output: 'data' }))
 				.node('B', async (ctx) => ({ output: `${ctx.input}_B` }))
 				.edge('A', 'B')
 
@@ -490,7 +501,8 @@ describe('Flowcraft Runtime - Integration Tests', () => {
 
 		it('should apply an edge `transform` expression to the data flow', async () => {
 			const flow = createFlow('transform')
-			flow.node('A', async () => ({ output: 10 }))
+			flow
+				.node('A', async () => ({ output: 10 }))
 				.node('B', async (ctx) => ({ output: ctx.input }))
 				.edge('A', 'B', { transform: 'input * 2' })
 
@@ -506,9 +518,10 @@ describe('Flowcraft Runtime - Integration Tests', () => {
 
 		it('should apply edge transform to the inputs-referenced node output, not the edge source', async () => {
 			const flow = createFlow('transform-explicit-inputs')
-			flow.node('start', async () => ({
-				output: { deeply: { nested: { value: 'extracted' } } },
-			}))
+			flow
+				.node('start', async () => ({
+					output: { deeply: { nested: { value: 'extracted' } } },
+				}))
 				.node('middle', async () => ({ output: 'pass-through' }))
 				.node('end', async (ctx) => ({ output: ctx.input }), { inputs: 'start' })
 				.edge('start', 'middle')
@@ -528,9 +541,10 @@ describe('Flowcraft Runtime - Integration Tests', () => {
 
 		it('should still respect edge transform with PropertyEvaluator on direct edges', async () => {
 			const flow = createFlow('transform-direct-edge')
-			flow.node('start', async () => ({
-				output: { deeply: { nested: { value: 'extracted' } } },
-			}))
+			flow
+				.node('start', async () => ({
+					output: { deeply: { nested: { value: 'extracted' } } },
+				}))
 				.node('end', async (ctx) => ({ output: ctx.input }))
 				.edge('start', 'end', { transform: 'input.deeply.nested.value' })
 
@@ -546,7 +560,8 @@ describe('Flowcraft Runtime - Integration Tests', () => {
 
 		it('should store transformed value in _inputs when edge has transform and target has explicit inputs', async () => {
 			const flow = createFlow('transform-stores-inputs')
-			flow.node('A', async () => ({ output: { data: 42 } }))
+			flow
+				.node('A', async () => ({ output: { data: 42 } }))
 				.node('B', async () => ({ output: 'B-result' }))
 				.node('C', async (ctx) => ({ output: ctx.input }), { inputs: 'A' })
 				.edge('A', 'B')
@@ -583,7 +598,8 @@ describe('Flowcraft Runtime - Integration Tests', () => {
 
 		it('should not have input for a node with multiple predecessors and no explicit "inputs" mapping', async () => {
 			const flow = createFlow('multi-no-input')
-			flow.node('A', async () => ({ output: 'A' }))
+			flow
+				.node('A', async () => ({ output: 'A' }))
 				.node('B', async () => ({ output: 'B' }))
 				.node('C', async (ctx) => ({
 					output: ctx.input === undefined ? 'no-input' : 'had-input',
@@ -605,7 +621,8 @@ describe('Flowcraft Runtime - Integration Tests', () => {
 	describe('Control Flow', () => {
 		it('should follow an edge based on the returned `action`', async () => {
 			const flow = createFlow('action')
-			flow.node('A', async () => ({ output: 'A', action: 'success' }))
+			flow
+				.node('A', async () => ({ output: 'A', action: 'success' }))
 				.node('B', async () => ({ output: 'B' }))
 				.node('C', async () => ({ output: 'C' }))
 				.edge('A', 'B', { action: 'success' })
@@ -624,7 +641,8 @@ describe('Flowcraft Runtime - Integration Tests', () => {
 
 		it('should evaluate an edge `condition` and route correctly if true', async () => {
 			const flow = createFlow('condition-true')
-			flow.node('A', async () => ({ output: { status: 'OK' } }))
+			flow
+				.node('A', async () => ({ output: { status: 'OK' } }))
 				.node('B', async () => ({ output: 'B' }))
 				.node('C', async () => ({ output: 'C' }))
 				.edge('A', 'B', { condition: "result.output.status === 'OK'" })
@@ -643,7 +661,8 @@ describe('Flowcraft Runtime - Integration Tests', () => {
 
 		it('should not follow a conditional edge if the condition is false', async () => {
 			const flow = createFlow('condition-false')
-			flow.node('A', async () => ({ output: 'A' }))
+			flow
+				.node('A', async () => ({ output: 'A' }))
 				.node('B', async () => ({ output: 'B' }))
 				.node('C', async () => ({ output: 'C' }))
 				.edge('A', 'B', { condition: '1 === 2' }) // false
@@ -662,7 +681,8 @@ describe('Flowcraft Runtime - Integration Tests', () => {
 
 		it('should follow the default (unconditional) edge if no other paths match', async () => {
 			const flow = createFlow('default')
-			flow.node('A', async () => ({ output: 'A', action: 'unknown' }))
+			flow
+				.node('A', async () => ({ output: 'A', action: 'unknown' }))
 				.node('B', async () => ({ output: 'B' }))
 				.node('C', async () => ({ output: 'C' }))
 				.edge('A', 'B', { action: 'known' })
@@ -685,10 +705,11 @@ describe('Flowcraft Runtime - Integration Tests', () => {
 			const rejectMock = vi.fn(async () => ({ output: { status: 'rejected' } }))
 
 			const flow = createFlow('conditional-routing')
-			flow.node('route', async ({ context }) => {
-				await context.set('total', 1665)
-				return { output: { total: 1665 } }
-			})
+			flow
+				.node('route', async ({ context }) => {
+					await context.set('total', 1665)
+					return { output: { total: 1665 } }
+				})
 				.node('autoApprove', autoApproveMock)
 				.node('waitManager', waitManagerMock)
 				.node('reject', rejectMock)
@@ -718,10 +739,11 @@ describe('Flowcraft Runtime - Integration Tests', () => {
 			const rejectMock = vi.fn(async () => ({ output: { status: 'rejected' } }))
 
 			const flow = createFlow('conditional-hitl')
-			flow.node('route', async ({ context }) => {
-				await context.set('total', 1665)
-				return { output: { total: 1665 } }
-			})
+			flow
+				.node('route', async ({ context }) => {
+					await context.set('total', 1665)
+					return { output: { total: 1665 } }
+				})
 				.node('autoApprove', autoApproveMock)
 				.wait('waitManager')
 				.node('processApproval', async ({ input }) => {
@@ -793,11 +815,7 @@ describe('Flowcraft Runtime - Integration Tests', () => {
 				return { output: 'A' }
 			})
 			const runtime = new FlowRuntime({ middleware })
-			await runtime.run(
-				flow.toBlueprint(),
-				{},
-				{ functionRegistry: flow.getFunctionRegistry() },
-			)
+			await runtime.run(flow.toBlueprint(), {}, { functionRegistry: flow.getFunctionRegistry() })
 
 			expect(order).toEqual(['before1', 'before2', 'exec', 'after2', 'after1'])
 		})
@@ -830,11 +848,7 @@ describe('Flowcraft Runtime - Integration Tests', () => {
 				output: 'A',
 			}))
 			const runtime = new FlowRuntime({ middleware })
-			await runtime.run(
-				flow.toBlueprint(),
-				{},
-				{ functionRegistry: flow.getFunctionRegistry() },
-			)
+			await runtime.run(flow.toBlueprint(), {}, { functionRegistry: flow.getFunctionRegistry() })
 
 			expect(beforeSpy).toHaveBeenCalledOnce()
 			expect(afterSpy).toHaveBeenCalledOnce()
@@ -847,11 +861,7 @@ describe('Flowcraft Runtime - Integration Tests', () => {
 				throw new Error('Fail')
 			})
 			const runtime = new FlowRuntime({ middleware })
-			await runtime.run(
-				flow.toBlueprint(),
-				{},
-				{ functionRegistry: flow.getFunctionRegistry() },
-			)
+			await runtime.run(flow.toBlueprint(), {}, { functionRegistry: flow.getFunctionRegistry() })
 
 			expect(afterSpy).toHaveBeenCalledOnce()
 		})
@@ -862,11 +872,7 @@ describe('Flowcraft Runtime - Integration Tests', () => {
 				output: 'A',
 			}))
 			const runtime = new FlowRuntime({ eventBus })
-			await runtime.run(
-				flow.toBlueprint(),
-				{},
-				{ functionRegistry: flow.getFunctionRegistry() },
-			)
+			await runtime.run(flow.toBlueprint(), {}, { functionRegistry: flow.getFunctionRegistry() })
 
 			expect(eventBus.has('workflow:start')).toBe(true)
 			expect(eventBus.has('workflow:finish')).toBe(true)
@@ -876,24 +882,22 @@ describe('Flowcraft Runtime - Integration Tests', () => {
 			const eventBus = new MockEventBus()
 			let attempts = 0
 			const flow = createFlow('events-node')
-			flow.node(
-				'A',
-				async () => {
-					attempts++
-					if (attempts < 2) throw new Error('Retry me')
-					return { output: 'A' }
-				},
-				{ config: { maxRetries: 2 } },
-			).node('B', async () => {
-				throw new Error('Fail me')
-			})
+			flow
+				.node(
+					'A',
+					async () => {
+						attempts++
+						if (attempts < 2) throw new Error('Retry me')
+						return { output: 'A' }
+					},
+					{ config: { maxRetries: 2 } },
+				)
+				.node('B', async () => {
+					throw new Error('Fail me')
+				})
 
 			const runtime = new FlowRuntime({ eventBus })
-			await runtime.run(
-				flow.toBlueprint(),
-				{},
-				{ functionRegistry: flow.getFunctionRegistry() },
-			)
+			await runtime.run(flow.toBlueprint(), {}, { functionRegistry: flow.getFunctionRegistry() })
 
 			expect(eventBus.has('node:start')).toBe(true)
 			expect(eventBus.has('node:finish')).toBe(true)
@@ -909,11 +913,7 @@ describe('Flowcraft Runtime - Integration Tests', () => {
 				return { output: 'A' }
 			})
 			const runtime = new FlowRuntime({ dependencies: deps })
-			await runtime.run(
-				flow.toBlueprint(),
-				{},
-				{ functionRegistry: flow.getFunctionRegistry() },
-			)
+			await runtime.run(flow.toBlueprint(), {}, { functionRegistry: flow.getFunctionRegistry() })
 
 			expect(capturedDeps.db).toBe(deps.db)
 			expect(capturedDeps.logger).toBeDefined()
@@ -924,10 +924,11 @@ describe('Flowcraft Runtime - Integration Tests', () => {
 		it('should result in a cancelled status if the signal is aborted mid-flight', async () => {
 			const controller = new AbortController()
 			const flow = createFlow('cancel-me')
-			flow.node('A', async (): Promise<NodeResult<string>> => {
-				controller.abort() // Abort after the first node starts
-				return { output: 'A' }
-			})
+			flow
+				.node('A', async (): Promise<NodeResult<string>> => {
+					controller.abort() // Abort after the first node starts
+					return { output: 'A' }
+				})
 				.node(
 					'B',
 					async (): Promise<NodeResult<string>> =>
@@ -985,9 +986,7 @@ describe('Flowcraft Runtime - Integration Tests', () => {
 				],
 			])('should handle %s gracefully', async (_description, blueprintOrFactory) => {
 				const blueprint =
-					typeof blueprintOrFactory === 'function'
-						? blueprintOrFactory()
-						: blueprintOrFactory
+					typeof blueprintOrFactory === 'function' ? blueprintOrFactory() : blueprintOrFactory
 				const runtime = new FlowRuntime()
 				const result = await runtime.run(blueprint, {}, {})
 

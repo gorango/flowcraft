@@ -72,12 +72,7 @@ export class Compiler {
 			}
 			for (const [exportName, { type, node }] of fileAnalysis.exports) {
 				if (type === 'flow') {
-					const analyzer = new FlowAnalyzer(
-						this,
-						fileAnalysis.sourceFile,
-						node,
-						this.typeChecker,
-					)
+					const analyzer = new FlowAnalyzer(this, fileAnalysis.sourceFile, node, this.typeChecker)
 					const result = analyzer.analyze()
 					blueprints[exportName] = result.blueprint
 					Object.assign(registry, result.registry)
@@ -194,18 +189,10 @@ export class Compiler {
 								if (jsDocTags.length === 0) {
 									jsDocTags = ts.getJSDocTags(node as unknown as ts.Declaration)
 								}
-								const hasFlowTag = jsDocTags.some(
-									(tag) => tag.tagName.text === 'flow',
-								)
-								const hasStepTag = jsDocTags.some(
-									(tag) => tag.tagName.text === 'step',
-								)
+								const hasFlowTag = jsDocTags.some((tag) => tag.tagName.text === 'flow')
+								const hasStepTag = jsDocTags.some((tag) => tag.tagName.text === 'step')
 								if (hasFlowTag || hasStepTag) {
-									if (
-										init.modifiers?.some(
-											(mod) => mod.kind === ts.SyntaxKind.AsyncKeyword,
-										)
-									) {
+									if (init.modifiers?.some((mod) => mod.kind === ts.SyntaxKind.AsyncKeyword)) {
 										exports.set(decl.name.text, {
 											type: hasFlowTag ? 'flow' : 'step',
 											node: init as unknown as ts.ArrowFunction,
@@ -233,10 +220,7 @@ export class Compiler {
 		for (const [uses, { importPath, exportName }] of Object.entries(registry)) {
 			const relative = path.relative(manifestDir, importPath)
 			const parsed = path.parse(relative)
-			let relativePath = path
-				.join(parsed.dir, parsed.name)
-				.split(path.sep)
-				.join(path.posix.sep)
+			let relativePath = path.join(parsed.dir, parsed.name).split(path.sep).join(path.posix.sep)
 			if (!relativePath.startsWith('.') && !relativePath.startsWith('..')) {
 				relativePath = './' + relativePath
 			}

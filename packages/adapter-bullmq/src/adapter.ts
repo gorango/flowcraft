@@ -65,9 +65,7 @@ export class BullMQAdapter extends BaseDistributedAdapter {
 				: new Redis(options.connection as RedisOptions)
 		this.queueName = options.queueName || 'flowcraft-queue'
 		this.stateTtlSeconds =
-			options.stateTtlSeconds !== undefined
-				? options.stateTtlSeconds
-				: DEFAULT_STATE_TTL_SECONDS
+			options.stateTtlSeconds !== undefined ? options.stateTtlSeconds : DEFAULT_STATE_TTL_SECONDS
 		this.retryMode = options.retryMode || 'in-process'
 		this.queue = new Queue(this.queueName, {
 			connection: this.redisClient as ConnectionOptions,
@@ -102,14 +100,11 @@ export class BullMQAdapter extends BaseDistributedAdapter {
 		this.worker = new Worker(
 			this.queueName,
 			async (job: Job) => {
-				this.logger.info(
-					`[BullMQAdapter] ==> Picked up job ID: ${job.id}, Name: ${job.name}`,
-				)
+				this.logger.info(`[BullMQAdapter] ==> Picked up job ID: ${job.id}, Name: ${job.name}`)
 
 				const optsAttempts = job.opts.attempts || 1
 				const attemptsMade = job.attemptsMade || 0
-				const isLastAttempt =
-					this.retryMode === 'queue' ? attemptsMade >= optsAttempts - 1 : true
+				const isLastAttempt = this.retryMode === 'queue' ? attemptsMade >= optsAttempts - 1 : true
 				const attempt = attemptsMade + 1
 
 				const payload: JobPayload = {
@@ -141,12 +136,7 @@ export class BullMQAdapter extends BaseDistributedAdapter {
 		const stateKey = `${STATE_KEY_PREFIX}${runId}`
 
 		if (this.stateTtlSeconds > 0) {
-			await this.redisClient.set(
-				statusKey,
-				JSON.stringify(result),
-				'EX',
-				this.stateTtlSeconds,
-			)
+			await this.redisClient.set(statusKey, JSON.stringify(result), 'EX', this.stateTtlSeconds)
 			await this.redisClient.expire(stateKey, this.stateTtlSeconds)
 		} else {
 			// stateTtlSeconds === 0: persist indefinitely

@@ -28,11 +28,7 @@ export async function buildFlows(pluginOptions: CompileFlowsOptions = {}) {
 	console.log('Compiling Flowcraft workflows...')
 
 	try {
-		const { diagnostics, manifestSource } = compileProject(
-			entryPoints,
-			tsConfigPath,
-			manifestPath,
-		)
+		const { diagnostics, manifestSource } = compileProject(entryPoints, tsConfigPath, manifestPath)
 
 		const errors = diagnostics.filter((d) => d.severity === 'error')
 		const warnings = diagnostics.filter((d) => d.severity === 'warning')

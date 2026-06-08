@@ -55,17 +55,13 @@ export function NodeTypePicker({ onSelect, onClose }: NodeTypePickerProps) {
 									onClick={() => onSelect(def)}
 								>
 									<div style={{ fontWeight: 500, fontSize: 12 }}>{def.label}</div>
-									<div style={{ fontSize: 10, color: '#6b7280' }}>
-										{def.description}
-									</div>
+									<div style={{ fontSize: 10, color: '#6b7280' }}>{def.description}</div>
 								</button>
 							))}
 						</div>
 					))}
 					{Array.from(filtered.values()).every((v) => v.length === 0) && (
-						<div style={{ fontSize: 12, color: '#9ca3af', padding: 8 }}>
-							No matching nodes
-						</div>
+						<div style={{ fontSize: 12, color: '#9ca3af', padding: 8 }}>No matching nodes</div>
 					)}
 				</div>
 			</div>

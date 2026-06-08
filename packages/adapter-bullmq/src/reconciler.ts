@@ -51,13 +51,7 @@ export function createBullMQReconciler(options: BullMQReconcilerOptions) {
 
 			let cursor = 0
 			do {
-				const result = await redis.scan(
-					cursor,
-					'MATCH',
-					`${keyPrefix}*`,
-					'COUNT',
-					scanCount,
-				)
+				const result = await redis.scan(cursor, 'MATCH', `${keyPrefix}*`, 'COUNT', scanCount)
 				cursor = Number(result[0])
 				const keys = result[1]
 

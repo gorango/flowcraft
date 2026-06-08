@@ -10,7 +10,8 @@ export const config = {
 		entryWorkflowId: '200',
 		initialContext: {
 			applicantName: 'Jane Doe',
-			resume: 'Experienced developer with a background in TypeScript, Node.js, and building complex DAG workflow systems. Also proficient in React and SQL.',
+			resume:
+				'Experienced developer with a background in TypeScript, Node.js, and building complex DAG workflow systems. Also proficient in React and SQL.',
 			coverLetter:
 				'To Whom It May Concern, I am writing to express my interest in the Senior Developer position.',
 		},

@@ -20,8 +20,7 @@ function edgeKey(e: EdgeDefinition): string {
 export function createGetBlueprintDiffTool(): WorkflowTool<typeof getBlueprintDiffSchema> {
 	return createWorkflowTool({
 		name: 'get_blueprint_diff',
-		description:
-			'Compare two workflow blueprint versions and identify all structural differences',
+		description: 'Compare two workflow blueprint versions and identify all structural differences',
 		parameters: getBlueprintDiffSchema,
 		triggers: ['diff', 'compare blueprints', 'blueprint diff', 'what changed', 'show changes'],
 		execute: async (params) => {

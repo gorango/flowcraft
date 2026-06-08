@@ -25,10 +25,9 @@ export class SubflowNode extends BaseNode {
 			(runtime as any).blueprints?.[blueprintId] ||
 			(runtime as any).runtime?.blueprints?.[blueprintId]
 		if (!subBlueprint) {
-			throw new FlowcraftError(
-				`Sub-blueprint '${blueprintId}' not found in runtime registry.`,
-				{ isFatal: true },
-			)
+			throw new FlowcraftError(`Sub-blueprint '${blueprintId}' not found in runtime registry.`, {
+				isFatal: true,
+			})
 		}
 
 		const subflowInitialContext: Record<string, any> = {}
@@ -93,8 +92,7 @@ export class SubflowNode extends BaseNode {
 
 		if (outputs) {
 			for (const [parentKey, subKey] of Object.entries(outputs as Record<string, string>)) {
-				const value =
-					subflowFinalContext[`_outputs.${subKey}`] ?? subflowFinalContext[subKey]
+				const value = subflowFinalContext[`_outputs.${subKey}`] ?? subflowFinalContext[subKey]
 				await context.context.set(parentKey as any, value)
 			}
 			return { output: subflowFinalContext }

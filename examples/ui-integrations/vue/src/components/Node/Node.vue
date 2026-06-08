@@ -56,10 +56,9 @@ const hasBatchProgress = computed(() => props.batchProgress && props.batchProgre
 				<div class="font-medium text-muted-foreground mb-1">Progress:</div>
 				<div class="bg-muted p-2 rounded text-xs space-y-2">
 					<div v-for="(item, index) in batchProgress" :key="index">
-						<pre
-							class="max-h-80 overflow-auto nowheel nodrag cursor-text select-text"
-							>{{ JSON.stringify(item) }}</pre
-						>
+						<pre class="max-h-80 overflow-auto nowheel nodrag cursor-text select-text">{{
+							JSON.stringify(item)
+						}}</pre>
 					</div>
 				</div>
 			</div>

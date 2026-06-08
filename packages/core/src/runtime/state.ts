@@ -143,10 +143,7 @@ export class WorkflowState<TContext extends Record<string, any>> {
 		return 'stalled'
 	}
 
-	async toResult(
-		serializer: ISerializer,
-		executionId?: string,
-	): Promise<WorkflowResult<TContext>> {
+	async toResult(serializer: ISerializer, executionId?: string): Promise<WorkflowResult<TContext>> {
 		const contextJSON = (await this.context.toJSON()) as TContext
 		if (!this._isAwaiting && (contextJSON as any)._awaitingNodeIds) {
 			delete (contextJSON as any)._awaitingNodeIds

@@ -24,8 +24,7 @@ export function createRetryFailedNodesTool(config: {
 }): WorkflowTool<typeof retryFailedNodesSchema> {
 	return createWorkflowTool({
 		name: 'retry_failed_nodes',
-		description:
-			'Retry all failed nodes in a workflow execution, or specific nodes if provided',
+		description: 'Retry all failed nodes in a workflow execution, or specific nodes if provided',
 		parameters: retryFailedNodesSchema,
 		triggers: [
 			'retry failed',

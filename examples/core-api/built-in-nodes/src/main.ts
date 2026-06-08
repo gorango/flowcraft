@@ -52,9 +52,7 @@ async function main() {
 		console.log(`   Premium quality items: ${batchStats.premiumItems}`)
 		console.log(`   Sample processed items:`)
 		processedItems.slice(0, 3).forEach((item: any, index: number) => {
-			console.log(
-				`     ${index + 1}. ${item.name} (${item.status}) - ${item.metadata.quality}`,
-			)
+			console.log(`     ${index + 1}. ${item.name} (${item.status}) - ${item.metadata.quality}`)
 		})
 
 		console.log('✅ Batch processing completed successfully\n')

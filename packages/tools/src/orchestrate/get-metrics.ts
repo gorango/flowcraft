@@ -46,20 +46,15 @@ export function createGetExecutionMetricsTool(config: {
 
 				const workflowStart =
 					getEventProp<number>(
-						typedEvents.find(
-							(e) => getEventProp<string>(e, 'type') === 'workflow:start',
-						),
+						typedEvents.find((e) => getEventProp<string>(e, 'type') === 'workflow:start'),
 						'timestamp',
 					) ?? 0
 				const workflowEnd =
 					getEventProp<number>(
-						typedEvents.find(
-							(e) => getEventProp<string>(e, 'type') === 'workflow:finish',
-						),
+						typedEvents.find((e) => getEventProp<string>(e, 'type') === 'workflow:finish'),
 						'timestamp',
 					) ?? 0
-				const workflowDuration =
-					workflowStart && workflowEnd ? workflowEnd - workflowStart : 0
+				const workflowDuration = workflowStart && workflowEnd ? workflowEnd - workflowStart : 0
 
 				let nodeCount = 0
 				let retryCount = 0
@@ -109,8 +104,7 @@ export function createGetExecutionMetricsTool(config: {
 						retryCount,
 						fallbackCount,
 						nodesCompleted: completedNodes.length,
-						nodesFailed: errors.filter((e) => !completedNodes.includes(e.nodeId))
-							.length,
+						nodesFailed: errors.filter((e) => !completedNodes.includes(e.nodeId)).length,
 						averageNodeDuration: Math.round(avgNodeDuration),
 						slowestNode: allNodeTimings[0] ?? null,
 						fastestNode: allNodeTimings[allNodeTimings.length - 1] ?? null,

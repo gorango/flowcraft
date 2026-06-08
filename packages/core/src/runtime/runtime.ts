@@ -244,10 +244,7 @@ export class FlowRuntime<
 				})
 			}
 
-			const traverser = new GraphTraverser(
-				executionContext.blueprint,
-				options?.strict === true,
-			)
+			const traverser = new GraphTraverser(executionContext.blueprint, options?.strict === true)
 			const result = await this.orchestrator.run(executionContext, traverser)
 
 			const duration = Date.now() - startTime
@@ -258,8 +255,7 @@ export class FlowRuntime<
 						blueprintId: executionContext.blueprint.id,
 						executionId: executionContext.executionId,
 						remainingNodes:
-							traverser.getAllNodeIds().size -
-							executionContext.state.getCompletedNodes().size,
+							traverser.getAllNodeIds().size - executionContext.state.getCompletedNodes().size,
 					},
 				})
 				await this.eventBus.emit({
@@ -424,12 +420,9 @@ export class FlowRuntime<
 
 		const awaitingNodeIds = workflowState.getAwaitingNodeIds()
 		if (awaitingNodeIds.length === 0) {
-			throw new FlowcraftError(
-				'Cannot resume: The provided context is not in an awaiting state.',
-				{
-					isFatal: true,
-				},
-			)
+			throw new FlowcraftError('Cannot resume: The provided context is not in an awaiting state.', {
+				isFatal: true,
+			})
 		}
 
 		const awaitingNodeId = nodeId || awaitingNodeIds[0]
@@ -580,11 +573,7 @@ export class FlowRuntime<
 
 		workflowState.clearAwaiting(awaitingNodeId)
 
-		const executionContext = this._setupResumedExecutionContext(
-			blueprint,
-			workflowState,
-			options,
-		)
+		const executionContext = this._setupResumedExecutionContext(blueprint, workflowState, options)
 
 		return await this.orchestrator.run(executionContext, traverser)
 	}
@@ -675,15 +664,8 @@ export class FlowRuntime<
 				blueprintId: blueprint.id,
 			})
 
-			const fallbackInput = await this.resolveNodeInput(
-				fallbackNode.id,
-				blueprint,
-				asyncContext,
-			)
-			const fallbackExecutor = this.executorFactory.createExecutorForNode(
-				fallbackNode.id,
-				context,
-			)
+			const fallbackInput = await this.resolveNodeInput(fallbackNode.id, blueprint, asyncContext)
+			const fallbackExecutor = this.executorFactory.createExecutorForNode(fallbackNode.id, context)
 
 			const fallbackResult = await fallbackExecutor.execute(fallbackInput)
 			if (fallbackResult.status === 'success') {
@@ -922,10 +904,11 @@ export class FlowRuntime<
 				const flowcraftError =
 					error instanceof FlowcraftError
 						? error
-						: new FlowcraftError(
-								error instanceof Error ? error.message : String(error),
-								{ nodeId, executionId, isFatal: false },
-							)
+						: new FlowcraftError(error instanceof Error ? error.message : String(error), {
+								nodeId,
+								executionId,
+								isFatal: false,
+							})
 
 				await this.eventBus.emit({
 					type: 'node:error',
@@ -937,10 +920,7 @@ export class FlowRuntime<
 					},
 				})
 
-				workflowState.addError(
-					nodeId,
-					error instanceof Error ? error : new Error(String(error)),
-				)
+				workflowState.addError(nodeId, error instanceof Error ? error : new Error(String(error)))
 
 				throw error
 			}
@@ -1123,10 +1103,12 @@ export class FlowRuntime<
 
 		const targetOutputKey = `_outputs.${targetNodeId}`
 		if (!(targetOutputKey in contextData)) {
-			throw new FlowcraftError(
-				`Cannot rollback: target node '${targetNodeId}' has not completed`,
-				{ nodeId: targetNodeId, blueprintId: blueprint.id, executionId, isFatal: false },
-			)
+			throw new FlowcraftError(`Cannot rollback: target node '${targetNodeId}' has not completed`, {
+				nodeId: targetNodeId,
+				blueprintId: blueprint.id,
+				executionId,
+				isFatal: false,
+			})
 		}
 
 		const completedNodeIds = new Set<string>()

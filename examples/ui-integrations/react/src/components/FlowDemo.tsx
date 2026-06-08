@@ -137,9 +137,7 @@ function FlowDemoInner({
 	)
 
 	const resetNodeData = useCallback(() => {
-		setNodes((nds) =>
-			nds.map((n) => ({ ...n, data: { ...n.data, nodeData: { status: 'idle' } } })),
-		)
+		setNodes((nds) => nds.map((n) => ({ ...n, data: { ...n.data, nodeData: { status: 'idle' } } })))
 	}, [setNodes])
 
 	useEffect(() => {
@@ -288,17 +286,13 @@ function FlowDemoInner({
 						{awaitingNodes.map((nodeId) => (
 							<div key={nodeId} className="flex gap-1.5">
 								<button
-									onClick={() =>
-										resumeWorkflow(nodeId, { output: { approved: true } })
-									}
+									onClick={() => resumeWorkflow(nodeId, { output: { approved: true } })}
 									className="px-3 py-1 text-sm font-medium rounded-md bg-green-600 text-white hover:bg-green-700 transition-colors"
 								>
 									Approve
 								</button>
 								<button
-									onClick={() =>
-										resumeWorkflow(nodeId, { output: { approved: false } })
-									}
+									onClick={() => resumeWorkflow(nodeId, { output: { approved: false } })}
 									className="px-3 py-1 text-sm font-medium rounded-md bg-red-600 text-white hover:bg-red-700 transition-colors"
 								>
 									Deny

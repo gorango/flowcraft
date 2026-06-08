@@ -145,10 +145,7 @@ describe('getExecutionStatus', () => {
 	})
 
 	it('returns completed for workflow:finish', () => {
-		const events = [
-			{ type: 'workflow:start' },
-			{ type: 'workflow:finish', status: 'completed' },
-		]
+		const events = [{ type: 'workflow:start' }, { type: 'workflow:finish', status: 'completed' }]
 		expect(getExecutionStatus(events).status).toBe('completed')
 	})
 

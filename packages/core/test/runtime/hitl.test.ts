@@ -234,8 +234,6 @@ describe('Human-in-the-Loop (HITL)', () => {
 			'wait2',
 		)
 		expect(result3.status).toBe('completed')
-		expect(result3.context['_outputs.gather'].combined).toBe(
-			'Results: Branch 1: 42, Branch 2: 42',
-		)
+		expect(result3.context['_outputs.gather'].combined).toBe('Results: Branch 1: 42, Branch 2: 42')
 	})
 })

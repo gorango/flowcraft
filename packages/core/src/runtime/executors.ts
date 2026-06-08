@@ -172,9 +172,7 @@ export class ClassNodeExecutor implements ExecutionStrategy {
 						nodeId: nodeDef.id,
 						originalError: lastError.message,
 						recoverError:
-							recoverError instanceof Error
-								? recoverError.message
-								: String(recoverError),
+							recoverError instanceof Error ? recoverError.message : String(recoverError),
 						executionId,
 					})
 				}
@@ -299,17 +297,13 @@ export class NodeExecutor<
 			const next = executionChain
 			executionChain = async () => {
 				let capturedResult: NodeExecutionResult | undefined
-				const middlewareResult = await hook(
-					nodeContext.context,
-					this.nodeDef.id,
-					async () => {
-						capturedResult = await next()
-						if (capturedResult.status === 'success') {
-							return capturedResult.result
-						}
-						throw capturedResult.error
-					},
-				)
+				const middlewareResult = await hook(nodeContext.context, this.nodeDef.id, async () => {
+					capturedResult = await next()
+					if (capturedResult.status === 'success') {
+						return capturedResult.result
+					}
+					throw capturedResult.error
+				})
 				if (!capturedResult && middlewareResult) {
 					return { status: 'success', result: middlewareResult }
 				}

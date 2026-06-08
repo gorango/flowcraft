@@ -123,9 +123,7 @@ class NotificationSender extends BaseNode {
 	async post(execResult: any) {
 		console.log('📧 [Class] Cleaning up notification sender...')
 		// Could close connections, log metrics, etc.
-		console.log(
-			`📊 Total notifications sent in this execution: ${this.sentNotifications.length}`,
-		)
+		console.log(`📊 Total notifications sent in this execution: ${this.sentNotifications.length}`)
 		return execResult
 	}
 }

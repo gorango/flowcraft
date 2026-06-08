@@ -49,9 +49,7 @@ function FieldControl({
 		),
 		json: (
 			<textarea
-				value={
-					typeof value === 'string' ? value : value ? JSON.stringify(value, null, 2) : ''
-				}
+				value={typeof value === 'string' ? value : value ? JSON.stringify(value, null, 2) : ''}
 				onChange={(e) => {
 					try {
 						onChange(JSON.parse(e.target.value))
@@ -345,10 +343,7 @@ export function NodeConfigPanel({ editor, shapeId, onClose }: NodeConfigPanelPro
 			</div>
 
 			{showTypePicker && (
-				<NodeTypePicker
-					onSelect={handleTypeSelect}
-					onClose={() => setShowTypePicker(false)}
-				/>
+				<NodeTypePicker onSelect={handleTypeSelect} onClose={() => setShowTypePicker(false)} />
 			)}
 		</>
 	)

@@ -56,9 +56,7 @@ export function createExecuteNodesUpToTool(config: {
 					data: {
 						context: ctx,
 						targetNodeId: params.targetNodeId,
-						targetReached:
-							params.targetNodeId in
-							((ctx._outputs as Record<string, unknown>) ?? {}),
+						targetReached: params.targetNodeId in ((ctx._outputs as Record<string, unknown>) ?? {}),
 					},
 					executionId: ctx._executionId as string | undefined,
 					awaitingNodeIds: result.context._awaitingNodeIds,

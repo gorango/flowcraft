@@ -676,10 +676,10 @@ export async function typeErrorFlow() {
 - `entryFilePaths: string[]`: An array of absolute paths to your entry-point files (your main flow functions).
 - `tsConfigPath: string`: An absolute path to your project's `tsconfig.json` file.
 - **Returns:** `CompilationOutput`
-    - `blueprints: Record<string, WorkflowBlueprint>`: A map of flow names to their generated blueprints.
-    - `registry: Record<string, { importPath: string, exportName: string }>`: A map of step names to their import locations.
-    - `diagnostics: CompilationDiagnostic[]`: An array of errors or warnings found during compilation.
-    - `manifestSource: string`: The generated source code for the manifest file.
+  - `blueprints: Record<string, WorkflowBlueprint>`: A map of flow names to their generated blueprints.
+  - `registry: Record<string, { importPath: string, exportName: string }>`: A map of step names to their import locations.
+  - `diagnostics: CompilationDiagnostic[]`: An array of errors or warnings found during compilation.
+  - `manifestSource: string`: The generated source code for the manifest file.
 
 #### `compileCode(code, options?)`
 

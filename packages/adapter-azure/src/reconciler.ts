@@ -44,9 +44,7 @@ export function createAzureReconciler(options: AzureReconcilerOptions) {
 				failedRuns: 0,
 			}
 			const thresholdTimestamp = Math.floor(Date.now() / 1000) - stalledThresholdSeconds
-			const container = cosmosClient
-				.database(cosmosDatabaseName)
-				.container(statusContainerName)
+			const container = cosmosClient.database(cosmosDatabaseName).container(statusContainerName)
 
 			const querySpec = {
 				query: 'SELECT * FROM c WHERE c.status = @status AND c.lastUpdated < @threshold',

@@ -103,9 +103,7 @@ describe('CLI Entry Point', () => {
 	})
 
 	it('should have sqlite option with description', () => {
-		const dbOption = inspectCommand.options.find(
-			(o: any) => o.flags === '-d, --database <path>',
-		)
+		const dbOption = inspectCommand.options.find((o: any) => o.flags === '-d, --database <path>')
 		expect(dbOption?.description).toBe('SQLite database path')
 	})
 
@@ -122,13 +120,7 @@ describe('CLI Entry Point', () => {
 	})
 
 	it('should execute with sqlite database option', async () => {
-		await inspectCommand.parseAsync([
-			'node',
-			'inspect',
-			'test-run-id',
-			'--database',
-			'./test.db',
-		])
+		await inspectCommand.parseAsync(['node', 'inspect', 'test-run-id', '--database', './test.db'])
 
 		expect(consoleLogSpy).toHaveBeenCalled()
 		const output = consoleLogSpy.mock.calls.map((c: any) => c[0]).join(' ')

@@ -6,10 +6,7 @@ The `IOrchestrator` interface allows you to customize how a workflow is executed
 
 ```typescript
 export interface IOrchestrator {
-	run(
-		context: ExecutionContext<any, any>,
-		traverser: GraphTraverser,
-	): Promise<WorkflowResult<any>>
+	run(context: ExecutionContext<any, any>, traverser: GraphTraverser): Promise<WorkflowResult<any>>
 }
 ```
 

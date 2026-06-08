@@ -11,9 +11,9 @@ This package **is not runnable on its own**. It is used by the following example
 
 - **File-Based Workflow Definitions**: Complex workflows are defined as simple JSON files, decoupling the agent's logic from the execution code.
 - **LLM-Powered Generic Nodes**: A small set of powerful, reusable nodes provides the core logic:
-    - `llm-process`: For content generation, summarization, and data extraction.
-    - `llm-condition`: For natural language-based conditional branching (`true`/`false`).
-    - `llm-router`: For dynamic, multi-way branching based on an LLM's decision.
+  - `llm-process`: For content generation, summarization, and data extraction.
+  - `llm-condition`: For natural language-based conditional branching (`true`/`false`).
+  - `llm-router`: For dynamic, multi-way branching based on an LLM's decision.
 - **Composable & Nested Workflows**: The `subflow` node allows workflows to embed and reuse other workflows, promoting modularity.
 - **Enhanced DAG Support**: The workflow designs include parallel start points and mid-flow "fan-out," where a single condition can trigger multiple independent paths to run concurrently.
 

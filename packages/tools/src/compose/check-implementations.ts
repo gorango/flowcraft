@@ -19,8 +19,7 @@ export function createCheckNodeImplementationsTool(config?: {
 }): WorkflowTool<typeof checkImplementationsSchema> {
 	return createWorkflowTool({
 		name: 'check_node_implementations',
-		description:
-			'Verify that all nodes in a workflow blueprint have registered implementations',
+		description: 'Verify that all nodes in a workflow blueprint have registered implementations',
 		parameters: checkImplementationsSchema,
 		triggers: [
 			'check implementations',

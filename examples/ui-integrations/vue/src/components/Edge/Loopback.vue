@@ -55,8 +55,7 @@ const path = computed(() => {
 	if (props.sourceNode && props.targetNode) {
 		if (props.data.pathType === 'bezier') {
 			if (
-				(props.sourcePosition === Position.Bottom &&
-					props.targetPosition === Position.Top) ||
+				(props.sourcePosition === Position.Bottom && props.targetPosition === Position.Top) ||
 				(props.sourcePosition === Position.Top && props.targetPosition === Position.Bottom)
 			) {
 				const radiusX = 60
@@ -66,8 +65,7 @@ const path = computed(() => {
 					`M ${props.sourceX} ${props.sourceY} A ${radiusX} ${radiusY} 0 1 0 ${props.targetX} ${props.targetY}`,
 				]
 			} else if (
-				(props.sourcePosition === Position.Left &&
-					props.targetPosition === Position.Right) ||
+				(props.sourcePosition === Position.Left && props.targetPosition === Position.Right) ||
 				(props.sourcePosition === Position.Right && props.targetPosition === Position.Left)
 			) {
 				const radiusX = (props.sourceX - props.targetX) * 0.6
@@ -81,19 +79,15 @@ const path = computed(() => {
 			let centerX, centerY
 			if (props.sourceNode === props.targetNode) {
 				if (
-					(props.sourcePosition === Position.Bottom &&
-						props.targetPosition === Position.Top) ||
-					(props.sourcePosition === Position.Top &&
-						props.targetPosition === Position.Bottom)
+					(props.sourcePosition === Position.Bottom && props.targetPosition === Position.Top) ||
+					(props.sourcePosition === Position.Top && props.targetPosition === Position.Bottom)
 				) {
 					const source = props.sourceNode
 					centerX = props.sourceX - 40 - source.dimensions.width / 2
 					centerY = (props.sourceY + props.targetY) / 2
 				} else if (
-					(props.sourcePosition === Position.Left &&
-						props.targetPosition === Position.Right) ||
-					(props.sourcePosition === Position.Right &&
-						props.targetPosition === Position.Left)
+					(props.sourcePosition === Position.Left && props.targetPosition === Position.Right) ||
+					(props.sourcePosition === Position.Right && props.targetPosition === Position.Left)
 				) {
 					const source = props.sourceNode
 					centerX = (props.sourceX + props.targetX) / 2

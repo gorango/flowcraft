@@ -181,11 +181,7 @@ describe('BaseDistributedAdapter', () => {
 
 			await jobHandler(job)
 
-			expect(runtime.executeNode).toHaveBeenCalledWith(
-				linearBlueprint,
-				'A',
-				expect.any(Object),
-			)
+			expect(runtime.executeNode).toHaveBeenCalledWith(linearBlueprint, 'A', expect.any(Object))
 			expect(mockContext.set).toHaveBeenCalledWith('_outputs.A', 'Result from A')
 			expect(adapter.enqueueJob).toHaveBeenCalledWith({
 				runId: 'run1',
@@ -210,11 +206,7 @@ describe('BaseDistributedAdapter', () => {
 
 			await jobHandler(job)
 
-			expect(runtime.executeNode).toHaveBeenCalledWith(
-				linearBlueprint,
-				'B',
-				expect.any(Object),
-			)
+			expect(runtime.executeNode).toHaveBeenCalledWith(linearBlueprint, 'B', expect.any(Object))
 			expect(mockContext.set).toHaveBeenCalledWith('_outputs.B', 'Final Result')
 			expect(adapter.enqueueJob).not.toHaveBeenCalled()
 			expect(adapter.publishFinalResult).toHaveBeenCalledWith(
@@ -302,10 +294,7 @@ describe('BaseDistributedAdapter', () => {
 
 			await jobHandler(job)
 
-			expect(mockCoordinationStore.increment).toHaveBeenCalledWith(
-				'flowcraft:fanin:run1:C',
-				3600,
-			)
+			expect(mockCoordinationStore.increment).toHaveBeenCalledWith('flowcraft:fanin:run1:C', 3600)
 			expect(adapter.enqueueJob).not.toHaveBeenCalled()
 		})
 
@@ -324,10 +313,7 @@ describe('BaseDistributedAdapter', () => {
 
 			await jobHandler(job)
 
-			expect(mockCoordinationStore.increment).toHaveBeenCalledWith(
-				'flowcraft:fanin:run1:C',
-				3600,
-			)
+			expect(mockCoordinationStore.increment).toHaveBeenCalledWith('flowcraft:fanin:run1:C', 3600)
 			expect(mockCoordinationStore.delete).toHaveBeenCalledWith('flowcraft:fanin:run1:C')
 			expect(adapter.enqueueJob).toHaveBeenCalledWith({
 				runId: 'run1',
@@ -380,11 +366,7 @@ describe('BaseDistributedAdapter', () => {
 			await jobHandler(job)
 
 			const joinLockKey = 'flowcraft:joinlock:run2:C'
-			expect(mockCoordinationStore.setIfNotExist).toHaveBeenCalledWith(
-				joinLockKey,
-				'locked',
-				3600,
-			)
+			expect(mockCoordinationStore.setIfNotExist).toHaveBeenCalledWith(joinLockKey, 'locked', 3600)
 			expect(adapter.enqueueJob).not.toHaveBeenCalled()
 		})
 
@@ -711,9 +693,7 @@ describe('BaseDistributedAdapter', () => {
 			const enqueuedNodes = await adapter.reconcile('run1')
 
 			expect(enqueuedNodes).toEqual(new Set())
-			expect(adapter.enqueueJob).not.toHaveBeenCalledWith(
-				expect.objectContaining({ nodeId: 'C' }),
-			)
+			expect(adapter.enqueueJob).not.toHaveBeenCalledWith(expect.objectContaining({ nodeId: 'C' }))
 		})
 
 		it('should throw error if blueprintId is not found in context', async () => {
@@ -1018,10 +998,7 @@ describe('BaseDistributedAdapter', () => {
 			const enqueuedNodes = await adapter.resumeWithAction('run1', 'continue')
 
 			expect(statefulContext.set).toHaveBeenCalledWith('_resume.action', 'continue')
-			expect(statefulContext.set).not.toHaveBeenCalledWith(
-				'_resume.output',
-				expect.anything(),
-			)
+			expect(statefulContext.set).not.toHaveBeenCalledWith('_resume.output', expect.anything())
 			// B is a terminal node, so no successors to enqueue
 			expect(enqueuedNodes).toEqual(new Set())
 		})

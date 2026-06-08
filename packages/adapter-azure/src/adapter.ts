@@ -47,11 +47,7 @@ export class AzureQueueAdapter extends BaseDistributedAdapter {
 		await this.queueClient.sendMessage(message)
 	}
 
-	protected async onJobStart(
-		_runId: string,
-		_blueprintId: string,
-		_nodeId: string,
-	): Promise<void> {
+	protected async onJobStart(_runId: string, _blueprintId: string, _nodeId: string): Promise<void> {
 		// Touch the status container to update the 'lastUpdated' timestamp.
 		try {
 			const statusContext = new CosmosDbContext(_runId, {
@@ -124,10 +120,7 @@ export class AzureQueueAdapter extends BaseDistributedAdapter {
 									`[AzureQueueAdapter] ==> Picked up job for Node: ${job.nodeId}, Run: ${job.runId}`,
 								)
 								await handler(job)
-								await this.queueClient.deleteMessage(
-									message.messageId,
-									message.popReceipt,
-								)
+								await this.queueClient.deleteMessage(message.messageId, message.popReceipt)
 							} catch (err) {
 								console.error(
 									'[AzureQueueAdapter] Error processing message, it will become visible again:',

@@ -48,11 +48,7 @@ export class PubSubAdapter extends BaseDistributedAdapter {
 		})
 	}
 
-	protected async onJobStart(
-		_runId: string,
-		_blueprintId: string,
-		_nodeId: string,
-	): Promise<void> {
+	protected async onJobStart(_runId: string, _blueprintId: string, _nodeId: string): Promise<void> {
 		// Touch the status document to update the 'lastUpdated' timestamp.
 		try {
 			const statusDocRef = this.firestore.collection(this.statusCollectionName).doc(_runId)

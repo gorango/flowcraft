@@ -13,7 +13,7 @@
 
 - Upgrade to Typescript 6
 - Updated dependencies
-    - @flowcraft/vite-plugin@1.0.0-alpha.1
+  - @flowcraft/vite-plugin@1.0.0-alpha.1
 
 ## 1.0.0-alpha.0
 
@@ -24,4 +24,4 @@
 ### Patch Changes
 
 - Updated dependencies
-    - @flowcraft/vite-plugin@1.0.0-alpha.0
+  - @flowcraft/vite-plugin@1.0.0-alpha.0

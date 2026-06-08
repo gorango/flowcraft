@@ -41,10 +41,10 @@ The example will:
 2. Display compilation statistics (blueprints and functions found)
 3. Dynamically load the step functions from the compiled registry
 4. Execute multiple workflows demonstrating different features:
-    - **Parallel Flow**: Concurrent data fetching with `Promise.all`
-    - **Sleep Flow**: Simulated sleep operation
-    - **Subflow Example**: Nested workflow execution
-    - **Wait Flow**: Simulated event waiting
+   - **Parallel Flow**: Concurrent data fetching with `Promise.all`
+   - **Sleep Flow**: Simulated sleep operation
+   - **Subflow Example**: Nested workflow execution
+   - **Wait Flow**: Simulated event waiting
 5. Show step execution logs and completion status with timing for each workflow
 
 ## Key Concepts

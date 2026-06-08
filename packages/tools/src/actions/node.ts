@@ -31,8 +31,7 @@ export function createNodeActionTools(
 		.map((node) => {
 			const nodeConfig = nodeConfigs.find((c) => c.nodeId === node.id)
 			const description =
-				nodeConfig?.description ??
-				`Execute the "${node.id}" step of the "${blueprint.id}" workflow`
+				nodeConfig?.description ?? `Execute the "${node.id}" step of the "${blueprint.id}" workflow`
 
 			const paramsSchema =
 				nodeConfig?.includeParams !== false && node.inputs
@@ -53,17 +52,14 @@ export function createNodeActionTools(
 					const start = Date.now()
 
 					try {
-						const inputParams = params as
-							| { inputs?: Record<string, unknown> }
-							| undefined
+						const inputParams = params as { inputs?: Record<string, unknown> } | undefined
 						const result = await config.runtime.run(blueprint, {
 							...inputParams?.inputs,
 							_targetNode: node.id,
 						})
 
 						const ctx = result.context
-						const nodeOutput =
-							ctx[node.id] ?? (ctx._outputs as Record<string, unknown>)?.[node.id]
+						const nodeOutput = ctx[node.id] ?? (ctx._outputs as Record<string, unknown>)?.[node.id]
 
 						return {
 							status: result.status as 'completed' | 'failed',

@@ -63,9 +63,7 @@ describe('AzureQueueAdapter - Testcontainers Integration', () => {
 				.withSkipApiVersionCheck()
 				.start(),
 			new RedisContainer('redis:8.2.2').start(),
-			new GenericContainer(
-				'mcr.microsoft.com/cosmosdb/linux/azure-cosmos-emulator:vnext-preview',
-			)
+			new GenericContainer('mcr.microsoft.com/cosmosdb/linux/azure-cosmos-emulator:vnext-preview')
 				.withExposedPorts({ container: 8081, host: 8081 })
 				.withResourcesQuota({ memory: 3 * 1024 * 1024 * 1024 })
 				.withEnvironment({
@@ -125,11 +123,7 @@ describe('AzureQueueAdapter - Testcontainers Integration', () => {
 
 	afterAll(async () => {
 		console.log('Stopping all containers...')
-		await Promise.all([
-			azuriteContainer?.stop(),
-			redisContainer?.stop(),
-			cosmosContainer?.stop(),
-		])
+		await Promise.all([azuriteContainer?.stop(), redisContainer?.stop(), cosmosContainer?.stop()])
 		console.log('All containers stopped.')
 	})
 

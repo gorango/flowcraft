@@ -113,12 +113,12 @@ The runtime dynamically creates and executes the worker nodes, providing a power
 During batch execution, the built-in `batch-scatter` and `batch-gather` nodes set dynamic keys in the context for advanced users:
 
 - **For `batch-scatter`**:
-    - `currentIndex`: The index of the current item being processed (number).
-    - `hasMore`: Boolean indicating if there are more items to process.
+  - `currentIndex`: The index of the current item being processed (number).
+  - `hasMore`: Boolean indicating if there are more items to process.
 
 - **For `batch-gather`**:
-    - `allWorkerIds`: Array of IDs for all worker nodes (string[]).
-    - `hasMore`: Boolean indicating if there are more batches to gather.
+  - `allWorkerIds`: Array of IDs for all worker nodes (string[]).
+  - `hasMore`: Boolean indicating if there are more batches to gather.
 
 These keys are defined in `BUILTIN_KEYS` and can be accessed in worker nodes or subsequent nodes for custom logic.
 

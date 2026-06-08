@@ -59,11 +59,7 @@ describe('PubSubAdapter - Testcontainers Integration', () => {
 	}, 90000)
 
 	afterAll(async () => {
-		await Promise.all([
-			pubsubContainer?.stop(),
-			firestoreContainer?.stop(),
-			redisContainer?.stop(),
-		])
+		await Promise.all([pubsubContainer?.stop(), firestoreContainer?.stop(), redisContainer?.stop()])
 	})
 
 	it('should successfully enqueue a job into the Pub/Sub emulator', async () => {
@@ -90,10 +86,7 @@ describe('PubSubAdapter - Testcontainers Integration', () => {
 		const [testSub] = await pubsub.topic(TOPIC_NAME).createSubscription(testSubName)
 
 		const messagePromise = new Promise((resolve, reject) => {
-			const timeout = setTimeout(
-				() => reject(new Error('Timeout waiting for message')),
-				15000,
-			)
+			const timeout = setTimeout(() => reject(new Error('Timeout waiting for message')), 15000)
 			testSub.once('message', (message) => {
 				clearTimeout(timeout)
 				message.ack()

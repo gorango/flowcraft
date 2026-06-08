@@ -12,28 +12,28 @@ This project demonstrates a simple yet powerful research agent that can search t
 
 1. **Install dependencies**:
 
-    ```bash
-    npm install
-    ```
+   ```bash
+   npm install
+   ```
 
 2. **Set your OpenAI API key**:
    Create a `.env` file in this directory or set an environment variable:
 
-    ```
-    OPENAI_API_KEY="your-api-key-here"
-    ```
+   ```
+   OPENAI_API_KEY="your-api-key-here"
+   ```
 
-    You will also need a free API key from [SerpApi](https://serpapi.com/) for web search.
+   You will also need a free API key from [SerpApi](https://serpapi.com/) for web search.
 
-    ```
-    SERP_API_KEY="your-serpapi-key-here"
-    ```
+   ```
+   SERP_API_KEY="your-serpapi-key-here"
+   ```
 
 3. **Run the application**:
 
-    ```bash
-    npm start -- "Who won the Nobel Prize in Physics 2024?"
-    ```
+   ```bash
+   npm start -- "Who won the Nobel Prize in Physics 2024?"
+   ```
 
 ## Security Note
 

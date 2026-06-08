@@ -61,10 +61,7 @@ export class GraphTraverser {
 	 * @param state The workflow state being resumed.
 	 * @returns A configured GraphTraverser instance.
 	 */
-	public static fromState(
-		blueprint: WorkflowBlueprint,
-		state: WorkflowState<any>,
-	): GraphTraverser {
+	public static fromState(blueprint: WorkflowBlueprint, state: WorkflowState<any>): GraphTraverser {
 		const traverser = new GraphTraverser(blueprint)
 
 		// clear auto-populated frontier from constructor
@@ -81,9 +78,7 @@ export class GraphTraverser {
 		const hasOnlyConditionalIncomingEdges = (nodeId: string): boolean => {
 			const incomingEdges = blueprint.edges.filter((e) => e.target === nodeId)
 			if (incomingEdges.length === 0) return false
-			const fromCompletedPredecessors = incomingEdges.filter((e) =>
-				completedNodes.has(e.source),
-			)
+			const fromCompletedPredecessors = incomingEdges.filter((e) => completedNodes.has(e.source))
 			if (fromCompletedPredecessors.length === 0) return false
 			return fromCompletedPredecessors.every((e) => e.condition !== undefined)
 		}

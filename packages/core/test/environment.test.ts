@@ -385,9 +385,7 @@ describe('Cross-Environment Compatibility Testing', () => {
 					process.versions.node
 				)
 				const isWebWorker =
-					typeof self !== 'undefined' &&
-					typeof self.postMessage === 'function' &&
-					!isBrowser
+					typeof self !== 'undefined' && typeof self.postMessage === 'function' && !isBrowser
 				const isDeno = typeof Deno !== 'undefined'
 
 				let environment = 'unknown'
@@ -511,9 +509,7 @@ describe('Cross-Environment Compatibility Testing', () => {
 					esm: typeof import.meta !== 'undefined',
 
 					// Check if we're in a module context
-					isModule:
-						(typeof module !== 'undefined' && module) ||
-						typeof import.meta !== 'undefined',
+					isModule: (typeof module !== 'undefined' && module) || typeof import.meta !== 'undefined',
 
 					// Check for __dirname/__filename (CommonJS)
 					hasDirname: typeof __dirname !== 'undefined',

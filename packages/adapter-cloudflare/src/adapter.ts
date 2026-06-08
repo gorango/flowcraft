@@ -47,11 +47,7 @@ export class CloudflareQueueAdapter extends BaseDistributedAdapter {
 		await this.queue.send(job)
 	}
 
-	protected async onJobStart(
-		_runId: string,
-		_blueprintId: string,
-		_nodeId: string,
-	): Promise<void> {
+	protected async onJobStart(_runId: string, _blueprintId: string, _nodeId: string): Promise<void> {
 		try {
 			const statusKey = getStatusKey(_runId, this.statusPrefix)
 			const current = await this.statusKVNamespace.get(statusKey, 'text')

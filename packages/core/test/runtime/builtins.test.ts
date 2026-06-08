@@ -29,11 +29,7 @@ describe('Built-In Nodes', () => {
 			flow.node('verify', async (ctx) => {
 				const results = ctx.input
 				expect(results).toHaveLength(3)
-				expect(results).toEqual([
-					'processed_1_item1',
-					'processed_2_item2',
-					'processed_3_item3',
-				])
+				expect(results).toEqual(['processed_1_item1', 'processed_2_item2', 'processed_3_item3'])
 				return { output: 'verified' }
 			})
 			flow.batch('test-batch', workerFunction, {
@@ -263,11 +259,7 @@ describe('Built-In Nodes', () => {
 
 			const runtime = new FlowRuntime({ evaluator: new UnsafeEvaluator() })
 			await expect(
-				runtime.run(
-					flow.toBlueprint(),
-					{},
-					{ functionRegistry: flow.getFunctionRegistry() },
-				),
+				runtime.run(flow.toBlueprint(), {}, { functionRegistry: flow.getFunctionRegistry() }),
 			).rejects.toThrow('Traversal exceeded maximum iterations')
 		})
 	})
@@ -339,16 +331,12 @@ describe('Built-In Nodes', () => {
 			const runtime = new FlowRuntime({
 				blueprints: { 'failing-subflow': subFlow.toBlueprint() },
 			})
-			const result = await runtime.run(
-				blueprint2,
-				{},
-				{ functionRegistry: combinedRegistry2 },
-			)
+			const result = await runtime.run(blueprint2, {}, { functionRegistry: combinedRegistry2 })
 
 			expect(result.status).toBe('failed')
-			expect(
-				result.errors?.some((e) => e.message?.includes("Node 'fail' execution failed")),
-			).toBe(true)
+			expect(result.errors?.some((e) => e.message?.includes("Node 'fail' execution failed"))).toBe(
+				true,
+			)
 		})
 
 		it('should throw error for missing blueprintId in subflow', async () => {
@@ -394,9 +382,9 @@ describe('Built-In Nodes', () => {
 			)
 
 			expect(result.status).toBe('failed')
-			expect(
-				result.errors?.some((e) => e.message?.includes('not found in runtime registry')),
-			).toBe(true)
+			expect(result.errors?.some((e) => e.message?.includes('not found in runtime registry'))).toBe(
+				true,
+			)
 		})
 	})
 

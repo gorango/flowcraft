@@ -9,8 +9,8 @@ The base class for all distributed adapters. It handles the technology-agnostic 
 ### `constructor(options)`
 
 - **`options`** `AdapterOptions`:
-    - **`runtimeOptions`**: The `RuntimeOptions` to configure the internal [`FlowRuntime`](/api/runtime#flowruntime-class) instance.
-    - **`coordinationStore`**: An instance of `ICoordinationStore`.
+  - **`runtimeOptions`**: The `RuntimeOptions` to configure the internal [`FlowRuntime`](/api/runtime#flowruntime-class) instance.
+  - **`coordinationStore`**: An instance of `ICoordinationStore`.
 
 ### Abstract Methods to Implement
 
@@ -24,10 +24,10 @@ The base class for all distributed adapters. It handles the technology-agnostic 
 - **`start()`**: Starts the worker, which begins listening for and processing jobs from the queue.
 - **`reconcile(runId)`**: Inspects the persisted context to find completed nodes, determines the next executable nodes (the frontier), and enqueues jobs for them. Returns the set of enqueued node IDs.
 - **`resumeWithAction(runId, action, output?)`**: Resumes an awaiting workflow run by injecting user-provided action/output data, clearing the awaiting state, and reconciling the execution frontier. This is the core of the Human-in-the-Loop (HITL) resume pattern for distributed adapters.
-    - **`runId`** `string`: The unique ID of the workflow execution to resume.
-    - **`action`** `string`: The user action (e.g., `'approve'`, `'reject'`).
-    - **`output?`** `unknown`: Optional user-provided output data.
-    - **Returns**: `Promise<Set<string>>` — the set of node IDs that were enqueued.
+  - **`runId`** `string`: The unique ID of the workflow execution to resume.
+  - **`action`** `string`: The user action (e.g., `'approve'`, `'reject'`).
+  - **`output?`** `unknown`: Optional user-provided output data.
+  - **Returns**: `Promise<Set<string>>` — the set of node IDs that were enqueued.
 
 ### Overridable Hooks
 
