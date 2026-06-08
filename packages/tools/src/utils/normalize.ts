@@ -1,4 +1,4 @@
-import type { ToolResult } from '../types'
+import type { AsyncExecutionStore, ToolResult } from '../types'
 
 export function normalizeResult(
 	result: {
@@ -40,7 +40,7 @@ export function normalizeResult(
 	return base
 }
 
-export function createAsyncExecutionStore(): import('../types').AsyncExecutionStore {
+export function createAsyncExecutionStore(): AsyncExecutionStore {
 	const executions = new Map<string, Promise<ToolResult>>()
 	const errors = new Map<string, Error>()
 

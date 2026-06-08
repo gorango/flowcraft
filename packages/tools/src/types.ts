@@ -1,5 +1,5 @@
 import type { z } from 'zod'
-import type { WorkflowBlueprint } from 'flowcraft'
+import type { FlowRuntime, WorkflowBlueprint } from 'flowcraft'
 
 export type ToolStatus = 'completed' | 'failed' | 'awaiting' | 'started'
 
@@ -50,9 +50,7 @@ export interface WorkflowTool<TParams extends z.ZodType = z.ZodType> {
 	execute(params: z.infer<TParams>): Promise<ToolResult>
 }
 
-export type FlowRuntimeFactory = () =>
-	| Promise<typeof import('flowcraft').FlowRuntime>
-	| typeof import('flowcraft').FlowRuntime
+export type FlowRuntimeFactory = () => Promise<typeof FlowRuntime> | typeof FlowRuntime
 
 export interface FlowcraftRuntime {
 	run(

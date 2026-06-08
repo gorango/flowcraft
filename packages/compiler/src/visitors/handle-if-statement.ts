@@ -1,4 +1,5 @@
 import type ts from 'typescript'
+import type { NodeDefinition } from 'flowcraft'
 import type { FlowAnalyzer } from '../flow-analyzer'
 
 export function handleIfStatement(analyzer: FlowAnalyzer, node: ts.IfStatement): string | null {
@@ -6,7 +7,7 @@ export function handleIfStatement(analyzer: FlowAnalyzer, node: ts.IfStatement):
 	const condition = node.expression.getText()
 
 	if (!forkNodeId) {
-		const startNode: import('flowcraft').NodeDefinition = {
+		const startNode: NodeDefinition = {
 			id: 'start',
 			uses: 'start',
 		}

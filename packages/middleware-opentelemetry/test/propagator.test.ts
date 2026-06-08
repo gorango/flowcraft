@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
+import { propagation } from '@opentelemetry/api'
 import { extractContext, injectContext } from '../src/propagator'
 
 vi.mock('@opentelemetry/api', () => ({
@@ -48,7 +49,6 @@ describe('OpenTelemetry Propagator', () => {
 			delete: vi.fn(),
 		}
 		const mockContext = {}
-		const { propagation } = await import('@opentelemetry/api')
 		;(propagation.extract as any).mockResolvedValue(mockContext)
 
 		await extractContext(mockFlowContext as any, 'node1')

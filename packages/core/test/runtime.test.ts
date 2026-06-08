@@ -1,8 +1,9 @@
 import { describe, expect, it, vi } from 'vitest'
-import { UnsafeEvaluator } from '../src/evaluator'
+import { Context } from '../src/context'
+import { PropertyEvaluator, UnsafeEvaluator } from '../src/evaluator'
 import { createFlow } from '../src/flow'
 import { FlowRuntime } from '../src/runtime'
-
+import { WorkflowLogicHandler } from '../src/runtime/workflow-logic-handler'
 import type { FlowcraftEvent, IEventBus, Middleware, NodeResult } from '../src/types'
 
 // A mock event bus for testing observability
@@ -1530,10 +1531,6 @@ describe('Flowcraft Runtime - Integration Tests', () => {
 
 describe('resolveNodeInput dotted property resolution', () => {
 	it('should resolve dotted property paths from predecessor outputs', async () => {
-		const { WorkflowLogicHandler } = await import('../src/runtime/workflow-logic-handler')
-		const { Context } = await import('../src/context')
-		const { PropertyEvaluator } = await import('../src/evaluator')
-
 		const handler = new WorkflowLogicHandler(new PropertyEvaluator(), {
 			emit: async () => {},
 		})
@@ -1567,10 +1564,6 @@ describe('resolveNodeInput dotted property resolution', () => {
 	})
 
 	it('should resolve deeply nested property paths', async () => {
-		const { WorkflowLogicHandler } = await import('../src/runtime/workflow-logic-handler')
-		const { Context } = await import('../src/context')
-		const { PropertyEvaluator } = await import('../src/evaluator')
-
 		const handler = new WorkflowLogicHandler(new PropertyEvaluator(), {
 			emit: async () => {},
 		})
@@ -1602,10 +1595,6 @@ describe('resolveNodeInput dotted property resolution', () => {
 	})
 
 	it('should return undefined for non-existent nested properties', async () => {
-		const { WorkflowLogicHandler } = await import('../src/runtime/workflow-logic-handler')
-		const { Context } = await import('../src/context')
-		const { PropertyEvaluator } = await import('../src/evaluator')
-
 		const handler = new WorkflowLogicHandler(new PropertyEvaluator(), {
 			emit: async () => {},
 		})

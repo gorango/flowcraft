@@ -1,6 +1,7 @@
 import {
 	context,
 	propagation,
+	type Context,
 	type Span,
 	type TextMapGetter,
 	type TextMapSetter,
@@ -50,7 +51,7 @@ export async function injectContext(
 export async function extractContext(
 	flowContext: ContextImplementation<Record<string, any>>,
 	nodeId: string,
-): Promise<import('@opentelemetry/api').Context> {
+): Promise<Context> {
 	const contextKey = `${TRACE_CONTEXT_KEY_PREFIX}${nodeId}` as any
 	const carrier = (await flowContext.get(contextKey)) || {}
 	if (flowContext.type === 'async') {

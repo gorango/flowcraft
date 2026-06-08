@@ -39,6 +39,7 @@ import { WorkflowScheduler } from './scheduler'
 import { WorkflowState } from './state'
 import { GraphTraverser } from './traverser'
 import type { IOrchestrator, IRuntime } from './types'
+import { ReplayOrchestrator } from './orchestrators/replay'
 import { WorkflowLogicHandler } from './workflow-logic-handler'
 
 export class FlowRuntime<
@@ -798,7 +799,6 @@ export class FlowRuntime<
 			tempContext.concurrency,
 		)
 
-		const { ReplayOrchestrator } = await import('./orchestrators/replay')
 		const replayOrchestrator = new ReplayOrchestrator(filteredEvents)
 
 		const traverser = new GraphTraverser(blueprint)

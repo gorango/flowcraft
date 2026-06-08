@@ -1,6 +1,7 @@
 import type { AdapterOptions, JobPayload, WorkflowResult } from 'flowcraft'
 import { BaseDistributedAdapter } from 'flowcraft'
 import type { Redis } from 'ioredis'
+import { send } from '@vercel/queue'
 import { VercelKvContext } from './context'
 
 export interface VercelQueueAdapterOptions extends AdapterOptions {
@@ -70,7 +71,6 @@ export class VercelQueueAdapter extends BaseDistributedAdapter {
 	}
 
 	protected async enqueueJob(job: JobPayload): Promise<void> {
-		const { send } = await import('@vercel/queue')
 		await send(this.topicName, job)
 	}
 

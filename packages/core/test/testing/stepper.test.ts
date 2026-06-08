@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { createFlow } from '../../src/flow'
 import { SleepNode } from '../../src/nodes/sleep'
+import { UnsafeEvaluator } from '../../src/evaluator'
 import { WebhookNode } from '../../src/nodes/webhook'
 import { FlowRuntime } from '../../src/runtime'
 import { createStepper } from '../../src/testing'
@@ -277,7 +278,7 @@ describe('createStepper', () => {
 			.edge('test-loop', 'end')
 
 		const runtime = new FlowRuntime({
-			evaluator: new (await import('../../src/evaluator')).UnsafeEvaluator(),
+			evaluator: new UnsafeEvaluator(),
 		})
 		const stepper = await createStepper(
 			runtime,

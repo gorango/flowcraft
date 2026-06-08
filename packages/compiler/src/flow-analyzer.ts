@@ -1,6 +1,7 @@
-import type { NodeDefinition, WorkflowBlueprint } from 'flowcraft'
+import type { NodeDefinition, SourceLocation, WorkflowBlueprint } from 'flowcraft'
 import ts from 'typescript'
 import type { Compiler } from './compiler'
+import type { CompilationDiagnostic } from './types'
 import { CompilerState } from './compiler-state'
 import { handleAwaitExpression } from './visitors/handle-await-expression'
 import { handleForOfStatement } from './visitors/handle-for-of-statement'
@@ -12,7 +13,7 @@ import { handleDoStatement } from './visitors/handle-do-statement'
 
 export class FlowAnalyzer {
 	registry: Record<string, { importPath: string; exportName: string }> = {}
-	private diagnostics: import('./types').CompilationDiagnostic[] = []
+	private diagnostics: CompilationDiagnostic[] = []
 	public state: CompilerState
 
 	constructor(
@@ -27,7 +28,7 @@ export class FlowAnalyzer {
 	analyze(): {
 		blueprint: WorkflowBlueprint
 		registry: Record<string, { importPath: string; exportName: string }>
-		diagnostics: import('./types').CompilationDiagnostic[]
+		diagnostics: CompilationDiagnostic[]
 	} {
 		this.checkGeneratorFunction()
 
@@ -336,7 +337,7 @@ export class FlowAnalyzer {
 		return null
 	}
 
-	getSourceLocation(node: ts.Node): import('flowcraft').SourceLocation {
+	getSourceLocation(node: ts.Node): SourceLocation {
 		const { line, character } = this.sourceFile.getLineAndCharacterOfPosition(node.getStart())
 		return {
 			file: this.sourceFile.fileName,

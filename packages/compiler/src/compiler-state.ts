@@ -1,4 +1,4 @@
-import type { EdgeDefinition, NodeDefinition } from 'flowcraft'
+import type { EdgeDefinition, NodeDefinition, SourceLocation } from 'flowcraft'
 import ts from 'typescript'
 import type { Scope, VariableInfo } from './types'
 
@@ -205,10 +205,7 @@ export class CompilerState {
 		return undefined
 	}
 
-	private getSourceLocation(
-		node: ts.Node,
-		sourceFile: ts.SourceFile,
-	): import('flowcraft').SourceLocation {
+	private getSourceLocation(node: ts.Node, sourceFile: ts.SourceFile): SourceLocation {
 		const { line, character } = sourceFile.getLineAndCharacterOfPosition(node.getStart())
 		return {
 			file: sourceFile.fileName,

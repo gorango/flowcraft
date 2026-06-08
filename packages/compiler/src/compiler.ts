@@ -2,7 +2,7 @@ import * as path from 'node:path'
 import type { WorkflowBlueprint } from 'flowcraft'
 import ts from 'typescript'
 import { FlowAnalyzer } from './flow-analyzer'
-import type { CompilationOutput, FileAnalysis } from './types'
+import type { CompilationDiagnostic, CompilationOutput, FileAnalysis } from './types'
 
 function isAsyncAndAnnotated(
 	funcNode: ts.FunctionDeclaration | ts.ArrowFunction,
@@ -55,7 +55,7 @@ export class Compiler {
 
 		const blueprints: Record<string, WorkflowBlueprint> = {}
 		const registry: Record<string, { importPath: string; exportName: string }> = {}
-		const diagnostics: import('./types').CompilationDiagnostic[] = []
+		const diagnostics: CompilationDiagnostic[] = []
 
 		for (const entryFilePath of entryFilePaths) {
 			const resolvedPath = path.resolve(this.projectRoot, entryFilePath)
@@ -223,7 +223,7 @@ export class Compiler {
 	}
 
 	private generateManifest(
-		blueprints: Record<string, import('flowcraft').WorkflowBlueprint>,
+		blueprints: Record<string, WorkflowBlueprint>,
 		registry: Record<string, { importPath: string; exportName: string }>,
 	): string {
 		const imports: string[] = []

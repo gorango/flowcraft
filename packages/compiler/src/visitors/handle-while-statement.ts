@@ -1,4 +1,5 @@
 import type ts from 'typescript'
+import type { NodeDefinition } from 'flowcraft'
 import type { FlowAnalyzer } from '../flow-analyzer'
 
 export function handleWhileStatement(
@@ -10,7 +11,7 @@ export function handleWhileStatement(
 	const exportName = 'loop-controller'
 	const count = analyzer.state.incrementUsageCount(exportName)
 	const controllerId = `${exportName}_${count}`
-	const controllerNode: import('flowcraft').NodeDefinition = {
+	const controllerNode: NodeDefinition = {
 		id: controllerId,
 		uses: 'loop-controller',
 		params: { condition: node.expression.getText() || 'true' },
@@ -32,7 +33,7 @@ export function handleWhileStatement(
 	const joinExportName = 'join'
 	const joinCount = analyzer.state.incrementUsageCount(joinExportName)
 	const breakTargetId = `${joinExportName}_${joinCount}`
-	const breakTargetNode: import('flowcraft').NodeDefinition = {
+	const breakTargetNode: NodeDefinition = {
 		id: breakTargetId,
 		uses: 'join',
 		config: { joinStrategy: 'any' },

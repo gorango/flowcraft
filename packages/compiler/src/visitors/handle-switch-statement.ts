@@ -9,7 +9,7 @@ export function handleSwitchStatement(
 	let forkNodeId = analyzer.state.getCursor()
 
 	if (!forkNodeId) {
-		const startNode: import('flowcraft').NodeDefinition = {
+		const startNode: NodeDefinition = {
 			id: 'start',
 			uses: 'start',
 		}

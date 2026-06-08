@@ -1,4 +1,5 @@
 import { beforeAll, describe, expect, it, vi } from 'vitest'
+import { FlowRuntime } from 'flowcraft'
 import { Compiler } from '../src/compiler'
 import { compileCode } from '../src/index'
 import { compileCodeBrowser } from '../src/browser'
@@ -1378,8 +1379,6 @@ describe('runtime integration', () => {
 	it('should compile and execute a simple sequential blueprint via FlowRuntime', async () => {
 		const result = compiler.compileProject(['test/fixtures/simple-flow.ts'])
 
-		const { FlowRuntime } = await import('flowcraft')
-
 		const bp = result.blueprints.simpleFlow
 		expect(bp).toBeDefined()
 
@@ -1398,8 +1397,6 @@ describe('runtime integration', () => {
 
 	it('should compile and execute a blueprint with if/else branching', async () => {
 		const result = compiler.compileProject(['test/fixtures/simple-if-else.ts'])
-
-		const { FlowRuntime } = await import('flowcraft')
 
 		const bp = result.blueprints.simpleIfElseFlow
 		expect(bp).toBeDefined()
@@ -1420,8 +1417,6 @@ describe('runtime integration', () => {
 	it('should compile and execute parallel blueprint via FlowRuntime', async () => {
 		const result = compiler.compileProject(['test/fixtures/simple-parallel.ts'])
 
-		const { FlowRuntime } = await import('flowcraft')
-
 		const bp = result.blueprints.simpleParallelFlow
 		expect(bp).toBeDefined()
 
@@ -1440,8 +1435,6 @@ describe('runtime integration', () => {
 
 	it('should compile and execute early return flow via FlowRuntime', async () => {
 		const result = compiler.compileProject(['test/fixtures/return-early-flow.ts'])
-
-		const { FlowRuntime } = await import('flowcraft')
 
 		const bp = result.blueprints.returnEarlyFlow
 		expect(bp).toBeDefined()
@@ -1466,8 +1459,6 @@ describe('runtime integration', () => {
 
 	it('should compile and execute try/catch/finally flow via FlowRuntime', async () => {
 		const result = compiler.compileProject(['test/fixtures/try-finally-flow.ts'])
-
-		const { FlowRuntime } = await import('flowcraft')
 
 		const bp = result.blueprints.tryCatchFinallyFlow
 		expect(bp).toBeDefined()
@@ -1509,8 +1500,6 @@ describe('runtime integration', () => {
 
 	it('should compile and execute argument mapping flow via FlowRuntime', async () => {
 		const result = compiler.compileProject(['test/fixtures/argument-mapping-flow.ts'])
-
-		const { FlowRuntime } = await import('flowcraft')
 
 		const bp = result.blueprints.argumentMappingFlow
 		expect(bp).toBeDefined()

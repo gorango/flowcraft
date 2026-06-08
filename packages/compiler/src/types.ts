@@ -1,13 +1,14 @@
+import type ts from 'typescript'
 import type { WorkflowBlueprint } from 'flowcraft'
 
 export interface FileAnalysis {
 	filePath: string
-	sourceFile: import('typescript').SourceFile
+	sourceFile: ts.SourceFile
 	exports: Map<
 		string,
 		{
 			type: 'flow' | 'step'
-			node: import('typescript').FunctionDeclaration | import('typescript').ArrowFunction
+			node: ts.FunctionDeclaration | ts.ArrowFunction
 		}
 	>
 }
@@ -34,7 +35,7 @@ export interface CompilationDiagnostic {
 
 export interface VariableInfo {
 	nodeId: string
-	type: import('typescript').Type
+	type: ts.Type
 	variableType?: 'webhook' | 'normal'
 }
 
