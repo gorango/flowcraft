@@ -1,6 +1,6 @@
 # `@flowcraft/tools`
 
-AI agent tools for composing, orchestrating, and executing Flowcraft workflows. Framework-agnostic Zod-based tool definitions with thin adapters for Vercel AI SDK, LangChain, OpenAI, and Anthropic.
+LLM agent tools for composing, orchestrating, and executing Flowcraft workflows. Framework-agnostic Zod-based tool definitions with thin adapters for Vercel AI SDK, LangChain, OpenAI, and Anthropic.
 
 All tools are importable from the root entry point. Adapters are available at `@flowcraft/tools/adapters`.
 
@@ -155,7 +155,7 @@ Tools for executing and monitoring workflows:
 | `request_approval`         | Trigger approval request to human         |
 | `get_execution_context`    | Retrieve full context at current state    |
 | `get_awaiting_nodes`       | List nodes waiting for input              |
-| `get_error_diagnosis`      | Get AI-friendly error analysis            |
+| `get_error_diagnosis`      | Get LLM-friendly error analysis           |
 | `get_execution_timeline`   | Get detailed node execution timestamps    |
 | `get_execution_metrics`    | Get success rate, duration, cost stats    |
 | `watch_execution`          | Stream real-time execution events         |

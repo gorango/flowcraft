@@ -29,7 +29,7 @@ It showcases a client-worker architecture where a client can initiate a workflow
     ```
 
 3.  **Set your OpenAI API key**:
-    Create a `.env` file in this project's root directory (`examples/ai-workflows/distributed-execution/`):
+    Create a `.env` file in this project's root directory (`examples/llm-workflows/distributed-execution/`):
 
     ```
     OPENAI_API_KEY="your-api-key-here"

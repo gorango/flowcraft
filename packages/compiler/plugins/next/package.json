@@ -20,7 +20,7 @@
 	"files": [
 		"dist"
 	],
-	"type": "commonjs",
+	"type": "module",
 	"exports": {
 		".": {
 			"require": "./dist/index.cjs",
@@ -28,8 +28,8 @@
 		}
 	},
 	"scripts": {
-		"dev": "tsdown --watch --config-loader unrun",
-		"build": "tsdown --config-loader unrun",
+		"dev": "tsdown --watch",
+		"build": "tsdown",
 		"typecheck": "tsc --noEmit",
 		"test": "echo \"Error: no test specified\" && exit 0"
 	},

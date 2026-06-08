@@ -241,4 +241,4 @@ After understanding built-in nodes, explore:
 - `context-state-management` - Advanced context manipulation patterns
 - `function-class-nodes` - Different ways to implement node logic
 - `middleware` - Adding cross-cutting concerns to workflows
-- `ai-workflows` - AI-powered workflow examples
+- `llm-workflows` - AI-powered workflow examples

@@ -18,7 +18,7 @@ This example demonstrates how to execute the declarative AI agent workflows from
     ```
 
 2.  **Set your OpenAI API key**:
-    Create a `.env` file in this project's root directory (`examples/ai-workflows/in-memory-processing/`):
+    Create a `.env` file in this project's root directory (`examples/llm-workflows/in-memory-processing/`):
 
     ```
     OPENAI_API_KEY="your-api-key-here"
