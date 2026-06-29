@@ -50,6 +50,20 @@ export async function myWorkflow(input: string) {
 }
 ```
 
+The associated step functions are defined with `/** @step */` annotations and receive typed input directly:
+
+```typescript
+/** @step */
+async function fetchData(params: { input: string }) {
+	// Fetch logic
+}
+
+/** @step */
+async function processData(params: { data: any }) {
+	// Process logic
+}
+```
+
 This imperative code compiles to the same declarative graph as the Fluent API example above.
 
 ## Key Features

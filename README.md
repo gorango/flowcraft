@@ -26,7 +26,10 @@ npm install flowcraft
 
 ## Usage
 
-Define and run a simple workflow in a few lines of code.
+There are three ways to compose workflows in Flowcraft:
+
+<details>
+<summary><b>Fluent API</b> — Build workflows programmatically with the <code>createFlow</code> builder.</summary>
 
 ```typescript
 import { createFlow, FlowRuntime, type NodeContext } from 'flowcraft'
@@ -61,13 +64,71 @@ async function run() {
 run()
 ```
 
-## Core Concepts
+See the [Fluent API Guide](https://flowcraft.js.org/guide/fluent) for more details.
 
-- **Blueprint**: A serializable object that represents the structure of your workflow. It contains all the nodes and edges and can be stored as JSON or YAML. This is the single source of truth for a workflow's logic.
-- **Node**: A single unit of work. Node logic can be implemented as a simple async function or a structured class that extends `BaseNode` for more complex lifecycle management.
-- **Edge**: A connection between two nodes that defines the direction of the flow. Edges can be conditional, allowing you to create branching logic based on the output or `action` of a source node.
-- **Runtime**: The `FlowRuntime` is the engine that interprets a blueprint and executes its nodes in the correct order. It manages state, handles resiliency, and coordinates the entire process.
-- **Context**: An object that holds the state of a single workflow execution. The outputs of completed nodes are stored in the context and can be accessed by subsequent nodes.
+</details>
+
+<details>
+<summary><b>Declarative</b> — Separate workflow structure (JSON) from node implementations (registry).</summary>
+
+```typescript
+import { FlowRuntime } from 'flowcraft'
+
+// 1. Define reusable node functions in a registry
+const nodeRegistry = {
+	startNode: async ({ context }) => {
+		const value = await context.get('value')
+		return { output: value }
+	},
+	doubleNode: async ({ input }) => {
+		return { output: input * 2 }
+	},
+}
+
+// 2. Define the workflow structure as a JSON blueprint
+const blueprint = {
+	id: 'simple-workflow',
+	nodes: [
+		{ id: 'start', uses: 'startNode' },
+		{ id: 'double', uses: 'doubleNode', inputs: 'start' },
+	],
+	edges: [{ source: 'start', target: 'double' }],
+}
+
+// 3. Run the blueprint with the registry
+const runtime = new FlowRuntime({ registry: nodeRegistry })
+const result = await runtime.run(blueprint, { value: 42 }, { functionRegistry: nodeRegistry })
+```
+
+See the [Declarative Workflows Guide](https://flowcraft.js.org/guide/declarative) for more details.
+
+</details>
+
+<details>
+<summary><b>Compiler</b> — Use <code>@flow</code> / <code>@step</code> annotations to compile imperative code into a blueprint.</summary>
+
+```typescript
+/** @step */
+export async function startNode(params: { value: number }) {
+	return { output: params.value }
+}
+
+/** @step */
+export async function doubleNode(params: { value: number }) {
+	return { output: params.value * 2 }
+}
+
+/** @flow */
+export async function simpleWorkflow() {
+	const start = await startNode({ value: 42 })
+	const result = await doubleNode({ value: start.output })
+	return result
+}
+```
+
+The compiler generates the blueprint and registry at build time. See the [Compiler API](https://flowcraft.js.org/api/compiler) for more details.
+
+</details>
 
 ## Resiliency and Error Handling
 
@@ -80,7 +141,7 @@ For more granular control, you can implement a node using the `BaseNode` class, 
 
 ## Tooling and Utilities
 
-Flowcraft includes tools to help you validate, visualize, and integrate workflows with AI agents.
+Flowcraft includes tools to help you validate, visualize, and integrate workflows with LLMs.
 
 - **Linter (`lintBlueprint`)**: Statically analyze a blueprint to find common errors, such as orphan nodes, invalid edges, or nodes with missing implementations.
 - **Analysis (`analyzeBlueprint`)**: Programmatically inspect a blueprint to detect cycles, find start/terminal nodes, and get other graph metrics.
