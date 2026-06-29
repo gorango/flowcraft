@@ -474,8 +474,8 @@ export async function demoFlow(context: any) {
 
 		const functionRegistry = new Map(Object.entries(registry))
 
-		const { FlowRuntime } = await import('flowcraft')
-		const runtime = new FlowRuntime({ registry: functionRegistry })
+		const { FlowRuntime: FlowRuntime2 } = await import('flowcraft')
+		const runtime = new FlowRuntime2({ registry: functionRegistry })
 		const result = await runtime.run(blueprint, {}, { functionRegistry })
 
 		expect(result.status).toBe('completed')

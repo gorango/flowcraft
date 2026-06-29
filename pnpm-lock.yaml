@@ -28,7 +28,7 @@ importers:
         version: 3.0.0
       '@flowcraft/compiler':
         specifier: workspace:*
-        version: link:../packages/compiler
+        version: link:../packages/compiler/core
       '@vue-flow/background':
         specifier: ^1.3.2
         version: 1.3.2(@vue-flow/core@1.48.2(vue@3.5.34(typescript@6.0.3)))(vue@3.5.34(typescript@6.0.3))
@@ -997,7 +997,7 @@ importers:
         version: 4.1.7(vitest@4.1.7)
       flowcraft:
         specifier: workspace:^2.10.1
-        version: link:../core
+        version: link:../../core
       tsdown:
         specifier: ^0.22.0
         version: 0.22.0(tsx@4.22.3)(typescript@6.0.3)

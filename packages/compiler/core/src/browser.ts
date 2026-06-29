@@ -53,9 +53,7 @@ function discoverExports(sourceFile: ts.SourceFile, typeChecker: ts.TypeChecker)
 						}
 						if (originalSymbol?.valueDeclaration) {
 							const decl = originalSymbol.valueDeclaration
-							const annotation = ts.isFunctionDeclaration(decl)
-								? isAsyncAndAnnotated(decl)
-								: null
+							const annotation = ts.isFunctionDeclaration(decl) ? isAsyncAndAnnotated(decl) : null
 							if (annotation) {
 								exports.set(element.name.text, {
 									...annotation,
@@ -118,11 +116,7 @@ function discoverExports(sourceFile: ts.SourceFile, typeChecker: ts.TypeChecker)
 						const hasFlowTag = jsDocTags.some((tag) => tag.tagName.text === 'flow')
 						const hasStepTag = jsDocTags.some((tag) => tag.tagName.text === 'step')
 						if (hasFlowTag || hasStepTag) {
-							if (
-								init.modifiers?.some(
-									(mod) => mod.kind === ts.SyntaxKind.AsyncKeyword,
-								)
-							) {
+							if (init.modifiers?.some((mod) => mod.kind === ts.SyntaxKind.AsyncKeyword)) {
 								exports.set(decl.name.text, {
 									type: hasFlowTag ? 'flow' : 'step',
 									node: init as unknown as ts.ArrowFunction,
@@ -152,8 +146,7 @@ function createWrappedStepFunctions(code: string): Record<string, Function> {
 			const fn = new Function(`return async function ${name}(${params}) {${body}}`)()
 			fns[name] = async (ctx: any) => {
 				const result = await fn(ctx.input)
-				if (result !== null && typeof result === 'object' && 'output' in result)
-					return result
+				if (result !== null && typeof result === 'object' && 'output' in result) return result
 				return { output: result }
 			}
 		} catch (e) {

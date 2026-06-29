@@ -292,22 +292,13 @@ onMounted(() => {
 							>
 								<Background />
 								<template #node-default="nodeProps">
-									<NodeDefault
-										v-bind="nodeProps"
-										:node-data="getNodeData(nodeProps.id)"
-									/>
+									<NodeDefault v-bind="nodeProps" :node-data="getNodeData(nodeProps.id)" />
 								</template>
 								<template #node-input="nodeProps">
-									<NodeInput
-										v-bind="nodeProps"
-										:node-data="getNodeData(nodeProps.id)"
-									/>
+									<NodeInput v-bind="nodeProps" :node-data="getNodeData(nodeProps.id)" />
 								</template>
 								<template #node-output="nodeProps">
-									<NodeOutput
-										v-bind="nodeProps"
-										:node-data="getNodeData(nodeProps.id)"
-									/>
+									<NodeOutput v-bind="nodeProps" :node-data="getNodeData(nodeProps.id)" />
 								</template>
 							</VueFlow>
 							<div v-else class="p-8 text-center text-(--vp-c-text-2) text-sm">
@@ -316,31 +307,21 @@ onMounted(() => {
 						</div>
 
 						<div v-if="activeTab === 'diagnostics'" class="p-3">
-							<div
-								v-if="diagnostics.length === 0"
-								class="p-8 text-center text-green-600 text-sm"
-							>
+							<div v-if="diagnostics.length === 0" class="p-8 text-center text-green-600 text-sm">
 								✓ No diagnostics
 							</div>
 							<div v-else>
 								<div class="flex gap-3 mb-2 text-[13px]">
-									<span v-if="errorCount > 0" class="text-red-600"
-										>{{ errorCount }} errors</span
-									>
+									<span v-if="errorCount > 0" class="text-red-600">{{ errorCount }} errors</span>
 									<span v-if="warningCount > 0" class="text-yellow-600"
 										>{{ warningCount }} warnings</span
 									>
-									<span v-if="infoCount > 0" class="text-blue-600"
-										>{{ infoCount }} info</span
-									>
+									<span v-if="infoCount > 0" class="text-blue-600">{{ infoCount }} info</span>
 								</div>
 								<div
 									v-for="(d, i) in diagnostics"
 									:key="i"
-									:class="[
-										'py-1 text-[13px] flex gap-2',
-										severityColor(d.severity),
-									]"
+									:class="['py-1 text-[13px] flex gap-2', severityColor(d.severity)]"
 								>
 									<span class="font-semibold shrink-0">[{{ d.severity }}]</span>
 									<span class="flex-1">{{ d.message }}</span>
@@ -403,11 +384,7 @@ onMounted(() => {
 			<span v-if="runResult" class="text-sm text-green-600"> ✓ {{ runResult.status }} </span>
 			<span v-if="runError" class="text-sm text-red-600"> ✗ {{ runError }} </span>
 			<span class="text-sm text-neutral-400 ml-auto">
-				{{
-					blueprint
-						? `${blueprint.nodes.length} nodes, ${blueprint.edges.length} edges`
-						: ''
-				}}
+				{{ blueprint ? `${blueprint.nodes.length} nodes, ${blueprint.edges.length} edges` : '' }}
 			</span>
 		</div>
 	</div>
