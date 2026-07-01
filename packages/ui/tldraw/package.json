@@ -25,14 +25,14 @@
 		"test:watch": "vitest"
 	},
 	"devDependencies": {
-		"@tldraw/validate": "^5.0.1",
+		"@tldraw/validate": "^5.2.1",
 		"@types/react": "^19.2.15",
 		"@types/react-dom": "^19.2.3",
 		"flowcraft": "workspace:*",
 		"jsdom": "^29.1.1",
 		"react": "^19.2.6",
 		"react-dom": "^19.2.6",
-		"tldraw": "^5.0.1",
+		"tldraw": "^5.2.1",
 		"tsdown": "^0.22.0",
 		"typescript": "^6.0.3",
 		"vitest": "^4.1.7"
@@ -41,6 +41,6 @@
 		"flowcraft": "^2.0.0",
 		"react": "^19.0.0",
 		"react-dom": "^19.0.0",
-		"tldraw": "^3.0.0"
+		"tldraw": "^5.2.1"
 	}
 }
